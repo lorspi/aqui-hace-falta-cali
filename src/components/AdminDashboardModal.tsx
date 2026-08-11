@@ -85,6 +85,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [newUserRole, setNewUserRole] = useState<"ADMIN" | "MODERATOR">("MODERATOR");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
+  // Edit user state
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editUserName, setEditUserName] = useState("");
+  const [editUserRole, setEditUserRole] = useState<"ADMIN" | "MODERATOR">("MODERATOR");
+  const [editUserPassword, setEditUserPassword] = useState("");
+  const [isSavingUser, setIsSavingUser] = useState(false);
+
   // Editing need state
   const [editingNeed, setEditingNeed] = useState<Need | null>(null);
   const [editPriority, setEditPriority] = useState<Priority>("HIGH");
@@ -231,6 +238,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
       });
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const openEditUser = (user: any) => {
+    setEditingUser(user);
+    setEditUserName(user.name);
+    setEditUserRole(user.role);
+    setEditUserPassword("");
+  };
+
+  const handleSaveUser = async () => {
+    if (!editingUser || !authToken) return;
+    setIsSavingUser(true);
+    try {
+      await updateUserMutation({
+        token: authToken,
+        userId: editingUser.id as Id<"users">,
+        name: editUserName,
+        role: editUserRole,
+        ...(editUserPassword ? { password: editUserPassword } : {}),
+      });
+      setEditingUser(null);
+      alert("Usuario actualizado.");
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSavingUser(false);
     }
   };
 
@@ -917,6 +951,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                               </td>
                               <td className="p-3 text-right space-x-2">
                                 <button
+                                  onClick={() => openEditUser(u)}
+                                  className="text-xs font-bold text-indigo-600 hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
                                   onClick={() => handleToggleUserActive(u.id, u.active)}
                                   className="text-xs font-bold text-slate-700 hover:underline"
                                 >
@@ -938,6 +978,67 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Edit User Overlay */}
+        {editingUser && (
+          <div className="fixed inset-0 z-[60] bg-slate-900/80 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-5 max-w-md w-full space-y-4">
+              <h3 className="font-bold text-slate-900 text-base">
+                Editar Usuario
+              </h3>
+              <p className="text-xs text-slate-500">{editingUser.email}</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    value={editUserName}
+                    onChange={(e) => setEditUserName(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">Rol</label>
+                  <select
+                    value={editUserRole}
+                    onChange={(e) => setEditUserRole(e.target.value as "ADMIN" | "MODERATOR")}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
+                  >
+                    <option value="MODERATOR">Moderador</option>
+                    <option value="ADMIN">Administrador</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">
+                    Nueva contraseña <span className="font-normal text-slate-400">(dejar vacío para no cambiar)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={editUserPassword}
+                    onChange={(e) => setEditUserPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  onClick={() => setEditingUser(null)}
+                  className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveUser}
+                  disabled={isSavingUser}
+                  className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs disabled:opacity-50"
+                >
+                  {isSavingUser ? "Guardando..." : "Guardar cambios"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
