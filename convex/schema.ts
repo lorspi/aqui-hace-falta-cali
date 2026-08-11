@@ -2,6 +2,27 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // --- AUTH ---
+  users: defineTable({
+    email: v.string(),
+    name: v.string(),
+    passwordHash: v.string(), // bcrypt-style hash stored as string
+    role: v.string(), // "ADMIN" | "MODERATOR"
+    active: v.boolean(),
+    createdAt: v.string(),
+    lastLoginAt: v.optional(v.string()),
+  }).index("by_email", ["email"]),
+
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.string(),
+    createdAt: v.string(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
+
+  // --- CORE DATA ---
   needs: defineTable({
     cityId: v.string(),
     emergencyId: v.string(),

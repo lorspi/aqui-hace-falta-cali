@@ -97,10 +97,7 @@ export default function App() {
     sortBy: filters.sortBy || undefined,
   });
 
-  const adminData = useQuery(
-    api.admin.getAllData,
-    isAdminModalOpen ? {} : "skip"
-  );
+  // Admin data is now fetched inside AdminDashboardModal with auth token
 
   // Adapted needs
   const needs: Need[] = useMemo(
@@ -109,20 +106,12 @@ export default function App() {
   );
 
   const reports = useMemo(() => {
-    if (!adminData) return [];
-    return adminData.reports.map((r: any) => ({
-      ...r,
-      id: r._id,
-    }));
-  }, [adminData]);
+    return [];
+  }, []);
 
   const auditLogs = useMemo(() => {
-    if (!adminData) return [];
-    return adminData.auditLogs.map((a: any) => ({
-      ...a,
-      id: a._id,
-    }));
-  }, [adminData]);
+    return [];
+  }, []);
 
   const isLoading = rawNeeds === undefined;
   const lastUpdated = new Date().toLocaleTimeString("es-CO", {
@@ -136,7 +125,6 @@ export default function App() {
   const submitReport = useMutation(api.needs.submitReport);
   const adminVerify = useMutation(api.admin.verifyNeed);
   const adminResolveReport = useMutation(api.admin.resolveReport);
-  const seedDemo = useMutation(api.seed.seedDemoData);
 
   // Geolocation
   const handleRequestLocation = () => {
@@ -251,8 +239,14 @@ export default function App() {
 
   // Admin Verify
   const handleAdminVerify = async (needId: string, updates: Partial<Need>) => {
+    const token = localStorage.getItem("ahf_admin_token");
+    if (!token) {
+      alert("Sesión expirada. Inicia sesión de nuevo.");
+      return;
+    }
     try {
       await adminVerify({
+        token,
         id: needId as Id<"needs">,
         verificationStatus: updates.verificationStatus,
         priority: updates.priority,
@@ -262,7 +256,6 @@ export default function App() {
         title: updates.title,
         description: updates.description,
         categories: updates.categories,
-        adminEmail: (updates as any).adminEmail,
       });
     } catch (e) {
       alert("Error en moderación.");
@@ -274,8 +267,14 @@ export default function App() {
     reportId: string,
     action: string
   ) => {
+    const token = localStorage.getItem("ahf_admin_token");
+    if (!token) {
+      alert("Sesión expirada. Inicia sesión de nuevo.");
+      return;
+    }
     try {
       await adminResolveReport({
+        token,
         reportId: reportId as Id<"reports">,
         action,
       });
@@ -284,15 +283,9 @@ export default function App() {
     }
   };
 
-  // Reset Demo Data
+  // Reset Demo Data (no-op, demo data removed)
   const handleResetDemoData = async () => {
-    if (confirm("¿Restablecer todos los datos demo de prueba para Cali?")) {
-      try {
-        await seedDemo({});
-      } catch (e) {
-        // Ignore
-      }
-    }
+    // No demo data to reset
   };
 
   const activeCount = needs.filter(

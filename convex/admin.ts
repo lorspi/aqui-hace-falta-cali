@@ -1,10 +1,34 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 
-// Admin: get all data
+// Helper: verify session and return user (or throw)
+async function requireAuth(ctx: QueryCtx | MutationCtx, token: string) {
+  const session = await ctx.db
+    .query("sessions")
+    .withIndex("by_token", (q) => q.eq("token", token))
+    .first();
+
+  if (!session || new Date(session.expiresAt) < new Date()) {
+    throw new Error("Sesión expirada. Inicia sesión de nuevo.");
+  }
+
+  const user = await ctx.db.get(session.userId);
+  if (!user || !user.active) {
+    throw new Error("Usuario no encontrado o desactivado.");
+  }
+
+  return user;
+}
+
+// Admin: get all data (protected)
 export const getAllData = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+      throw new Error("Sin permisos de moderación.");
+    }
+
     const needs = await ctx.db.query("needs").collect();
     const reports = await ctx.db.query("reports").collect();
     const auditLogs = await ctx.db.query("auditLogs").collect();
@@ -12,10 +36,15 @@ export const getAllData = query({
   },
 });
 
-// Admin: get metrics
+// Admin: get metrics (protected)
 export const getMetrics = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+      throw new Error("Sin permisos de moderación.");
+    }
+
     const needs = await ctx.db.query("needs").collect();
     const reports = await ctx.db.query("reports").collect();
 
@@ -35,15 +64,12 @@ export const getMetrics = query({
     const reported = needs.filter(
       (n) =>
         n.verificationStatus === "REPORTED" ||
-        reports.some(
-          (r) => r.needId === n._id && r.status === "PENDING"
-        )
+        reports.some((r) => r.needId === n._id && r.status === "PENDING")
     ).length;
     const covered = needs.filter(
       (n) => n.status === "COVERED" || n.status === "CLOSED"
     ).length;
 
-    // Demand by category
     const categoryCounts: Record<string, number> = {};
     needs.forEach((n) => {
       n.categories.forEach((c) => {
@@ -51,7 +77,6 @@ export const getMetrics = query({
       });
     });
 
-    // Neighborhood clusters
     const neighborhoodCounts: Record<string, number> = {};
     needs.forEach((n) => {
       if (n.neighborhood) {
@@ -75,9 +100,10 @@ export const getMetrics = query({
   },
 });
 
-// Admin: verify/moderate need
+// Admin: verify/moderate need (protected)
 export const verifyNeed = mutation({
   args: {
+    token: v.string(),
     id: v.id("needs"),
     verificationStatus: v.optional(v.string()),
     priority: v.optional(v.string()),
@@ -87,9 +113,13 @@ export const verifyNeed = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     categories: v.optional(v.array(v.string())),
-    adminEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+      throw new Error("Sin permisos de moderación.");
+    }
+
     const need = await ctx.db.get(args.id);
     if (!need) throw new Error("Necesidad no encontrada");
 
@@ -114,23 +144,28 @@ export const verifyNeed = mutation({
     await ctx.db.insert("auditLogs", {
       action: "MODERATE_NEED",
       needId: args.id,
-      adminEmail: args.adminEmail || "moderador@aquihacefalta.org",
+      adminEmail: user.email,
       timestamp: now,
-      details: `Verificación: ${oldVerification} -> ${args.verificationStatus || oldVerification}. Prioridad: ${oldPriority} -> ${args.priority || oldPriority}.`,
+      details: `Verificación: ${oldVerification} -> ${args.verificationStatus || oldVerification}. Prioridad: ${oldPriority} -> ${args.priority || oldPriority}. Por: ${user.name}`,
     });
 
     return args.id;
   },
 });
 
-// Admin: resolve report
+// Admin: resolve report (protected)
 export const resolveReport = mutation({
   args: {
+    token: v.string(),
     reportId: v.id("reports"),
-    action: v.string(), // 'DISMISS' | 'RESOLVE_ARCHIVE' | 'RESOLVE_FIX'
-    adminEmail: v.optional(v.string()),
+    action: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+      throw new Error("Sin permisos de moderación.");
+    }
+
     const report = await ctx.db.get(args.reportId);
     if (!report) throw new Error("Reporte no encontrado");
 
@@ -140,7 +175,7 @@ export const resolveReport = mutation({
     await ctx.db.patch(args.reportId, {
       status: newStatus,
       resolvedAt: now,
-      resolvedBy: args.adminEmail || "Admin",
+      resolvedBy: user.email,
     });
 
     if (args.action === "RESOLVE_ARCHIVE") {
@@ -155,9 +190,9 @@ export const resolveReport = mutation({
     await ctx.db.insert("auditLogs", {
       action: "RESOLVE_REPORT",
       needId: report.needId,
-      adminEmail: args.adminEmail || "Admin",
+      adminEmail: user.email,
       timestamp: now,
-      details: `Reporte ${args.reportId} marcado como ${newStatus}. Acción: ${args.action}`,
+      details: `Reporte ${args.reportId} marcado como ${newStatus}. Acción: ${args.action}. Por: ${user.name}`,
     });
 
     return { success: true };
