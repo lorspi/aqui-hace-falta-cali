@@ -20,6 +20,8 @@ import {
   Plus,
   LogOut,
   Trash2,
+  Loader2,
+  MapPin,
 } from "lucide-react";
 import { Need, Priority, Report, AuditLog } from "../types";
 import {
@@ -28,6 +30,8 @@ import {
   VERIFICATION_CONFIG,
   formatTimeAgo,
 } from "../utils/formatters";
+import { geocodeAddress } from "../utils/geocoding";
+import { MiniMapPicker } from "./MiniMapPicker";
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -95,6 +99,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editOperatingHours, setEditOperatingHours] = useState("");
   const [editPlaceType, setEditPlaceType] = useState("");
   const [editResources, setEditResources] = useState<any[]>([]);
+  const [isEditGeocoding, setIsEditGeocoding] = useState(false);
+  const [editGeoError, setEditGeoError] = useState("");
+  const [editLatitude, setEditLatitude] = useState(0);
+  const [editLongitude, setEditLongitude] = useState(0);
 
   // Convex mutations
   const loginMutation = useMutation(api.auth.login);
@@ -257,6 +265,24 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditOperatingHours(need.operatingHours || "");
     setEditPlaceType(need.placeType || "");
     setEditResources(need.resources ? [...need.resources] : []);
+    setEditLatitude(need.latitude || 3.4516);
+    setEditLongitude(need.longitude || -76.532);
+    setEditGeoError("");
+  };
+
+  const handleGeocodeEdit = async () => {
+    if (!editAddress) return;
+    setIsEditGeocoding(true);
+    setEditGeoError("");
+    const result = await geocodeAddress(editAddress, editNeighborhood);
+    if (result) {
+      setEditLatitude(result.latitude);
+      setEditLongitude(result.longitude);
+      setEditGeoError("");
+    } else {
+      setEditGeoError("No se encontró la ubicación. Verifica la dirección.");
+    }
+    setIsEditGeocoding(false);
   };
 
   const handleSaveEdit = async () => {
@@ -274,6 +300,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         contactWhatsapp: editContactWhatsapp || undefined,
         operatingHours: editOperatingHours || undefined,
         placeType: editPlaceType || undefined,
+        latitude: editLatitude,
+        longitude: editLongitude,
         resources: editResources.length > 0 ? editResources : undefined,
       });
       setEditingNeed(null);
@@ -1002,6 +1030,37 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         />
                       </div>
                     </div>
+                    {/* Geocode button */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleGeocodeEdit}
+                        disabled={isEditGeocoding || !editAddress}
+                        className="bg-indigo-100 text-indigo-800 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 disabled:opacity-50 hover:bg-indigo-200"
+                      >
+                        {isEditGeocoding ? (
+                          <><Loader2 className="w-3 h-3 animate-spin" /> Buscando...</>
+                        ) : (
+                          <><MapPin className="w-3 h-3" /> Geocodificar dirección</>
+                        )}
+                      </button>
+                      <span className="text-[10px] text-slate-500">
+                        📍 {editLatitude.toFixed(4)}, {editLongitude.toFixed(4)}
+                      </span>
+                      {editGeoError && (
+                        <span className="text-[10px] text-rose-600">{editGeoError}</span>
+                      )}
+                    </div>
+                    {/* Interactive map picker */}
+                    <MiniMapPicker
+                      latitude={editLatitude}
+                      longitude={editLongitude}
+                      onPositionChange={(lat, lng) => {
+                        setEditLatitude(lat);
+                        setEditLongitude(lng);
+                      }}
+                      height="180px"
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 text-xs mb-1">Nombre contacto</label>

@@ -262,6 +262,8 @@ export const editNeed = mutation({
     contactPhone: v.optional(v.string()),
     contactWhatsapp: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     resources: v.optional(
       v.array(
         v.object({
@@ -297,6 +299,8 @@ export const editNeed = mutation({
     if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
     if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
+    if (args.latitude !== undefined) patch.latitude = args.latitude;
+    if (args.longitude !== undefined) patch.longitude = args.longitude;
     if (args.resources !== undefined) patch.resources = args.resources;
 
     await ctx.db.patch(args.id, patch);

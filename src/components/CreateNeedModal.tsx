@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Upload, Search } from 'lucide-react';
+import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Upload, Search, Loader2 } from 'lucide-react';
 import { HelpCategory, Need, PlaceType } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS } from '../utils/formatters';
-import { MapView } from './MapView';
+import { geocodeAddress } from '../utils/geocoding';
+import { MiniMapPicker } from './MiniMapPicker';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
@@ -45,9 +46,30 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [duplicateMatches, setDuplicateMatches] = useState<Need[]>([]);
   const [hasCheckedDuplicates, setHasCheckedDuplicates] = useState(false);
   const [showPickerMap, setShowPickerMap] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState('');
 
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
+
+  // Auto-geocode when address or neighborhood changes (debounced)
+  useEffect(() => {
+    if (address.length < 5) return;
+    setGeocodeError('');
+    const timer = setTimeout(async () => {
+      setIsGeocoding(true);
+      const result = await geocodeAddress(address, neighborhood);
+      if (result) {
+        setLatitude(result.latitude);
+        setLongitude(result.longitude);
+        setGeocodeError('');
+      } else {
+        setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+      }
+      setIsGeocoding(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [address, neighborhood]);
 
   // Check duplicate matches when neighborhood or title changes
   useEffect(() => {
@@ -265,9 +287,22 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Ej: Calle 5 # 34-12 frente al parque"
+                  placeholder="Ej: Calle 5 con Carrera 44, o Calle 5 # 34-12"
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
+                {isGeocoding && (
+                  <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación...
+                  </p>
+                )}
+                {geocodeError && (
+                  <p className="text-xs text-amber-600 mt-1">{geocodeError}</p>
+                )}
+                {!isGeocoding && !geocodeError && address.length >= 5 && (
+                  <p className="text-xs text-emerald-600 mt-1">
+                    📍 Ubicación: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -283,18 +318,15 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               </button>
 
               {showPickerMap && (
-                <div className="h-56 w-full rounded-xl overflow-hidden border border-slate-300">
-                  <MapView
-                    needs={[]}
-                    isPickerMode={true}
-                    pickerPosition={{ lat: latitude, lng: longitude }}
-                    onPickPosition={(pos) => {
-                      setLatitude(pos.lat);
-                      setLongitude(pos.lng);
-                    }}
-                    onSelectNeed={() => {}}
-                  />
-                </div>
+                <MiniMapPicker
+                  latitude={latitude}
+                  longitude={longitude}
+                  onPositionChange={(lat, lng) => {
+                    setLatitude(lat);
+                    setLongitude(lng);
+                  }}
+                  height="200px"
+                />
               )}
             </div>
           </div>
