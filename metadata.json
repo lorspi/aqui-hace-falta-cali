@@ -1,0 +1,6 @@
+{
+  "name": "Aquí Hace Falta — Cali",
+  "description": "Plataforma ciudadana de coordinación y descubrimiento de oportunidades de ayuda durante la emergencia en Cali, Colombia.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

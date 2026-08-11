@@ -1,0 +1,263 @@
+import React, { useState } from 'react';
+import { Search, Filter, MapPin, X, ArrowUpDown, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { FilterState, HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus } from '../types';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+
+interface FilterBarProps {
+  filters: FilterState;
+  onFilterChange: (updated: Partial<FilterState>) => void;
+  onClearFilters: () => void;
+  onRequestLocation: () => void;
+  isLoadingLocation: boolean;
+  totalResults: number;
+}
+
+export const FilterBar: React.FC<FilterBarProps> = ({
+  filters,
+  onFilterChange,
+  onClearFilters,
+  onRequestLocation,
+  isLoadingLocation,
+  totalResults,
+}) => {
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+
+  const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
+  const prioritiesList: Priority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+  const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
+
+  const handleCategoryToggle = (cat: HelpCategory) => {
+    let next: HelpCategory[];
+    if (filters.categories.includes(cat)) {
+      next = filters.categories.filter((c) => c !== cat);
+    } else {
+      next = [...filters.categories, cat];
+    }
+    onFilterChange({ categories: next });
+  };
+
+  const hasActiveFilters =
+    filters.search.trim() !== '' ||
+    filters.categories.length > 0 ||
+    filters.priority !== 'ALL' ||
+    filters.placeType !== 'ALL' ||
+    filters.status !== 'ALL' ||
+    filters.verificationStatus !== 'ALL' ||
+    filters.distanceKm !== null;
+
+  return (
+    <div className="bg-white border-b border-slate-200 p-4 space-y-3 shadow-xs">
+      {/* Top search & quick controls */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <input
+            type="text"
+            value={filters.search}
+            onChange={(e) => onFilterChange({ search: e.target.value })}
+            placeholder="Buscar por recurso (agua, palas, escombros, voluntarios)..."
+            className="w-full pl-9 pr-8 py-2.5 text-sm bg-slate-100 border-none rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400"
+            id="filter-search-input"
+          />
+          {filters.search && (
+            <button
+              onClick={() => onFilterChange({ search: '' })}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Distance Dropdown & Geolocation */}
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-lg p-1 text-xs">
+            <button
+              onClick={onRequestLocation}
+              disabled={isLoadingLocation}
+              className={`p-1.5 rounded flex items-center gap-1 font-medium ${
+                filters.userLat ? 'bg-emerald-100 text-emerald-800' : 'hover:bg-slate-200 text-slate-700'
+              }`}
+              title="Obtener mi ubicación actual en Cali"
+            >
+              <MapPin className={`w-3.5 h-3.5 ${isLoadingLocation ? 'animate-bounce text-amber-600' : ''}`} />
+              <span className="hidden sm:inline">
+                {filters.userLat ? 'Ubicación activa' : 'Usar mi ubicación'}
+              </span>
+            </button>
+
+            <select
+              value={filters.distanceKm ?? 'ALL'}
+              onChange={(e) =>
+                onFilterChange({
+                  distanceKm: e.target.value === 'ALL' ? null : Number(e.target.value),
+                })
+              }
+              className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none pr-1"
+            >
+              <option value="ALL">Toda Cali</option>
+              <option value="1">Hasta 1 km</option>
+              <option value="2">Hasta 2 km</option>
+              <option value="5">Hasta 5 km</option>
+              <option value="10">Hasta 10 km</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <select
+              value={filters.sortBy}
+              onChange={(e) => onFilterChange({ sortBy: e.target.value as any })}
+              className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="PRIORITY">Más urgente primero</option>
+              <option value="RECENT">Más recientes</option>
+              <option value="DISTANCE">Más cercanos a mí</option>
+            </select>
+          </div>
+
+          {/* More Filters Toggle */}
+          <button
+            onClick={() => setShowMoreFilters(!showMoreFilters)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              showMoreFilters || hasActiveFilters
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filtros</span>
+            {hasActiveFilters && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Category Pills Slider */}
+      <div className="space-y-1">
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex justify-between items-center">
+          <span>¿Cómo quieres ayudar?</span>
+          {filters.categories.length > 0 && (
+            <button
+              onClick={() => onFilterChange({ categories: [] })}
+              className="text-amber-700 hover:underline capitalize text-xs"
+            >
+              Limpiar categorías ({filters.categories.length})
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          {categoriesList.map((cat) => {
+            const isSelected = filters.categories.includes(cat);
+            const item = CATEGORY_LABELS[cat];
+            return (
+              <button
+                key={cat}
+                onClick={() => handleCategoryToggle(cat)}
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full whitespace-nowrap text-xs font-semibold transition-all shrink-0 border ${
+                  isSelected
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Expanded Filter Panel */}
+      {showMoreFilters && (
+        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3 text-xs animate-in fade-in duration-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Priority */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Prioridad</label>
+              <select
+                value={filters.priority}
+                onChange={(e) => onFilterChange({ priority: e.target.value as any })}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
+              >
+                <option value="ALL">Todas las prioridades</option>
+                {prioritiesList.map((p) => (
+                  <option key={p} value={p}>
+                    {PRIORITY_CONFIG[p].dot} {PRIORITY_CONFIG[p].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Place Type */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Tipo de lugar</label>
+              <select
+                value={filters.placeType}
+                onChange={(e) => onFilterChange({ placeType: e.target.value as any })}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
+              >
+                <option value="ALL">Todos los lugares</option>
+                {placeTypesList.map((pt) => (
+                  <option key={pt} value={pt}>
+                    {PLACE_TYPE_LABELS[pt]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Verification Status */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Verificación</label>
+              <select
+                value={filters.verificationStatus}
+                onChange={(e) => onFilterChange({ verificationStatus: e.target.value as any })}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
+              >
+                <option value="ALL">Todas las verificaciones</option>
+                <option value="VERIFIED">✓ Solo información verificada</option>
+                <option value="PENDING_VERIFICATION">◷ Pendientes de verificación</option>
+                <option value="REPORTED">⚠️ Reportadas</option>
+              </select>
+            </div>
+
+            {/* Need Status */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Estado de necesidad</label>
+              <select
+                value={filters.status}
+                onChange={(e) => onFilterChange({ status: e.target.value as any })}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
+              >
+                <option value="ALL">Todos los estados</option>
+                <option value="NEED_HELP_NOW">Necesita ayuda ahora</option>
+                <option value="RECEIVING_HELP">Recibiendo ayuda</option>
+                <option value="PARTIALLY_COVERED">Parcialmente cubierta</option>
+                <option value="COVERED">Ayuda cubierta</option>
+                <option value="CLOSED">Cerrados / Archivados</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+            <span className="text-slate-500 font-medium">
+              Mostrando <strong className="text-slate-900">{totalResults}</strong> resultados
+            </span>
+            {hasActiveFilters && (
+              <button
+                onClick={onClearFilters}
+                className="text-red-700 hover:text-red-900 font-semibold hover:underline flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Restablecer todos los filtros</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
