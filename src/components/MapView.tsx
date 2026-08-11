@@ -183,6 +183,48 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [selectedNeedId, needs]);
 
+  // User Location Marker
+  const userMarkerRef = useRef<L.Marker | null>(null);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (userLat && userLng) {
+      const userIcon = L.divIcon({
+        className: 'user-location-pin',
+        html: `
+          <div style="
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
+            animation: pulse-ring 2s ease-out infinite;
+          "></div>
+        `,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([userLat, userLng]);
+      } else {
+        userMarkerRef.current = L.marker([userLat, userLng], {
+          icon: userIcon,
+          zIndexOffset: 1000,
+        }).addTo(map);
+        userMarkerRef.current.bindPopup(
+          '<div style="font-family: sans-serif; text-align: center; padding: 2px;"><strong style="font-size: 12px;">📍 Tu ubicación</strong></div>'
+        );
+      }
+    } else if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+  }, [userLat, userLng]);
+
   // Location Picker logic
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -279,6 +321,12 @@ export const MapView: React.FC<MapViewProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
             <span className="text-slate-700">Baja</span>
           </div>
+          {userLat && userLng && (
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block border border-white shadow-sm" />
+              <span className="text-slate-700">Tu ubicación</span>
+            </div>
+          )}
         </div>
       )}
 
