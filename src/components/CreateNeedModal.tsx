@@ -74,6 +74,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     }
   }, [title, neighborhood, latitude, longitude]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+      return () => document.body.classList.remove("modal-open");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleCategoryToggle = (cat: HelpCategory) => {
@@ -134,8 +141,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>

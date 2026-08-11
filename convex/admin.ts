@@ -262,6 +262,19 @@ export const editNeed = mutation({
     contactPhone: v.optional(v.string()),
     contactWhatsapp: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
+    resources: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          type: v.string(),
+          description: v.string(),
+          requestedQuantity: v.optional(v.number()),
+          fulfilledQuantity: v.optional(v.number()),
+          unit: v.optional(v.string()),
+          status: v.string(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.token);
@@ -284,6 +297,7 @@ export const editNeed = mutation({
     if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
     if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
+    if (args.resources !== undefined) patch.resources = args.resources;
 
     await ctx.db.patch(args.id, patch);
 

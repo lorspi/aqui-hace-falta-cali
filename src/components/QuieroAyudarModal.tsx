@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, HeartHandshake, MapPin, MessageSquare, Phone, ExternalLink, Calendar, CheckCircle2 } from 'lucide-react';
 import { Need } from '../types';
 import { CATEGORY_LABELS, buildWhatsappLink } from '../utils/formatters';
@@ -9,13 +9,23 @@ interface QuieroAyudarModalProps {
 }
 
 export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onClose }) => {
+  useEffect(() => {
+    if (need) {
+      document.body.classList.add("modal-open");
+      return () => document.body.classList.remove("modal-open");
+    }
+  }, [need]);
+
   if (!need) return null;
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${need.latitude},${need.longitude}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 modal-scroll max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Flag, AlertTriangle, Send } from 'lucide-react';
 import { Need } from '../types';
 
@@ -14,6 +14,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
   const [reporterContact, setReporterContact] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (need) {
+      document.body.classList.add("modal-open");
+      return () => document.body.classList.remove("modal-open");
+    }
+  }, [need]);
+
   if (!need) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,8 +32,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150 modal-scroll max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-full bg-rose-100 text-rose-700">

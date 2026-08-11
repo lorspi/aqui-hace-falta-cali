@@ -94,6 +94,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editContactWhatsapp, setEditContactWhatsapp] = useState("");
   const [editOperatingHours, setEditOperatingHours] = useState("");
   const [editPlaceType, setEditPlaceType] = useState("");
+  const [editResources, setEditResources] = useState<any[]>([]);
 
   // Convex mutations
   const loginMutation = useMutation(api.auth.login);
@@ -255,6 +256,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditContactWhatsapp(need.contactWhatsapp || "");
     setEditOperatingHours(need.operatingHours || "");
     setEditPlaceType(need.placeType || "");
+    setEditResources(need.resources ? [...need.resources] : []);
   };
 
   const handleSaveEdit = async () => {
@@ -272,6 +274,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         contactWhatsapp: editContactWhatsapp || undefined,
         operatingHours: editOperatingHours || undefined,
         placeType: editPlaceType || undefined,
+        resources: editResources.length > 0 ? editResources : undefined,
       });
       setEditingNeed(null);
       alert("Necesidad editada.");
@@ -304,11 +307,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   );
   const pendingReports = liveReports.filter((r: any) => r.status === "PENDING");
 
+  // Block body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+      return () => document.body.classList.remove("modal-open");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col">
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col">
         {/* Header */}
         <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-slate-900 text-white z-10 rounded-t-2xl">
           <div className="flex items-center gap-2.5">
@@ -1046,6 +1060,89 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         <option value="ORGANIZACION">Organización</option>
                         <option value="OTRO">Otro</option>
                       </select>
+                    </div>
+
+                    {/* Resources / Cobertura */}
+                    <div className="border-t border-slate-200 pt-3">
+                      <label className="block font-bold text-slate-700 text-xs mb-2">
+                        Recursos / Cobertura
+                      </label>
+                      {editResources.map((res, idx) => (
+                        <div key={res.id || idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2 space-y-1.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={res.description}
+                              onChange={(e) => {
+                                const updated = [...editResources];
+                                updated[idx] = { ...updated[idx], description: e.target.value };
+                                setEditResources(updated);
+                              }}
+                              placeholder="Descripción del recurso"
+                              className="p-1.5 border border-slate-300 rounded text-xs col-span-2"
+                            />
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-slate-500">Solicitado:</span>
+                              <input
+                                type="number"
+                                value={res.requestedQuantity || ""}
+                                onChange={(e) => {
+                                  const updated = [...editResources];
+                                  updated[idx] = { ...updated[idx], requestedQuantity: Number(e.target.value) || 0 };
+                                  setEditResources(updated);
+                                }}
+                                className="w-16 p-1 border border-slate-300 rounded text-xs"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-slate-500">Cubierto:</span>
+                              <input
+                                type="number"
+                                value={res.fulfilledQuantity || ""}
+                                onChange={(e) => {
+                                  const updated = [...editResources];
+                                  updated[idx] = { ...updated[idx], fulfilledQuantity: Number(e.target.value) || 0 };
+                                  setEditResources(updated);
+                                }}
+                                className="w-16 p-1 border border-slate-300 rounded text-xs"
+                              />
+                              <input
+                                type="text"
+                                value={res.unit || ""}
+                                onChange={(e) => {
+                                  const updated = [...editResources];
+                                  updated[idx] = { ...updated[idx], unit: e.target.value };
+                                  setEditResources(updated);
+                                }}
+                                placeholder="unidad"
+                                className="w-20 p-1 border border-slate-300 rounded text-xs"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditResources(editResources.filter((_, i) => i !== idx))}
+                            className="text-[10px] text-rose-600 font-bold hover:underline"
+                          >
+                            Quitar recurso
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditResources([...editResources, {
+                          id: `res-${Date.now()}`,
+                          type: "VOLUNTARIADO_GENERAL",
+                          description: "",
+                          requestedQuantity: 0,
+                          fulfilledQuantity: 0,
+                          unit: "unidades",
+                          status: "PENDING",
+                        }])}
+                        className="text-xs text-indigo-600 font-bold hover:underline"
+                      >
+                        + Agregar recurso
+                      </button>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t">

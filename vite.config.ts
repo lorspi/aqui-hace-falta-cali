@@ -4,6 +4,11 @@ import path from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  server: {
+    host: "::",
+    port: 8080,
+    allowedHosts: ["test.lorspi.com"],
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
