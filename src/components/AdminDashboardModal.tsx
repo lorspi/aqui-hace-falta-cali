@@ -105,6 +105,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editContactWhatsapp, setEditContactWhatsapp] = useState("");
   const [editOperatingHours, setEditOperatingHours] = useState("");
   const [editPlaceType, setEditPlaceType] = useState("");
+  const [editCategories, setEditCategories] = useState<string[]>([]);
   const [editResources, setEditResources] = useState<any[]>([]);
   const [isEditGeocoding, setIsEditGeocoding] = useState(false);
   const [editGeoError, setEditGeoError] = useState("");
@@ -298,6 +299,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditContactWhatsapp(need.contactWhatsapp || "");
     setEditOperatingHours(need.operatingHours || "");
     setEditPlaceType(need.placeType || "");
+    setEditCategories(need.categories ? [...need.categories] : []);
     setEditResources(need.resources ? [...need.resources] : []);
     setEditLatitude(need.latitude || 3.4516);
     setEditLongitude(need.longitude || -76.532);
@@ -334,6 +336,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         contactWhatsapp: editContactWhatsapp || undefined,
         operatingHours: editOperatingHours || undefined,
         placeType: editPlaceType || undefined,
+        categories: editCategories.length > 0 ? editCategories : undefined,
         latitude: editLatitude,
         longitude: editLongitude,
         resources: editResources.length > 0 ? editResources : undefined,
@@ -1220,6 +1223,34 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         <option value="ORGANIZACION">Organización</option>
                         <option value="OTRO">Otro</option>
                       </select>
+                    </div>
+
+                    {/* Categories */}
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">Categorías de ayuda</label>
+                      <div className="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-2">
+                        {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setEditCategories((prev) =>
+                                prev.includes(key)
+                                  ? prev.filter((c) => c !== key)
+                                  : [...prev, key]
+                              );
+                            }}
+                            className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors flex items-center gap-1 ${
+                              editCategories.includes(key)
+                                ? "bg-slate-800 text-white border-slate-800"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-slate-400"
+                            }`}
+                          >
+                            <span>{icon}</span>
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Resources / Cobertura */}
