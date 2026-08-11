@@ -67,6 +67,18 @@ export default function App() {
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
+  // Moderator edit state (from detail modal)
+  const [editingNeedFromDetail, setEditingNeedFromDetail] = useState<Need | null>(null);
+  const [editModeFromDetail, setEditModeFromDetail] = useState<"priority" | "full">("full");
+
+  // Check if a moderator is logged in
+  const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
+  const sessionUser = useQuery(
+    api.auth.validateSession,
+    adminToken ? { token: adminToken } : "skip"
+  );
+  const isModeratorLoggedIn = !!sessionUser;
+
   // Online / Offline Listeners
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -504,6 +516,19 @@ export default function App() {
         onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
         onOpenUpdateStatusModal={(need) => setSelectedForStatusUpdate(need)}
+        isModeratorLoggedIn={isModeratorLoggedIn}
+        onAdminEditNeed={(need) => {
+          setEditingNeedFromDetail(need);
+          setEditModeFromDetail("full");
+          setSelectedNeed(null);
+          setIsAdminModalOpen(true);
+        }}
+        onAdminChangePriority={(need) => {
+          setEditingNeedFromDetail(need);
+          setEditModeFromDetail("priority");
+          setSelectedNeed(null);
+          setIsAdminModalOpen(true);
+        }}
       />
 
       <QuieroAyudarModal
@@ -532,13 +557,18 @@ export default function App() {
 
       <AdminDashboardModal
         isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
+        onClose={() => {
+          setIsAdminModalOpen(false);
+          setEditingNeedFromDetail(null);
+        }}
         needs={needs}
         reports={reports}
         auditLogs={auditLogs}
         onVerifyNeed={handleAdminVerify}
         onResolveReport={handleAdminResolveReport}
         onResetDemoData={handleResetDemoData}
+        initialEditNeed={editingNeedFromDetail}
+        initialEditMode={editModeFromDetail}
       />
 
       {/* Footer */}

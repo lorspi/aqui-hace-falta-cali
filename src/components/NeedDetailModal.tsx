@@ -32,6 +32,9 @@ interface NeedDetailModalProps {
   onOpenQuieroAyudar: (need: Need) => void;
   onOpenReportModal: (need: Need) => void;
   onOpenUpdateStatusModal: (need: Need) => void;
+  isModeratorLoggedIn?: boolean;
+  onAdminEditNeed?: (need: Need) => void;
+  onAdminChangePriority?: (need: Need) => void;
 }
 
 export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
@@ -40,6 +43,9 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   onOpenQuieroAyudar,
   onOpenReportModal,
   onOpenUpdateStatusModal,
+  isModeratorLoggedIn = false,
+  onAdminEditNeed,
+  onAdminChangePriority,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -262,15 +268,29 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
         {/* Footer Actions */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 rounded-b-2xl">
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              onClick={() => onOpenUpdateStatusModal(need)}
-              className="text-slate-700 hover:text-slate-950 font-semibold underline flex items-center gap-1"
-            >
-              <RefreshCcw className="w-3.5 h-3.5" />
-              <span>Actualizar estado</span>
-            </button>
-            <span className="text-slate-300">•</span>
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            {isModeratorLoggedIn && onAdminChangePriority && (
+              <button
+                onClick={() => onAdminChangePriority(need)}
+                className="text-amber-700 hover:text-amber-900 font-semibold underline flex items-center gap-1"
+              >
+                <RefreshCcw className="w-3.5 h-3.5" />
+                <span>Cambiar prioridad</span>
+              </button>
+            )}
+            {isModeratorLoggedIn && onAdminEditNeed && (
+              <>
+                <span className="text-slate-300">•</span>
+                <button
+                  onClick={() => onAdminEditNeed(need)}
+                  className="text-indigo-700 hover:text-indigo-900 font-semibold underline flex items-center gap-1"
+                >
+                  <Building className="w-3.5 h-3.5" />
+                  <span>Editar publicación</span>
+                </button>
+              </>
+            )}
+            {isModeratorLoggedIn && <span className="text-slate-300">•</span>}
             <button
               onClick={() => onOpenReportModal(need)}
               className="text-rose-700 hover:text-rose-900 font-semibold underline flex items-center gap-1"

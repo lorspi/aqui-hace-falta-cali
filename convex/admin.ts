@@ -198,3 +198,104 @@ export const resolveReport = mutation({
     return { success: true };
   },
 });
+
+// Admin: delete need (protected)
+export const deleteNeed = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("needs"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN") {
+      throw new Error("Solo administradores pueden eliminar necesidades.");
+    }
+
+    const need = await ctx.db.get(args.id);
+    if (!need) throw new Error("Necesidad no encontrada");
+
+    // Delete related reports
+    const reports = await ctx.db
+      .query("reports")
+      .withIndex("by_need", (q) => q.eq("needId", args.id))
+      .collect();
+    for (const r of reports) {
+      await ctx.db.delete(r._id);
+    }
+
+    // Delete related update logs
+    const logs = await ctx.db
+      .query("updateLogs")
+      .withIndex("by_need", (q) => q.eq("needId", args.id))
+      .collect();
+    for (const l of logs) {
+      await ctx.db.delete(l._id);
+    }
+
+    // Delete the need
+    await ctx.db.delete(args.id);
+
+    // Audit log
+    await ctx.db.insert("auditLogs", {
+      action: "DELETE_NEED",
+      adminEmail: user.email,
+      timestamp: new Date().toISOString(),
+      details: `Necesidad "${need.title}" eliminada por ${user.name}.`,
+    });
+
+    return { success: true };
+  },
+});
+
+// Admin: edit need content (protected)
+export const editNeed = mutation({
+  args: {
+    token: v.string(),
+    id: v.id("needs"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    address: v.optional(v.string()),
+    neighborhood: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    placeType: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactWhatsapp: v.optional(v.string()),
+    operatingHours: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.token);
+    if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+      throw new Error("Sin permisos de moderación.");
+    }
+
+    const need = await ctx.db.get(args.id);
+    if (!need) throw new Error("Necesidad no encontrada");
+
+    const now = new Date().toISOString();
+    const patch: Record<string, any> = { updatedAt: now };
+    if (args.title !== undefined) patch.title = args.title;
+    if (args.description !== undefined) patch.description = args.description;
+    if (args.address !== undefined) patch.address = args.address;
+    if (args.neighborhood !== undefined) patch.neighborhood = args.neighborhood;
+    if (args.categories !== undefined) patch.categories = args.categories;
+    if (args.placeType !== undefined) patch.placeType = args.placeType;
+    if (args.contactName !== undefined) patch.contactName = args.contactName;
+    if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
+    if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
+    if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
+
+    await ctx.db.patch(args.id, patch);
+
+    // Audit log
+    await ctx.db.insert("auditLogs", {
+      action: "EDIT_NEED",
+      needId: args.id,
+      adminEmail: user.email,
+      timestamp: now,
+      details: `Necesidad "${need.title}" editada por ${user.name}.`,
+    });
+
+    return args.id;
+  },
+});

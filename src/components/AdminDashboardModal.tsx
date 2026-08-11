@@ -38,6 +38,8 @@ interface AdminDashboardModalProps {
   onVerifyNeed: (needId: string, updates: Partial<Need>) => Promise<void>;
   onResolveReport: (reportId: string, action: string) => Promise<void>;
   onResetDemoData: () => Promise<void>;
+  initialEditNeed?: Need | null;
+  initialEditMode?: "priority" | "full";
 }
 
 interface AuthUser {
@@ -56,6 +58,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onVerifyNeed,
   onResolveReport,
   onResetDemoData,
+  initialEditNeed,
+  initialEditMode,
 }) => {
   const [authToken, setAuthToken] = useState<string | null>(() =>
     localStorage.getItem("ahf_admin_token")
@@ -80,7 +84,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   // Editing need state
   const [editingNeed, setEditingNeed] = useState<Need | null>(null);
   const [editPriority, setEditPriority] = useState<Priority>("HIGH");
-  const [editVerifiedBy, setEditVerifiedBy] = useState("Moderación Oficial");
+  const [editMode, setEditMode] = useState<"priority" | "full">("priority");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editNeighborhood, setEditNeighborhood] = useState("");
+  const [editContactName, setEditContactName] = useState("");
+  const [editContactPhone, setEditContactPhone] = useState("");
+  const [editContactWhatsapp, setEditContactWhatsapp] = useState("");
+  const [editOperatingHours, setEditOperatingHours] = useState("");
+  const [editPlaceType, setEditPlaceType] = useState("");
 
   // Convex mutations
   const loginMutation = useMutation(api.auth.login);
@@ -126,6 +139,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
       setCurrentUser(sessionUser as AuthUser);
     }
   }, [sessionUser, authToken]);
+
+  // Open edit modal from external trigger (detail modal)
+  useEffect(() => {
+    if (initialEditNeed && currentUser) {
+      openEditModal(initialEditNeed, initialEditMode || "full");
+    }
+  }, [initialEditNeed, currentUser]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,6 +223,71 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     } catch (err: any) {
       alert(err.message);
     }
+  };
+
+  const deleteNeedMutation = useMutation(api.admin.deleteNeed);
+  const editNeedMutation = useMutation(api.admin.editNeed);
+
+  const handleDeleteNeed = async (needId: string, title: string) => {
+    if (!authToken) return;
+    if (!confirm(`¿Eliminar la necesidad "${title}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteNeedMutation({
+        token: authToken,
+        id: needId as Id<"needs">,
+      });
+      alert("Necesidad eliminada.");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const openEditModal = (need: Need, mode: "priority" | "full") => {
+    setEditingNeed(need);
+    setEditMode(mode);
+    setEditPriority(need.priority);
+    setEditTitle(need.title);
+    setEditDescription(need.description);
+    setEditAddress(need.address);
+    setEditNeighborhood(need.neighborhood);
+    setEditContactName(need.contactName);
+    setEditContactPhone(need.contactPhone || "");
+    setEditContactWhatsapp(need.contactWhatsapp || "");
+    setEditOperatingHours(need.operatingHours || "");
+    setEditPlaceType(need.placeType || "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingNeed || !authToken) return;
+    try {
+      await editNeedMutation({
+        token: authToken,
+        id: editingNeed.id as Id<"needs">,
+        title: editTitle,
+        description: editDescription,
+        address: editAddress,
+        neighborhood: editNeighborhood,
+        contactName: editContactName,
+        contactPhone: editContactPhone || undefined,
+        contactWhatsapp: editContactWhatsapp || undefined,
+        operatingHours: editOperatingHours || undefined,
+        placeType: editPlaceType || undefined,
+      });
+      setEditingNeed(null);
+      alert("Necesidad editada.");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleSavePriority = async () => {
+    if (!editingNeed) return;
+    await handleVerifyWithToken(editingNeed.id, {
+      priority: editPriority,
+      verificationStatus: "VERIFIED",
+      verifiedBy: currentUser?.name || "Moderador",
+    });
+    setEditingNeed(null);
   };
 
   // Pass token to parent handlers
@@ -427,10 +512,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <Check className="w-3.5 h-3.5" /> Aprobar
                           </button>
                           <button
-                            onClick={() => {
-                              setEditingNeed(need);
-                              setEditPriority(need.priority);
-                            }}
+                            onClick={() => openEditModal(need, "full")}
                             className="bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
                           >
                             <Edit className="w-3.5 h-3.5" /> Editar
@@ -467,37 +549,62 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {pendingReports.map((rep: any) => (
-                      <div
-                        key={rep.id}
-                        className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                      >
-                        <div className="space-y-1 flex-1">
-                          <span className="bg-rose-600 text-white font-bold px-2 py-0.5 rounded text-[10px]">
-                            {rep.reason}
-                          </span>
-                          <p className="font-bold text-slate-900">{rep.needTitle}</p>
-                          <p className="text-slate-700">{rep.description}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {rep.reporterContact || "Anónimo"} · {formatTimeAgo(rep.createdAt)}
-                          </p>
+                    {pendingReports.map((rep: any) => {
+                      const reportedNeed = needs.find((n) => n.id === rep.needId);
+                      return (
+                        <div
+                          key={rep.id}
+                          className="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-3"
+                        >
+                          {/* Report header */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="bg-rose-600 text-white font-bold px-2 py-0.5 rounded text-[10px]">
+                                  REPORTE: {rep.reason}
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  {rep.reporterContact || "Anónimo"} · {formatTimeAgo(rep.createdAt)}
+                                </span>
+                              </div>
+                              <p className="font-bold text-slate-900 text-sm">{rep.needTitle}</p>
+                              <p className="text-slate-800 text-xs bg-white border border-rose-100 rounded-lg p-2">
+                                <strong className="text-rose-700">Motivo del reporte:</strong>{" "}
+                                {rep.description}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleResolveWithToken(rep.id, "RESOLVE_ARCHIVE")}
+                                className="bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs"
+                              >
+                                Archivar necesidad
+                              </button>
+                              <button
+                                onClick={() => handleResolveWithToken(rep.id, "DISMISS")}
+                                className="bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg text-xs"
+                              >
+                                Desestimar reporte
+                              </button>
+                            </div>
+                          </div>
+                          {/* Reported need details */}
+                          {reportedNeed && (
+                            <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-1 text-xs">
+                              <p className="font-bold text-slate-800">📋 Detalle de la necesidad reportada:</p>
+                              <p className="text-slate-700">{reportedNeed.description}</p>
+                              <div className="flex flex-wrap gap-3 text-[11px] text-slate-500 pt-1">
+                                <span>📍 {reportedNeed.address} ({reportedNeed.neighborhood})</span>
+                                <span>👤 {reportedNeed.contactName} {reportedNeed.contactPhone || ""}</span>
+                                <span>🏷️ {reportedNeed.categories?.join(", ")}</span>
+                                <span>📊 Prioridad: {PRIORITY_CONFIG[reportedNeed.priority]?.label}</span>
+                                <span>✅ Verificación: {VERIFICATION_CONFIG[reportedNeed.verificationStatus]?.label}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleResolveWithToken(rep.id, "RESOLVE_ARCHIVE")}
-                            className="bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs"
-                          >
-                            Archivar
-                          </button>
-                          <button
-                            onClick={() => handleResolveWithToken(rep.id, "DISMISS")}
-                            className="bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-lg text-xs"
-                          >
-                            Desestimar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -577,6 +684,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         <th className="p-3">Verificación</th>
                         <th className="p-3">Estado</th>
                         <th className="p-3">Actualizado</th>
+                        <th className="p-3 text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -598,6 +706,28 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                           </td>
                           <td className="p-3 font-semibold">{need.status}</td>
                           <td className="p-3 text-slate-500">{formatTimeAgo(need.updatedAt)}</td>
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              onClick={() => openEditModal(need, "full")}
+                              className="text-xs font-bold text-indigo-600 hover:underline"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => openEditModal(need, "priority")}
+                              className="text-xs font-bold text-amber-600 hover:underline"
+                            >
+                              Prioridad
+                            </button>
+                            {currentUser.role === "ADMIN" && (
+                              <button
+                                onClick={() => handleDeleteNeed(need.id, need.title)}
+                                className="text-xs font-bold text-rose-600 hover:underline"
+                              >
+                                Eliminar
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -771,61 +901,169 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
         {/* Edit Need Overlay */}
         {editingNeed && (
-          <div className="fixed inset-0 z-[60] bg-slate-900/80 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-5 max-w-md w-full space-y-4">
-              <h3 className="font-bold text-slate-900 text-base">
-                Moderar / Editar Prioridad
-              </h3>
-              <p className="text-xs text-slate-600 font-medium">
-                {editingNeed.title}
-              </p>
-              <div>
-                <label className="block font-bold text-slate-700 text-xs mb-1">
-                  Prioridad
-                </label>
-                <select
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value as Priority)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
-                >
-                  <option value="CRITICAL">🔴 CRÍTICA</option>
-                  <option value="HIGH">🟠 ALTA</option>
-                  <option value="MEDIUM">🟡 MEDIA</option>
-                  <option value="LOW">🟢 BAJA</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-bold text-slate-700 text-xs mb-1">
-                  Verificado por
-                </label>
-                <input
-                  type="text"
-                  value={editVerifiedBy}
-                  onChange={(e) => setEditVerifiedBy(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button
-                  onClick={() => setEditingNeed(null)}
-                  className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    await handleVerifyWithToken(editingNeed.id, {
-                      priority: editPriority,
-                      verificationStatus: "VERIFIED",
-                      verifiedBy: editVerifiedBy,
-                    });
-                    setEditingNeed(null);
-                  }}
-                  className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs"
-                >
-                  Guardar
-                </button>
-              </div>
+          <div className="fixed inset-0 z-[60] bg-slate-900/80 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl p-5 max-w-lg w-full space-y-4 my-8">
+              {editMode === "priority" ? (
+                <>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Cambiar Prioridad y Verificar
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    {editingNeed.title}
+                  </p>
+                  <div>
+                    <label className="block font-bold text-slate-700 text-xs mb-1">
+                      Prioridad
+                    </label>
+                    <select
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value as Priority)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
+                    >
+                      <option value="CRITICAL">🔴 CRÍTICA</option>
+                      <option value="HIGH">🟠 ALTA</option>
+                      <option value="MEDIUM">🟡 MEDIA</option>
+                      <option value="LOW">🟢 BAJA</option>
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Se verificará con: <strong>{currentUser?.name}</strong>
+                  </p>
+                  <div className="flex justify-end gap-2 pt-3 border-t">
+                    <button
+                      onClick={() => setEditingNeed(null)}
+                      className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSavePriority}
+                      className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                    >
+                      Guardar y Verificar
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Editar Necesidad
+                  </h3>
+                  <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">Título</label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">Descripción</label>
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        rows={4}
+                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">Dirección</label>
+                        <input
+                          type="text"
+                          value={editAddress}
+                          onChange={(e) => setEditAddress(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">Barrio</label>
+                        <input
+                          type="text"
+                          value={editNeighborhood}
+                          onChange={(e) => setEditNeighborhood(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">Nombre contacto</label>
+                        <input
+                          type="text"
+                          value={editContactName}
+                          onChange={(e) => setEditContactName(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">Teléfono</label>
+                        <input
+                          type="text"
+                          value={editContactPhone}
+                          onChange={(e) => setEditContactPhone(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">WhatsApp</label>
+                        <input
+                          type="text"
+                          value={editContactWhatsapp}
+                          onChange={(e) => setEditContactWhatsapp(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 text-xs mb-1">Horario operación</label>
+                        <input
+                          type="text"
+                          value={editOperatingHours}
+                          onChange={(e) => setEditOperatingHours(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">Tipo de lugar</label>
+                      <select
+                        value={editPlaceType}
+                        onChange={(e) => setEditPlaceType(e.target.value)}
+                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                      >
+                        <option value="EDIFICIO_AFECTADO">Edificio afectado</option>
+                        <option value="CENTRO_ACOPIO">Centro de acopio</option>
+                        <option value="CENTRO_DISTRIBUCION">Centro de distribución</option>
+                        <option value="HOSPITAL">Hospital / Centro médico</option>
+                        <option value="BANCO_SANGRE">Banco de sangre</option>
+                        <option value="REFUGIO">Refugio / Albergue</option>
+                        <option value="COMUNIDAD_AFECTADA">Comunidad afectada</option>
+                        <option value="PUNTO_LOGISTICO">Punto logístico</option>
+                        <option value="ORGANIZACION">Organización</option>
+                        <option value="OTRO">Otro</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-3 border-t">
+                    <button
+                      onClick={() => setEditingNeed(null)}
+                      className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

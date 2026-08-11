@@ -254,19 +254,19 @@ export const MapView: React.FC<MapViewProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />
-            <span className="text-slate-700">🔴 Crítica</span>
+            <span className="text-slate-700">Crítica</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-            <span className="text-slate-700">🟠 Alta</span>
+            <span className="text-slate-700">Alta</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-            <span className="text-slate-700">🟡 Media</span>
+            <span className="text-slate-700">Media</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-            <span className="text-slate-700">🟢 Baja</span>
+            <span className="text-slate-700">Baja</span>
           </div>
         </div>
       )}
