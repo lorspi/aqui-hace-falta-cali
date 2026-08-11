@@ -1,0 +1,83 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  needs: defineTable({
+    cityId: v.string(),
+    emergencyId: v.string(),
+    title: v.string(),
+    description: v.string(),
+    placeType: v.string(),
+    categories: v.array(v.string()),
+    resources: v.array(
+      v.object({
+        id: v.string(),
+        type: v.string(),
+        description: v.string(),
+        requestedQuantity: v.optional(v.number()),
+        fulfilledQuantity: v.optional(v.number()),
+        unit: v.optional(v.string()),
+        status: v.string(),
+      })
+    ),
+    address: v.string(),
+    neighborhood: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    priority: v.string(),
+    status: v.string(),
+    verificationStatus: v.string(),
+    verifiedBy: v.optional(v.string()),
+    verificationNotes: v.optional(v.string()),
+    verifiedAt: v.optional(v.string()),
+    source: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    contactName: v.string(),
+    contactPhone: v.optional(v.string()),
+    contactWhatsapp: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    organizationName: v.optional(v.string()),
+    requesterType: v.string(),
+    operatingHours: v.optional(v.string()),
+    evidenceUrl: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    expiresAt: v.optional(v.string()),
+    isDemoData: v.optional(v.boolean()),
+  })
+    .index("by_city", ["cityId"])
+    .index("by_emergency", ["emergencyId"])
+    .index("by_status", ["status"])
+    .index("by_priority", ["priority"])
+    .index("by_verification", ["verificationStatus"])
+    .index("by_neighborhood", ["neighborhood"]),
+
+  reports: defineTable({
+    needId: v.id("needs"),
+    needTitle: v.optional(v.string()),
+    reason: v.string(),
+    description: v.string(),
+    reporterContact: v.optional(v.string()),
+    status: v.string(),
+    createdAt: v.string(),
+    resolvedAt: v.optional(v.string()),
+    resolvedBy: v.optional(v.string()),
+  }).index("by_need", ["needId"]),
+
+  updateLogs: defineTable({
+    needId: v.id("needs"),
+    previousStatus: v.string(),
+    newStatus: v.string(),
+    description: v.string(),
+    updatedBy: v.string(),
+    createdAt: v.string(),
+  }).index("by_need", ["needId"]),
+
+  auditLogs: defineTable({
+    action: v.string(),
+    needId: v.optional(v.id("needs")),
+    adminEmail: v.string(),
+    timestamp: v.string(),
+    details: v.string(),
+  }),
+});

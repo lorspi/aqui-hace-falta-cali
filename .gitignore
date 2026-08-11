@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Convex
+.env.local
+convex/_generated/
+notas.md
