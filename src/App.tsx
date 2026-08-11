@@ -419,12 +419,12 @@ export default function App() {
       </div>
 
       {/* Main Content Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
-        {/* MAP PANEL */}
+      <main className="flex-1 relative">
+        {/* MAP — Full background */}
         <div
-          className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-280px)] md:sticky md:top-24 ${
+          className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] ${
             mobileView === "MAP" ? "block" : "hidden md:block"
-          } md:col-span-7`}
+          }`}
         >
           <MapView
             needs={needs}
@@ -435,79 +435,81 @@ export default function App() {
           />
         </div>
 
-        {/* LIST PANEL */}
+        {/* LIST PANEL — Overlaid on the right */}
         <div
-          className={`w-full space-y-3 ${
+          className={`${
             mobileView === "LIST" ? "block" : "hidden md:block"
-          } md:col-span-5`}
+          } md:absolute md:top-3 md:right-3 md:bottom-3 md:w-[380px] lg:w-[420px] z-20`}
         >
-          <div className="flex items-center justify-between pb-1">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-              <span>Necesidades activas en Cali</span>
-              <span className="bg-slate-200 text-slate-800 text-xs px-2 py-0.5 rounded-full font-bold">
-                {needs.length}
-              </span>
-            </h3>
-          </div>
+          <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
+            <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
+                <span>Necesidades activas en Cali</span>
+                <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
+                  {needs.length}
+                </span>
+              </h3>
+            </div>
 
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 animate-pulse"
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 animate-pulse shadow-sm"
+                  >
+                    <div className="h-4 bg-slate-200 rounded w-1/3" />
+                    <div className="h-5 bg-slate-200 rounded w-3/4" />
+                    <div className="h-12 bg-slate-100 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : needs.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
+                <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+                <h4 className="font-bold text-slate-900 text-base">
+                  No se encontraron necesidades
+                </h4>
+                <p className="text-xs text-slate-600 max-w-sm mx-auto">
+                  No hay puntos coincidentes con los filtros seleccionados. Intenta
+                  ampliar el radio de distancia o limpiar la búsqueda.
+                </p>
+                <button
+                  onClick={() =>
+                    setFilters({
+                      search: "",
+                      categories: [],
+                      priority: "ALL",
+                      placeType: "ALL",
+                      status: "ALL",
+                      verificationStatus: "ALL",
+                      distanceKm: null,
+                      userLat: null,
+                      userLng: null,
+                      sortBy: "PRIORITY",
+                    })
+                  }
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
                 >
-                  <div className="h-4 bg-slate-200 rounded w-1/3" />
-                  <div className="h-5 bg-slate-200 rounded w-3/4" />
-                  <div className="h-12 bg-slate-100 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : needs.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3">
-              <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-              <h4 className="font-bold text-slate-900 text-base">
-                No se encontraron necesidades
-              </h4>
-              <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                No hay puntos coincidentes con los filtros seleccionados. Intenta
-                ampliar el radio de distancia o limpiar la búsqueda.
-              </p>
-              <button
-                onClick={() =>
-                  setFilters({
-                    search: "",
-                    categories: [],
-                    priority: "ALL",
-                    placeType: "ALL",
-                    status: "ALL",
-                    verificationStatus: "ALL",
-                    distanceKm: null,
-                    userLat: null,
-                    userLng: null,
-                    sortBy: "PRIORITY",
-                  })
-                }
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
-              >
-                Limpiar todos los filtros
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
-              {needs.map((need) => (
-                <NeedCard
-                  key={need.id}
-                  need={need}
-                  onSelect={(item) => setSelectedNeed(item)}
-                  onHelp={(item) => setSelectedForHelp(item)}
-                  userLat={filters.userLat}
-                  userLng={filters.userLng}
-                  isSelected={selectedNeed?.id === need.id}
-                />
-              ))}
-            </div>
-          )}
+                  Limpiar todos los filtros
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 overflow-y-auto md:flex-1 max-h-[calc(100vh-280px)] pr-1 cards-scroll">
+                {needs.map((need) => (
+                  <NeedCard
+                    key={need.id}
+                    need={need}
+                    onSelect={(item) => setSelectedNeed(item)}
+                    onHelp={(item) => setSelectedForHelp(item)}
+                    userLat={filters.userLat}
+                    userLng={filters.userLng}
+                    isSelected={selectedNeed?.id === need.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </main>
 

@@ -44,6 +44,30 @@ body.modal-open {
   border-radius: 10px;
 }
 
+/* Cards list scrollbar */
+.cards-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cards-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.cards-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 10px;
+}
+
+.cards-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+.cards-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+}
+
 /* User location pulse animation */
 @keyframes pulse-ring {
   0% {

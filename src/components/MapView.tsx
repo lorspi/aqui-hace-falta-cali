@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Need, Priority } from '../types';
@@ -30,6 +30,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const scrollHintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Default Cali Center
   const caliCenter: [number, number] = [3.4516, -76.532];
@@ -43,7 +45,22 @@ export const MapView: React.FC<MapViewProps> = ({
       center: caliCenter,
       zoom: 13,
       zoomControl: true,
+      scrollWheelZoom: false,
     } as any);
+
+    // Enable scroll zoom only when Ctrl/Cmd is held
+    map.on('mousedown', () => {});
+    mapContainerRef.current.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        map.scrollWheelZoom.enable();
+      } else {
+        map.scrollWheelZoom.disable();
+        setShowScrollHint(true);
+        if (scrollHintTimeout.current) clearTimeout(scrollHintTimeout.current);
+        scrollHintTimeout.current = setTimeout(() => setShowScrollHint(false), 1500);
+      }
+    }, { passive: false });
 
     // OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -296,7 +313,7 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [isPickerMode, pickerPosition, onPickPosition]);
 
   return (
-    <div className="relative w-full h-full min-h-[300px] bg-slate-100 rounded-xl overflow-hidden border border-slate-300 shadow-inner">
+    <div className="relative w-full h-full min-h-[300px] bg-slate-100 overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full z-10" />
 
       {/* Map Legend Overlay */}
@@ -327,6 +344,15 @@ export const MapView: React.FC<MapViewProps> = ({
               <span className="text-slate-700">Tu ubicación</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Scroll Zoom Hint */}
+      {showScrollHint && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="bg-slate-900/80 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-sm">
+            Usa <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-[10px] mx-0.5">Ctrl</kbd> + scroll para hacer zoom
+          </div>
         </div>
       )}
 
