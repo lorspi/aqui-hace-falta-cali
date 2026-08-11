@@ -29,3 +29,17 @@
 body.modal-open {
   overflow: hidden;
 }
+
+/* Horizontal scrollbar for category chips */
+.category-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.category-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}

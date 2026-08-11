@@ -136,20 +136,22 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* Category Pills Slider */}
-      <div className="space-y-1">
+      {/* Category Pills */}
+      <div className="space-y-1.5">
         <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex justify-between items-center">
           <span>¿Cómo quieres ayudar?</span>
-          {filters.categories.length > 0 && (
-            <button
-              onClick={() => onFilterChange({ categories: [] })}
-              className="text-amber-700 hover:underline capitalize text-xs"
-            >
-              Limpiar categorías ({filters.categories.length})
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {filters.categories.length > 0 && (
+              <button
+                onClick={() => onFilterChange({ categories: [] })}
+                className="text-amber-700 hover:underline capitalize text-xs"
+              >
+                Limpiar ({filters.categories.length})
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {categoriesList.map((cat) => {
             const isSelected = filters.categories.includes(cat);
             const item = CATEGORY_LABELS[cat];
@@ -157,7 +159,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 key={cat}
                 onClick={() => handleCategoryToggle(cat)}
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full whitespace-nowrap text-xs font-semibold transition-all shrink-0 border ${
+                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-semibold transition-all border ${
                   isSelected
                     ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-2xs'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'

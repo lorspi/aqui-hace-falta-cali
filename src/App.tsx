@@ -319,6 +319,8 @@ export default function App() {
         activeCount={activeCount}
         criticalCount={criticalCount}
       />
+      {/* Spacer for fixed header */}
+      <div className="h-[108px] md:h-[116px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
