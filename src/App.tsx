@@ -320,7 +320,7 @@ export default function App() {
         criticalCount={criticalCount}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[108px] md:h-[116px]" />
+      <div className="h-[88px] md:h-[116px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
@@ -328,8 +328,8 @@ export default function App() {
         onResetDemoData={handleResetDemoData}
       />
 
-      {/* Hero Welcome Banner */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 py-5 px-4 md:px-8">
+      {/* Hero Welcome Banner — hidden on mobile to save space */}
+      <div className="hidden md:block bg-slate-900 text-white border-b border-slate-800 py-5 px-4 md:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1 max-w-2xl">
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
@@ -392,7 +392,7 @@ export default function App() {
       />
 
       {/* Mobile View Toggle Buttons */}
-      <div className="md:hidden bg-white border-b border-slate-200 p-2 sticky top-[108px] z-30 flex items-center justify-center gap-2">
+      <div className="md:hidden bg-white border-b border-slate-200 p-2 z-30 flex items-center justify-center gap-2">
         <button
           onClick={() => setMobileView("LIST")}
           className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
@@ -402,7 +402,7 @@ export default function App() {
           }`}
         >
           <List className="w-4 h-4" />
-          <span>Vista Lista ({needs.length})</span>
+          <span>Lista ({needs.length})</span>
         </button>
 
         <button
@@ -414,7 +414,7 @@ export default function App() {
           }`}
         >
           <Map className="w-4 h-4" />
-          <span>Vista Mapa</span>
+          <span>Mapa</span>
         </button>
       </div>
 
@@ -422,7 +422,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
         {/* MAP PANEL */}
         <div
-          className={`w-full h-[550px] md:h-[calc(100vh-280px)] sticky top-24 ${
+          className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-280px)] md:sticky md:top-24 ${
             mobileView === "MAP" ? "block" : "hidden md:block"
           } md:col-span-7`}
         >

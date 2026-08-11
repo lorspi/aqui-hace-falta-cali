@@ -43,7 +43,7 @@ export const MapView: React.FC<MapViewProps> = ({
       center: caliCenter,
       zoom: 13,
       zoomControl: true,
-    });
+    } as any);
 
     // OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -88,24 +88,24 @@ export const MapView: React.FC<MapViewProps> = ({
         html: `
           <div style="
             background-color: ${colorHex};
-            width: 28px;
-            height: 28px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            border: 3px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
           ">
             ${priority === 'CRITICAL' ? '!' : need.categories.length}
           </div>
         `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
       });
 
       const marker = L.marker([need.latitude, need.longitude], { icon: customIcon }).addTo(map);
@@ -155,6 +155,17 @@ export const MapView: React.FC<MapViewProps> = ({
         if (btn) {
           btn.onclick = () => onSelectNeed(need);
         }
+      });
+
+      // On mobile, double-tap marker opens detail directly
+      let lastTap = 0;
+      marker.on('click', () => {
+        const now = Date.now();
+        if (now - lastTap < 400) {
+          // Double tap — open detail directly
+          onSelectNeed(need);
+        }
+        lastTap = now;
       });
 
       markersRef.current[need.id] = marker;
