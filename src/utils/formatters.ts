@@ -12,6 +12,7 @@ export const CATEGORY_LABELS: Record<HelpCategory, { label: string; icon: string
   DINERO: { label: 'Aporte económico', icon: '💳' },
   HERRAMIENTAS: { label: 'Herramientas de mano', icon: '🛠️' },
   MAQUINARIA: { label: 'Maquinaria pesada', icon: '🚜' },
+  OPERARIOS_MAQUINARIA: { label: 'Operarios de maquinaria pesada', icon: '🏗️' },
   ATENCION_MEDICA: { label: 'Atención médica', icon: '🩺' },
   APOYO_PSICOLOGICO: { label: 'Apoyo psicológico', icon: '🧠' },
   ALOJAMIENTO: { label: 'Alojamiento / Carpas', icon: '⛺' },

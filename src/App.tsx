@@ -347,12 +347,20 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               onClick={() => {
-                setFilters((f) => ({ ...f, priority: "CRITICAL" }));
+                if (filters.priority === "CRITICAL") {
+                  setFilters((f) => ({ ...f, priority: "ALL" }));
+                } else {
+                  setFilters((f) => ({ ...f, priority: "CRITICAL" }));
+                }
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-lg text-xs shadow-sm transition-colors flex items-center gap-2"
+              className={`${
+                filters.priority === "CRITICAL"
+                  ? "bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50"
+                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              } font-semibold px-5 py-2.5 rounded-lg text-xs shadow-sm transition-colors flex items-center gap-2`}
             >
-              <HeartHandshake className="w-4 h-4 text-indigo-200" />
-              <span>Quiero Ayudar (Ver urgentes)</span>
+              <HeartHandshake className={`w-4 h-4 ${filters.priority === "CRITICAL" ? "text-indigo-500" : "text-indigo-200"}`} />
+              <span>Quiero Ayudar ({filters.priority === "CRITICAL" ? "Ver todos" : "Ver urgentes"})</span>
             </button>
 
             <button

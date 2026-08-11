@@ -33,6 +33,7 @@ export type HelpCategory =
   | 'DINERO'
   | 'HERRAMIENTAS'
   | 'MAQUINARIA'
+  | 'OPERARIOS_MAQUINARIA'
   | 'ATENCION_MEDICA'
   | 'APOYO_PSICOLOGICO'
   | 'ALOJAMIENTO'
