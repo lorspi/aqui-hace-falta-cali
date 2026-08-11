@@ -153,7 +153,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                       </span>
                     </div>
 
-                    {requested > 0 ? (
+                    {requested > 0 && fulfilled > 0 ? (
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] text-slate-600">
                           <span>Cobertura:</span>
@@ -170,6 +170,10 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                           />
                         </div>
                       </div>
+                    ) : requested > 0 ? (
+                      <span className="text-xs text-slate-600 font-medium">
+                        Se necesitan {requested} {res.unit || ''}
+                      </span>
                     ) : (
                       <span className="text-xs text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block">
                         Se requiere apoyo

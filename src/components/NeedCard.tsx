@@ -102,15 +102,19 @@ export const NeedCard: React.FC<NeedCardProps> = ({
                       <span className="font-medium truncate max-w-[200px]">
                         • {r.description || CATEGORY_LABELS[r.type]?.label}
                       </span>
-                      {requested > 0 ? (
+                      {requested > 0 && fulfilled > 0 ? (
                         <span className="font-bold shrink-0 text-slate-900 text-[11px]">
                           {fulfilled} / {requested} {r.unit || ''}
+                        </span>
+                      ) : requested > 0 ? (
+                        <span className="text-slate-500 font-semibold text-[11px]">
+                          Se necesitan {requested} {r.unit || ''}
                         </span>
                       ) : (
                         <span className="text-indigo-600 font-bold text-[11px]">Requerido</span>
                       )}
                     </div>
-                    {requested > 0 && (
+                    {requested > 0 && fulfilled > 0 && (
                       <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-indigo-600 rounded-full transition-all duration-300"
