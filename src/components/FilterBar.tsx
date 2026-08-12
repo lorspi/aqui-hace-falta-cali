@@ -10,6 +10,7 @@ interface FilterBarProps {
   onRequestLocation: () => void;
   isLoadingLocation: boolean;
   totalResults: number;
+  selectedCityName?: string;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -19,6 +20,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onRequestLocation,
   isLoadingLocation,
   totalResults,
+  selectedCityName = 'la zona',
 }) => {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -98,7 +100,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               }
               className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none pr-1"
             >
-              <option value="ALL">Toda Cali</option>
+              <option value="ALL">Toda {selectedCityName}</option>
               <option value="1">Hasta 1 km</option>
               <option value="2">Hasta 2 km</option>
               <option value="5">Hasta 5 km</option>

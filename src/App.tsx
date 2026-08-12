@@ -422,6 +422,7 @@ export default function App() {
         onRequestLocation={handleRequestLocation}
         isLoadingLocation={isLoadingLocation}
         totalResults={needs.length}
+        selectedCityName={selectedCityId === ALL_VALLE_ID ? 'la zona' : VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'la zona'}
       />
 
       {/* Mobile View Toggle Buttons */}
