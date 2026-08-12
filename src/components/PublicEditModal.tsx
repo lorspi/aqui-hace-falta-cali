@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -45,6 +45,14 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
   const submitEdit = useAction(api.publicEditAction.submitEdit);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
 
   // Pre-fill from need
   useEffect(() => {
@@ -347,7 +355,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
 
             <div className="pt-2">
               <p className="text-[11px] text-slate-500 text-center mb-2">Verificación anti-bot:</p>
-              <Turnstile onVerify={(token) => setTurnstileToken(token)} onError={() => setTurnstileToken(null)} />
+              <Turnstile onVerify={handleTurnstileVerify} onError={handleTurnstileError} />
             </div>
           </div>
 

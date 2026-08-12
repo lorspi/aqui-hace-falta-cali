@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface TurnstileProps {
   onVerify: (token: string) => void;
@@ -15,11 +15,17 @@ declare global {
   }
 }
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; // Test key fallback
+const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
-export const Turnstile: React.FC<TurnstileProps> = ({ onVerify, onError }) => {
+export const Turnstile: React.FC<TurnstileProps> = React.memo(({ onVerify, onError }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const onVerifyRef = useRef(onVerify);
+  const onErrorRef = useRef(onError);
+
+  // Keep refs updated without causing re-renders
+  onVerifyRef.current = onVerify;
+  onErrorRef.current = onError;
 
   useEffect(() => {
     const renderWidget = () => {
@@ -29,17 +35,16 @@ export const Turnstile: React.FC<TurnstileProps> = ({ onVerify, onError }) => {
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: SITE_KEY,
         callback: (token: string) => {
-          onVerify(token);
+          onVerifyRef.current(token);
         },
         'error-callback': () => {
-          onError?.();
+          onErrorRef.current?.();
         },
         theme: 'light',
         size: 'compact',
       });
     };
 
-    // Turnstile script may not be loaded yet
     if (window.turnstile) {
       renderWidget();
     } else {
@@ -58,7 +63,9 @@ export const Turnstile: React.FC<TurnstileProps> = ({ onVerify, onError }) => {
         widgetIdRef.current = null;
       }
     };
-  }, [onVerify, onError]);
+  }, []); // Empty deps — only mount/unmount
 
   return <div ref={containerRef} className="flex justify-center" />;
-};
+});
+
+Turnstile.displayName = 'Turnstile';
