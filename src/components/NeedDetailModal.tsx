@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Id } from '../../convex/_generated/dataModel';
 import {
   X,
   MapPin,
@@ -15,6 +18,7 @@ import {
   Share2,
   Calendar,
   Building,
+  Edit,
 } from 'lucide-react';
 import { Need } from '../types';
 import {
@@ -32,6 +36,7 @@ interface NeedDetailModalProps {
   onOpenQuieroAyudar: (need: Need) => void;
   onOpenReportModal: (need: Need) => void;
   onOpenUpdateStatusModal: (need: Need) => void;
+  onOpenPublicEdit?: (need: Need) => void;
   isModeratorLoggedIn?: boolean;
   onAdminEditNeed?: (need: Need) => void;
   onAdminChangePriority?: (need: Need) => void;
@@ -43,11 +48,19 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   onOpenQuieroAyudar,
   onOpenReportModal,
   onOpenUpdateStatusModal,
+  onOpenPublicEdit,
   isModeratorLoggedIn = false,
   onAdminEditNeed,
   onAdminChangePriority,
 }) => {
   const [copied, setCopied] = useState(false);
+
+  // Fetch update logs for this need
+  const needDetail = useQuery(
+    api.needs.getById,
+    need ? { id: need.id as Id<"needs"> } : "skip"
+  );
+  const updateLogs = (needDetail as any)?.updates || [];
 
   // Block body scroll when modal is open
   React.useEffect(() => {
@@ -296,6 +309,31 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
           </div>
         </div>
 
+        {/* Change History */}
+        {updateLogs.length > 0 && (
+          <div className="px-5 pb-4">
+            <details className="group">
+              <summary className="text-xs font-bold text-slate-600 cursor-pointer hover:text-slate-900 flex items-center gap-1.5 py-2">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Historial de cambios ({updateLogs.length})</span>
+              </summary>
+              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+                {updateLogs
+                  .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((log: any, idx: number) => (
+                  <div key={log._id || idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">{log.updatedBy}</span>
+                      <span className="text-[10px] text-slate-400">{formatTimeAgo(log.createdAt)}</span>
+                    </div>
+                    <p className="text-slate-600">{log.description}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 rounded-b-2xl">
           <div className="flex items-center gap-2 text-xs flex-wrap">
@@ -328,6 +366,18 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
               <Flag className="w-3.5 h-3.5" />
               <span>Reportar problema</span>
             </button>
+            {onOpenPublicEdit && (
+              <>
+                <span className="text-slate-300">•</span>
+                <button
+                  onClick={() => { onClose(); onOpenPublicEdit(need); }}
+                  className="text-emerald-700 hover:text-emerald-900 font-semibold underline flex items-center gap-1"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Actualizar info</span>
+                </button>
+              </>
+            )}
           </div>
 
           <button

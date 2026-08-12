@@ -25,6 +25,7 @@ import { NeedDetailModal } from "./components/NeedDetailModal";
 import { QuieroAyudarModal } from "./components/QuieroAyudarModal";
 import { CreateNeedModal } from "./components/CreateNeedModal";
 import { ReportModal } from "./components/ReportModal";
+import { PublicEditModal } from "./components/PublicEditModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
 
@@ -58,6 +59,7 @@ export default function App() {
   const [selectedNeed, setSelectedNeed] = useState<Need | null>(null);
   const [selectedForHelp, setSelectedForHelp] = useState<Need | null>(null);
   const [selectedForReport, setSelectedForReport] = useState<Need | null>(null);
+  const [selectedForPublicEdit, setSelectedForPublicEdit] = useState<Need | null>(null);
   const [selectedForStatusUpdate, setSelectedForStatusUpdate] =
     useState<Need | null>(null);
 
@@ -527,6 +529,7 @@ export default function App() {
         onClose={() => setSelectedNeed(null)}
         onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
+        onOpenPublicEdit={(need) => setSelectedForPublicEdit(need)}
         onOpenUpdateStatusModal={(need) => setSelectedForStatusUpdate(need)}
         isModeratorLoggedIn={isModeratorLoggedIn}
         onAdminEditNeed={(need) => {
@@ -559,6 +562,11 @@ export default function App() {
         need={selectedForReport}
         onClose={() => setSelectedForReport(null)}
         onSubmitReport={handleSubmitReport}
+      />
+
+      <PublicEditModal
+        need={selectedForPublicEdit}
+        onClose={() => setSelectedForPublicEdit(null)}
       />
 
       <UpdateStatusModal
