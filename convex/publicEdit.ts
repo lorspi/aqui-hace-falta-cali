@@ -31,6 +31,7 @@ export const applyEdit = mutation({
     ),
     editorName: v.optional(v.string()),
     editReason: v.optional(v.string()),
+    priority: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const need = await ctx.db.get(args.needId);
@@ -53,6 +54,7 @@ export const applyEdit = mutation({
     if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
     if (args.organizationName !== undefined) patch.organizationName = args.organizationName;
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
+    if (args.priority !== undefined) patch.priority = args.priority;
     patch.resources = args.resources;
 
     await ctx.db.patch(args.needId, patch);

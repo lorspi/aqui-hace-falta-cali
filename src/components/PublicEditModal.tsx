@@ -29,6 +29,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
   const [contactWhatsapp, setContactWhatsapp] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [operatingHours, setOperatingHours] = useState('');
+  const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [resources, setResources] = useState<
     Array<{ id: string; type: HelpCategory; description: string; requestedQuantity: number; fulfilledQuantity: number; unit: string; status: string }>
   >([]);
@@ -71,6 +72,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
       setContactWhatsapp(need.contactWhatsapp || '');
       setOrganizationName(need.organizationName || '');
       setOperatingHours(need.operatingHours || '');
+      setPriority((need.priority as Priority) || 'MEDIUM');
       setResources(
         need.resources
           ? need.resources.map((r) => ({
@@ -185,6 +187,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
         })),
         editorName: editorName || undefined,
         editReason: editReason || undefined,
+        priority,
       });
       setSubmitted(true);
     } catch (err: any) {
@@ -259,6 +262,18 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
               />
             </div>
 
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Descripción detallada *</label>
+              <textarea
+                required
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Explica detalladamente la situación, accesos, requerimientos especiales..."
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Tipo de lugar *</label>
@@ -276,15 +291,28 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Descripción detallada *</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Explica detalladamente la situación..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                />
+                <label className="block font-bold text-slate-700 mb-1">Prioridad</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
+                    const config = PRIORITY_CONFIG[p];
+                    const isSelected = priority === p;
+                    return (
+                      <button
+                        type="button"
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                          isSelected
+                            ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{config.dot}</span>
+                        <span>{config.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

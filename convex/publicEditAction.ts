@@ -34,6 +34,7 @@ export const submitEdit = action({
     ),
     editorName: v.optional(v.string()),
     editReason: v.optional(v.string()),
+    priority: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // 1. Validate Turnstile token
