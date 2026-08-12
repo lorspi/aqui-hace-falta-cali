@@ -28,6 +28,7 @@ import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
+import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
 
 // Adapter: converts Convex document (with _id) to our Need type (with id)
 function convexNeedToNeed(doc: any): Need {
@@ -37,6 +38,9 @@ function convexNeedToNeed(doc: any): Need {
 
 export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Selected city/municipality
+  const [selectedCityId, setSelectedCityId] = useState<string>("cali");
 
   // Filters
   const [filters, setFilters] = useState<FilterState>({
@@ -95,6 +99,7 @@ export default function App() {
 
   // --- CONVEX QUERIES ---
   const rawNeeds = useQuery(api.needs.list, {
+    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
     search: filters.search || undefined,
     category:
       filters.categories.length === 1 ? filters.categories[0] : undefined,
@@ -149,13 +154,19 @@ export default function App() {
     setIsLoadingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const { latitude, longitude } = pos.coords;
         setFilters((prev) => ({
           ...prev,
-          userLat: pos.coords.latitude,
-          userLng: pos.coords.longitude,
+          userLat: latitude,
+          userLng: longitude,
           distanceKm: prev.distanceKm || 5,
           sortBy: "DISTANCE",
         }));
+        // Auto-detect city from user's position
+        const detectedCity = detectCityFromCoords(latitude, longitude);
+        if (detectedCity) {
+          setSelectedCityId(detectedCity.id);
+        }
         setIsLoadingLocation(false);
       },
       () => {
@@ -166,6 +177,14 @@ export default function App() {
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
+  };
+
+  // Handle map center change — detect city
+  const handleMapCenterChanged = (lat: number, lng: number) => {
+    const detectedCity = detectCityFromCoords(lat, lng);
+    if (detectedCity && detectedCity.id !== selectedCityId) {
+      setSelectedCityId(detectedCity.id);
+    }
   };
 
   // Create Need Submit
@@ -198,6 +217,7 @@ export default function App() {
         evidenceUrl: data.evidenceUrl,
         operatingHours: data.operatingHours,
         priority: data.priority,
+        cityId: data.cityId || selectedCityId,
       });
       setIsCreateModalOpen(false);
       alert(
@@ -321,6 +341,8 @@ export default function App() {
         isOffline={isOffline}
         activeCount={activeCount}
         criticalCount={criticalCount}
+        selectedCityId={selectedCityId}
+        onCityChange={setSelectedCityId}
       />
       {/* Spacer for fixed header */}
       <div className="h-[88px] md:h-[116px]" />
@@ -339,7 +361,7 @@ export default function App() {
               Aquí Hace Falta
             </h2>
             <p className="text-xs md:text-sm font-semibold text-indigo-400">
-              Encuentra dónde tu ayuda puede hacer la diferencia en Cali.
+              Encuentra dónde tu ayuda puede hacer la diferencia en el Valle del Cauca.
             </p>
             <p className="text-xs text-slate-400">
               Información verificada en tiempo real sobre recursos, voluntarios y
@@ -443,6 +465,8 @@ export default function App() {
             onSelectNeed={(need) => setSelectedNeed(need)}
             userLat={filters.userLat}
             userLng={filters.userLng}
+            selectedCityId={selectedCityId}
+            onMapCenterChanged={handleMapCenterChanged}
           />
         </div>
 
@@ -483,7 +507,7 @@ export default function App() {
           <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
             <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
-                <span>Necesidades activas en Cali</span>
+                <span>Necesidades activas{selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}</span>
                 <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
                   {needs.length}
                 </span>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio } from 'lucide-react';
+import { CityCombobox } from './CityCombobox';
 
 interface HeaderProps {
   onOpenCreateModal: () => void;
@@ -8,6 +9,8 @@ interface HeaderProps {
   isOffline: boolean;
   activeCount: number;
   criticalCount: number;
+  selectedCityId: string;
+  onCityChange: (cityId: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +20,8 @@ export const Header: React.FC<HeaderProps> = ({
   isOffline,
   activeCount,
   criticalCount,
+  selectedCityId,
+  onCityChange,
 }) => {
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -49,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 font-black px-2 py-0.5 rounded text-[10px] tracking-widest uppercase italic border border-red-200">
             <Radio className="w-3 h-3 text-red-600 animate-pulse" />
-            Cali · Emergencia Activa
+            Valle del Cauca · Emergencia Activa
           </span>
           <span className="text-slate-300 hidden sm:inline">•</span>
           <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider hidden sm:inline">
@@ -82,17 +87,26 @@ export const Header: React.FC<HeaderProps> = ({
                 AQUÍ HACE FALTA
               </h1>
               <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                Cali
+                Valle del Cauca
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
-              Plataforma Ciudadana de Coordinación de Ayuda
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                Plataforma Ciudadana de Coordinación de Ayuda
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Quick action controls */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        {/* City selector + Quick action controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+          {/* City combobox */}
+          <CityCombobox
+            value={selectedCityId}
+            onChange={onCityChange}
+            showAllOption
+            className="w-full sm:w-52"
+          />
           <div className="hidden lg:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs mr-2">
             <div>
               <span className="text-slate-400 block text-[10px] font-semibold uppercase">Activos</span>

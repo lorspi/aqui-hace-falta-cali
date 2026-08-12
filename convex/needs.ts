@@ -24,6 +24,7 @@ function getDistanceKm(
 // List needs with filters
 export const list = query({
   args: {
+    cityId: v.optional(v.string()),
     search: v.optional(v.string()),
     category: v.optional(v.string()),
     priority: v.optional(v.string()),
@@ -41,6 +42,11 @@ export const list = query({
     // Exclude archived unless specifically requested
     if (args.verificationStatus !== "ARCHIVED") {
       results = results.filter((n) => n.verificationStatus !== "ARCHIVED");
+    }
+
+    // City filter
+    if (args.cityId) {
+      results = results.filter((n) => n.cityId === args.cityId);
     }
 
     // Text search
@@ -237,6 +243,7 @@ export const create = mutation({
     evidenceUrl: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
     priority: v.optional(v.string()),
+    cityId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = new Date().toISOString();
@@ -252,7 +259,7 @@ export const create = mutation({
     }));
 
     const needId = await ctx.db.insert("needs", {
-      cityId: "cali",
+      cityId: args.cityId || "cali",
       emergencyId: "terremoto-cali-2026",
       title: args.title,
       description: args.description,

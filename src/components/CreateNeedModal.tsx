@@ -4,6 +4,7 @@ import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { CityCombobox } from './CityCombobox';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
@@ -23,7 +24,8 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [placeType, setPlaceType] = useState<PlaceType>('EDIFICIO_AFECTADO');
   const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>(['ESCOMBROS']);
   const [address, setAddress] = useState('');
-  const [neighborhood, setNeighborhood] = useState('San Fernando');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [cityId, setCityId] = useState('cali');
   const [latitude, setLatitude] = useState(3.4325);
   const [longitude, setLongitude] = useState(-76.5412);
   const [contactName, setContactName] = useState('');
@@ -159,6 +161,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       operatingHours,
       source,
       priority,
+      cityId,
     });
   };
 
@@ -293,8 +296,16 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* Section 2: Location */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              2. ¿Dónde está ubicado? (Cali)
+              2. ¿Dónde está ubicado?
             </h3>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio *</label>
+              <CityCombobox
+                value={cityId}
+                onChange={setCityId}
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

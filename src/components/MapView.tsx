@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Need, Priority } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+import { VALLE_CITIES, ALL_VALLE_ID } from '../data/valleCities';
 
 interface MapViewProps {
   needs: Need[];
@@ -10,6 +11,8 @@ interface MapViewProps {
   onSelectNeed: (need: Need) => void;
   userLat?: number | null;
   userLng?: number | null;
+  selectedCityId?: string;
+  onMapCenterChanged?: (lat: number, lng: number) => void;
   // Location picker mode
   isPickerMode?: boolean;
   pickerPosition?: { lat: number; lng: number } | null;
@@ -22,6 +25,8 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectNeed,
   userLat,
   userLng,
+  selectedCityId,
+  onMapCenterChanged,
   isPickerMode = false,
   pickerPosition,
   onPickPosition,
@@ -70,11 +75,35 @@ export const MapView: React.FC<MapViewProps> = ({
 
     mapInstanceRef.current = map;
 
+    // Fire onMapCenterChanged when user pans/zooms
+    map.on('moveend', () => {
+      if (onMapCenterChanged) {
+        const center = map.getCenter();
+        onMapCenterChanged(center.lat, center.lng);
+      }
+    });
+
     return () => {
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Fly to selected city when it changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !selectedCityId) return;
+
+    if (selectedCityId === ALL_VALLE_ID) {
+      // Show all Valle del Cauca — center on Cali with wider zoom
+      map.flyTo([3.75, -76.4], 9, { animate: true, duration: 1 });
+    } else {
+      const city = VALLE_CITIES.find((c) => c.id === selectedCityId);
+      if (city) {
+        map.flyTo([city.latitude, city.longitude], 13, { animate: true, duration: 1 });
+      }
+    }
+  }, [selectedCityId]);
 
   // Update Markers for Needs
   useEffect(() => {
