@@ -318,7 +318,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* Map Legend Overlay */}
       {!isPickerMode && (
-        <div className="absolute bottom-3 left-3 z-20 bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
+        <div className="absolute bottom-3 left-3 z-20 bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1 hidden">
           <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
             Prioridad de ayuda
           </div>

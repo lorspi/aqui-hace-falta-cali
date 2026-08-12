@@ -431,7 +431,7 @@ export default function App() {
 
       {/* Main Content Layout */}
       <main className="flex-1 relative">
-        {/* MAP — Full background */}
+        {/* MAP — Full width background */}
         <div
           className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] ${
             mobileView === "MAP" ? "block" : "hidden md:block"
@@ -446,12 +446,40 @@ export default function App() {
           />
         </div>
 
-        {/* LIST PANEL — Overlaid on the right */}
+        {/* LIST PANEL — Constrained to max-w-7xl, aligned right */}
         <div
           className={`${
             mobileView === "LIST" ? "block" : "hidden md:block"
-          } md:absolute md:top-3 md:right-3 md:bottom-3 md:w-[380px] lg:w-[420px] z-20`}
+          } md:absolute md:inset-0 md:pointer-events-none z-20`}
         >
+          <div className="md:max-w-7xl md:mx-auto md:px-4 md:px-8 md:h-full md:relative">
+            {/* Priority Legend — aligned left */}
+            <div className="hidden md:block md:absolute md:bottom-3 md:left-0 md:pointer-events-auto">
+              <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
+                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
+                  Prioridad de ayuda
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />
+                  <span className="text-slate-700">Crítica</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                  <span className="text-slate-700">Alta</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                  <span className="text-slate-700">Media</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                  <span className="text-slate-700">Baja</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cards panel — aligned right */}
+            <div className="p-3 md:p-0 md:absolute md:top-3 md:right-0 md:bottom-3 md:w-[380px] lg:w-[420px] md:pointer-events-auto">
           <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
             <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
@@ -521,6 +549,8 @@ export default function App() {
               </div>
             )}
           </div>
+          </div>
+        </div>
         </div>
       </main>
 
