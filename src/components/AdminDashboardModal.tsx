@@ -22,10 +22,12 @@ import {
   Trash2,
   Loader2,
   MapPin,
+  CheckCircle2,
 } from "lucide-react";
 import { Need, Priority, Report, AuditLog } from "../types";
 import {
   CATEGORY_LABELS,
+  PLACE_TYPE_LABELS,
   PRIORITY_CONFIG,
   VERIFICATION_CONFIG,
   formatTimeAgo,
@@ -1047,220 +1049,290 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
         {/* Edit Need Overlay */}
         {editingNeed && (
-          <div className="fixed inset-0 z-[60] bg-slate-900/80 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl p-5 max-w-lg w-full space-y-4 my-8">
+          <div className="fixed inset-0 z-[60] bg-slate-900/80 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
               {editMode === "priority" ? (
                 <>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    Cambiar Prioridad y Verificar
-                  </h3>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {editingNeed.title}
-                  </p>
-                  <div>
-                    <label className="block font-bold text-slate-700 text-xs mb-1">
-                      Prioridad
-                    </label>
-                    <select
-                      value={editPriority}
-                      onChange={(e) => setEditPriority(e.target.value as Priority)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
-                    >
-                      <option value="CRITICAL">🔴 CRÍTICA</option>
-                      <option value="HIGH">🟠 ALTA</option>
-                      <option value="MEDIUM">🟡 MEDIA</option>
-                      <option value="LOW">🟢 BAJA</option>
-                    </select>
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900">Cambiar Prioridad y Verificar</h2>
+                      <p className="text-xs text-slate-500">{editingNeed.title}</p>
+                    </div>
+                    <button onClick={() => setEditingNeed(null)} className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100">
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Se verificará con: <strong>{currentUser?.name}</strong>
-                  </p>
-                  <div className="flex justify-end gap-2 pt-3 border-t">
-                    <button
-                      onClick={() => setEditingNeed(null)}
-                      className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSavePriority}
-                      className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs"
-                    >
-                      Guardar y Verificar
-                    </button>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Nivel de prioridad</label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
+                          const config = PRIORITY_CONFIG[p];
+                          const isSelected = editPriority === p;
+                          return (
+                            <button
+                              type="button"
+                              key={p}
+                              onClick={() => setEditPriority(p)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                                isSelected
+                                  ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{config.dot}</span>
+                              <span>{config.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        {PRIORITY_CONFIG[editPriority]?.explanation || ''}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Se verificará con: <strong>{currentUser?.name}</strong>
+                    </p>
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                      <button
+                        onClick={() => setEditingNeed(null)}
+                        className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSavePriority}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Guardar y Verificar</span>
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    Editar Necesidad
-                  </h3>
-                  <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                  {/* Modal Header */}
+                  <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
                     <div>
-                      <label className="block font-bold text-slate-700 text-xs mb-1">Título</label>
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                      />
+                      <h2 className="text-xl font-black text-slate-900">Editar Necesidad</h2>
+                      <p className="text-xs text-slate-500">
+                        Edición con permisos de moderador. Los cambios se aplican inmediatamente.
+                      </p>
                     </div>
-                    <div>
-                      <label className="block font-bold text-slate-700 text-xs mb-1">Descripción</label>
-                      <textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        rows={4}
-                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">Dirección</label>
-                        <input
-                          type="text"
-                          value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">Barrio</label>
-                        <input
-                          type="text"
-                          value={editNeighborhood}
-                          onChange={(e) => setEditNeighborhood(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                    {/* Geocode button */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={handleGeocodeEdit}
-                        disabled={isEditGeocoding || !editAddress}
-                        className="bg-indigo-100 text-indigo-800 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 disabled:opacity-50 hover:bg-indigo-200"
-                      >
-                        {isEditGeocoding ? (
-                          <><Loader2 className="w-3 h-3 animate-spin" /> Buscando...</>
-                        ) : (
-                          <><MapPin className="w-3 h-3" /> Geocodificar dirección</>
-                        )}
-                      </button>
-                      <span className="text-[10px] text-slate-500">
-                        📍 {editLatitude.toFixed(4)}, {editLongitude.toFixed(4)}
-                      </span>
-                      {editGeoError && (
-                        <span className="text-[10px] text-rose-600">{editGeoError}</span>
-                      )}
-                    </div>
-                    {/* Interactive map picker */}
-                    <MiniMapPicker
-                      latitude={editLatitude}
-                      longitude={editLongitude}
-                      onPositionChange={(lat, lng) => {
-                        setEditLatitude(lat);
-                        setEditLongitude(lng);
-                      }}
-                      height="180px"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">Nombre contacto</label>
-                        <input
-                          type="text"
-                          value={editContactName}
-                          onChange={(e) => setEditContactName(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">Teléfono</label>
-                        <input
-                          type="text"
-                          value={editContactPhone}
-                          onChange={(e) => setEditContactPhone(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">WhatsApp</label>
-                        <input
-                          type="text"
-                          value={editContactWhatsapp}
-                          onChange={(e) => setEditContactWhatsapp(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 text-xs mb-1">Horario operación</label>
-                        <input
-                          type="text"
-                          value={editOperatingHours}
-                          onChange={(e) => setEditOperatingHours(e.target.value)}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-700 text-xs mb-1">Tipo de lugar</label>
-                      <select
-                        value={editPlaceType}
-                        onChange={(e) => setEditPlaceType(e.target.value)}
-                        className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
-                      >
-                        <option value="EDIFICIO_AFECTADO">Edificio afectado</option>
-                        <option value="CENTRO_ACOPIO">Centro de acopio</option>
-                        <option value="CENTRO_DISTRIBUCION">Centro de distribución</option>
-                        <option value="HOSPITAL">Hospital / Centro médico</option>
-                        <option value="BANCO_SANGRE">Banco de sangre</option>
-                        <option value="REFUGIO">Refugio / Albergue</option>
-                        <option value="COMUNIDAD_AFECTADA">Comunidad afectada</option>
-                        <option value="PUNTO_LOGISTICO">Punto logístico</option>
-                        <option value="ORGANIZACION">Organización</option>
-                        <option value="OTRO">Otro</option>
-                      </select>
-                    </div>
+                    <button onClick={() => setEditingNeed(null)} className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
 
-                    {/* Categories */}
-                    <div>
-                      <label className="block font-bold text-slate-700 text-xs mb-1">Categorías de ayuda</label>
-                      <div className="flex flex-wrap gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-2">
-                        {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => {
-                              setEditCategories((prev) =>
-                                prev.includes(key)
-                                  ? prev.filter((c) => c !== key)
-                                  : [...prev, key]
-                              );
-                            }}
-                            className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors flex items-center gap-1 ${
-                              editCategories.includes(key)
-                                ? "bg-slate-800 text-white border-slate-800"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-slate-400"
-                            }`}
+                  {/* Form Body */}
+                  <div className="p-5 space-y-5 text-xs text-slate-800">
+                    {/* Section 1: Title & Place Type */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+                        1. ¿Qué está pasando?
+                      </h3>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Título corto de la necesidad *</label>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder="Ej: Edificio residencial - Remoción de escombros"
+                          className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Descripción detallada *</label>
+                        <textarea
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          rows={3}
+                          placeholder="Explica detalladamente la situación..."
+                          className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Tipo de lugar</label>
+                          <select
+                            value={editPlaceType}
+                            onChange={(e) => setEditPlaceType(e.target.value)}
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
                           >
-                            <span>{icon}</span>
-                            <span>{label}</span>
-                          </button>
-                        ))}
+                            {Object.entries(PLACE_TYPE_LABELS).map(([key, label]) => (
+                              <option key={key} value={key}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Prioridad</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
+                              const config = PRIORITY_CONFIG[p];
+                              const isSelected = editPriority === p;
+                              return (
+                                <button
+                                  type="button"
+                                  key={p}
+                                  onClick={() => setEditPriority(p)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                                    isSelected
+                                      ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
+                                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span>{config.dot}</span>
+                                  <span>{config.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Resources / Cobertura */}
-                    <div className="border-t border-slate-200 pt-3">
-                      <label className="block font-bold text-slate-700 text-xs mb-2">
-                        Recursos / Cobertura
-                      </label>
-                      {editResources.map((res, idx) => (
-                        <div key={res.id || idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2 mb-2 space-y-1.5">
-                          <div className="grid grid-cols-2 gap-2">
+                    {/* Section 2: Location */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+                        2. ¿Dónde está ubicado? (Cali)
+                      </h3>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Barrio *</label>
+                          <input
+                            type="text"
+                            value={editNeighborhood}
+                            onChange={(e) => setEditNeighborhood(e.target.value)}
+                            placeholder="Ej: San Fernando, Siloé, Granada..."
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
+                          <input
+                            type="text"
+                            value={editAddress}
+                            onChange={(e) => setEditAddress(e.target.value)}
+                            placeholder="Ej: Calle 5 con Carrera 44"
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Geocode & Map */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={handleGeocodeEdit}
+                            disabled={isEditGeocoding || !editAddress}
+                            className="text-xs text-slate-900 font-bold hover:underline flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-red-600" />
+                            {isEditGeocoding ? (
+                              <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Buscando...</span>
+                            ) : (
+                              <span>Geocodificar dirección</span>
+                            )}
+                          </button>
+                          <span className="text-[11px] text-emerald-600">
+                            📍 {editLatitude.toFixed(4)}, {editLongitude.toFixed(4)}
+                          </span>
+                          {editGeoError && (
+                            <span className="text-[11px] text-amber-600">{editGeoError}</span>
+                          )}
+                        </div>
+
+                        <MiniMapPicker
+                          latitude={editLatitude}
+                          longitude={editLongitude}
+                          onPositionChange={(lat, lng) => {
+                            setEditLatitude(lat);
+                            setEditLongitude(lng);
+                          }}
+                          height="200px"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Section 3: Categories & Resources */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+                        3. ¿Qué necesitan?
+                      </h3>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1.5">
+                          Categorías de ayuda (selección múltiple)
+                        </label>
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                          {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                setEditCategories((prev) =>
+                                  prev.includes(key)
+                                    ? prev.filter((c) => c !== key)
+                                    : [...prev, key]
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                                editCategories.includes(key)
+                                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {icon} {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Itemized Resources builder */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="font-bold text-slate-700">Recursos o insumos requeridos</label>
+                          <button
+                            type="button"
+                            onClick={() => setEditResources([...editResources, {
+                              id: `res-${Date.now()}`,
+                              type: "VOLUNTARIADO_GENERAL",
+                              description: "",
+                              requestedQuantity: 0,
+                              fulfilledQuantity: 0,
+                              unit: "unidades",
+                              status: "PENDING",
+                            }])}
+                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Añadir insumo
+                          </button>
+                        </div>
+
+                        {editResources.map((res, idx) => (
+                          <div key={res.id || idx} className="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <select
+                              value={res.type}
+                              onChange={(e) => {
+                                const updated = [...editResources];
+                                updated[idx] = { ...updated[idx], type: e.target.value };
+                                setEditResources(updated);
+                              }}
+                              className="p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                            >
+                              {Object.entries(CATEGORY_LABELS).map(([key, { label }]) => (
+                                <option key={key} value={key}>{label}</option>
+                              ))}
+                            </select>
+
                             <input
                               type="text"
                               value={res.description}
@@ -1269,85 +1341,128 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                 updated[idx] = { ...updated[idx], description: e.target.value };
                                 setEditResources(updated);
                               }}
-                              placeholder="Descripción del recurso"
-                              className="p-1.5 border border-slate-300 rounded text-xs col-span-2"
+                              placeholder="Descripción (ej: Palas metálicas...)"
+                              className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs min-w-[120px]"
                             />
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-500">Solicitado:</span>
-                              <input
-                                type="number"
-                                value={res.requestedQuantity || ""}
-                                onChange={(e) => {
-                                  const updated = [...editResources];
-                                  updated[idx] = { ...updated[idx], requestedQuantity: Number(e.target.value) || 0 };
-                                  setEditResources(updated);
-                                }}
-                                className="w-16 p-1 border border-slate-300 rounded text-xs"
-                              />
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-slate-500">Cubierto:</span>
-                              <input
-                                type="number"
-                                value={res.fulfilledQuantity || ""}
-                                onChange={(e) => {
-                                  const updated = [...editResources];
-                                  updated[idx] = { ...updated[idx], fulfilledQuantity: Number(e.target.value) || 0 };
-                                  setEditResources(updated);
-                                }}
-                                className="w-16 p-1 border border-slate-300 rounded text-xs"
-                              />
-                              <input
-                                type="text"
-                                value={res.unit || ""}
-                                onChange={(e) => {
-                                  const updated = [...editResources];
-                                  updated[idx] = { ...updated[idx], unit: e.target.value };
-                                  setEditResources(updated);
-                                }}
-                                placeholder="unidad"
-                                className="w-20 p-1 border border-slate-300 rounded text-xs"
-                              />
-                            </div>
+
+                            <input
+                              type="number"
+                              min="0"
+                              value={res.requestedQuantity || 0}
+                              onChange={(e) => {
+                                const updated = [...editResources];
+                                updated[idx] = { ...updated[idx], requestedQuantity: Number(e.target.value) || 0 };
+                                setEditResources(updated);
+                              }}
+                              placeholder="Necesarios"
+                              className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs"
+                            />
+
+                            <input
+                              type="number"
+                              min="0"
+                              value={res.fulfilledQuantity || 0}
+                              onChange={(e) => {
+                                const updated = [...editResources];
+                                updated[idx] = { ...updated[idx], fulfilledQuantity: Number(e.target.value) || 0 };
+                                setEditResources(updated);
+                              }}
+                              placeholder="Cubiertos"
+                              className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs"
+                            />
+
+                            <input
+                              type="text"
+                              value={res.unit || ""}
+                              onChange={(e) => {
+                                const updated = [...editResources];
+                                updated[idx] = { ...updated[idx], unit: e.target.value };
+                                setEditResources(updated);
+                              }}
+                              placeholder="Unidad"
+                              className="w-20 p-1.5 bg-white border border-slate-300 rounded text-xs"
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => setEditResources(editResources.filter((_, i) => i !== idx))}
+                              className="text-rose-600 hover:text-rose-800 p-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setEditResources(editResources.filter((_, i) => i !== idx))}
-                            className="text-[10px] text-rose-600 font-bold hover:underline"
-                          >
-                            Quitar recurso
-                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section 4: Contact */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+                        4. Contacto del responsable
+                      </h3>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Nombre del responsable / contacto</label>
+                          <input
+                            type="text"
+                            value={editContactName}
+                            onChange={(e) => setEditContactName(e.target.value)}
+                            placeholder="Ej: Carlos Restrepo"
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
                         </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setEditResources([...editResources, {
-                          id: `res-${Date.now()}`,
-                          type: "VOLUNTARIADO_GENERAL",
-                          description: "",
-                          requestedQuantity: 0,
-                          fulfilledQuantity: 0,
-                          unit: "unidades",
-                          status: "PENDING",
-                        }])}
-                        className="text-xs text-indigo-600 font-bold hover:underline"
-                      >
-                        + Agregar recurso
-                      </button>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">WhatsApp de contacto</label>
+                          <input
+                            type="text"
+                            value={editContactWhatsapp}
+                            onChange={(e) => setEditContactWhatsapp(e.target.value)}
+                            placeholder="Ej: 3155550192"
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Teléfono móvil / fijo</label>
+                          <input
+                            type="text"
+                            value={editContactPhone}
+                            onChange={(e) => setEditContactPhone(e.target.value)}
+                            placeholder="Ej: 3124448821"
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Horario de atención</label>
+                          <input
+                            type="text"
+                            value={editOperatingHours}
+                            onChange={(e) => setEditOperatingHours(e.target.value)}
+                            placeholder="Ej: 8:00 a.m. - 5:00 p.m. / 24 horas"
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-3 border-t">
+
+                  {/* Form Actions */}
+                  <div className="p-5 border-t border-slate-200 flex items-center justify-end gap-3">
                     <button
                       onClick={() => setEditingNeed(null)}
-                      className="px-3 py-1.5 text-xs text-slate-600 font-semibold"
+                      className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={handleSaveEdit}
-                      className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                      className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2"
                     >
-                      Guardar cambios
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Guardar cambios</span>
                     </button>
                   </div>
                 </>
