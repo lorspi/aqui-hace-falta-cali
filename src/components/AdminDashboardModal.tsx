@@ -23,6 +23,7 @@ import {
   Loader2,
   MapPin,
   CheckCircle2,
+  MessageSquare,
 } from "lucide-react";
 import { Need, Priority, Report, AuditLog } from "../types";
 import {
@@ -427,55 +428,87 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
         {/* Auth Barrier */}
         {!currentUser ? (
-          <div className="p-8 max-w-md mx-auto text-center space-y-4 my-8">
-            <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center mx-auto text-slate-700">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-slate-900 text-lg">
-              Acceso Moderador
-            </h3>
-            <p className="text-xs text-slate-600">
-              Ingresa tus credenciales para acceder al panel de moderación.
-            </p>
+          <div className="p-6 md:p-10 my-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-3xl mx-auto">
+              {/* Left column — CTA to become moderator */}
+              <div className="space-y-4 text-center md:text-left">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center mx-auto md:mx-0">
+                  <ShieldCheck className="w-7 h-7 text-emerald-600" />
+                </div>
+                <h3 className="font-black text-slate-900 text-xl leading-tight">
+                  ¿Quieres ayudar a moderar?
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Los moderadores verifican la información, actualizan prioridades y mantienen la plataforma confiable para toda la comunidad.
+                </p>
+                <a
+                  href="https://wa.me/@un.tal.juan"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl text-sm shadow-md transition-all"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Contactar al administrador</span>
+                </a>
+                <p className="text-[11px] text-slate-400">
+                  Te responderemos lo antes posible por WhatsApp.
+                </p>
+              </div>
 
-            <form onSubmit={handleLogin} className="space-y-3 text-left">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="tu@email.com"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm"
-                />
+              {/* Right column — Login form */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4">
+                <div className="text-center space-y-1">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center mx-auto text-slate-700">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-base">
+                    Acceso Moderador
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Ingresa tus credenciales para acceder al panel.
+                  </p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-3 text-left">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="tu@email.com"
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Contraseña
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-sm"
+                    />
+                  </div>
+                  {authError && (
+                    <p className="text-xs text-rose-600 font-bold">{authError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold p-2.5 rounded-xl text-xs shadow-sm disabled:opacity-50"
+                  >
+                    {isLoggingIn ? "Verificando..." : "Iniciar sesión"}
+                  </button>
+                </form>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Contraseña
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm"
-                />
-              </div>
-              {authError && (
-                <p className="text-xs text-rose-600 font-bold">{authError}</p>
-              )}
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold p-2.5 rounded-xl text-xs shadow-sm disabled:opacity-50"
-              >
-                {isLoggingIn ? "Verificando..." : "Iniciar sesión"}
-              </button>
-            </form>
+            </div>
           </div>
 
         ) : (
