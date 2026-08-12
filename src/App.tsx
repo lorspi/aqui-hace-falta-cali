@@ -332,8 +332,8 @@ export default function App() {
       />
 
       {/* Hero Welcome Banner — hidden on mobile to save space */}
-      <div className="hidden md:block bg-slate-900 text-white border-b border-slate-800 py-5 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="hidden md:block bg-slate-900 text-white border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1 max-w-2xl">
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
               Aquí Hace Falta
@@ -593,7 +593,8 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white px-4 md:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between text-[11px] font-semibold uppercase tracking-wider gap-3 border-t border-slate-800">
+      <footer className="bg-slate-900 text-white border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between text-[11px] font-semibold uppercase tracking-wider gap-3">
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-8">
           <span className="text-slate-400">Resumen de Cali:</span>
           <span className="flex items-center gap-2">
@@ -618,6 +619,7 @@ export default function App() {
           </button>
           <span>•</span>
           <span className="text-slate-300">Cali, Colombia</span>
+        </div>
         </div>
       </footer>
     </div>

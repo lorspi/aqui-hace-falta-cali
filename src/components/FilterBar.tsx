@@ -47,7 +47,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.distanceKm !== null;
 
   return (
-    <div className="bg-white border-b border-slate-200 p-4 space-y-3 shadow-xs">
+    <div className="bg-white border-b border-slate-200 shadow-xs">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-3">
       {/* Top search & quick controls */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Input */}
@@ -303,6 +304,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

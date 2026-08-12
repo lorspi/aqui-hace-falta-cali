@@ -15,7 +15,7 @@ export const BannerDisclaimer: React.FC<BannerDisclaimerProps> = ({
   return (
     <div className="bg-slate-100 border-b border-slate-200">
       {/* Official emergency notice */}
-      <div className="max-w-7xl mx-auto px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-700 gap-2">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-700 gap-2">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
