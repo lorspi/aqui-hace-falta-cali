@@ -39,8 +39,25 @@ function convexNeedToNeed(doc: any): Need {
 export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Selected city/municipality
-  const [selectedCityId, setSelectedCityId] = useState<string>("cali");
+  // Selected city/municipality — read initial value from URL path
+  const [selectedCityId, setSelectedCityId] = useState<string>(() => {
+    const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+    if (!path || path === ALL_VALLE_ID) return ALL_VALLE_ID;
+    const match = VALLE_CITIES.find((c) => c.id === path);
+    return match ? match.id : 'cali';
+  });
+
+  // Sync URL when city changes
+  const handleCityChange = (cityId: string) => {
+    setSelectedCityId(cityId);
+    const newPath = cityId === ALL_VALLE_ID ? '/' : `/${cityId}`;
+    window.history.replaceState(null, '', newPath);
+    // Update page title
+    const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
+    document.title = cityId === ALL_VALLE_ID
+      ? 'Aquí Hace Falta — Valle del Cauca'
+      : `Aquí Hace Falta — ${cityName}`;
+  };
 
   // Filters
   const [filters, setFilters] = useState<FilterState>({
@@ -165,7 +182,7 @@ export default function App() {
         // Auto-detect city from user's position
         const detectedCity = detectCityFromCoords(latitude, longitude);
         if (detectedCity) {
-          setSelectedCityId(detectedCity.id);
+          handleCityChange(detectedCity.id);
         }
         setIsLoadingLocation(false);
       },
@@ -183,7 +200,7 @@ export default function App() {
   const handleMapCenterChanged = (lat: number, lng: number) => {
     const detectedCity = detectCityFromCoords(lat, lng);
     if (detectedCity && detectedCity.id !== selectedCityId) {
-      setSelectedCityId(detectedCity.id);
+      handleCityChange(detectedCity.id);
     }
   };
 
@@ -342,7 +359,7 @@ export default function App() {
         activeCount={activeCount}
         criticalCount={criticalCount}
         selectedCityId={selectedCityId}
-        onCityChange={setSelectedCityId}
+        onCityChange={handleCityChange}
       />
       {/* Spacer for fixed header */}
       <div className="h-[88px] md:h-[116px]" />
