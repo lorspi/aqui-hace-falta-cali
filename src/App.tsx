@@ -612,6 +612,7 @@ export default function App() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateNeed}
         isSubmitting={isSubmittingCreate}
+        initialCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
       />
 
       <ReportModal

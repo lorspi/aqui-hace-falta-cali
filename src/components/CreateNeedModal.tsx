@@ -5,12 +5,14 @@ import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/fo
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityCombobox } from './CityCombobox';
+import { VALLE_CITIES } from '../data/valleCities';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: Partial<Need>) => Promise<void>;
   isSubmitting: boolean;
+  initialCityId?: string;
 }
 
 export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
@@ -18,6 +20,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   onClose,
   onSubmit,
   isSubmitting,
+  initialCityId = 'cali',
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -25,7 +28,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>(['ESCOMBROS']);
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [cityId, setCityId] = useState('cali');
+  const [cityId, setCityId] = useState(initialCityId);
+
+  // Sync cityId when modal opens with a different initial value
+  useEffect(() => {
+    if (isOpen) {
+      setCityId(initialCityId);
+    }
+  }, [isOpen, initialCityId]);
   const [latitude, setLatitude] = useState(3.4325);
   const [longitude, setLongitude] = useState(-76.5412);
   const [contactName, setContactName] = useState('');
@@ -53,24 +63,40 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
+  // Center map on selected city when cityId changes
+  useEffect(() => {
+    const city = VALLE_CITIES.find((c) => c.id === cityId);
+    if (city && !address) {
+      setLatitude(city.latitude);
+      setLongitude(city.longitude);
+    }
+  }, [cityId]);
+
   // Auto-geocode when address or neighborhood changes (debounced)
   useEffect(() => {
     if (address.length < 5) return;
     setGeocodeError('');
+    const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
-      const result = await geocodeAddress(address, neighborhood);
+      const result = await geocodeAddress(address, neighborhood, cityName);
       if (result) {
         setLatitude(result.latitude);
         setLongitude(result.longitude);
         setGeocodeError('');
       } else {
+        // Fallback: center on the selected city
+        const city = VALLE_CITIES.find((c) => c.id === cityId);
+        if (city) {
+          setLatitude(city.latitude);
+          setLongitude(city.longitude);
+        }
         setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
       }
       setIsGeocoding(false);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [address, neighborhood]);
+  }, [address, neighborhood, cityId]);
 
   // Check duplicate matches when neighborhood or title changes
   useEffect(() => {

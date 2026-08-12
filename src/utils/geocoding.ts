@@ -12,15 +12,16 @@ export interface GeocodingResult {
 }
 
 /**
- * Geocode an address in Cali, Colombia.
- * Appends ", Cali, Valle del Cauca, Colombia" to improve accuracy.
+ * Geocode an address in a specific city of Valle del Cauca, Colombia.
+ * Appends the city context to improve accuracy.
  */
 export async function geocodeAddress(
   address: string,
-  neighborhood?: string
+  neighborhood?: string,
+  cityName?: string
 ): Promise<GeocodingResult | null> {
   try {
-    // Build a search query optimized for Cali addresses
+    // Build a search query optimized for Valle del Cauca addresses
     let query = address.trim();
 
     // Add neighborhood if provided and not already in address
@@ -28,9 +29,10 @@ export async function geocodeAddress(
       query += `, ${neighborhood}`;
     }
 
-    // Always append Cali context
-    if (!query.toLowerCase().includes("cali")) {
-      query += ", Cali, Valle del Cauca, Colombia";
+    // Append city context (defaults to Cali for backward compat)
+    const city = cityName || "Cali";
+    if (!query.toLowerCase().includes(city.toLowerCase())) {
+      query += `, ${city}, Valle del Cauca, Colombia`;
     }
 
     const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
