@@ -197,6 +197,7 @@ export default function App() {
         source: data.source,
         evidenceUrl: data.evidenceUrl,
         operatingHours: data.operatingHours,
+        priority: data.priority,
       });
       setIsCreateModalOpen(false);
       alert(

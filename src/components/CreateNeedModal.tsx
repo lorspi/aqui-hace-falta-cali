@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Upload, Search, Loader2 } from 'lucide-react';
-import { HelpCategory, Need, PlaceType } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS } from '../utils/formatters';
+import { HelpCategory, Need, PlaceType, Priority } from '../types';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
 
@@ -32,15 +32,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [contactEmail, setContactEmail] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [requesterType, setRequesterType] = useState<Need['requesterType']>('PERSONA');
+  const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [operatingHours, setOperatingHours] = useState('');
   const [source, setSource] = useState('Reporte ciudadano en línea');
 
-  // Resource items builder
+  // Resource items builder (optional)
   const [resources, setResources] = useState<
     Array<{ type: HelpCategory; description: string; requestedQuantity: number; unit: string }>
-  >([
-    { type: 'MANO_OBRA', description: 'Voluntarios de apoyo', requestedQuantity: 10, unit: 'personas' },
-  ]);
+  >([]);
 
   // Duplicate warning state
   const [duplicateMatches, setDuplicateMatches] = useState<Need[]>([]);
@@ -159,6 +158,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       requesterType,
       operatingHours,
       source,
+      priority,
     });
   };
 
@@ -258,6 +258,35 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   <option value="OTRO">Otro</option>
                 </select>
               </div>
+            </div>
+
+            {/* Priority selector */}
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Nivel de prioridad</label>
+              <div className="flex flex-wrap gap-2">
+                {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
+                  const config = PRIORITY_CONFIG[p];
+                  const isSelected = priority === p;
+                  return (
+                    <button
+                      type="button"
+                      key={p}
+                      onClick={() => setPriority(p)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{config.dot}</span>
+                      <span>{config.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {PRIORITY_CONFIG[priority]?.explanation || ''}
+              </p>
             </div>
           </div>
 
@@ -430,7 +459,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     className="w-20 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
-                  {resources.length > 1 && (
+                  {resources.length > 0 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveResource(idx)}

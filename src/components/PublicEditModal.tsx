@@ -140,7 +140,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
         contactWhatsapp: contactWhatsapp || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-        resources: resources.length > 0 ? resources : undefined,
+        resources: resources,
         editorName: editorName || undefined,
         editReason: editReason || undefined,
       });

@@ -336,10 +336,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         contactWhatsapp: editContactWhatsapp || undefined,
         operatingHours: editOperatingHours || undefined,
         placeType: editPlaceType || undefined,
-        categories: editCategories.length > 0 ? editCategories : undefined,
+        categories: editCategories,
         latitude: editLatitude,
         longitude: editLongitude,
-        resources: editResources.length > 0 ? editResources : undefined,
+        resources: editResources,
       });
       setEditingNeed(null);
       alert("Necesidad editada.");

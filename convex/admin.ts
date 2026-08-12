@@ -264,18 +264,16 @@ export const editNeed = mutation({
     operatingHours: v.optional(v.string()),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
-    resources: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          type: v.string(),
-          description: v.string(),
-          requestedQuantity: v.optional(v.number()),
-          fulfilledQuantity: v.optional(v.number()),
-          unit: v.optional(v.string()),
-          status: v.string(),
-        })
-      )
+    resources: v.array(
+      v.object({
+        id: v.string(),
+        type: v.string(),
+        description: v.string(),
+        requestedQuantity: v.optional(v.number()),
+        fulfilledQuantity: v.optional(v.number()),
+        unit: v.optional(v.string()),
+        status: v.string(),
+      })
     ),
   },
   handler: async (ctx, args) => {
@@ -301,7 +299,7 @@ export const editNeed = mutation({
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
     if (args.latitude !== undefined) patch.latitude = args.latitude;
     if (args.longitude !== undefined) patch.longitude = args.longitude;
-    if (args.resources !== undefined) patch.resources = args.resources;
+    patch.resources = args.resources;
 
     await ctx.db.patch(args.id, patch);
 

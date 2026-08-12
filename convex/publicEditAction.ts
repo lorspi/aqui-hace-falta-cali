@@ -21,18 +21,16 @@ export const submitEdit = action({
     contactWhatsapp: v.optional(v.string()),
     organizationName: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
-    resources: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          type: v.string(),
-          description: v.string(),
-          requestedQuantity: v.optional(v.number()),
-          fulfilledQuantity: v.optional(v.number()),
-          unit: v.optional(v.string()),
-          status: v.string(),
-        })
-      )
+    resources: v.array(
+      v.object({
+        id: v.string(),
+        type: v.string(),
+        description: v.string(),
+        requestedQuantity: v.optional(v.number()),
+        fulfilledQuantity: v.optional(v.number()),
+        unit: v.optional(v.string()),
+        status: v.string(),
+      })
     ),
     editorName: v.optional(v.string()),
     editReason: v.optional(v.string()),

@@ -18,18 +18,16 @@ export const applyEdit = mutation({
     contactWhatsapp: v.optional(v.string()),
     organizationName: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
-    resources: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          type: v.string(),
-          description: v.string(),
-          requestedQuantity: v.optional(v.number()),
-          fulfilledQuantity: v.optional(v.number()),
-          unit: v.optional(v.string()),
-          status: v.string(),
-        })
-      )
+    resources: v.array(
+      v.object({
+        id: v.string(),
+        type: v.string(),
+        description: v.string(),
+        requestedQuantity: v.optional(v.number()),
+        fulfilledQuantity: v.optional(v.number()),
+        unit: v.optional(v.string()),
+        status: v.string(),
+      })
     ),
     editorName: v.optional(v.string()),
     editReason: v.optional(v.string()),
@@ -55,7 +53,7 @@ export const applyEdit = mutation({
     if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
     if (args.organizationName !== undefined) patch.organizationName = args.organizationName;
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
-    if (args.resources !== undefined) patch.resources = args.resources;
+    patch.resources = args.resources;
 
     await ctx.db.patch(args.needId, patch);
 

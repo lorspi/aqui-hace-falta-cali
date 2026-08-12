@@ -236,6 +236,7 @@ export const create = mutation({
     source: v.optional(v.string()),
     evidenceUrl: v.optional(v.string()),
     operatingHours: v.optional(v.string()),
+    priority: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = new Date().toISOString();
@@ -262,7 +263,7 @@ export const create = mutation({
       neighborhood: args.neighborhood,
       latitude: args.latitude || 3.4516,
       longitude: args.longitude || -76.532,
-      priority: "MEDIUM",
+      priority: args.priority || "MEDIUM",
       status: "NEED_HELP_NOW",
       verificationStatus: "PENDING_VERIFICATION",
       source: args.source || "Reporte ciudadano en línea",
