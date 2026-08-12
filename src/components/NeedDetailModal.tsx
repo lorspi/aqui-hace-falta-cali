@@ -185,6 +185,21 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Categories */}
+          {need.categories && need.categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {need.categories.map((c) => (
+                <span
+                  key={c}
+                  className="bg-slate-50 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 flex items-center gap-1"
+                >
+                  <span>{CATEGORY_LABELS[c]?.icon || '🔹'}</span>
+                  <span>{CATEGORY_LABELS[c]?.label || c}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Location & Hours */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div className="space-y-1">
