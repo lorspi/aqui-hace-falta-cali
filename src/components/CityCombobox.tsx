@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, MapPin, Search } from 'lucide-react';
 import { VALLE_CITIES, ALL_VALLE_ID, ValleCity } from '../data/valleCities';
 
@@ -7,6 +7,8 @@ interface CityComboboxProps {
   onChange: (cityId: string) => void;
   showAllOption?: boolean;
   className?: string;
+  /** Map of cityId → number of needs. Used to show counts and sort. */
+  needCounts?: Record<string, number>;
 }
 
 export const CityCombobox: React.FC<CityComboboxProps> = ({
@@ -14,6 +16,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
   onChange,
   showAllOption = false,
   className = '',
+  needCounts,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -21,13 +24,27 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedCity = VALLE_CITIES.find((c) => c.id === value);
+  const selectedCount = needCounts?.[value] ?? 0;
   const displayLabel = value === ALL_VALLE_ID
     ? 'Todo el Valle del Cauca'
     : selectedCity?.name || 'Seleccionar ciudad';
 
-  const filtered = VALLE_CITIES.filter((city) =>
-    city.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter by search, then sort: cities with needs first (alphabetical), then cities without (alphabetical)
+  const sortedCities = useMemo(() => {
+    const filtered = VALLE_CITIES.filter((city) =>
+      city.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (!needCounts) return filtered;
+
+    const withNeeds = filtered.filter((c) => (needCounts[c.id] || 0) > 0);
+    const withoutNeeds = filtered.filter((c) => (needCounts[c.id] || 0) === 0);
+
+    withNeeds.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    withoutNeeds.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+    return [...withNeeds, ...withoutNeeds];
+  }, [search, needCounts]);
 
   // Close on click outside
   useEffect(() => {
@@ -54,6 +71,8 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
     setSearch('');
   };
 
+  const totalNeeds = needCounts ? Object.values(needCounts).reduce((sum, n) => sum + n, 0) : 0;
+
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Trigger button */}
@@ -65,6 +84,12 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
         <span className="flex items-center gap-1.5 truncate">
           <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
           <span className="truncate">{displayLabel}</span>
+          {needCounts && selectedCount > 0 && value !== ALL_VALLE_ID && (
+            <span className="text-[10px] font-bold text-slate-500">({selectedCount})</span>
+          )}
+          {needCounts && value === ALL_VALLE_ID && totalNeeds > 0 && (
+            <span className="text-[10px] font-bold text-slate-500">({totalNeeds})</span>
+          )}
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -93,29 +118,42 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelect(ALL_VALLE_ID)}
-                className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between ${
                   value === ALL_VALLE_ID ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'
                 }`}
               >
-                <MapPin className="w-3 h-3 text-indigo-500" />
-                <span>Todo el Valle del Cauca</span>
+                <span className="flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-indigo-500" />
+                  <span>Todo el Valle del Cauca</span>
+                </span>
+                {needCounts && totalNeeds > 0 && (
+                  <span className="text-[10px] font-bold text-slate-400">({totalNeeds})</span>
+                )}
               </button>
             )}
 
-            {filtered.length > 0 ? (
-              filtered.map((city) => (
-                <button
-                  key={city.id}
-                  type="button"
-                  onClick={() => handleSelect(city.id)}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors flex items-center gap-2 ${
-                    value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
-                  <span>{city.name}</span>
-                </button>
-              ))
+            {sortedCities.length > 0 ? (
+              sortedCities.map((city) => {
+                const count = needCounts?.[city.id] || 0;
+                return (
+                  <button
+                    key={city.id}
+                    type="button"
+                    onClick={() => handleSelect(city.id)}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                      value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${count > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                      <span>{city.name}</span>
+                    </span>
+                    {count > 0 && (
+                      <span className="text-[10px] font-bold text-indigo-600">({count})</span>
+                    )}
+                  </button>
+                );
+              })
             ) : (
               <div className="px-3 py-3 text-xs text-slate-400 text-center">
                 No se encontró "{search}"

@@ -11,6 +11,7 @@ interface HeaderProps {
   criticalCount: number;
   selectedCityId: string;
   onCityChange: (cityId: string) => void;
+  needCounts?: Record<string, number>;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   criticalCount,
   selectedCityId,
   onCityChange,
+  needCounts,
 }) => {
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -105,6 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={selectedCityId}
             onChange={onCityChange}
             showAllOption
+            needCounts={needCounts}
             className="w-full sm:w-52"
           />
           <div className="hidden lg:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs mr-2">

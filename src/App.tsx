@@ -131,6 +131,7 @@ export default function App() {
   }, []);
 
   // --- CONVEX QUERIES ---
+  const needCounts = useQuery(api.needs.countsByCity) || {};
   const rawNeeds = useQuery(api.needs.list, {
     cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
     search: filters.search || undefined,
@@ -400,6 +401,7 @@ export default function App() {
         criticalCount={criticalCount}
         selectedCityId={selectedCityId}
         onCityChange={handleCityChange}
+        needCounts={needCounts}
       />
       {/* Spacer for fixed header */}
       <div className="h-[88px] md:h-[116px]" />

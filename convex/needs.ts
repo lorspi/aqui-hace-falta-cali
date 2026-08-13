@@ -153,6 +153,21 @@ export const list = query({
   },
 });
 
+// Count needs per city (for dropdown display)
+export const countsByCity = query({
+  args: {},
+  handler: async (ctx) => {
+    const allNeeds = await ctx.db.query("needs").collect();
+    const counts: Record<string, number> = {};
+    for (const need of allNeeds) {
+      if (need.verificationStatus === "ARCHIVED") continue;
+      const city = need.cityId || "cali";
+      counts[city] = (counts[city] || 0) + 1;
+    }
+    return counts;
+  },
+});
+
 // Get single need by ID
 export const getById = query({
   args: { id: v.id("needs") },
