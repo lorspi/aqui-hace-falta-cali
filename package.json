@@ -11,7 +11,9 @@
     "build:prod": "vite build --mode production",
     "deploy": "npx convex deploy && vite build --mode production",
     "lint": "tsc --noEmit",
-    "seed:admin": "npx convex run seed:createFirstAdmin"
+    "seed:admin": "npx convex run seed:createFirstAdmin",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -31,8 +33,10 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.21",
+    "fast-check": "^4.9.0",
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^4.1.14",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.10"
   }
 }

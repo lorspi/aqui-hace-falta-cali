@@ -1,5 +1,181 @@
-import React from 'react';
-import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { Id } from '../../convex/_generated/dataModel';
+import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2 } from 'lucide-react';
+import { CATEGORY_LABELS } from '../utils/formatters';
+
+/**
+ * Pending Offers Moderation Section
+ * Displays offers with verificationStatus PENDING_VERIFICATION and allows
+ * moderators to verify or archive them.
+ */
+const PendingOffersSection: React.FC = () => {
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
+  const sessionUser = useQuery(
+    api.auth.validateSession,
+    adminToken ? { token: adminToken } : 'skip'
+  );
+
+  // Query all offers — filter for PENDING_VERIFICATION on client side
+  const rawOffers = useQuery(api.offers.list, {});
+  const verifyOffer = useMutation(api.offers.verify);
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Only show if moderator is logged in
+  if (!sessionUser) {
+    return null;
+  }
+
+  const pendingOffers = (rawOffers || []).filter(
+    (o: any) => o.verificationStatus === 'PENDING_VERIFICATION'
+  );
+
+  const handleAction = async (offerId: string, action: 'verify' | 'archive') => {
+    if (!adminToken) {
+      setActionError('Sesión expirada. Inicia sesión de nuevo.');
+      return;
+    }
+    setActionLoading(offerId + '-' + action);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await verifyOffer({
+        token: adminToken,
+        offerId: offerId as Id<"offers">,
+        action,
+      });
+      setActionSuccess(
+        action === 'verify'
+          ? 'Oferta verificada exitosamente.'
+          : 'Oferta archivada exitosamente.'
+      );
+    } catch (err: any) {
+      setActionError(err?.message || 'Error al procesar la acción.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5 text-blue-600" />
+        Ofertas pendientes
+        <span className="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold">
+          {pendingOffers.length}
+        </span>
+      </h2>
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 text-sm rounded-xl p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <span>{actionError}</span>
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3 flex items-start gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <span>{actionSuccess}</span>
+        </div>
+      )}
+
+      {rawOffers === undefined ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center justify-center gap-2 text-slate-500 text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Cargando ofertas...</span>
+        </div>
+      ) : pendingOffers.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-sm text-slate-500">
+          No hay ofertas pendientes de verificación.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pendingOffers.map((offer: any) => (
+            <div
+              key={offer._id}
+              className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <h4 className="font-bold text-slate-900 text-sm truncate">
+                    {offer.title}
+                  </h4>
+                  <p className="text-xs text-slate-600 line-clamp-2">
+                    {offer.description}
+                  </p>
+                </div>
+                <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                  Pendiente
+                </span>
+              </div>
+
+              {/* Categories */}
+              {offer.categories && offer.categories.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {offer.categories.map((c: string) => (
+                    <span
+                      key={c}
+                      className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-blue-200"
+                    >
+                      {(CATEGORY_LABELS as any)[c]?.icon || '🔹'} {(CATEGORY_LABELS as any)[c]?.label || c}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Location and contact info */}
+              <div className="flex flex-wrap gap-3 text-[11px] text-slate-500">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {offer.address}, {offer.neighborhood}
+                </span>
+                {offer.contactName && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3 h-3" />
+                    {offer.contactName}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => handleAction(offer._id, 'verify')}
+                  disabled={actionLoading !== null}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                >
+                  {actionLoading === offer._id + '-verify' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5" />
+                  )}
+                  <span>Verificar</span>
+                </button>
+                <button
+                  onClick={() => handleAction(offer._id, 'archive')}
+                  disabled={actionLoading !== null}
+                  className="bg-slate-600 hover:bg-slate-700 disabled:bg-slate-300 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                >
+                  {actionLoading === offer._id + '-archive' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Archive className="w-3.5 h-3.5" />
+                  )}
+                  <span>Archivar</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
 
 export const ModeradorPage: React.FC = () => {
   return (
@@ -27,6 +203,9 @@ export const ModeradorPage: React.FC = () => {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 space-y-10">
+
+        {/* Pending Offers Moderation Section (only visible for logged-in moderators) */}
+        <PendingOffersSection />
 
         {/* Tareas del moderador */}
         <section className="space-y-4">

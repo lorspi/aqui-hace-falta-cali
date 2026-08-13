@@ -8,6 +8,7 @@ coverage/
 !.env.example
 .docs/
 .firebase/
+.kiro/
 
 # Convex
 .env.local

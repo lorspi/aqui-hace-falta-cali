@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Need, Priority } from '../types';
+import { Need, Offer, Priority, ViewMode } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { VALLE_CITIES, ALL_VALLE_ID } from '../data/valleCities';
 
@@ -17,6 +17,9 @@ interface MapViewProps {
   isPickerMode?: boolean;
   pickerPosition?: { lat: number; lng: number } | null;
   onPickPosition?: (pos: { lat: number; lng: number }) => void;
+  // Offers support (rendered in task 6.1)
+  offers?: Offer[];
+  viewMode?: ViewMode;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -30,14 +33,18 @@ export const MapView: React.FC<MapViewProps> = ({
   isPickerMode = false,
   pickerPosition,
   onPickPosition,
+  offers,
+  viewMode,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
+  const offerMarkersRef = useRef<Record<string, L.CircleMarker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
   const isFlyingRef = useRef(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const scrollHintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Default Cali Center
@@ -92,6 +99,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }).addTo(map);
 
     mapInstanceRef.current = map;
+    setMapInitialized(true);
 
     // Fire onMapCenterChanged when user pans/zooms (not during programmatic flyTo)
     map.on('moveend', () => {
@@ -144,6 +152,9 @@ export const MapView: React.FC<MapViewProps> = ({
     markersRef.current = {};
 
     if (isPickerMode) return; // Don't render need pins in location picker mode
+
+    // When ViewMode is "OFFERS", do NOT render need markers
+    if (viewMode === 'OFFERS') return;
 
     needs.forEach((need) => {
       if (!need.latitude || !need.longitude || isNaN(need.latitude) || isNaN(need.longitude)) return;
@@ -245,7 +256,72 @@ export const MapView: React.FC<MapViewProps> = ({
 
       markersRef.current[need.id] = marker;
     });
-  }, [needs, isPickerMode, onSelectNeed]);
+  }, [needs, isPickerMode, onSelectNeed, viewMode, mapInitialized]);
+
+  // Update Markers for Offers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Clear existing offer markers
+    Object.values(offerMarkersRef.current).forEach((m) => m.remove());
+    offerMarkersRef.current = {};
+
+    if (isPickerMode) return; // Don't render offer pins in location picker mode
+
+    // When ViewMode is "NEEDS", do NOT render offer markers
+    if (viewMode === 'NEEDS' || !viewMode) return;
+
+    // Only render offers that are VERIFIED and AVAILABLE or PARTIALLY_AVAILABLE
+    const visibleOffers = (offers || []).filter((offer) => {
+      if (offer.verificationStatus !== 'VERIFIED') return false;
+      if (offer.offerStatus !== 'AVAILABLE' && offer.offerStatus !== 'PARTIALLY_AVAILABLE') return false;
+      // Skip offers with invalid/missing lat/lng
+      if (
+        offer.latitude == null ||
+        offer.longitude == null ||
+        isNaN(offer.latitude) ||
+        isNaN(offer.longitude) ||
+        offer.latitude < -90 ||
+        offer.latitude > 90 ||
+        offer.longitude < -180 ||
+        offer.longitude > 180
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    visibleOffers.forEach((offer) => {
+      const circleMarker = L.circleMarker([offer.latitude, offer.longitude], {
+        radius: 8,
+        fillColor: '#2563eb',
+        color: '#1d4ed8',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8,
+      }).addTo(map);
+
+      // Build popup HTML for offer
+      const catLabels = offer.categories
+        .map((c) => CATEGORY_LABELS[c]?.label || c)
+        .join(', ');
+
+      const contactInfo = offer.contactPhone || offer.contactWhatsapp || '';
+
+      const popupHtml = `
+        <div style="font-family: sans-serif; min-width: 180px; padding: 2px;">
+          <strong style="font-size: 13px; color: #0f172a; line-height: 1.3;">${offer.title}</strong><br/>
+          <span style="font-size: 11px; color: #334155;">${catLabels}</span><br/>
+          <span style="font-size: 11px; color: #1e40af;">📞 ${offer.contactName}${contactInfo ? ': ' + contactInfo : ''}</span>
+        </div>
+      `;
+
+      circleMarker.bindPopup(popupHtml);
+
+      offerMarkersRef.current[offer.id] = circleMarker;
+    });
+  }, [offers, isPickerMode, viewMode, mapInitialized]);
 
   // Center on Selected Need
   useEffect(() => {

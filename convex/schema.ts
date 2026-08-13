@@ -102,4 +102,52 @@ export default defineSchema({
     timestamp: v.string(),
     details: v.string(),
   }),
+
+  // --- OFFER REPORTS ---
+  offerReports: defineTable({
+    offerId: v.id("offers"),
+    offerTitle: v.optional(v.string()),
+    reason: v.string(),
+    description: v.string(),
+    reporterContact: v.optional(v.string()),
+    status: v.string(),
+    createdAt: v.string(),
+  }).index("by_offer", ["offerId"]),
+
+  // --- OFFERS ---
+  offers: defineTable({
+    cityId: v.string(),
+    title: v.string(),
+    description: v.string(),
+    categories: v.array(v.string()),
+    resources: v.array(
+      v.object({
+        id: v.string(),
+        type: v.string(),
+        description: v.string(),
+        quantity: v.optional(v.number()),
+        unit: v.optional(v.string()),
+        status: v.string(), // "AVAILABLE" | "EXHAUSTED"
+      })
+    ),
+    address: v.string(),
+    neighborhood: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    offerStatus: v.string(), // "AVAILABLE" | "PARTIALLY_AVAILABLE" | "EXHAUSTED" | "CLOSED"
+    verificationStatus: v.string(), // "PENDING_VERIFICATION" | "VERIFIED" | "REPORTED" | "ARCHIVED"
+    verifiedBy: v.optional(v.string()),
+    verifiedAt: v.optional(v.string()),
+    contactName: v.string(),
+    contactPhone: v.optional(v.string()),
+    contactWhatsapp: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    organizationName: v.optional(v.string()),
+    operatingHours: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_city", ["cityId"])
+    .index("by_verification", ["verificationStatus"])
+    .index("by_offer_status", ["offerStatus"]),
 });

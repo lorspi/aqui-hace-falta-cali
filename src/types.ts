@@ -140,6 +140,46 @@ export interface Emergency {
   status: 'ACTIVE' | 'CONTAINED' | 'ARCHIVED';
 }
 
+// Offer-related types
+
+export type OfferStatus = 'AVAILABLE' | 'PARTIALLY_AVAILABLE' | 'EXHAUSTED' | 'CLOSED';
+
+export type ViewMode = 'NEEDS' | 'OFFERS' | 'ALL';
+
+export interface OfferResourceItem {
+  id: string;
+  type: HelpCategory;
+  description: string;
+  quantity?: number;
+  unit?: string;
+  status: 'AVAILABLE' | 'EXHAUSTED';
+}
+
+export interface Offer {
+  id: string;
+  cityId: string;
+  title: string;
+  description: string;
+  categories: HelpCategory[];
+  resources: OfferResourceItem[];
+  address: string;
+  neighborhood: string;
+  latitude: number;
+  longitude: number;
+  offerStatus: OfferStatus;
+  verificationStatus: VerificationStatus;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  contactName: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+  contactEmail?: string;
+  organizationName?: string;
+  operatingHours?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FilterState {
   search: string;
   categories: HelpCategory[];
@@ -151,4 +191,5 @@ export interface FilterState {
   userLat: number | null;
   userLng: number | null;
   sortBy: 'PRIORITY' | 'RECENT' | 'DISTANCE';
+  viewMode: ViewMode;
 }

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake } from 'lucide-react';
 import { CityCombobox } from './CityCombobox';
 
 interface HeaderProps {
   onOpenCreateModal: () => void;
+  onOpenCreateOfferModal: () => void;
   onOpenAdminModal: () => void;
+  onScrollToMap: () => void;
   lastUpdated: string;
   isOffline: boolean;
   activeCount: number;
@@ -16,7 +18,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenCreateModal,
+  onOpenCreateOfferModal,
   onOpenAdminModal,
+  onScrollToMap,
   lastUpdated,
   isOffline,
   activeCount,
@@ -26,7 +30,22 @@ export const Header: React.FC<HeaderProps> = ({
   needCounts,
 }) => {
   const [visible, setVisible] = useState(true);
+  const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
+
+  // Close help menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
+        setShowHelpMenu(false);
+      }
+    };
+    if (showHelpMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showHelpMenu]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -130,6 +149,54 @@ export const Header: React.FC<HeaderProps> = ({
             <PlusCircle className="w-4 h-4 text-slate-600" />
             <span>Registrar Necesidad</span>
           </button>
+
+          {/* Quiero Ayudar — Dropdown */}
+          <div className="relative" ref={helpMenuRef}>
+            <button
+              onClick={() => setShowHelpMenu(!showHelpMenu)}
+              className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+              id="btn-quiero-ayudar"
+            >
+              <HeartHandshake className="w-4 h-4" />
+              <span>Quiero Ayudar</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelpMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showHelpMenu && (
+              <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <button
+                  onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                >
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-semibold block">Ver necesidades</span>
+                    <span className="text-[11px] text-slate-500">Explora el mapa de necesidades</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setShowHelpMenu(false); onOpenCreateOfferModal(); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                >
+                  <Heart className="w-4 h-4 text-blue-600 shrink-0" />
+                  <div>
+                    <span className="font-semibold block">Publicar ayuda</span>
+                    <span className="text-[11px] text-slate-500">Registra recursos disponibles</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setShowHelpMenu(false); window.location.href = '/moderador'; }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <span className="font-semibold block">Ser moderador</span>
+                    <span className="text-[11px] text-slate-500">Verifica información</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={onOpenAdminModal}

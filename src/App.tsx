@@ -10,12 +10,12 @@ import { Id } from "../convex/_generated/dataModel";
 import {
   Map,
   List,
-  HeartHandshake,
   PlusCircle,
   AlertCircle,
   RefreshCw,
+  MapPin,
 } from "lucide-react";
-import { FilterState, Need, NeedStatus } from "./types";
+import { FilterState, Need, NeedStatus, Offer } from "./types";
 import { Header } from "./components/Header";
 import { BannerDisclaimer } from "./components/BannerDisclaimer";
 import { FilterBar } from "./components/FilterBar";
@@ -24,6 +24,9 @@ import { NeedCard } from "./components/NeedCard";
 import { NeedDetailModal } from "./components/NeedDetailModal";
 import { QuieroAyudarModal } from "./components/QuieroAyudarModal";
 import { CreateNeedModal } from "./components/CreateNeedModal";
+import { CreateOfferModal } from "./components/CreateOfferModal";
+import { OfferCard } from "./components/OfferCard";
+import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
@@ -117,6 +120,7 @@ function MainApp() {
     userLat: null,
     userLng: null,
     sortBy: "PRIORITY",
+    viewMode: "NEEDS",
   });
 
   // Mobile view
@@ -135,6 +139,8 @@ function MainApp() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   // Moderator edit state (from detail modal)
   const [editingNeedFromDetail, setEditingNeedFromDetail] = useState<Need | null>(null);
@@ -163,23 +169,39 @@ function MainApp() {
 
   // --- CONVEX QUERIES ---
   const needCounts = useQuery(api.needs.countsByCity) || {};
-  const rawNeeds = useQuery(api.needs.list, {
-    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
-    search: filters.search || undefined,
-    category:
-      filters.categories.length === 1 ? filters.categories[0] : undefined,
-    priority: filters.priority !== "ALL" ? filters.priority : undefined,
-    placeType: filters.placeType !== "ALL" ? filters.placeType : undefined,
-    status: filters.status !== "ALL" ? filters.status : undefined,
-    verificationStatus:
-      filters.verificationStatus !== "ALL"
-        ? filters.verificationStatus
-        : undefined,
-    userLat: filters.userLat ?? undefined,
-    userLng: filters.userLng ?? undefined,
-    distanceKm: filters.distanceKm ?? undefined,
-    sortBy: filters.sortBy || undefined,
-  });
+  const rawNeeds = useQuery(api.needs.list,
+    filters.viewMode === "OFFERS" ? "skip" : {
+      cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+      search: filters.search || undefined,
+      category:
+        filters.categories.length === 1 ? filters.categories[0] : undefined,
+      priority: filters.priority !== "ALL" ? filters.priority : undefined,
+      placeType: filters.placeType !== "ALL" ? filters.placeType : undefined,
+      status: filters.status !== "ALL" ? filters.status : undefined,
+      verificationStatus:
+        filters.verificationStatus !== "ALL"
+          ? filters.verificationStatus
+          : undefined,
+      userLat: filters.userLat ?? undefined,
+      userLng: filters.userLng ?? undefined,
+      distanceKm: filters.distanceKm ?? undefined,
+      sortBy: filters.sortBy || undefined,
+    }
+  );
+
+  // Offers query — only active when ViewMode is "OFFERS" or "ALL"
+  const rawOffers = useQuery(api.offers.list,
+    filters.viewMode === "NEEDS" ? "skip" : {
+      cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+      search: filters.search || undefined,
+      category:
+        filters.categories.length === 1 ? filters.categories[0] : undefined,
+      userLat: filters.userLat ?? undefined,
+      userLng: filters.userLng ?? undefined,
+      distanceKm: filters.distanceKm ?? undefined,
+      sortBy: filters.sortBy || undefined,
+    }
+  );
 
   // Admin data is now fetched inside AdminDashboardModal with auth token
 
@@ -187,6 +209,22 @@ function MainApp() {
   const needs: Need[] = useMemo(
     () => (rawNeeds || []).map(convexNeedToNeed),
     [rawNeeds]
+  );
+
+  // Adapted offers — graceful fallback to empty array if query fails or is skipped
+  const offers: Offer[] = useMemo(
+    () => {
+      if (!rawOffers) return [];
+      try {
+        return rawOffers.map((doc: any) => {
+          const { _id, _creationTime, ...rest } = doc;
+          return { id: _id, ...rest } as Offer;
+        });
+      } catch {
+        return [];
+      }
+    },
+    [rawOffers]
   );
 
   // Open need from URL on initial load
@@ -223,7 +261,11 @@ function MainApp() {
     return [];
   }, []);
 
-  const isLoading = rawNeeds === undefined;
+  const isLoading = filters.viewMode === "OFFERS"
+    ? rawOffers === undefined
+    : filters.viewMode === "ALL"
+    ? rawNeeds === undefined && rawOffers === undefined
+    : rawNeeds === undefined;
   const lastUpdated = new Date().toLocaleTimeString("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
@@ -431,7 +473,13 @@ function MainApp() {
       {/* Platform Header */}
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => setIsAdminModalOpen(true)}
+        onScrollToMap={() => {
+          setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
+          setMobileView("MAP");
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         lastUpdated={lastUpdated}
         isOffline={isOffline}
         activeCount={activeCount}
@@ -448,52 +496,6 @@ function MainApp() {
         hasDemoData={hasDemoData}
         onResetDemoData={handleResetDemoData}
       />
-
-      {/* Hero Welcome Banner — hidden on mobile to save space */}
-      <div className="hidden md:block bg-slate-900 text-white border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1 max-w-2xl">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
-              Aquí Hace Falta
-            </h2>
-            <p className="text-xs md:text-sm font-semibold text-indigo-400">
-              Encuentra dónde tu ayuda puede hacer la diferencia en el Valle del Cauca.
-            </p>
-            <p className="text-xs text-slate-400">
-              Información verificada en tiempo real sobre recursos, voluntarios y
-              acopios necesarios.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                if (filters.priority === "CRITICAL") {
-                  setFilters((f) => ({ ...f, priority: "ALL" }));
-                } else {
-                  setFilters((f) => ({ ...f, priority: "CRITICAL" }));
-                }
-              }}
-              className={`${
-                filters.priority === "CRITICAL"
-                  ? "bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50"
-                  : "bg-indigo-600 hover:bg-indigo-700 text-white"
-              } font-semibold px-5 py-2.5 rounded-lg text-xs shadow-sm transition-colors flex items-center gap-2`}
-            >
-              <HeartHandshake className={`w-4 h-4 ${filters.priority === "CRITICAL" ? "text-indigo-500" : "text-indigo-200"}`} />
-              <span>Quiero Ayudar ({filters.priority === "CRITICAL" ? "Ver todos" : "Ver urgentes"})</span>
-            </button>
-
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2.5 rounded-lg text-xs border border-slate-700 transition-colors flex items-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4 text-slate-400" />
-              <span>Registrar Necesidad</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Filter Bar */}
       <FilterBar
@@ -513,6 +515,7 @@ function MainApp() {
             userLat: null,
             userLng: null,
             sortBy: "PRIORITY",
+            viewMode: "NEEDS",
           })
         }
         onRequestLocation={handleRequestLocation}
@@ -564,6 +567,8 @@ function MainApp() {
             userLng={filters.userLng}
             selectedCityId={selectedCityId}
             onMapCenterChanged={handleMapCenterChanged}
+            offers={offers}
+            viewMode={filters.viewMode}
           />
         </div>
 
@@ -604,12 +609,33 @@ function MainApp() {
           <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
             <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
-                <span>Necesidades activas{selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}</span>
+                <span>
+                  {filters.viewMode === "OFFERS"
+                    ? `Ofertas disponibles${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
+                    : filters.viewMode === "ALL"
+                    ? `Necesidades y ofertas${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
+                    : `Necesidades activas${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
+                  }
+                </span>
                 <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
-                  {needs.length}
+                  {filters.viewMode === "OFFERS" ? offers.length : filters.viewMode === "ALL" ? needs.length + offers.length : needs.length}
                 </span>
               </h3>
             </div>
+
+            {/* Distance sort prompt when no geolocation */}
+            {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Para ordenar por distancia, activa tu ubicación.</span>
+                <button
+                  onClick={handleRequestLocation}
+                  className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg font-semibold text-[11px] shrink-0"
+                >
+                  Activar
+                </button>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="space-y-3">
@@ -624,11 +650,13 @@ function MainApp() {
                   </div>
                 ))}
               </div>
-            ) : needs.length === 0 ? (
+            ) : (filters.viewMode === "NEEDS" && needs.length === 0) ||
+                (filters.viewMode === "OFFERS" && offers.length === 0) ||
+                (filters.viewMode === "ALL" && needs.length === 0 && offers.length === 0) ? (
               <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
                 <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
                 <h4 className="font-bold text-slate-900 text-base">
-                  No se encontraron necesidades
+                  {filters.viewMode === "OFFERS" ? "No se encontraron ofertas" : "No se encontraron resultados"}
                 </h4>
                 <p className="text-xs text-slate-600 max-w-sm mx-auto">
                   No hay puntos coincidentes con los filtros seleccionados. Intenta
@@ -647,6 +675,7 @@ function MainApp() {
                       userLat: null,
                       userLng: null,
                       sortBy: "PRIORITY",
+                      viewMode: "NEEDS",
                     })
                   }
                   className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
@@ -656,7 +685,8 @@ function MainApp() {
               </div>
             ) : (
               <div className="space-y-3 overflow-y-auto md:flex-1 max-h-[calc(100vh-280px)] pr-1 cards-scroll">
-                {needs.map((need) => (
+                {/* ViewMode: NEEDS — only needs */}
+                {filters.viewMode === "NEEDS" && needs.map((need) => (
                   <NeedCard
                     key={need.id}
                     need={need}
@@ -667,6 +697,55 @@ function MainApp() {
                     isSelected={selectedNeed?.id === need.id}
                   />
                 ))}
+
+                {/* ViewMode: OFFERS — only offers */}
+                {filters.viewMode === "OFFERS" && offers.map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    onClick={() => setSelectedOffer(offer)}
+                  />
+                ))}
+
+                {/* ViewMode: ALL — sectioned: needs then offers */}
+                {filters.viewMode === "ALL" && (
+                  <>
+                    {needs.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 pt-1">
+                          <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Necesidades</h4>
+                          <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{needs.length}</span>
+                        </div>
+                        {needs.map((need) => (
+                          <NeedCard
+                            key={need.id}
+                            need={need}
+                            onSelect={(item) => handleSelectNeed(item)}
+                            onHelp={(item) => setSelectedForHelp(item)}
+                            userLat={filters.userLat}
+                            userLng={filters.userLng}
+                            isSelected={selectedNeed?.id === need.id}
+                          />
+                        ))}
+                      </>
+                    )}
+                    {offers.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 pt-2">
+                          <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">Ofertas</h4>
+                          <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{offers.length}</span>
+                        </div>
+                        {offers.map((offer) => (
+                          <OfferCard
+                            key={offer.id}
+                            offer={offer}
+                            onClick={() => setSelectedOffer(offer)}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -745,6 +824,18 @@ function MainApp() {
         onResetDemoData={handleResetDemoData}
         initialEditNeed={editingNeedFromDetail}
         initialEditMode={editModeFromDetail}
+      />
+
+      <CreateOfferModal
+        isOpen={showCreateOffer}
+        onClose={() => setShowCreateOffer(false)}
+        selectedCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
+      />
+
+      <OfferDetailModal
+        offer={selectedOffer}
+        isOpen={!!selectedOffer}
+        onClose={() => setSelectedOffer(null)}
       />
 
       {/* Footer */}
