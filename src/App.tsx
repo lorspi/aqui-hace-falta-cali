@@ -139,6 +139,7 @@ function MainApp() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [adminViewingDetail, setAdminViewingDetail] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
@@ -524,7 +525,7 @@ function MainApp() {
         needCounts={needCounts}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[88px] md:h-[116px]" />
+      <div className="h-[280px] sm:h-[200px] md:h-[116px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
@@ -785,9 +786,10 @@ function MainApp() {
       </main>
 
       {/* Modals */}
+      <div className={adminViewingDetail ? 'relative z-[60]' : ''}>
       <NeedDetailModal
         need={selectedNeed}
-        onClose={() => handleSelectNeed(null)}
+        onClose={() => { handleSelectNeed(null); setAdminViewingDetail(false); }}
         shareUrl={selectedNeed ? getNeedUrl(selectedNeed) : undefined}
         onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
@@ -799,15 +801,18 @@ function MainApp() {
           setEditingNeedFromDetail(need);
           setEditModeFromDetail("full");
           handleSelectNeed(null);
+          setAdminViewingDetail(false);
           setIsAdminModalOpen(true);
         }}
         onAdminChangePriority={(need) => {
           setEditingNeedFromDetail(need);
           setEditModeFromDetail("priority");
           handleSelectNeed(null);
+          setAdminViewingDetail(false);
           setIsAdminModalOpen(true);
         }}
       />
+      </div>
 
       <QuieroAyudarModal
         need={selectedForHelp}
@@ -860,6 +865,14 @@ function MainApp() {
         onResetDemoData={handleResetDemoData}
         initialEditNeed={editingNeedFromDetail}
         initialEditMode={editModeFromDetail}
+        onViewNeed={(need) => {
+          setAdminViewingDetail(true);
+          handleSelectNeed(need);
+        }}
+        onViewOffer={(offer) => {
+          setAdminViewingDetail(true);
+          handleSelectOffer(offer);
+        }}
       />
 
       <CreateOfferModal
@@ -868,16 +881,18 @@ function MainApp() {
         selectedCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
       />
 
+      <div className={adminViewingDetail ? 'relative z-[60]' : ''}>
       <OfferDetailModal
         offer={selectedOffer}
         isOpen={!!selectedOffer}
-        onClose={() => handleSelectOffer(null)}
+        onClose={() => { handleSelectOffer(null); setAdminViewingDetail(false); }}
         shareUrl={selectedOffer ? getOfferUrl(selectedOffer) : undefined}
         isModeratorLoggedIn={isModeratorLoggedIn}
         isAdmin={isAdminUser}
         onOpenPublicEdit={(offer) => setSelectedOfferForEdit(offer)}
         onAdminEditOffer={(offer) => setSelectedOfferForEdit(offer)}
       />
+      </div>
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white border-t border-slate-800">

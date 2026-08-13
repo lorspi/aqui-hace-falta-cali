@@ -470,39 +470,41 @@ export const updateFields = mutation({
 
     const now = new Date().toISOString();
     const patch: Record<string, any> = { updatedAt: now };
+    const changedFields: string[] = [];
 
-    if (args.title !== undefined) patch.title = args.title;
-    if (args.description !== undefined) patch.description = args.description;
-    if (args.categories !== undefined) patch.categories = args.categories;
-    if (args.address !== undefined) patch.address = args.address;
-    if (args.neighborhood !== undefined) patch.neighborhood = args.neighborhood;
-    if (args.latitude !== undefined) patch.latitude = args.latitude;
-    if (args.longitude !== undefined) patch.longitude = args.longitude;
-    if (args.contactName !== undefined) patch.contactName = args.contactName;
-    if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
-    if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
-    if (args.contactEmail !== undefined) patch.contactEmail = args.contactEmail;
-    if (args.organizationName !== undefined) patch.organizationName = args.organizationName;
-    if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
-    if (args.resources !== undefined) patch.resources = args.resources;
+    if (args.title !== undefined && args.title !== offer.title) { patch.title = args.title; changedFields.push("título"); }
+    if (args.description !== undefined && args.description !== offer.description) { patch.description = args.description; changedFields.push("descripción"); }
+    if (args.categories !== undefined && JSON.stringify(args.categories) !== JSON.stringify(offer.categories)) { patch.categories = args.categories; changedFields.push("categorías"); }
+    if (args.address !== undefined && args.address !== offer.address) { patch.address = args.address; changedFields.push("dirección"); }
+    if (args.neighborhood !== undefined && args.neighborhood !== offer.neighborhood) { patch.neighborhood = args.neighborhood; changedFields.push("barrio"); }
+    if (args.latitude !== undefined && args.latitude !== offer.latitude) { patch.latitude = args.latitude; changedFields.push("ubicación"); }
+    if (args.longitude !== undefined && args.longitude !== offer.longitude) { patch.longitude = args.longitude; if (!changedFields.includes("ubicación")) changedFields.push("ubicación"); }
+    if (args.contactName !== undefined && args.contactName !== offer.contactName) { patch.contactName = args.contactName; changedFields.push("contacto"); }
+    if (args.contactPhone !== undefined && args.contactPhone !== (offer.contactPhone || '')) { patch.contactPhone = args.contactPhone; changedFields.push("teléfono"); }
+    if (args.contactWhatsapp !== undefined && args.contactWhatsapp !== (offer.contactWhatsapp || '')) { patch.contactWhatsapp = args.contactWhatsapp; changedFields.push("WhatsApp"); }
+    if (args.contactEmail !== undefined && args.contactEmail !== (offer.contactEmail || '')) { patch.contactEmail = args.contactEmail; changedFields.push("correo"); }
+    if (args.organizationName !== undefined && args.organizationName !== (offer.organizationName || '')) { patch.organizationName = args.organizationName; changedFields.push("organización"); }
+    if (args.operatingHours !== undefined && args.operatingHours !== (offer.operatingHours || '')) { patch.operatingHours = args.operatingHours; changedFields.push("horario"); }
+    if (args.resources !== undefined && JSON.stringify(args.resources) !== JSON.stringify(offer.resources)) { patch.resources = args.resources; changedFields.push("recursos"); }
 
     await ctx.db.patch(args.offerId, patch);
 
-    // Log the update
-    await ctx.db.insert("auditLogs", {
-      action: "UPDATE_OFFER_FIELDS",
-      adminEmail: args.editorName || "Ciudadano",
-      timestamp: now,
-      details: `Oferta "${offer.title}" actualizada por ${args.editorName || "Ciudadano"}. ${args.editReason ? `Motivo: ${args.editReason}` : ""}`,
-    });
+    // Log only if something actually changed
+    if (changedFields.length > 0) {
+      await ctx.db.insert("auditLogs", {
+        action: "UPDATE_OFFER_FIELDS",
+        adminEmail: args.editorName || "Ciudadano",
+        timestamp: now,
+        details: `Oferta "${offer.title}" actualizada por ${args.editorName || "Ciudadano"}. Cambios: ${changedFields.join(", ")}`,
+      });
 
-    // Offer update log for history
-    await ctx.db.insert("offerUpdateLogs", {
-      offerId: args.offerId,
-      description: args.editReason || `Información actualizada por ${args.editorName || "Ciudadano"}.`,
-      updatedBy: args.editorName || "Ciudadano",
-      createdAt: now,
-    });
+      await ctx.db.insert("offerUpdateLogs", {
+        offerId: args.offerId,
+        description: `${args.editReason || "Edición ciudadana"}. Cambios: ${changedFields.join(", ")}`,
+        updatedBy: args.editorName || "Ciudadano",
+        createdAt: now,
+      });
+    }
 
     return args.offerId;
   },

@@ -132,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onOpenCreateModal}
-            className="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
             id="btn-create-need"
           >
             <PlusCircle className="w-4 h-4 text-slate-600" />
@@ -140,10 +140,10 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Quiero Ayudar — Dropdown */}
-          <div className="relative" ref={helpMenuRef}>
+          <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
             <button
               onClick={() => setShowHelpMenu(!showHelpMenu)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
               id="btn-quiero-ayudar"
             >
               <HeartHandshake className="w-4 h-4" />
@@ -189,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onOpenAdminModal}
-            className="flex-1 sm:flex-none px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
             title="Panel de moderación y verificación"
             id="btn-admin-panel"
           >

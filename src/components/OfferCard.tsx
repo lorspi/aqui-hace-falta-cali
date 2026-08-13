@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Clock, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Offer, OfferStatus, VerificationStatus } from '../types';
 import { CATEGORY_LABELS, VERIFICATION_CONFIG, formatTimeAgo } from '../utils/formatters';
 
@@ -88,11 +88,14 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
         <div className="space-y-0.5">
           <div className="flex items-center gap-1 font-semibold text-slate-900">
             <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span>{offer.contactName}</span>
+            <span>{offer.address || offer.neighborhood}</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
             <span>Actualizado {formatTimeAgo(offer.updatedAt)}</span>
+            {offer.verificationStatus === 'VERIFIED' && (
+              <ShieldCheck className="w-3 h-3 text-indigo-500 shrink-0" />
+            )}
           </div>
         </div>
 

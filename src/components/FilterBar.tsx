@@ -190,7 +190,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onClick={() => setShowCategories(!showCategories)}
               className="text-slate-800 font-bold text-sm hover:text-indigo-700 transition-colors flex items-center gap-1.5"
             >
-              ¿Cómo quieres ayudar?
+              Categorías de ayuda
               <svg
                 className={`w-4 h-4 text-slate-400 transition-transform ${showCategories ? 'rotate-180' : ''}`}
                 fill="none"

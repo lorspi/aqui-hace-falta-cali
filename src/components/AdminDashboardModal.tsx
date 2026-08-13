@@ -26,7 +26,7 @@ import {
   MessageSquare,
   Search,
 } from "lucide-react";
-import { Need, Priority, Report, AuditLog } from "../types";
+import { Need, Priority, Report, AuditLog, VerificationStatus } from "../types";
 import {
   CATEGORY_LABELS,
   PLACE_TYPE_LABELS,
@@ -37,6 +37,7 @@ import {
 import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
+import { PublicEditOfferModal } from "./PublicEditOfferModal";
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -49,6 +50,8 @@ interface AdminDashboardModalProps {
   onResetDemoData: () => Promise<void>;
   initialEditNeed?: Need | null;
   initialEditMode?: "priority" | "full";
+  onViewNeed?: (need: Need) => void;
+  onViewOffer?: (offer: any) => void;
 }
 
 interface AuthUser {
@@ -69,6 +72,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onResetDemoData,
   initialEditNeed,
   initialEditMode,
+  onViewNeed,
+  onViewOffer,
 }) => {
   const [authToken, setAuthToken] = useState<string | null>(() =>
     localStorage.getItem("ahf_admin_token")
@@ -88,6 +93,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<string>("ALL");
   const [adminVerificationFilter, setAdminVerificationFilter] = useState<string>("ALL");
   const [adminStatusFilter, setAdminStatusFilter] = useState<string>("ALL");
+  const [adminTypeFilter, setAdminTypeFilter] = useState<string>("ALL"); // "ALL" | "NEEDS" | "OFFERS"
+  const [adminEditOfferId, setAdminEditOfferId] = useState<string | null>(null);
 
   // User management state
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -622,9 +629,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <span className="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
                               NECESIDAD
                             </span>
-                            <span className="font-bold text-slate-900 text-sm">
+                            <button
+                              onClick={() => { if (onViewNeed) { onViewNeed(need); } }}
+                              className="font-bold text-slate-900 text-sm hover:text-indigo-700 hover:underline text-left"
+                            >
                               {need.title}
-                            </span>
+                            </button>
                           </div>
                           <p className="text-slate-700">{need.description}</p>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
@@ -684,9 +694,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <span className="bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">
                               OFERTA
                             </span>
-                            <span className="font-bold text-slate-900 text-sm">
+                            <button
+                              onClick={() => { if (onViewOffer) { onViewOffer({ id: offer._id, ...offer }); } }}
+                              className="font-bold text-slate-900 text-sm hover:text-indigo-700 hover:underline text-left"
+                            >
                               {offer.title}
-                            </span>
+                            </button>
                           </div>
                           <p className="text-slate-700">{offer.description}</p>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
@@ -873,7 +886,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             {activeTab === "ALL" && (
               <div className="space-y-3">
                 <h4 className="font-bold text-slate-900 text-sm">
-                  Todas las necesidades ({needs.length})
+                  Todas las publicaciones ({needs.length + (rawOffers || []).length})
                 </h4>
 
                 {/* Search & Filters */}
@@ -889,6 +902,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={adminTypeFilter}
+                      onChange={(e) => setAdminTypeFilter(e.target.value)}
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
+                    >
+                      <option value="ALL">Todas (necesidades + ofertas)</option>
+                      <option value="NEEDS">Solo necesidades</option>
+                      <option value="OFFERS">Solo ofertas</option>
+                    </select>
                     <select
                       value={adminPriorityFilter}
                       onChange={(e) => setAdminPriorityFilter(e.target.value)}
@@ -921,10 +943,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <option value="PARTIALLY_COVERED">Parcialmente cubierta</option>
                       <option value="COVERED">Cubierta</option>
                       <option value="CLOSED">Cerrada</option>
+                      <option value="AVAILABLE">Disponible (oferta)</option>
+                      <option value="PARTIALLY_AVAILABLE">Parcialmente disponible</option>
+                      <option value="EXHAUSTED">Agotado (oferta)</option>
                     </select>
-                    {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminStatusFilter !== "ALL") && (
+                    {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminStatusFilter !== "ALL" || adminTypeFilter !== "ALL") && (
                       <button
-                        onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminStatusFilter("ALL"); }}
+                        onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminStatusFilter("ALL"); setAdminTypeFilter("ALL"); }}
                         className="text-xs text-rose-600 font-bold hover:underline"
                       >
                         Limpiar filtros
@@ -934,26 +959,40 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 </div>
 
                 {(() => {
-                  const filteredNeeds = needs.filter((n) => {
+                  // Build unified list of needs + offers
+                  type AdminListItem = { id: string; type: 'NEED' | 'OFFER'; title: string; neighborhood: string; address: string; priority?: string; verificationStatus: string; status: string; updatedAt: string };
+
+                  const needItems: AdminListItem[] = (adminTypeFilter === "OFFERS" ? [] : needs).map((n) => ({
+                    id: n.id, type: 'NEED' as const, title: n.title, neighborhood: n.neighborhood, address: n.address,
+                    priority: n.priority, verificationStatus: n.verificationStatus, status: n.status, updatedAt: n.updatedAt,
+                  }));
+
+                  const offerItems: AdminListItem[] = (adminTypeFilter === "NEEDS" ? [] : (rawOffers || [])).map((o: any) => ({
+                    id: o._id, type: 'OFFER' as const, title: o.title, neighborhood: o.neighborhood, address: o.address,
+                    priority: undefined, verificationStatus: o.verificationStatus, status: o.offerStatus, updatedAt: o.updatedAt,
+                  }));
+
+                  const allItems = [...needItems, ...offerItems].filter((item) => {
                     if (adminSearch) {
                       const q = adminSearch.toLowerCase();
-                      if (!n.title.toLowerCase().includes(q) && !n.neighborhood.toLowerCase().includes(q) && !n.address.toLowerCase().includes(q)) return false;
+                      if (!item.title.toLowerCase().includes(q) && !item.neighborhood.toLowerCase().includes(q) && !item.address.toLowerCase().includes(q)) return false;
                     }
-                    if (adminPriorityFilter !== "ALL" && n.priority !== adminPriorityFilter) return false;
-                    if (adminVerificationFilter !== "ALL" && n.verificationStatus !== adminVerificationFilter) return false;
-                    if (adminStatusFilter !== "ALL" && n.status !== adminStatusFilter) return false;
+                    if (adminPriorityFilter !== "ALL" && item.priority !== adminPriorityFilter) return false;
+                    if (adminVerificationFilter !== "ALL" && item.verificationStatus !== adminVerificationFilter) return false;
+                    if (adminStatusFilter !== "ALL" && item.status !== adminStatusFilter) return false;
                     return true;
-                  });
+                  }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
                   return (
                     <>
                       <p className="text-[11px] text-slate-500 font-semibold">
-                        Mostrando {filteredNeeds.length} de {needs.length} necesidades
+                        Mostrando {allItems.length} publicaciones
                       </p>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-100 font-bold border-b">
                       <tr>
+                        <th className="p-3">Tipo</th>
                         <th className="p-3">Título / Barrio</th>
                         <th className="p-3">Prioridad</th>
                         <th className="p-3">Verificación</th>
@@ -963,44 +1002,128 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {filteredNeeds.map((need) => (
-                        <tr key={need.id} className="hover:bg-slate-50">
+                      {allItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50">
                           <td className="p-3">
-                            <strong className="block">{need.title}</strong>
-                            <span className="text-slate-500">{need.neighborhood}</span>
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${PRIORITY_CONFIG[need.priority]?.badgeClass}`}>
-                              {PRIORITY_CONFIG[need.priority]?.label}
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.type === 'OFFER' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'}`}>
+                              {item.type === 'OFFER' ? 'OFERTA' : 'NECESIDAD'}
                             </span>
                           </td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${VERIFICATION_CONFIG[need.verificationStatus]?.badgeClass}`}>
-                              {VERIFICATION_CONFIG[need.verificationStatus]?.label}
+                            <button
+                              onClick={() => {
+                                if (item.type === 'NEED') {
+                                  const need = needs.find(n => n.id === item.id);
+                                  if (need && onViewNeed) { onViewNeed(need); }
+                                } else {
+                                  const offer = (rawOffers || []).find((o: any) => o._id === item.id);
+                                  if (offer && onViewOffer) { onViewOffer({ id: offer._id, ...offer }); }
+                                }
+                              }}
+                              className="text-left hover:text-indigo-700 transition-colors"
+                            >
+                              <strong className="block hover:underline">{item.title}</strong>
+                              <span className="text-slate-500">{item.neighborhood}</span>
+                            </button>
+                          </td>
+                          <td className="p-3">
+                            {item.priority ? (
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${PRIORITY_CONFIG[item.priority as Priority]?.badgeClass || ''}`}>
+                                {PRIORITY_CONFIG[item.priority as Priority]?.label || '—'}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${VERIFICATION_CONFIG[item.verificationStatus as VerificationStatus]?.badgeClass || ''}`}>
+                              {VERIFICATION_CONFIG[item.verificationStatus as VerificationStatus]?.label || item.verificationStatus}
                             </span>
                           </td>
-                          <td className="p-3 font-semibold">{need.status}</td>
-                          <td className="p-3 text-slate-500">{formatTimeAgo(need.updatedAt)}</td>
+                          <td className="p-3 font-semibold">{item.status}</td>
+                          <td className="p-3 text-slate-500">{formatTimeAgo(item.updatedAt)}</td>
                           <td className="p-3 text-right space-x-2">
-                            <button
-                              onClick={() => openEditModal(need, "full")}
-                              className="text-xs font-bold text-indigo-600 hover:underline"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={() => openEditModal(need, "priority")}
-                              className="text-xs font-bold text-amber-600 hover:underline"
-                            >
-                              Prioridad
-                            </button>
-                            {currentUser.role === "ADMIN" && (
-                              <button
-                                onClick={() => handleDeleteNeed(need.id, need.title)}
-                                className="text-xs font-bold text-rose-600 hover:underline"
-                              >
-                                Eliminar
-                              </button>
+                            {item.type === 'NEED' && (
+                              <>
+                                {item.verificationStatus === 'PENDING_VERIFICATION' && (
+                                  <button
+                                    onClick={() =>
+                                      handleVerifyWithToken(item.id, {
+                                        verificationStatus: "VERIFIED",
+                                        priority: "HIGH",
+                                        verifiedBy: currentUser.name,
+                                        verificationNotes: "Aprobado por moderación",
+                                      })
+                                    }
+                                    className="text-xs font-bold text-emerald-600 hover:underline"
+                                  >
+                                    Verificar
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { const need = needs.find(n => n.id === item.id); if (need) openEditModal(need, "full"); }}
+                                  className="text-xs font-bold text-indigo-600 hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => { const need = needs.find(n => n.id === item.id); if (need) openEditModal(need, "priority"); }}
+                                  className="text-xs font-bold text-amber-600 hover:underline"
+                                >
+                                  Prioridad
+                                </button>
+                                {item.verificationStatus !== 'ARCHIVED' && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`¿Archivar "${item.title}"?`)) {
+                                        handleVerifyWithToken(item.id, {
+                                          verificationStatus: "ARCHIVED",
+                                          status: "CLOSED",
+                                        });
+                                      }
+                                    }}
+                                    className="text-xs font-bold text-rose-600 hover:underline"
+                                  >
+                                    Archivar
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {item.type === 'OFFER' && (
+                              <>
+                                {item.verificationStatus !== 'VERIFIED' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!authToken) return;
+                                      try { await verifyOfferMutation({ token: authToken, offerId: item.id as any, action: "verify" }); }
+                                      catch (e: any) { alert(e?.message || "Error"); }
+                                    }}
+                                    className="text-xs font-bold text-emerald-600 hover:underline"
+                                  >
+                                    Verificar
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => setAdminEditOfferId(item.id)}
+                                  className="text-xs font-bold text-indigo-600 hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                {item.verificationStatus !== 'ARCHIVED' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!authToken) return;
+                                      if (confirm(`¿Archivar "${item.title}"?`)) {
+                                        try { await verifyOfferMutation({ token: authToken, offerId: item.id as any, action: "archive" }); }
+                                        catch (e: any) { alert(e?.message || "Error"); }
+                                      }
+                                    }}
+                                    className="text-xs font-bold text-rose-600 hover:underline"
+                                  >
+                                    Archivar
+                                  </button>
+                                )}
+                              </>
                             )}
                           </td>
                         </tr>
@@ -1675,6 +1798,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Edit Offer Modal (inline in admin) */}
+        {adminEditOfferId && (() => {
+          const editOffer = (rawOffers || []).find((o: any) => o._id === adminEditOfferId);
+          if (!editOffer) return null;
+          const offerForEdit = { id: editOffer._id, ...editOffer } as any;
+          return (
+            <PublicEditOfferModal
+              offer={offerForEdit}
+              onClose={() => setAdminEditOfferId(null)}
+              moderatorName={currentUser?.name}
+            />
+          );
+        })()}
       </div>
     </div>
   );
