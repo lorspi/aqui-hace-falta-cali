@@ -37,11 +37,15 @@ export const submitEdit = action({
     priority: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // 1. Validate Turnstile token
-    const secretKey = process.env.TURNSTILE_SECRET_KEY;
-    if (!secretKey) {
-      throw new Error("Turnstile no configurado en el servidor.");
-    }
+    // Skip Turnstile for moderator edits (identified by [MOD] prefix in editorName)
+    const isModeratorEdit = args.editorName?.startsWith('[MOD] ');
+
+    if (!isModeratorEdit) {
+      // 1. Validate Turnstile token
+      const secretKey = process.env.TURNSTILE_SECRET_KEY;
+      if (!secretKey) {
+        throw new Error("Turnstile no configurado en el servidor.");
+      }
 
     const turnstileResponse = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
@@ -58,6 +62,7 @@ export const submitEdit = action({
     const turnstileResult = (await turnstileResponse.json()) as { success: boolean };
     if (!turnstileResult.success) {
       throw new Error("Verificación anti-bot fallida. Intenta de nuevo.");
+    }
     }
 
     // 2. Apply the edit via mutation (pass all fields except turnstileToken)

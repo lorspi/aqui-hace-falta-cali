@@ -84,6 +84,7 @@ export interface Need {
   evidenceUrl?: string;
   createdAt: string;
   updatedAt: string;
+  lastUpdatedBy?: string;
   expiresAt?: string;
   isDemoData?: boolean;
 }

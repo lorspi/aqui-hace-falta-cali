@@ -12,9 +12,12 @@ import { Turnstile } from './Turnstile';
 interface PublicEditModalProps {
   need: Need | null;
   onClose: () => void;
+  /** If provided, indicates a moderator is editing (skip Turnstile, lock name) */
+  moderatorName?: string;
 }
 
-export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose }) => {
+export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose, moderatorName }) => {
+  const isModerator = !!moderatorName;
   // Form state — mirrors CreateNeedModal
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -86,9 +89,9 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
             }))
           : []
       );
-      setEditorName('');
+      setEditorName(moderatorName || '');
       setEditReason('');
-      setTurnstileToken(null);
+      setTurnstileToken(isModerator ? 'moderator-bypass' : null);
       setSubmitted(false);
       setShowPickerMap(false);
     }
@@ -149,7 +152,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!turnstileToken) {
+    if (!isModerator && !turnstileToken) {
       alert('Completa la verificación anti-bot.');
       return;
     }
@@ -161,7 +164,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
     setIsSubmitting(true);
     try {
       await submitEdit({
-        turnstileToken,
+        turnstileToken: turnstileToken || 'moderator-bypass',
         needId: need.id as Id<"needs">,
         title,
         description,
@@ -185,7 +188,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
           unit: r.unit || 'unidades',
           status: r.status || 'PENDING',
         })),
-        editorName: editorName || undefined,
+        editorName: isModerator ? `[MOD] ${editorName}` : (editorName || undefined),
         editReason: editReason || undefined,
         priority,
       });
@@ -583,13 +586,16 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tu nombre (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {isModerator ? 'Moderador' : 'Tu nombre (opcional)'}
+                </label>
                 <input
                   type="text"
                   value={editorName}
-                  onChange={(e) => setEditorName(e.target.value)}
+                  onChange={(e) => !isModerator && setEditorName(e.target.value)}
                   placeholder="Para el registro de cambios"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  readOnly={isModerator}
+                  className={`w-full p-2 border border-slate-300 rounded-lg ${isModerator ? 'bg-slate-100 text-slate-700 font-semibold cursor-not-allowed' : 'bg-slate-50'}`}
                 />
               </div>
               <div>
@@ -604,9 +610,11 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
               </div>
             </div>
 
-            <div className="pt-2">
-              <Turnstile onVerify={handleTurnstileVerify} onError={handleTurnstileError} />
-            </div>
+            {!isModerator && (
+              <div className="pt-2">
+                <Turnstile onVerify={handleTurnstileVerify} onError={handleTurnstileError} />
+              </div>
+            )}
           </div>
 
           {/* Verification Info Box */}
@@ -633,7 +641,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose 
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !turnstileToken}
+              disabled={isSubmitting || (!isModerator && !turnstileToken)}
               className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (

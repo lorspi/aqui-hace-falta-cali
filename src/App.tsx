@@ -684,6 +684,7 @@ export default function App() {
       <PublicEditModal
         need={selectedForPublicEdit}
         onClose={() => setSelectedForPublicEdit(null)}
+        moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
       />
 
       <UpdateStatusModal

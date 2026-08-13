@@ -56,6 +56,7 @@ export const applyEdit = mutation({
     if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
     if (args.priority !== undefined) patch.priority = args.priority;
     patch.resources = args.resources;
+    patch.lastUpdatedBy = args.editorName || "Ciudadano anónimo";
 
     await ctx.db.patch(args.needId, patch);
 

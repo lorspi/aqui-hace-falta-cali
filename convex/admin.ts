@@ -302,6 +302,7 @@ export const editNeed = mutation({
     if (args.latitude !== undefined) patch.latitude = args.latitude;
     if (args.longitude !== undefined) patch.longitude = args.longitude;
     patch.resources = args.resources;
+    patch.lastUpdatedBy = `[MOD] ${user.name}`;
 
     await ctx.db.patch(args.id, patch);
 

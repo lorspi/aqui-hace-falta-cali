@@ -318,7 +318,12 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   .map((log: any, idx: number) => (
                   <div key={log._id || idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">{log.updatedBy}</span>
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
+                        {(log.updatedBy as string)?.startsWith('[MOD] ') && (
+                          <ShieldCheck className="w-3 h-3 text-indigo-600 shrink-0" />
+                        )}
+                        {(log.updatedBy as string)?.replace('[MOD] ', '')}
+                      </span>
                       <span className="text-[10px] text-slate-400">{formatTimeAgo(log.createdAt)}</span>
                     </div>
                     <p className="text-slate-600">{log.description}</p>
@@ -340,18 +345,6 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 <RefreshCcw className="w-3.5 h-3.5" />
                 <span>Cambiar prioridad</span>
               </button>
-            )}
-            {isModeratorLoggedIn && onAdminEditNeed && (
-              <>
-                <span className="text-slate-300">•</span>
-                <button
-                  onClick={() => onAdminEditNeed(need)}
-                  className="text-indigo-700 hover:text-indigo-900 font-semibold underline flex items-center gap-1"
-                >
-                  <Building className="w-3.5 h-3.5" />
-                  <span>Editar publicación</span>
-                </button>
-              </>
             )}
             {isModeratorLoggedIn && <span className="text-slate-300">•</span>}
             <button

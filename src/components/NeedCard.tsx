@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Clock, CheckCircle2, AlertCircle, HelpCircle, HeartHandshake, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, CheckCircle2, AlertCircle, HelpCircle, HeartHandshake, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Need } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, VERIFICATION_CONFIG, formatTimeAgo } from '../utils/formatters';
 
@@ -161,6 +161,9 @@ export const NeedCard: React.FC<NeedCardProps> = ({
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
             <span>Actualizado {formatTimeAgo(need.updatedAt)}</span>
+            {need.lastUpdatedBy?.startsWith('[MOD]') && (
+              <ShieldCheck className="w-3 h-3 text-indigo-500 shrink-0" />
+            )}
           </div>
         </div>
 

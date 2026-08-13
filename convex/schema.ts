@@ -63,6 +63,7 @@ export default defineSchema({
     evidenceUrl: v.optional(v.string()),
     createdAt: v.string(),
     updatedAt: v.string(),
+    lastUpdatedBy: v.optional(v.string()),
     expiresAt: v.optional(v.string()),
     isDemoData: v.optional(v.boolean()),
   })
