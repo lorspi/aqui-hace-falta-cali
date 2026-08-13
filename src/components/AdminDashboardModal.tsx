@@ -643,12 +643,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <Edit className="w-3.5 h-3.5" /> Editar
                           </button>
                           <button
-                            onClick={() =>
-                              handleVerifyWithToken(need.id, {
-                                verificationStatus: "ARCHIVED",
-                                status: "CLOSED",
-                              })
-                            }
+                            onClick={() => {
+                              if (confirm(`¿Estás seguro de rechazar "${need.title}"? Esta acción archivará y cerrará la necesidad.`)) {
+                                handleVerifyWithToken(need.id, {
+                                  verificationStatus: "ARCHIVED",
+                                  status: "CLOSED",
+                                });
+                              }
+                            }}
                             className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
                           >
                             Rechazar
@@ -700,7 +702,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <button
-                                onClick={() => handleResolveWithToken(rep.id, "RESOLVE_ARCHIVE")}
+                                onClick={() => {
+                                  if (confirm('¿Estás seguro de archivar esta necesidad? Se cerrará permanentemente.')) {
+                                    handleResolveWithToken(rep.id, "RESOLVE_ARCHIVE");
+                                  }
+                                }}
                                 className="bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs"
                               >
                                 Archivar necesidad
