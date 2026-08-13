@@ -35,7 +35,9 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
+  const isFlyingRef = useRef(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const scrollHintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Default Cali Center
@@ -45,6 +47,22 @@ export const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
+
+    // Don't initialize on hidden containers (mobile: map starts hidden in LIST view)
+    const container = mapContainerRef.current;
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            observer.disconnect();
+            setMapReady(true);
+          }
+        }
+      });
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
 
     const map = L.map(mapContainerRef.current, {
       center: caliCenter,
@@ -75,8 +93,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
     mapInstanceRef.current = map;
 
-    // Fire onMapCenterChanged when user pans/zooms
+    // Fire onMapCenterChanged when user pans/zooms (not during programmatic flyTo)
     map.on('moveend', () => {
+      if (isFlyingRef.current) return;
       if (onMapCenterChanged) {
         const center = map.getCenter();
         onMapCenterChanged(center.lat, center.lng);
@@ -87,20 +106,30 @@ export const MapView: React.FC<MapViewProps> = ({
       map.remove();
       mapInstanceRef.current = null;
     };
-  }, []);
+  }, [mapReady]);
 
   // Fly to selected city when it changes
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !selectedCityId) return;
 
+    isFlyingRef.current = true;
+
+    const onFlyEnd = () => {
+      isFlyingRef.current = false;
+      map.off('moveend', onFlyEnd);
+    };
+    map.on('moveend', onFlyEnd);
+
     if (selectedCityId === ALL_VALLE_ID) {
-      // Show all Valle del Cauca — center on Cali with wider zoom
       map.flyTo([3.75, -76.4], 9, { animate: true, duration: 1 });
     } else {
       const city = VALLE_CITIES.find((c) => c.id === selectedCityId);
       if (city) {
         map.flyTo([city.latitude, city.longitude], 13, { animate: true, duration: 1 });
+      } else {
+        isFlyingRef.current = false;
+        map.off('moveend', onFlyEnd);
       }
     }
   }, [selectedCityId]);
@@ -117,7 +146,7 @@ export const MapView: React.FC<MapViewProps> = ({
     if (isPickerMode) return; // Don't render need pins in location picker mode
 
     needs.forEach((need) => {
-      if (!need.latitude || !need.longitude) return;
+      if (!need.latitude || !need.longitude || isNaN(need.latitude) || isNaN(need.longitude)) return;
 
       const priority = need.priority || 'MEDIUM';
       const colorHex =

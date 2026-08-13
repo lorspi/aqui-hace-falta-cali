@@ -39,24 +39,40 @@ function convexNeedToNeed(doc: any): Need {
 export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  // Parse URL: /:cityId or /:cityId/:needId
+  const [initialNeedId] = useState<string | null>(() => {
+    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
+    return parts.length >= 2 ? parts[1] : null;
+  });
+
   // Selected city/municipality — read initial value from URL path
   const [selectedCityId, setSelectedCityId] = useState<string>(() => {
-    const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-    if (!path || path === ALL_VALLE_ID) return ALL_VALLE_ID;
-    const match = VALLE_CITIES.find((c) => c.id === path);
+    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
+    const citySlug = parts[0];
+    if (!citySlug || citySlug === ALL_VALLE_ID) return ALL_VALLE_ID;
+    const match = VALLE_CITIES.find((c) => c.id === citySlug);
     return match ? match.id : 'cali';
   });
+
+  // Build current URL base for the city
+  const getCityPath = (cityId: string) => cityId === ALL_VALLE_ID ? '/' : `/${cityId}`;
 
   // Sync URL when city changes
   const handleCityChange = (cityId: string) => {
     setSelectedCityId(cityId);
-    const newPath = cityId === ALL_VALLE_ID ? '/' : `/${cityId}`;
-    window.history.replaceState(null, '', newPath);
+    window.history.replaceState(null, '', getCityPath(cityId));
     // Update page title
     const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
     document.title = cityId === ALL_VALLE_ID
       ? 'Aquí Hace Falta — Valle del Cauca'
       : `Aquí Hace Falta — ${cityName}`;
+  };
+
+  // Build shareable URL for a need
+  const getNeedUrl = (need: Need) => {
+    const cityId = need.cityId || selectedCityId;
+    const base = window.location.origin;
+    return `${base}/${cityId}/${need.id}`;
   };
 
   // Filters
@@ -140,6 +156,30 @@ export default function App() {
     () => (rawNeeds || []).map(convexNeedToNeed),
     [rawNeeds]
   );
+
+  // Open need from URL on initial load
+  const needFromUrl = useQuery(
+    api.needs.getById,
+    initialNeedId ? { id: initialNeedId as Id<"needs"> } : "skip"
+  );
+
+  useEffect(() => {
+    if (initialNeedId && needFromUrl && !selectedNeed) {
+      const { _id, _creationTime, updates, ...rest } = needFromUrl as any;
+      handleSelectNeed({ id: _id, ...rest } as Need);
+    }
+  }, [initialNeedId, needFromUrl]);
+
+  // Update URL when opening/closing need detail
+  const handleSelectNeed = (need: Need | null) => {
+    setSelectedNeed(need);
+    if (need) {
+      const cityId = need.cityId || selectedCityId;
+      window.history.replaceState(null, '', `/${cityId}/${need.id}`);
+    } else {
+      window.history.replaceState(null, '', getCityPath(selectedCityId));
+    }
+  };
 
   const reports = useMemo(() => {
     return [];
@@ -480,7 +520,7 @@ export default function App() {
           <MapView
             needs={needs}
             selectedNeedId={selectedNeed?.id}
-            onSelectNeed={(need) => setSelectedNeed(need)}
+            onSelectNeed={(need) => handleSelectNeed(need)}
             userLat={filters.userLat}
             userLng={filters.userLng}
             selectedCityId={selectedCityId}
@@ -581,7 +621,7 @@ export default function App() {
                   <NeedCard
                     key={need.id}
                     need={need}
-                    onSelect={(item) => setSelectedNeed(item)}
+                    onSelect={(item) => handleSelectNeed(item)}
                     onHelp={(item) => setSelectedForHelp(item)}
                     userLat={filters.userLat}
                     userLng={filters.userLng}
@@ -599,7 +639,8 @@ export default function App() {
       {/* Modals */}
       <NeedDetailModal
         need={selectedNeed}
-        onClose={() => setSelectedNeed(null)}
+        onClose={() => handleSelectNeed(null)}
+        shareUrl={selectedNeed ? getNeedUrl(selectedNeed) : undefined}
         onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
         onOpenPublicEdit={(need) => setSelectedForPublicEdit(need)}
@@ -608,13 +649,13 @@ export default function App() {
         onAdminEditNeed={(need) => {
           setEditingNeedFromDetail(need);
           setEditModeFromDetail("full");
-          setSelectedNeed(null);
+          handleSelectNeed(null);
           setIsAdminModalOpen(true);
         }}
         onAdminChangePriority={(need) => {
           setEditingNeedFromDetail(need);
           setEditModeFromDetail("priority");
-          setSelectedNeed(null);
+          handleSelectNeed(null);
           setIsAdminModalOpen(true);
         }}
       />

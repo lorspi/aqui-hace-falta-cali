@@ -40,6 +40,7 @@ interface NeedDetailModalProps {
   isModeratorLoggedIn?: boolean;
   onAdminEditNeed?: (need: Need) => void;
   onAdminChangePriority?: (need: Need) => void;
+  shareUrl?: string;
 }
 
 export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
@@ -52,6 +53,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   isModeratorLoggedIn = false,
   onAdminEditNeed,
   onAdminChangePriority,
+  shareUrl,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -78,15 +80,17 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${need.latitude},${need.longitude}`;
 
+  const needShareUrl = shareUrl || window.location.href;
+
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
         title: `Aquí Hace Falta - ${need.title}`,
-        text: `Oportunidad de ayuda en Cali: ${need.title} (${need.neighborhood})`,
-        url: window.location.href,
+        text: `Necesidad de ayuda: ${need.title} (${need.neighborhood})`,
+        url: needShareUrl,
       });
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(needShareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -297,18 +301,9 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   <span>Llamar por teléfono</span>
                 </a>
               )}
-
-              <button
-                onClick={handleShare}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold px-3 py-2.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-300 transition-all"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>{copied ? '¡Enlace copiado!' : 'Compartir'}</span>
-              </button>
             </div>
           </div>
         </div>
-
         {/* Change History */}
         {updateLogs.length > 0 && (
           <div className="px-5 pb-4">
@@ -380,17 +375,27 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
             )}
           </div>
 
-          <button
-            onClick={() => {
-              onClose();
-              onOpenQuieroAyudar(need);
-            }}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-md transition-all flex items-center gap-2"
-            id="btn-help-modal-primary"
-          >
-            <HeartHandshake className="w-4 h-4 text-amber-300" />
-            <span>Quiero ayudar ahora</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold px-4 py-2.5 rounded-xl text-sm flex items-center gap-1.5 border border-slate-300 transition-all"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>{copied ? '¡Copiado!' : 'Compartir'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                onOpenQuieroAyudar(need);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-md transition-all flex items-center gap-2"
+              id="btn-help-modal-primary"
+            >
+              <HeartHandshake className="w-4 h-4 text-amber-300" />
+              <span>Quiero ayudar ahora</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
