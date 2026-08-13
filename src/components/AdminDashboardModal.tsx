@@ -24,6 +24,7 @@ import {
   MapPin,
   CheckCircle2,
   MessageSquare,
+  Search,
 } from "lucide-react";
 import { Need, Priority, Report, AuditLog } from "../types";
 import {
@@ -81,6 +82,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [activeTab, setActiveTab] = useState<
     "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS"
   >("PENDING");
+
+  // Admin table search & filters
+  const [adminSearch, setAdminSearch] = useState("");
+  const [adminPriorityFilter, setAdminPriorityFilter] = useState<string>("ALL");
+  const [adminVerificationFilter, setAdminVerificationFilter] = useState<string>("ALL");
+  const [adminStatusFilter, setAdminStatusFilter] = useState<string>("ALL");
 
   // User management state
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -793,6 +800,81 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 <h4 className="font-bold text-slate-900 text-sm">
                   Todas las necesidades ({needs.length})
                 </h4>
+
+                {/* Search & Filters */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={adminSearch}
+                      onChange={(e) => setAdminSearch(e.target.value)}
+                      placeholder="Buscar por título, barrio, dirección..."
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={adminPriorityFilter}
+                      onChange={(e) => setAdminPriorityFilter(e.target.value)}
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
+                    >
+                      <option value="ALL">Todas las prioridades</option>
+                      <option value="CRITICAL">🔴 Crítica</option>
+                      <option value="HIGH">🟠 Alta</option>
+                      <option value="MEDIUM">🟡 Media</option>
+                      <option value="LOW">🟢 Baja</option>
+                    </select>
+                    <select
+                      value={adminVerificationFilter}
+                      onChange={(e) => setAdminVerificationFilter(e.target.value)}
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
+                    >
+                      <option value="ALL">Todas las verificaciones</option>
+                      <option value="VERIFIED">✓ Verificadas</option>
+                      <option value="PENDING_VERIFICATION">◷ Pendientes</option>
+                      <option value="REPORTED">⚠️ Reportadas</option>
+                    </select>
+                    <select
+                      value={adminStatusFilter}
+                      onChange={(e) => setAdminStatusFilter(e.target.value)}
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
+                    >
+                      <option value="ALL">Todos los estados</option>
+                      <option value="NEED_HELP_NOW">Necesita ayuda</option>
+                      <option value="RECEIVING_HELP">Recibiendo ayuda</option>
+                      <option value="PARTIALLY_COVERED">Parcialmente cubierta</option>
+                      <option value="COVERED">Cubierta</option>
+                      <option value="CLOSED">Cerrada</option>
+                    </select>
+                    {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminStatusFilter !== "ALL") && (
+                      <button
+                        onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminStatusFilter("ALL"); }}
+                        className="text-xs text-rose-600 font-bold hover:underline"
+                      >
+                        Limpiar filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {(() => {
+                  const filteredNeeds = needs.filter((n) => {
+                    if (adminSearch) {
+                      const q = adminSearch.toLowerCase();
+                      if (!n.title.toLowerCase().includes(q) && !n.neighborhood.toLowerCase().includes(q) && !n.address.toLowerCase().includes(q)) return false;
+                    }
+                    if (adminPriorityFilter !== "ALL" && n.priority !== adminPriorityFilter) return false;
+                    if (adminVerificationFilter !== "ALL" && n.verificationStatus !== adminVerificationFilter) return false;
+                    if (adminStatusFilter !== "ALL" && n.status !== adminStatusFilter) return false;
+                    return true;
+                  });
+
+                  return (
+                    <>
+                      <p className="text-[11px] text-slate-500 font-semibold">
+                        Mostrando {filteredNeeds.length} de {needs.length} necesidades
+                      </p>
                 <div className="overflow-x-auto border border-slate-200 rounded-xl">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-100 font-bold border-b">
@@ -806,7 +888,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {needs.map((need) => (
+                      {filteredNeeds.map((need) => (
                         <tr key={need.id} className="hover:bg-slate-50">
                           <td className="p-3">
                             <strong className="block">{need.title}</strong>
@@ -851,6 +933,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </tbody>
                   </table>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
