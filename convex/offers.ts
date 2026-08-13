@@ -265,6 +265,25 @@ export const list = query({
   },
 });
 
+// Count offers per city
+export const countsByCity = query({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const allOffers = await ctx.db.query("offers").collect();
+      const counts: Record<string, number> = {};
+      for (const offer of allOffers) {
+        if (offer.verificationStatus === "ARCHIVED") continue;
+        const city = offer.cityId || "cali";
+        counts[city] = (counts[city] || 0) + 1;
+      }
+      return counts;
+    } catch {
+      return {};
+    }
+  },
+});
+
 // Get single offer by ID
 export const getById = query({
   args: { id: v.id("offers") },

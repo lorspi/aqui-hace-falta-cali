@@ -172,6 +172,16 @@ function MainApp() {
 
   // --- CONVEX QUERIES ---
   const needCounts = useQuery(api.needs.countsByCity) || {};
+  const offerCounts = useQuery(api.offers.countsByCity) || {};
+
+  // Combined counts (needs + offers) per city for the city selector
+  const combinedCounts = useMemo(() => {
+    const combined: Record<string, number> = { ...needCounts };
+    for (const [city, count] of Object.entries(offerCounts)) {
+      combined[city] = (combined[city] || 0) + count;
+    }
+    return combined;
+  }, [needCounts, offerCounts]);
 
   // Always-on count queries (never skipped, for tab counters)
   const allNeedsForCount = useQuery(api.needs.list, {
@@ -522,7 +532,7 @@ function MainApp() {
         criticalCount={criticalCount}
         selectedCityId={selectedCityId}
         onCityChange={handleCityChange}
-        needCounts={needCounts}
+        needCounts={combinedCounts}
       />
       {/* Spacer for fixed header */}
       <div className="h-[280px] sm:h-[200px] md:h-[116px]" />
