@@ -28,6 +28,7 @@ import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
+import { ModeradorPage } from "./components/ModeradorPage";
 import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
 
 // Adapter: converts Convex document (with _id) to our Need type (with id)
@@ -36,7 +37,22 @@ function convexNeedToNeed(doc: any): Need {
   return { id: _id, ...rest } as Need;
 }
 
+// Check if current path is a static page
+function isStaticPage() {
+  const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+  return path === 'moderador';
+}
+
 export default function App() {
+  // Render static pages
+  if (isStaticPage()) {
+    return <ModeradorPage />;
+  }
+
+  return <MainApp />;
+}
+
+function MainApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Parse URL: /:cityId or /:cityId/:needId
