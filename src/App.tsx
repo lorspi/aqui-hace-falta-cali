@@ -29,6 +29,7 @@ import { PublicEditModal } from "./components/PublicEditModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
 import { ModeradorPage } from "./components/ModeradorPage";
+import { SocialCardView } from "./components/SocialCardView";
 import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
 
 // Adapter: converts Convex document (with _id) to our Need type (with id)
@@ -37,16 +38,28 @@ function convexNeedToNeed(doc: any): Need {
   return { id: _id, ...rest } as Need;
 }
 
-// Check if current path is a static page
-function isStaticPage() {
+// Check if current path is a static page or special view
+function getSpecialRoute(): { type: 'moderador' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-  return path === 'moderador';
+  if (path === 'moderador') return { type: 'moderador' };
+
+  // Check for /:cityId/:needId/post or /:cityId/:needId/story
+  const parts = path.split('/');
+  if (parts.length === 3 && (parts[2] === 'post' || parts[2] === 'story')) {
+    return { type: 'social', needId: parts[1], format: parts[2] };
+  }
+  return null;
 }
 
 export default function App() {
-  // Render static pages
-  if (isStaticPage()) {
+  const specialRoute = getSpecialRoute();
+
+  if (specialRoute?.type === 'moderador') {
     return <ModeradorPage />;
+  }
+
+  if (specialRoute?.type === 'social') {
+    return <SocialCardView needId={specialRoute.needId} format={specialRoute.format} />;
   }
 
   return <MainApp />;
@@ -133,6 +146,7 @@ function MainApp() {
     adminToken ? { token: adminToken } : "skip"
   );
   const isModeratorLoggedIn = !!sessionUser;
+  const isAdminUser = (sessionUser as any)?.role === "ADMIN";
 
   // Online / Offline Listeners
   useEffect(() => {
@@ -664,6 +678,7 @@ function MainApp() {
         onOpenPublicEdit={(need) => setSelectedForPublicEdit(need)}
         onOpenUpdateStatusModal={(need) => setSelectedForStatusUpdate(need)}
         isModeratorLoggedIn={isModeratorLoggedIn}
+        isAdmin={isAdminUser}
         onAdminEditNeed={(need) => {
           setEditingNeedFromDetail(need);
           setEditModeFromDetail("full");

@@ -38,6 +38,7 @@ interface NeedDetailModalProps {
   onOpenUpdateStatusModal: (need: Need) => void;
   onOpenPublicEdit?: (need: Need) => void;
   isModeratorLoggedIn?: boolean;
+  isAdmin?: boolean;
   onAdminEditNeed?: (need: Need) => void;
   onAdminChangePriority?: (need: Need) => void;
   shareUrl?: string;
@@ -51,6 +52,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   onOpenUpdateStatusModal,
   onOpenPublicEdit,
   isModeratorLoggedIn = false,
+  isAdmin = false,
   onAdminEditNeed,
   onAdminChangePriority,
   shareUrl,
@@ -345,6 +347,18 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 <RefreshCcw className="w-3.5 h-3.5" />
                 <span>Cambiar prioridad</span>
               </button>
+            )}
+            {isAdmin && onAdminEditNeed && (
+              <>
+                <span className="text-slate-300">•</span>
+                <button
+                  onClick={() => onAdminEditNeed(need)}
+                  className="text-indigo-700 hover:text-indigo-900 font-semibold underline flex items-center gap-1"
+                >
+                  <Building className="w-3.5 h-3.5" />
+                  <span>Editar publicación</span>
+                </button>
+              </>
             )}
             {isModeratorLoggedIn && <span className="text-slate-300">•</span>}
             <button
