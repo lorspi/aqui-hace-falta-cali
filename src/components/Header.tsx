@@ -73,7 +73,8 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Header navigation bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-4">
-          <img src="/logo.svg" alt="Aquí Hace Falta" className="w-10 h-10 rounded-xl shrink-0" />
+          <img src="/favicon.svg" alt="Aquí Hace Falta" className="w-8 h-8 rounded-lg shrink-0 md:hidden" />
+          <img src="/logo.svg" alt="Aquí Hace Falta" className="w-10 h-10 rounded-xl shrink-0 hidden md:block" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-black tracking-tighter text-slate-900 leading-none">
@@ -83,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
                 Valle del Cauca
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="hidden md:flex items-center gap-2 mt-1">
               <p className="text-[0.65rem] font-semibold text-slate-500 uppercase tracking-widest">
                 Plataforma Ciudadana de Coordinación de Ayuda
               </p>
