@@ -157,14 +157,18 @@ export const list = query({
 export const countsByCity = query({
   args: {},
   handler: async (ctx) => {
-    const allNeeds = await ctx.db.query("needs").collect();
-    const counts: Record<string, number> = {};
-    for (const need of allNeeds) {
-      if (need.verificationStatus === "ARCHIVED") continue;
-      const city = need.cityId || "cali";
-      counts[city] = (counts[city] || 0) + 1;
+    try {
+      const allNeeds = await ctx.db.query("needs").collect();
+      const counts: Record<string, number> = {};
+      for (const need of allNeeds) {
+        if (need.verificationStatus === "ARCHIVED") continue;
+        const city = need.cityId || "cali";
+        counts[city] = (counts[city] || 0) + 1;
+      }
+      return counts;
+    } catch {
+      return {};
     }
-    return counts;
   },
 });
 
