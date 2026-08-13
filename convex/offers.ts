@@ -52,6 +52,7 @@ export const create = mutation({
           type: v.string(),
           description: v.string(),
           quantity: v.optional(v.number()),
+          fulfilledQuantity: v.optional(v.number()),
           unit: v.optional(v.string()),
         })
       )
@@ -130,6 +131,7 @@ export const create = mutation({
       type: r.type,
       description: r.description || "",
       quantity: r.quantity,
+      fulfilledQuantity: r.fulfilledQuantity || 0,
       unit: r.unit,
       status: "AVAILABLE" as const,
     }));
@@ -271,7 +273,11 @@ export const getById = query({
     if (!offer) {
       throw new Error("Oferta no encontrada");
     }
-    return offer;
+    const updates = await ctx.db
+      .query("offerUpdateLogs")
+      .withIndex("by_offer", (q) => q.eq("offerId", args.id))
+      .collect();
+    return { ...offer, updates };
   },
 });
 
@@ -406,6 +412,96 @@ export const updateStatus = mutation({
       adminEmail: "system",
       timestamp: now,
       details: `Oferta "${offer.title}" estado cambiado de ${previousStatus} a ${patch.offerStatus || args.offerStatus || previousStatus}. Anterior: ${previousStatus}.`,
+    });
+
+    // Offer update log for history
+    const newStatus = patch.offerStatus || args.offerStatus || previousStatus;
+    await ctx.db.insert("offerUpdateLogs", {
+      offerId: args.offerId,
+      previousStatus,
+      newStatus,
+      description: `Estado cambiado de ${previousStatus} a ${newStatus}.`,
+      updatedBy: "Responsable del punto",
+      createdAt: now,
+    });
+
+    return args.offerId;
+  },
+});
+
+// Public edit offer fields (anyone can update info)
+export const updateFields = mutation({
+  args: {
+    offerId: v.id("offers"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
+    address: v.optional(v.string()),
+    neighborhood: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactWhatsapp: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    organizationName: v.optional(v.string()),
+    operatingHours: v.optional(v.string()),
+    resources: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          type: v.string(),
+          description: v.string(),
+          quantity: v.optional(v.number()),
+          fulfilledQuantity: v.optional(v.number()),
+          unit: v.optional(v.string()),
+          status: v.string(),
+        })
+      )
+    ),
+    editorName: v.optional(v.string()),
+    editReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const offer = await ctx.db.get(args.offerId);
+    if (!offer) {
+      throw new Error("Oferta no encontrada");
+    }
+
+    const now = new Date().toISOString();
+    const patch: Record<string, any> = { updatedAt: now };
+
+    if (args.title !== undefined) patch.title = args.title;
+    if (args.description !== undefined) patch.description = args.description;
+    if (args.categories !== undefined) patch.categories = args.categories;
+    if (args.address !== undefined) patch.address = args.address;
+    if (args.neighborhood !== undefined) patch.neighborhood = args.neighborhood;
+    if (args.latitude !== undefined) patch.latitude = args.latitude;
+    if (args.longitude !== undefined) patch.longitude = args.longitude;
+    if (args.contactName !== undefined) patch.contactName = args.contactName;
+    if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
+    if (args.contactWhatsapp !== undefined) patch.contactWhatsapp = args.contactWhatsapp;
+    if (args.contactEmail !== undefined) patch.contactEmail = args.contactEmail;
+    if (args.organizationName !== undefined) patch.organizationName = args.organizationName;
+    if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
+    if (args.resources !== undefined) patch.resources = args.resources;
+
+    await ctx.db.patch(args.offerId, patch);
+
+    // Log the update
+    await ctx.db.insert("auditLogs", {
+      action: "UPDATE_OFFER_FIELDS",
+      adminEmail: args.editorName || "Ciudadano",
+      timestamp: now,
+      details: `Oferta "${offer.title}" actualizada por ${args.editorName || "Ciudadano"}. ${args.editReason ? `Motivo: ${args.editReason}` : ""}`,
+    });
+
+    // Offer update log for history
+    await ctx.db.insert("offerUpdateLogs", {
+      offerId: args.offerId,
+      description: args.editReason || `Información actualizada por ${args.editorName || "Ciudadano"}.`,
+      updatedBy: args.editorName || "Ciudadano",
+      createdAt: now,
     });
 
     return args.offerId;

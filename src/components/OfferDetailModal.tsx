@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import {
@@ -41,6 +41,7 @@ interface OfferDetailModalProps {
   isAdmin?: boolean;
   onOpenReportModal?: (offer: Offer) => void;
   onAdminEditOffer?: (offer: Offer) => void;
+  onOpenPublicEdit?: (offer: Offer) => void;
 }
 
 const OFFER_STATUS_CONFIG: Record<OfferStatus, { label: string; badgeClass: string }> = {
@@ -101,6 +102,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   isAdmin = false,
   onOpenReportModal,
   onAdminEditOffer,
+  onOpenPublicEdit,
 }) => {
   const [copied, setCopied] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
@@ -121,6 +123,13 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
 
   const submitReport = useMutation(api.offers.submitReport);
   const updateStatus = useMutation(api.offers.updateStatus);
+
+  // Fetch offer detail with update logs
+  const offerDetail = useQuery(
+    api.offers.getById,
+    offer ? { id: offer.id as Id<"offers"> } : "skip"
+  );
+  const updateLogs = (offerDetail as any)?.updates || [];
 
   // Block body scroll when modal is open
   React.useEffect(() => {
@@ -294,19 +303,49 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 ¿Qué ofrecen?
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {offer.resources.map((res) => (
-                  <div key={res.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-                      <span>{CATEGORY_LABELS[res.type]?.icon || '🔹'}</span>
-                      <span>{res.description || CATEGORY_LABELS[res.type]?.label || res.type}</span>
+                {offer.resources.map((res) => {
+                  const total = res.quantity || 0;
+                  const fulfilled = res.fulfilledQuantity || 0;
+                  const percentage = total > 0 ? Math.min(100, Math.round((fulfilled / total) * 100)) : 0;
+
+                  return (
+                    <div key={res.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-xs font-semibold text-slate-900">
+                        <span className="flex items-center gap-1.5">
+                          <span>{CATEGORY_LABELS[res.type]?.icon || '🔹'}</span>
+                          <span>{res.description || CATEGORY_LABELS[res.type]?.label || res.type}</span>
+                        </span>
+                      </div>
+
+                      {total > 0 && fulfilled > 0 ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-600">
+                            <span>Cobertura:</span>
+                            <strong className="text-slate-900">
+                              {fulfilled} de {total} {res.unit || ''} ({percentage}%)
+                            </strong>
+                          </div>
+                          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                percentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : total > 0 ? (
+                        <span className="text-xs text-slate-600 font-medium">
+                          Disponibles: {total} {res.unit || 'unidades'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-blue-800 font-medium bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
+                          Recurso disponible
+                        </span>
+                      )}
                     </div>
-                    {res.quantity != null && (
-                      <span className="text-xs text-slate-600 font-medium">
-                        Cantidad disponible: {res.quantity} {res.unit || 'unidades'}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -539,13 +578,43 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
           )}
         </div>
 
+        {/* Change History */}
+        {updateLogs.length > 0 && (
+          <div className="px-5 pb-4">
+            <details className="group">
+              <summary className="text-xs font-bold text-slate-600 cursor-pointer hover:text-slate-900 flex items-center gap-1.5 py-2">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Historial de cambios ({updateLogs.length})</span>
+              </summary>
+              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+                {updateLogs
+                  .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((log: any, idx: number) => (
+                  <div key={log._id || idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 flex items-center gap-1">
+                        {(log.updatedBy as string)?.startsWith('[MOD] ') && (
+                          <ShieldCheck className="w-3 h-3 text-indigo-600 shrink-0" />
+                        )}
+                        {(log.updatedBy as string)?.replace('[MOD] ', '')}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{formatTimeAgo(log.createdAt)}</span>
+                    </div>
+                    <p className="text-slate-600">{log.description}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+
         {/* Footer Actions — matches NeedDetailModal pattern */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 rounded-b-2xl">
           <div className="flex items-center gap-2 text-xs flex-wrap">
             {isAdmin && onAdminEditOffer && (
               <>
                 <button
-                  onClick={() => onAdminEditOffer(offer)}
+                  onClick={() => { onClose(); onAdminEditOffer(offer); }}
                   className="text-indigo-700 hover:text-indigo-900 font-semibold underline flex items-center gap-1"
                 >
                   <Building className="w-3.5 h-3.5" />
@@ -563,7 +632,15 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
             </button>
             <span className="text-slate-300">•</span>
             <button
-              onClick={() => { setShowStatusUpdate(true); setShowReportForm(false); }}
+              onClick={() => {
+                if (onOpenPublicEdit) {
+                  onClose();
+                  onOpenPublicEdit(offer);
+                } else {
+                  setShowStatusUpdate(true);
+                  setShowReportForm(false);
+                }
+              }}
               className="text-emerald-700 hover:text-emerald-900 font-semibold underline flex items-center gap-1"
             >
               <Edit className="w-3.5 h-3.5" />

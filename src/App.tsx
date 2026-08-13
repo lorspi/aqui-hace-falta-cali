@@ -29,6 +29,7 @@ import { OfferCard } from "./components/OfferCard";
 import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
+import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
 import { ModeradorPage } from "./components/ModeradorPage";
@@ -131,6 +132,7 @@ function MainApp() {
   const [selectedForHelp, setSelectedForHelp] = useState<Need | null>(null);
   const [selectedForReport, setSelectedForReport] = useState<Need | null>(null);
   const [selectedForPublicEdit, setSelectedForPublicEdit] = useState<Need | null>(null);
+  const [selectedOfferForEdit, setSelectedOfferForEdit] = useState<Offer | null>(null);
   const [selectedForStatusUpdate, setSelectedForStatusUpdate] =
     useState<Need | null>(null);
 
@@ -832,6 +834,12 @@ function MainApp() {
         moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
       />
 
+      <PublicEditOfferModal
+        offer={selectedOfferForEdit}
+        onClose={() => setSelectedOfferForEdit(null)}
+        moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
+      />
+
       <UpdateStatusModal
         need={selectedForStatusUpdate}
         onClose={() => setSelectedForStatusUpdate(null)}
@@ -867,10 +875,8 @@ function MainApp() {
         shareUrl={selectedOffer ? getOfferUrl(selectedOffer) : undefined}
         isModeratorLoggedIn={isModeratorLoggedIn}
         isAdmin={isAdminUser}
-        onAdminEditOffer={(_offer) => {
-          handleSelectOffer(null);
-          setIsAdminModalOpen(true);
-        }}
+        onOpenPublicEdit={(offer) => setSelectedOfferForEdit(offer)}
+        onAdminEditOffer={(offer) => setSelectedOfferForEdit(offer)}
       />
 
       {/* Footer */}

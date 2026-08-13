@@ -114,6 +114,16 @@ export default defineSchema({
     createdAt: v.string(),
   }).index("by_offer", ["offerId"]),
 
+  // --- OFFER UPDATE LOGS ---
+  offerUpdateLogs: defineTable({
+    offerId: v.id("offers"),
+    previousStatus: v.optional(v.string()),
+    newStatus: v.optional(v.string()),
+    description: v.string(),
+    updatedBy: v.string(),
+    createdAt: v.string(),
+  }).index("by_offer", ["offerId"]),
+
   // --- OFFERS ---
   offers: defineTable({
     cityId: v.string(),
@@ -126,6 +136,7 @@ export default defineSchema({
         type: v.string(),
         description: v.string(),
         quantity: v.optional(v.number()),
+        fulfilledQuantity: v.optional(v.number()),
         unit: v.optional(v.string()),
         status: v.string(), // "AVAILABLE" | "EXHAUSTED"
       })

@@ -151,6 +151,7 @@ export interface OfferResourceItem {
   type: HelpCategory;
   description: string;
   quantity?: number;
+  fulfilledQuantity?: number;
   unit?: string;
   status: 'AVAILABLE' | 'EXHAUSTED';
 }
