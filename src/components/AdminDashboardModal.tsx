@@ -615,128 +615,86 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {/* Pending Needs */}
-                    {pendingNeeds.map((need) => (
+                    {/* Merged pending items sorted by creation date (newest first) */}
+                    {[
+                      ...pendingNeeds.map((n) => ({ type: 'NEED' as const, id: n.id, title: n.title, description: n.description, address: n.address, neighborhood: n.neighborhood, contactName: n.contactName, createdAt: n.createdAt, raw: n })),
+                      ...pendingOffers.map((o: any) => ({ type: 'OFFER' as const, id: o._id, title: o.title, description: o.description, address: o.address, neighborhood: o.neighborhood, contactName: o.contactName, createdAt: o.createdAt, raw: o })),
+                    ]
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map((item) => (
                       <div
-                        key={need.id}
-                        className="bg-amber-50/50 border border-amber-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        key={item.id}
+                        className={`rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${item.type === 'OFFER' ? 'bg-blue-50/50 border border-blue-200' : 'bg-amber-50/50 border border-amber-200'}`}
                       >
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]">
                               PENDIENTE
                             </span>
-                            <span className="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
-                              NECESIDAD
+                            <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${item.type === 'OFFER' ? 'bg-blue-200 text-blue-800' : 'bg-slate-200 text-slate-700'}`}>
+                              {item.type === 'OFFER' ? 'OFERTA' : 'NECESIDAD'}
                             </span>
                             <button
-                              onClick={() => { if (onViewNeed) { onViewNeed(need); } }}
+                              onClick={() => {
+                                if (item.type === 'NEED') { if (onViewNeed) onViewNeed(item.raw); }
+                                else { if (onViewOffer) onViewOffer({ id: item.raw._id, ...item.raw }); }
+                              }}
                               className="font-bold text-slate-900 text-sm hover:text-indigo-700 hover:underline text-left"
                             >
-                              {need.title}
+                              {item.title}
                             </button>
                           </div>
-                          <p className="text-slate-700">{need.description}</p>
+                          <p className="text-slate-700">{item.description}</p>
                           <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
-                            <span>📍 {need.address} ({need.neighborhood})</span>
-                            <span>👤 {need.contactName}</span>
-                            <span>🕒 {formatTimeAgo(need.createdAt)}</span>
+                            <span>📍 {item.address} ({item.neighborhood})</span>
+                            <span>👤 {item.contactName}</span>
+                            <span>🕒 {formatTimeAgo(item.createdAt)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() =>
-                              handleVerifyWithToken(need.id, {
-                                verificationStatus: "VERIFIED",
-                                priority: "HIGH",
-                                verifiedBy: currentUser.name,
-                                verificationNotes: "Aprobado por moderación",
-                              })
-                            }
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
-                          >
-                            <Check className="w-3.5 h-3.5" /> Aprobar
-                          </button>
-                          <button
-                            onClick={() => openEditModal(need, "full")}
-                            className="bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
-                          >
-                            <Edit className="w-3.5 h-3.5" /> Editar
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`¿Estás seguro de rechazar "${need.title}"? Esta acción archivará y cerrará la necesidad.`)) {
-                                handleVerifyWithToken(need.id, {
-                                  verificationStatus: "ARCHIVED",
-                                  status: "CLOSED",
-                                });
-                              }
-                            }}
-                            className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
-                          >
-                            Rechazar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Pending Offers */}
-                    {pendingOffers.map((offer: any) => (
-                      <div
-                        key={offer._id}
-                        className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                      >
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]">
-                              PENDIENTE
-                            </span>
-                            <span className="bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                              OFERTA
-                            </span>
-                            <button
-                              onClick={() => { if (onViewOffer) { onViewOffer({ id: offer._id, ...offer }); } }}
-                              className="font-bold text-slate-900 text-sm hover:text-indigo-700 hover:underline text-left"
-                            >
-                              {offer.title}
-                            </button>
-                          </div>
-                          <p className="text-slate-700">{offer.description}</p>
-                          <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
-                            <span>📍 {offer.address} ({offer.neighborhood})</span>
-                            <span>👤 {offer.contactName}</span>
-                            <span>🕒 {formatTimeAgo(offer.createdAt)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={async () => {
-                              if (!authToken) return;
-                              try {
-                                await verifyOfferMutation({ token: authToken, offerId: offer._id, action: "verify" });
-                              } catch (e: any) {
-                                alert(e?.message || "Error al verificar oferta");
-                              }
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
-                          >
-                            <Check className="w-3.5 h-3.5" /> Aprobar
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!authToken) return;
-                              if (confirm(`¿Estás seguro de rechazar la oferta "${offer.title}"?`)) {
-                                try {
-                                  await verifyOfferMutation({ token: authToken, offerId: offer._id, action: "archive" });
-                                } catch (e: any) {
-                                  alert(e?.message || "Error al archivar oferta");
-                                }
-                              }
-                            }}
-                            className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
-                          >
-                            Rechazar
-                          </button>
+                          {item.type === 'NEED' ? (
+                            <>
+                              <button
+                                onClick={() => handleVerifyWithToken(item.id, { verificationStatus: "VERIFIED", priority: "HIGH", verifiedBy: currentUser.name, verificationNotes: "Aprobado por moderación" })}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Aprobar
+                              </button>
+                              <button
+                                onClick={() => openEditModal(item.raw, "full")}
+                                className="bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
+                              >
+                                <Edit className="w-3.5 h-3.5" /> Editar
+                              </button>
+                              <button
+                                onClick={() => { if (confirm(`¿Rechazar "${item.title}"?`)) handleVerifyWithToken(item.id, { verificationStatus: "ARCHIVED", status: "CLOSED" }); }}
+                                className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
+                              >
+                                Rechazar
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={async () => { if (!authToken) return; try { await verifyOfferMutation({ token: authToken, offerId: item.id as any, action: "verify" }); } catch (e: any) { alert(e?.message || "Error"); } }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" /> Aprobar
+                              </button>
+                              <button
+                                onClick={() => setAdminEditOfferId(item.id)}
+                                className="bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
+                              >
+                                <Edit className="w-3.5 h-3.5" /> Editar
+                              </button>
+                              <button
+                                onClick={async () => { if (!authToken) return; if (confirm(`¿Rechazar "${item.title}"?`)) { try { await verifyOfferMutation({ token: authToken, offerId: item.id as any, action: "archive" }); } catch (e: any) { alert(e?.message || "Error"); } } }}
+                                className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
+                              >
+                                Rechazar
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
