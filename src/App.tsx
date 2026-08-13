@@ -3,7 +3,7 @@
  * Main Application Component — Convex Backend
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
@@ -89,8 +89,9 @@ function MainApp() {
   // Sync URL when city changes
   const handleCityChange = (cityId: string) => {
     setSelectedCityId(cityId);
-    window.history.replaceState(null, '', getCityPath(cityId));
-    // Update page title
+    if (!selectedNeedRef.current) {
+      window.history.replaceState(null, '', getCityPath(cityId));
+    }
     const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
     document.title = cityId === ALL_VALLE_ID
       ? 'Aquí Hace Falta — Valle del Cauca'
@@ -202,7 +203,9 @@ function MainApp() {
   }, [initialNeedId, needFromUrl]);
 
   // Update URL when opening/closing need detail
+  const selectedNeedRef = useRef<Need | null>(null);
   const handleSelectNeed = (need: Need | null) => {
+    selectedNeedRef.current = need;
     setSelectedNeed(need);
     if (need) {
       const cityId = need.cityId || selectedCityId;
@@ -271,7 +274,11 @@ function MainApp() {
   const handleMapCenterChanged = (lat: number, lng: number) => {
     const detectedCity = detectCityFromCoords(lat, lng);
     if (detectedCity && detectedCity.id !== selectedCityId) {
-      handleCityChange(detectedCity.id);
+      setSelectedCityId(detectedCity.id);
+      document.title = `Aquí Hace Falta — ${detectedCity.name}`;
+      if (!selectedNeedRef.current) {
+        window.history.replaceState(null, '', getCityPath(detectedCity.id));
+      }
     }
   };
 
