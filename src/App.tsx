@@ -925,36 +925,7 @@ function MainApp() {
       />
       </div>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-white border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between text-[11px] font-semibold uppercase tracking-wider gap-3">
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-8">
-          <span className="text-slate-400">Resumen de Cali:</span>
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />{" "}
-            {criticalCount} Críticas
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-orange-500 rounded-full" />{" "}
-            {needs.filter((n) => n.priority === "HIGH").length} Altas
-          </span>
-          <span className="flex items-center gap-2 text-indigo-400">
-            ✓ {needs.filter((n) => n.verificationStatus === "VERIFIED").length}{" "}
-            Verificadas
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-slate-400">
-          <button
-            onClick={() => setIsAdminModalOpen(true)}
-            className="hover:text-white transition-colors"
-          >
-            Acceso Moderación
-          </button>
-          <span>•</span>
-          <span className="text-slate-300">Cali, Colombia</span>
-        </div>
-        </div>
-      </footer>
+      {/* Footer — temporarily removed (file preserved for future use) */}
     </div>
   );
 }
