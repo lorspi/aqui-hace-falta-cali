@@ -130,6 +130,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const createUserMutation = useMutation(api.auth.createUser);
   const updateUserMutation = useMutation(api.auth.updateUser);
   const deleteUserMutation = useMutation(api.auth.deleteUser);
+  const verifyOfferMutation = useMutation(api.offers.verify);
 
   // Validate session on mount
   const sessionUser = useQuery(
@@ -141,6 +142,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const adminData = useQuery(
     api.admin.getAllData,
     authToken && currentUser ? { token: authToken } : "skip"
+  );
+
+  // Fetch offers for moderation
+  const rawOffers = useQuery(api.offers.list, {});
+  const pendingOffers = (rawOffers || []).filter(
+    (o: any) => o.verificationStatus === "PENDING_VERIFICATION"
   );
 
   // Override props with live data when authenticated
@@ -532,7 +539,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   Pendientes revisión
                 </span>
                 <strong className="text-2xl font-black text-amber-900">
-                  {pendingNeeds.length}
+                  {pendingNeeds.length + pendingOffers.length}
                 </strong>
               </div>
               <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl">
@@ -564,7 +571,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             {/* Navigation Tabs */}
             <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 pb-2">
               {[
-                { key: "PENDING", label: `Pendientes (${pendingNeeds.length})`, icon: Clock },
+                { key: "PENDING", label: `Pendientes (${pendingNeeds.length + pendingOffers.length})`, icon: Clock },
                 { key: "REPORTS", label: `Reportes (${pendingReports.length})`, icon: Flag },
                 { key: "METRICS", label: "Métricas", icon: BarChart3 },
                 { key: "ALL", label: "Todas", icon: List },
@@ -592,15 +599,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             {activeTab === "PENDING" && (
               <div className="space-y-4">
                 <h4 className="font-bold text-slate-900 text-sm">
-                  Publicaciones pendientes ({pendingNeeds.length})
+                  Publicaciones pendientes ({pendingNeeds.length + pendingOffers.length})
                 </h4>
-                {pendingNeeds.length === 0 ? (
+                {pendingNeeds.length === 0 && pendingOffers.length === 0 ? (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
                     <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                     <p className="font-bold text-slate-800">¡Todo al día!</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    {/* Pending Needs */}
                     {pendingNeeds.map((need) => (
                       <div
                         key={need.id}
@@ -610,6 +618,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                           <div className="flex items-center gap-2">
                             <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]">
                               PENDIENTE
+                            </span>
+                            <span className="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
+                              NECESIDAD
                             </span>
                             <span className="font-bold text-slate-900 text-sm">
                               {need.title}
@@ -649,6 +660,64 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                   verificationStatus: "ARCHIVED",
                                   status: "CLOSED",
                                 });
+                              }
+                            }}
+                            className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Pending Offers */}
+                    {pendingOffers.map((offer: any) => (
+                      <div
+                        key={offer._id}
+                        className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]">
+                              PENDIENTE
+                            </span>
+                            <span className="bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">
+                              OFERTA
+                            </span>
+                            <span className="font-bold text-slate-900 text-sm">
+                              {offer.title}
+                            </span>
+                          </div>
+                          <p className="text-slate-700">{offer.description}</p>
+                          <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
+                            <span>📍 {offer.address} ({offer.neighborhood})</span>
+                            <span>👤 {offer.contactName}</span>
+                            <span>🕒 {formatTimeAgo(offer.createdAt)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={async () => {
+                              if (!authToken) return;
+                              try {
+                                await verifyOfferMutation({ token: authToken, offerId: offer._id, action: "verify" });
+                              } catch (e: any) {
+                                alert(e?.message || "Error al verificar oferta");
+                              }
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Aprobar
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!authToken) return;
+                              if (confirm(`¿Estás seguro de rechazar la oferta "${offer.title}"?`)) {
+                                try {
+                                  await verifyOfferMutation({ token: authToken, offerId: offer._id, action: "archive" });
+                                } catch (e: any) {
+                                  alert(e?.message || "Error al archivar oferta");
+                                }
                               }
                             }}
                             className="bg-rose-100 text-rose-800 font-bold px-2.5 py-1.5 rounded-lg text-xs"

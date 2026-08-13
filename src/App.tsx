@@ -120,7 +120,7 @@ function MainApp() {
     userLat: null,
     userLng: null,
     sortBy: "PRIORITY",
-    viewMode: "NEEDS",
+    viewMode: "ALL",
   });
 
   // Mobile view
@@ -169,6 +169,17 @@ function MainApp() {
 
   // --- CONVEX QUERIES ---
   const needCounts = useQuery(api.needs.countsByCity) || {};
+
+  // Always-on count queries (never skipped, for tab counters)
+  const allNeedsForCount = useQuery(api.needs.list, {
+    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+  });
+  const allOffersForCount = useQuery(api.offers.list, {
+    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+  });
+  const totalNeedsCount = allNeedsForCount?.length ?? 0;
+  const totalOffersCount = allOffersForCount?.length ?? 0;
+
   const rawNeeds = useQuery(api.needs.list,
     filters.viewMode === "OFFERS" ? "skip" : {
       cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
@@ -242,12 +253,31 @@ function MainApp() {
 
   // Update URL when opening/closing need detail
   const selectedNeedRef = useRef<Need | null>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
   const handleSelectNeed = (need: Need | null) => {
     selectedNeedRef.current = need;
     setSelectedNeed(need);
     if (need) {
       const cityId = need.cityId || selectedCityId;
       window.history.replaceState(null, '', `/${cityId}/${need.id}`);
+    } else {
+      window.history.replaceState(null, '', getCityPath(selectedCityId));
+    }
+  };
+
+  // Build shareable URL for an offer
+  const getOfferUrl = (offer: Offer) => {
+    const cityId = offer.cityId || selectedCityId;
+    const base = window.location.origin;
+    return `${base}/${cityId}/offer/${offer.id}`;
+  };
+
+  // Update URL when opening/closing offer detail
+  const handleSelectOffer = (offer: Offer | null) => {
+    setSelectedOffer(offer);
+    if (offer) {
+      const cityId = offer.cityId || selectedCityId;
+      window.history.replaceState(null, '', `/${cityId}/offer/${offer.id}`);
     } else {
       window.history.replaceState(null, '', getCityPath(selectedCityId));
     }
@@ -478,7 +508,10 @@ function MainApp() {
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
           setMobileView("MAP");
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // Scroll to main content area (past header + filters)
+          setTimeout(() => {
+            mainContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
         }}
         lastUpdated={lastUpdated}
         isOffline={isOffline}
@@ -515,13 +548,15 @@ function MainApp() {
             userLat: null,
             userLng: null,
             sortBy: "PRIORITY",
-            viewMode: "NEEDS",
+            viewMode: "ALL",
           })
         }
         onRequestLocation={handleRequestLocation}
         isLoadingLocation={isLoadingLocation}
-        totalResults={needs.length}
+        totalResults={needs.length + offers.length}
         selectedCityName={selectedCityId === ALL_VALLE_ID ? 'la zona' : VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'la zona'}
+        needsCount={totalNeedsCount}
+        offersCount={totalOffersCount}
       />
 
       {/* Mobile View Toggle Buttons */}
@@ -552,7 +587,7 @@ function MainApp() {
       </div>
 
       {/* Main Content Layout */}
-      <main className="flex-1 relative">
+      <main className="flex-1 relative" ref={mainContentRef}>
         {/* MAP — Full width background */}
         <div
           className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] ${
@@ -569,6 +604,7 @@ function MainApp() {
             onMapCenterChanged={handleMapCenterChanged}
             offers={offers}
             viewMode={filters.viewMode}
+            onSelectOffer={(offer) => handleSelectOffer(offer)}
           />
         </div>
 
@@ -675,7 +711,7 @@ function MainApp() {
                       userLat: null,
                       userLng: null,
                       sortBy: "PRIORITY",
-                      viewMode: "NEEDS",
+                      viewMode: "ALL",
                     })
                   }
                   className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
@@ -703,7 +739,7 @@ function MainApp() {
                   <OfferCard
                     key={offer.id}
                     offer={offer}
-                    onClick={() => setSelectedOffer(offer)}
+                    onClick={() => handleSelectOffer(offer)}
                   />
                 ))}
 
@@ -712,10 +748,6 @@ function MainApp() {
                   <>
                     {needs.length > 0 && (
                       <>
-                        <div className="flex items-center gap-2 pt-1">
-                          <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Necesidades</h4>
-                          <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{needs.length}</span>
-                        </div>
                         {needs.map((need) => (
                           <NeedCard
                             key={need.id}
@@ -731,15 +763,11 @@ function MainApp() {
                     )}
                     {offers.length > 0 && (
                       <>
-                        <div className="flex items-center gap-2 pt-2">
-                          <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">Ofertas</h4>
-                          <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{offers.length}</span>
-                        </div>
                         {offers.map((offer) => (
                           <OfferCard
                             key={offer.id}
                             offer={offer}
-                            onClick={() => setSelectedOffer(offer)}
+                            onClick={() => handleSelectOffer(offer)}
                           />
                         ))}
                       </>
@@ -835,7 +863,14 @@ function MainApp() {
       <OfferDetailModal
         offer={selectedOffer}
         isOpen={!!selectedOffer}
-        onClose={() => setSelectedOffer(null)}
+        onClose={() => handleSelectOffer(null)}
+        shareUrl={selectedOffer ? getOfferUrl(selectedOffer) : undefined}
+        isModeratorLoggedIn={isModeratorLoggedIn}
+        isAdmin={isAdminUser}
+        onAdminEditOffer={(_offer) => {
+          handleSelectOffer(null);
+          setIsAdminModalOpen(true);
+        }}
       />
 
       {/* Footer */}

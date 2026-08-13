@@ -129,17 +129,6 @@ export const Header: React.FC<HeaderProps> = ({
             needCounts={needCounts}
             className="w-full sm:w-52"
           />
-          <div className="hidden lg:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs mr-2">
-            <div>
-              <span className="text-slate-400 block text-[10px] font-semibold uppercase">Activos</span>
-              <strong className="text-indigo-600 text-sm font-black">{activeCount}</strong>
-            </div>
-            <div className="h-6 w-px bg-slate-200" />
-            <div>
-              <span className="text-slate-400 block text-[10px] font-semibold uppercase">Críticos</span>
-              <strong className="text-red-600 text-sm font-black">{criticalCount}</strong>
-            </div>
-          </div>
 
           <button
             onClick={onOpenCreateModal}
@@ -147,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="btn-create-need"
           >
             <PlusCircle className="w-4 h-4 text-slate-600" />
-            <span>Registrar Necesidad</span>
+            <span>Necesito Ayuda</span>
           </button>
 
           {/* Quiero Ayudar — Dropdown */}

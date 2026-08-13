@@ -11,6 +11,8 @@ interface FilterBarProps {
   isLoadingLocation: boolean;
   totalResults: number;
   selectedCityName?: string;
+  needsCount?: number;
+  offersCount?: number;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -21,6 +23,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   isLoadingLocation,
   totalResults,
   selectedCityName = 'la zona',
+  needsCount = 0,
+  offersCount = 0,
 }) => {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -29,13 +33,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const prioritiesList: Priority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
-  const viewModeOptions: { value: ViewMode; label: string }[] = [
-    { value: 'NEEDS', label: 'Necesidades' },
-    { value: 'OFFERS', label: 'Ofertas' },
-    { value: 'ALL', label: 'Todos' },
+  const viewModeOptions: { value: ViewMode; label: string; count?: number }[] = [
+    { value: 'ALL', label: 'Todos', count: needsCount + offersCount },
+    { value: 'NEEDS', label: 'Necesidades', count: needsCount },
+    { value: 'OFFERS', label: 'Ofertas', count: offersCount },
   ];
 
-  const currentViewMode = filters.viewMode ?? 'NEEDS';
+  const currentViewMode = filters.viewMode ?? 'ALL';
 
   const handleCategoryToggle = (cat: HelpCategory) => {
     let next: HelpCategory[];
@@ -69,7 +73,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 key={option.value}
                 onClick={() => onFilterChange({ viewMode: option.value })}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   currentViewMode === option.value
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
@@ -77,6 +81,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 aria-pressed={currentViewMode === option.value}
               >
                 {option.label}
+                {option.count != null && option.count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
+                    currentViewMode === option.value
+                      ? 'bg-slate-800 text-white'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {option.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>

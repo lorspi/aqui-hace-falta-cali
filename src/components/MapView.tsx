@@ -17,9 +17,10 @@ interface MapViewProps {
   isPickerMode?: boolean;
   pickerPosition?: { lat: number; lng: number } | null;
   onPickPosition?: (pos: { lat: number; lng: number }) => void;
-  // Offers support (rendered in task 6.1)
+  // Offers support
   offers?: Offer[];
   viewMode?: ViewMode;
+  onSelectOffer?: (offer: Offer) => void;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -35,11 +36,12 @@ export const MapView: React.FC<MapViewProps> = ({
   onPickPosition,
   offers,
   viewMode,
+  onSelectOffer,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Record<string, L.Marker>>({});
-  const offerMarkersRef = useRef<Record<string, L.CircleMarker>>({});
+  const offerMarkersRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
   const isFlyingRef = useRef(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
@@ -272,9 +274,9 @@ export const MapView: React.FC<MapViewProps> = ({
     // When ViewMode is "NEEDS", do NOT render offer markers
     if (viewMode === 'NEEDS' || !viewMode) return;
 
-    // Only render offers that are VERIFIED and AVAILABLE or PARTIALLY_AVAILABLE
+    // Only render offers that are VERIFIED or PENDING_VERIFICATION and AVAILABLE or PARTIALLY_AVAILABLE
     const visibleOffers = (offers || []).filter((offer) => {
-      if (offer.verificationStatus !== 'VERIFIED') return false;
+      if (offer.verificationStatus !== 'VERIFIED' && offer.verificationStatus !== 'PENDING_VERIFICATION') return false;
       if (offer.offerStatus !== 'AVAILABLE' && offer.offerStatus !== 'PARTIALLY_AVAILABLE') return false;
       // Skip offers with invalid/missing lat/lng
       if (
@@ -293,35 +295,93 @@ export const MapView: React.FC<MapViewProps> = ({
     });
 
     visibleOffers.forEach((offer) => {
-      const circleMarker = L.circleMarker([offer.latitude, offer.longitude], {
-        radius: 8,
-        fillColor: '#2563eb',
-        color: '#1d4ed8',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8,
-      }).addTo(map);
+      const customIcon = L.divIcon({
+        className: 'custom-map-pin',
+        html: `
+          <div style="
+            background-color: #2563eb;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+          ">
+            ${offer.categories.length}
+          </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
 
-      // Build popup HTML for offer
-      const catLabels = offer.categories
-        .map((c) => CATEGORY_LABELS[c]?.label || c)
-        .join(', ');
+      const marker = L.marker([offer.latitude, offer.longitude], { icon: customIcon }).addTo(map);
 
-      const contactInfo = offer.contactPhone || offer.contactWhatsapp || '';
+      // Build popup HTML matching need popup style
+      const catIcons = offer.categories
+        .slice(0, 3)
+        .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
+        .join(' ');
 
       const popupHtml = `
-        <div style="font-family: sans-serif; min-width: 180px; padding: 2px;">
-          <strong style="font-size: 13px; color: #0f172a; line-height: 1.3;">${offer.title}</strong><br/>
-          <span style="font-size: 11px; color: #334155;">${catLabels}</span><br/>
-          <span style="font-size: 11px; color: #1e40af;">📞 ${offer.contactName}${contactInfo ? ': ' + contactInfo : ''}</span>
+        <div style="font-family: sans-serif; min-width: 200px; padding: 2px;">
+          <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+            <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
+              OFERTA
+            </span>
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">${offer.neighborhood}</span>
+          </div>
+          <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
+            ${offer.title}
+          </h4>
+          <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
+            ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
+          </p>
+          <div style="margin-top: 6px;">
+            <button id="btn-popup-offer-${offer.id}" style="
+              width: 100%;
+              background-color: #2563eb;
+              color: white;
+              border: none;
+              padding: 6px;
+              border-radius: 6px;
+              font-size: 11px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+              Ver detalles →
+            </button>
+          </div>
         </div>
       `;
 
-      circleMarker.bindPopup(popupHtml);
+      marker.bindPopup(popupHtml);
 
-      offerMarkersRef.current[offer.id] = circleMarker;
+      marker.on('popupopen', () => {
+        const btn = document.getElementById(`btn-popup-offer-${offer.id}`);
+        if (btn) {
+          btn.onclick = () => { if (onSelectOffer) onSelectOffer(offer); };
+        }
+      });
+
+      // Double-tap opens detail directly
+      let lastTap = 0;
+      marker.on('click', () => {
+        const now = Date.now();
+        if (now - lastTap < 400) {
+          if (onSelectOffer) onSelectOffer(offer);
+        }
+        lastTap = now;
+      });
+
+      offerMarkersRef.current[offer.id] = marker as any;
     });
-  }, [offers, isPickerMode, viewMode, mapInitialized]);
+  }, [offers, isPickerMode, viewMode, mapInitialized, onSelectOffer]);
 
   // Center on Selected Need
   useEffect(() => {
