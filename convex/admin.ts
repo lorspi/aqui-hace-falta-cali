@@ -256,6 +256,7 @@ export const editNeed = mutation({
     description: v.optional(v.string()),
     address: v.optional(v.string()),
     neighborhood: v.optional(v.string()),
+    cityId: v.optional(v.string()),
     categories: v.optional(v.array(v.string())),
     placeType: v.optional(v.string()),
     contactName: v.optional(v.string()),
@@ -291,6 +292,7 @@ export const editNeed = mutation({
     if (args.description !== undefined) patch.description = args.description;
     if (args.address !== undefined) patch.address = args.address;
     if (args.neighborhood !== undefined) patch.neighborhood = args.neighborhood;
+    if (args.cityId !== undefined) patch.cityId = args.cityId;
     if (args.categories !== undefined) patch.categories = args.categories;
     if (args.placeType !== undefined) patch.placeType = args.placeType;
     if (args.contactName !== undefined) patch.contactName = args.contactName;

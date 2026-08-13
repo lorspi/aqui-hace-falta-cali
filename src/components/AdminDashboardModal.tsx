@@ -35,6 +35,7 @@ import {
 } from "../utils/formatters";
 import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
+import { CityCombobox } from "./CityCombobox";
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -103,6 +104,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editDescription, setEditDescription] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editNeighborhood, setEditNeighborhood] = useState("");
+  const [editCityId, setEditCityId] = useState("cali");
   const [editContactName, setEditContactName] = useState("");
   const [editContactPhone, setEditContactPhone] = useState("");
   const [editContactWhatsapp, setEditContactWhatsapp] = useState("");
@@ -297,6 +299,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditDescription(need.description);
     setEditAddress(need.address);
     setEditNeighborhood(need.neighborhood);
+    setEditCityId(need.cityId || "cali");
     setEditContactName(need.contactName);
     setEditContactPhone(need.contactPhone || "");
     setEditContactWhatsapp(need.contactWhatsapp || "");
@@ -334,6 +337,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         description: editDescription,
         address: editAddress,
         neighborhood: editNeighborhood,
+        cityId: editCityId,
         contactName: editContactName,
         contactPhone: editContactPhone || undefined,
         contactWhatsapp: editContactWhatsapp || undefined,
@@ -1232,8 +1236,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     {/* Section 2: Location */}
                     <div className="space-y-3">
                       <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-                        2. ¿Dónde está ubicado? (Cali)
+                        2. ¿Dónde está ubicado?
                       </h3>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio</label>
+                        <CityCombobox
+                          value={editCityId}
+                          onChange={setEditCityId}
+                        />
+                      </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
