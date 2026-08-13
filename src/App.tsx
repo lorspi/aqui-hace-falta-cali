@@ -754,7 +754,7 @@ function MainApp() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-3 overflow-y-auto md:flex-1 max-h-[calc(100vh-280px)] pr-1 cards-scroll">
+              <div className="space-y-3 md:overflow-y-auto md:flex-1 md:max-h-[calc(100vh-280px)] md:pr-1 cards-scroll">
                 {/* ViewMode: NEEDS — only needs */}
                 {filters.viewMode === "NEEDS" && needs.map((need) => (
                   <NeedCard
