@@ -11,5 +11,5 @@ coverage/
 
 # Convex
 .env.local
+.env.production
 convex/_generated/
-notas.md
