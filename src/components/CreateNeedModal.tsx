@@ -202,7 +202,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           <div>
             <h2 className="text-xl font-black text-slate-900">Registrar punto de necesidad</h2>
             <p className="text-xs text-slate-500">
-              Registra una oportunidad de ayuda o comunidad afectada en Cali.
+              Registra una oportunidad de ayuda o comunidad afectada en tu ciudad.
             </p>
           </div>
           <button

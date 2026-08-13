@@ -72,10 +72,18 @@ export default function App() {
 function MainApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Parse URL: /:cityId or /:cityId/:needId
+  // Parse URL: /:cityId or /:cityId/:needId or /:cityId/offer/:offerId
   const [initialNeedId] = useState<string | null>(() => {
     const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-    return parts.length >= 2 ? parts[1] : null;
+    // Skip if this is an offer URL (/:cityId/offer/:offerId)
+    if (parts.length >= 3 && parts[1] === 'offer') return null;
+    return parts.length >= 2 && parts[1] !== 'offer' ? parts[1] : null;
+  });
+
+  const [initialOfferId] = useState<string | null>(() => {
+    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
+    if (parts.length >= 3 && parts[1] === 'offer') return parts[2];
+    return null;
   });
 
   // Selected city/municipality — read initial value from URL path
@@ -263,6 +271,19 @@ function MainApp() {
       handleSelectNeed({ id: _id, ...rest } as Need);
     }
   }, [initialNeedId, needFromUrl]);
+
+  // Open offer from URL on initial load
+  const offerFromUrl = useQuery(
+    api.offers.getById,
+    initialOfferId ? { id: initialOfferId as Id<"offers"> } : "skip"
+  );
+
+  useEffect(() => {
+    if (initialOfferId && offerFromUrl && !selectedOffer) {
+      const { _id, _creationTime, updates, ...rest } = offerFromUrl as any;
+      handleSelectOffer({ id: _id, ...rest } as Offer);
+    }
+  }, [initialOfferId, offerFromUrl]);
 
   // Update URL when opening/closing need detail
   const selectedNeedRef = useRef<Need | null>(null);
@@ -535,7 +556,7 @@ function MainApp() {
         needCounts={combinedCounts}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[280px] sm:h-[200px] md:h-[116px]" />
+      <div className="h-[240px] sm:h-[170px] md:h-[80px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer

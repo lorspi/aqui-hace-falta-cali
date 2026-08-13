@@ -69,34 +69,6 @@ export const Header: React.FC<HeaderProps> = ({
         visible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      {/* Top emergency status strip */}
-      <div className="bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 font-black px-2 py-0.5 rounded text-[10px] tracking-widest uppercase italic border border-red-200">
-            <Radio className="w-3 h-3 text-red-600 animate-pulse" />
-            Valle del Cauca · Emergencia Activa
-          </span>
-          <span className="text-slate-300 hidden sm:inline">•</span>
-          <span className="text-slate-500 font-medium text-[11px] uppercase tracking-wider hidden sm:inline">
-            Terremoto Colombia 2026
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 text-slate-500">
-          {isOffline && (
-            <span className="bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1 text-[11px] font-semibold">
-              <AlertTriangle className="w-3 h-3 text-amber-600" />
-              Modo sin conexión
-            </span>
-          )}
-          <span className="hidden sm:flex items-center gap-1 text-[11px] text-slate-500 font-medium uppercase">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            Actualizado: <strong className="text-slate-800 font-bold">{lastUpdated}</strong>
-          </span>
-        </div>
-        </div>
-      </div>
 
       {/* Main Header navigation bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -112,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+              <p className="text-[0.65rem] font-semibold text-slate-500 uppercase tracking-widest">
                 Plataforma Ciudadana de Coordinación de Ayuda
               </p>
             </div>

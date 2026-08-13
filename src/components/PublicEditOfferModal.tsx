@@ -374,7 +374,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               </div>
 
               {resources.map((res, idx) => (
-                <div key={res.id || idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center gap-2">
+                <div key={res.id || idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2">
                   <select
                     value={res.type}
                     onChange={(e) => {
@@ -382,7 +382,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                       updated[idx] = { ...updated[idx], type: e.target.value as HelpCategory };
                       setResources(updated);
                     }}
-                    className="p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                    className="p-1.5 bg-white border border-slate-300 rounded text-xs w-full sm:w-auto"
                   >
                     {categoriesList.map((c) => (
                       <option key={c} value={c}>
@@ -399,8 +399,8 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                       updated[idx] = { ...updated[idx], description: e.target.value };
                       setResources(updated);
                     }}
-                    placeholder="Descripción (ej: Cajas de agua, Voluntarios...)"
-                    className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs min-w-0"
+                    placeholder="Descripción"
+                    className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs min-w-[100px]"
                   />
 
                   <input
@@ -413,7 +413,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                       setResources(updated);
                     }}
                     placeholder="Cant."
-                    className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                    className="w-14 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
                   <input
@@ -426,7 +426,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                       setResources(updated);
                     }}
                     placeholder="Cubiertos"
-                    className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                    className="w-14 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
                   <input
@@ -438,13 +438,13 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                       setResources(updated);
                     }}
                     placeholder="Unidad"
-                    className="w-18 p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                    className="w-20 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
                   <button
                     type="button"
                     onClick={() => handleRemoveResource(idx)}
-                    className="text-rose-600 hover:text-rose-800 p-1 shrink-0"
+                    className="text-rose-600 hover:text-rose-800 p-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
