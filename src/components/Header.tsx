@@ -103,72 +103,75 @@ export const Header: React.FC<HeaderProps> = ({
             className="w-full sm:w-52"
           />
 
-          <button
-            onClick={onOpenCreateModal}
-            className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-            id="btn-create-need"
-          >
-            <PlusCircle className="w-4 h-4 text-slate-600" />
-            <span>Necesito Ayuda</span>
-          </button>
-
-          {/* Quiero Ayudar — Dropdown */}
-          <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
+          {/* Action buttons — hidden on mobile, shown on desktop */}
+          <div className="hidden md:flex items-center gap-2.5">
             <button
-              onClick={() => setShowHelpMenu(!showHelpMenu)}
-              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-              id="btn-quiero-ayudar"
+              onClick={onOpenCreateModal}
+              className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+              id="btn-create-need"
             >
-              <HeartHandshake className="w-4 h-4" />
-              <span>Quiero Ayudar</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelpMenu ? 'rotate-180' : ''}`} />
+              <PlusCircle className="w-4 h-4 text-slate-600" />
+              <span>Necesito Ayuda</span>
             </button>
 
-            {showHelpMenu && (
-              <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <button
-                  onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                >
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div>
-                    <span className="font-semibold block">Ver necesidades</span>
-                    <span className="text-[11px] text-slate-500">Explora el mapa de necesidades</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { setShowHelpMenu(false); onOpenCreateOfferModal(); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                >
-                  <Heart className="w-4 h-4 text-blue-600 shrink-0" />
-                  <div>
-                    <span className="font-semibold block">Publicar ayuda</span>
-                    <span className="text-[11px] text-slate-500">Registra recursos disponibles</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { setShowHelpMenu(false); window.location.href = '/moderador'; }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                >
-                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <div>
-                    <span className="font-semibold block">Ser moderador</span>
-                    <span className="text-[11px] text-slate-500">Verifica información</span>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
+            {/* Quiero Ayudar — Dropdown */}
+            <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
+              <button
+                onClick={() => setShowHelpMenu(!showHelpMenu)}
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                id="btn-quiero-ayudar"
+              >
+                <HeartHandshake className="w-4 h-4" />
+                <span>Quiero Ayudar</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelpMenu ? 'rotate-180' : ''}`} />
+              </button>
 
-          <button
-            onClick={onOpenAdminModal}
-            className="w-full sm:w-auto px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
-            title="Panel de moderación y verificación"
-            id="btn-admin-panel"
-          >
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-            <span>Moderación</span>
-          </button>
+              {showHelpMenu && (
+                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <button
+                    onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-semibold block">Ver necesidades</span>
+                      <span className="text-[11px] text-slate-500">Explora el mapa de necesidades</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowHelpMenu(false); onOpenCreateOfferModal(); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Heart className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div>
+                      <span className="font-semibold block">Publicar ayuda</span>
+                      <span className="text-[11px] text-slate-500">Registra recursos disponibles</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowHelpMenu(false); window.location.href = '/moderador'; }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div>
+                      <span className="font-semibold block">Ser moderador</span>
+                      <span className="text-[11px] text-slate-500">Verifica información</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onOpenAdminModal}
+              className="w-full sm:w-auto px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
+              title="Panel de moderación y verificación"
+              id="btn-admin-panel"
+            >
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              <span>Moderación</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>

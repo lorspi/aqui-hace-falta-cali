@@ -32,6 +32,7 @@ import { PublicEditModal } from "./components/PublicEditModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { AdminDashboardModal } from "./components/AdminDashboardModal";
+import { MobileBottomBar } from "./components/MobileBottomBar";
 import { ModeradorPage } from "./components/ModeradorPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
@@ -556,7 +557,7 @@ function MainApp() {
         needCounts={combinedCounts}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[240px] sm:h-[170px] md:h-[80px]" />
+      <div className="h-[100px] sm:h-[110px] md:h-[80px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
@@ -593,37 +594,12 @@ function MainApp() {
         offersCount={totalOffersCount}
       />
 
-      {/* Mobile View Toggle Buttons */}
-      <div className="md:hidden bg-white border-b border-slate-200 p-2 z-30 flex items-center justify-center gap-2">
-        <button
-          onClick={() => setMobileView("LIST")}
-          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-            mobileView === "LIST"
-              ? "bg-slate-900 text-white shadow-xs"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-          }`}
-        >
-          <List className="w-4 h-4" />
-          <span>Lista ({needs.length})</span>
-        </button>
-
-        <button
-          onClick={() => setMobileView("MAP")}
-          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-            mobileView === "MAP"
-              ? "bg-slate-900 text-white shadow-xs"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-          }`}
-        >
-          <Map className="w-4 h-4" />
-          <span>Mapa</span>
-        </button>
-      </div>
 
       {/* Main Content Layout */}
       <main className="flex-1 relative" ref={mainContentRef}>
         {/* MAP — Full width background */}
         <div
+          id="mobile-map-anchor"
           className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] ${
             mobileView === "MAP" ? "block" : "hidden md:block"
           }`}
@@ -644,6 +620,7 @@ function MainApp() {
 
         {/* LIST PANEL — Constrained to max-w-7xl, aligned right */}
         <div
+          id="mobile-list-anchor"
           className={`${
             mobileView === "LIST" ? "block" : "hidden md:block"
           } md:absolute md:inset-0 md:pointer-events-none z-20`}
@@ -675,7 +652,7 @@ function MainApp() {
             </div>
 
             {/* Cards panel — aligned right */}
-            <div className="p-3 md:p-0 md:absolute md:top-3 md:right-0 md:bottom-3 md:w-[380px] lg:w-[420px] md:pointer-events-auto">
+            <div className="p-3 pb-20 md:pb-0 md:p-0 md:absolute md:top-3 md:right-0 md:bottom-3 md:w-[380px] lg:w-[420px] md:pointer-events-auto">
           <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
             <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
@@ -926,6 +903,25 @@ function MainApp() {
       </div>
 
       {/* Footer — temporarily removed (file preserved for future use) */}
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="md:hidden">
+        <MobileBottomBar
+          mobileView={mobileView}
+          onSetMobileView={setMobileView}
+          onOpenCreateModal={() => setIsCreateModalOpen(true)}
+          onOpenCreateOfferModal={() => setShowCreateOffer(true)}
+          onOpenAdminModal={() => setIsAdminModalOpen(true)}
+          onScrollToMap={() => {
+            setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
+            setMobileView("MAP");
+            setTimeout(() => {
+              mainContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }}
+          listCount={needs.length + offers.length}
+        />
+      </div>
     </div>
   );
 }
