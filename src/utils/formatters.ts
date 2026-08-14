@@ -135,7 +135,11 @@ export function formatTimeAgo(isoString: string): string {
 }
 
 export function buildWhatsappLink(phone: string, title: string, categories: HelpCategory[]): string {
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  let cleanPhone = phone.replace(/[^0-9]/g, '');
+  // Add Colombia country code if not already present
+  if (cleanPhone.length === 10 && cleanPhone.startsWith('3')) {
+    cleanPhone = '57' + cleanPhone;
+  }
   const catNames = categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ');
   const message = `Hola, vi en la plataforma 'Aquí Hace Falta' la necesidad: "${title}" (${catNames}). Me gustaría ofrecer mi ayuda.`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

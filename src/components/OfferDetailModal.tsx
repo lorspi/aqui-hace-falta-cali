@@ -419,7 +419,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
             <div className="flex flex-wrap gap-2">
               {offer.contactWhatsapp && (
                 <a
-                  href={`https://wa.me/${offer.contactWhatsapp}`}
+                  href={`https://wa.me/${offer.contactWhatsapp.replace(/[^0-9]/g, '').replace(/^(3\d{9})$/, '57$1')}`}
                   target="_blank"
                   rel="noreferrer"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all"
