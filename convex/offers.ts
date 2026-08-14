@@ -265,6 +265,14 @@ export const list = query({
   },
 });
 
+// List ALL offers (admin, no filters applied)
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("offers").collect();
+  },
+});
+
 // Count offers per city
 export const countsByCity = query({
   args: {},
@@ -325,6 +333,8 @@ export const verify = mutation({
       newVerificationStatus = "VERIFIED";
     } else if (args.action === "archive") {
       newVerificationStatus = "ARCHIVED";
+    } else if (args.action === "publish") {
+      newVerificationStatus = "PENDING_VERIFICATION";
     } else {
       throw new Error(`Estado inválido: '${args.action}'`);
     }
@@ -341,7 +351,7 @@ export const verify = mutation({
       action: "MODERATE_OFFER",
       adminEmail: user.email,
       timestamp: now,
-      details: `Oferta "${offer.title}" ${args.action === "verify" ? "verificada" : "archivada"} por ${user.name}.`,
+      details: `Oferta "${offer.title}" ${args.action === "verify" ? "verificada" : args.action === "archive" ? "archivada" : "publicada"} por ${user.name}.`,
     });
 
     return args.offerId;

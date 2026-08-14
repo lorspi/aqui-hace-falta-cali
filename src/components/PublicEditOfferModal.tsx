@@ -45,7 +45,11 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const [geocodeError, setGeocodeError] = useState('');
 
   const updateFields = useMutation(api.offers.updateFields);
+  const archiveOfferMutation = useMutation(api.offers.verify);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
+
+  const [isArchived, setIsArchived] = useState(false);
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   // Pre-fill from offer
   useEffect(() => {
@@ -80,6 +84,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       setEditReason('');
       setSubmitted(false);
       setShowPickerMap(false);
+      setIsArchived(offer.verificationStatus === 'ARCHIVED');
     }
   }, [offer]);
 
@@ -180,6 +185,24 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     }
   };
 
+  const handleArchive = async () => {
+    if (!authToken || !offer) return;
+    if (!confirm('¿Archivar esta oferta? Se ocultará de la vista pública.')) return;
+    try {
+      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "archive" });
+      setIsArchived(true);
+    } catch (e: any) { alert(e?.message || 'Error al archivar'); }
+  };
+
+  const handlePublish = async () => {
+    if (!authToken || !offer) return;
+    if (!confirm('¿Publicar esta oferta? Volverá a ser visible como pendiente de verificación.')) return;
+    try {
+      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "publish" });
+      setIsArchived(false);
+    } catch (e: any) { alert(e?.message || 'Error al publicar'); }
+  };
+
   if (submitted) {
     return (
       <div
@@ -225,6 +248,12 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-5 text-xs text-slate-800">
+          {isArchived && (
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 font-medium">
+              📁 Esta oferta está archivada y no es visible públicamente.
+            </div>
+          )}
+          <fieldset disabled={isArchived} className="space-y-5">
           {/* Section 1: Title & Description */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
@@ -573,6 +602,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               </span>
             </div>
           </div>
+          </fieldset>
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
@@ -583,6 +613,28 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
             >
               Cancelar
             </button>
+
+            {/* Archive / Publish button */}
+            {authToken && (
+              isArchived ? (
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  className="bg-emerald-100 text-emerald-800 font-bold px-4 py-2 rounded-xl text-xs"
+                >
+                  Publicar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  className="bg-rose-100 text-rose-800 font-bold px-4 py-2 rounded-xl text-xs"
+                >
+                  Archivar
+                </button>
+              )
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting}

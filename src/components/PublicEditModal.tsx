@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAction } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
@@ -48,8 +48,12 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [geocodeError, setGeocodeError] = useState('');
 
   const submitEdit = useAction(api.publicEditAction.submitEdit);
+  const archiveMutation = useMutation(api.admin.verifyNeed);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
+
+  const [isArchived, setIsArchived] = useState(false);
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -94,6 +98,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       setTurnstileToken(isModerator ? 'moderator-bypass' : null);
       setSubmitted(false);
       setShowPickerMap(false);
+      setIsArchived(need.verificationStatus === 'ARCHIVED');
     }
   }, [need]);
 
@@ -200,6 +205,24 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     }
   };
 
+  const handleArchive = async () => {
+    if (!authToken || !need) return;
+    if (!confirm('¿Archivar esta publicación? Se ocultará de la vista pública.')) return;
+    try {
+      await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "ARCHIVED", status: "CLOSED" });
+      setIsArchived(true);
+    } catch (e: any) { alert(e?.message || 'Error al archivar'); }
+  };
+
+  const handlePublish = async () => {
+    if (!authToken || !need) return;
+    if (!confirm('¿Publicar esta publicación? Volverá a ser visible como pendiente de verificación.')) return;
+    try {
+      await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "PENDING_VERIFICATION" });
+      setIsArchived(false);
+    } catch (e: any) { alert(e?.message || 'Error al publicar'); }
+  };
+
   if (submitted) {
     return (
       <div
@@ -245,6 +268,12 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-5 text-xs text-slate-800">
+          {isArchived && (
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 font-medium">
+              📁 Esta publicación está archivada y no es visible públicamente.
+            </div>
+          )}
+          <fieldset disabled={isArchived} className="space-y-5">
           {/* Section 1: Title & Place Type */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
@@ -629,6 +658,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
               </span>
             </div>
           </div>
+          </fieldset>
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
@@ -639,6 +669,28 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
             >
               Cancelar
             </button>
+
+            {/* Archive / Publish button */}
+            {authToken && (
+              isArchived ? (
+                <button
+                  type="button"
+                  onClick={handlePublish}
+                  className="bg-emerald-100 text-emerald-800 font-bold px-4 py-2 rounded-xl text-xs"
+                >
+                  Publicar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  className="bg-rose-100 text-rose-800 font-bold px-4 py-2 rounded-xl text-xs"
+                >
+                  Archivar
+                </button>
+              )
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting || (!isModerator && !turnstileToken)}

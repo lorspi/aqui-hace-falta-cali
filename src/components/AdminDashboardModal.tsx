@@ -92,7 +92,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [adminSearch, setAdminSearch] = useState("");
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<string>("ALL");
   const [adminVerificationFilter, setAdminVerificationFilter] = useState<string>("ALL");
-  const [adminStatusFilter, setAdminStatusFilter] = useState<string>("ALL");
   const [adminTypeFilter, setAdminTypeFilter] = useState<string>("ALL"); // "ALL" | "NEEDS" | "OFFERS"
   const [adminEditOfferId, setAdminEditOfferId] = useState<string | null>(null);
 
@@ -151,13 +150,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     authToken && currentUser ? { token: authToken } : "skip"
   );
 
-  // Fetch offers for moderation
-  const rawOffers = useQuery(api.offers.list, {});
+  // Fetch offers for moderation (ALL offers including archived)
+  const rawOffers = useQuery(api.offers.listAll, {});
   const pendingOffers = (rawOffers || []).filter(
     (o: any) => o.verificationStatus === "PENDING_VERIFICATION"
   );
 
   // Override props with live data when authenticated
+  const liveNeeds = adminData
+    ? adminData.needs.map((n: any) => ({ ...n, id: n._id }))
+    : needs;
   const liveReports = adminData
     ? adminData.reports.map((r: any) => ({ ...r, id: r._id }))
     : reports;
@@ -889,25 +891,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <option value="VERIFIED">✓ Verificadas</option>
                       <option value="PENDING_VERIFICATION">◷ Pendientes</option>
                       <option value="REPORTED">⚠️ Reportadas</option>
+                      <option value="ARCHIVED">📁 Archivadas</option>
                     </select>
-                    <select
-                      value={adminStatusFilter}
-                      onChange={(e) => setAdminStatusFilter(e.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
-                    >
-                      <option value="ALL">Todos los estados</option>
-                      <option value="NEED_HELP_NOW">Necesita ayuda</option>
-                      <option value="RECEIVING_HELP">Recibiendo ayuda</option>
-                      <option value="PARTIALLY_COVERED">Parcialmente cubierta</option>
-                      <option value="COVERED">Cubierta</option>
-                      <option value="CLOSED">Cerrada</option>
-                      <option value="AVAILABLE">Disponible (oferta)</option>
-                      <option value="PARTIALLY_AVAILABLE">Parcialmente disponible</option>
-                      <option value="EXHAUSTED">Agotado (oferta)</option>
-                    </select>
-                    {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminStatusFilter !== "ALL" || adminTypeFilter !== "ALL") && (
+                    {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminTypeFilter !== "ALL") && (
                       <button
-                        onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminStatusFilter("ALL"); setAdminTypeFilter("ALL"); }}
+                        onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminTypeFilter("ALL"); }}
                         className="text-xs text-rose-600 font-bold hover:underline"
                       >
                         Limpiar filtros
@@ -920,7 +908,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   // Build unified list of needs + offers
                   type AdminListItem = { id: string; type: 'NEED' | 'OFFER'; title: string; neighborhood: string; address: string; priority?: string; verificationStatus: string; status: string; updatedAt: string };
 
-                  const needItems: AdminListItem[] = (adminTypeFilter === "OFFERS" ? [] : needs).map((n) => ({
+                  const needItems: AdminListItem[] = (adminTypeFilter === "OFFERS" ? [] : liveNeeds).map((n: any) => ({
                     id: n.id, type: 'NEED' as const, title: n.title, neighborhood: n.neighborhood, address: n.address,
                     priority: n.priority, verificationStatus: n.verificationStatus, status: n.status, updatedAt: n.updatedAt,
                   }));
@@ -937,7 +925,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     }
                     if (adminPriorityFilter !== "ALL" && item.priority !== adminPriorityFilter) return false;
                     if (adminVerificationFilter !== "ALL" && item.verificationStatus !== adminVerificationFilter) return false;
-                    if (adminStatusFilter !== "ALL" && item.status !== adminStatusFilter) return false;
                     return true;
                   }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
@@ -1018,14 +1005,26 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                     Verificar
                                   </button>
                                 )}
+                                {item.verificationStatus === 'ARCHIVED' && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm('¿Publicar esta necesidad? Volverá a ser visible.')) {
+                                        handleVerifyWithToken(item.id, { verificationStatus: "PENDING_VERIFICATION" });
+                                      }
+                                    }}
+                                    className="text-xs font-bold text-emerald-600 hover:underline"
+                                  >
+                                    Publicar
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => { const need = needs.find(n => n.id === item.id); if (need) openEditModal(need, "full"); }}
+                                  onClick={() => { const need = liveNeeds.find((n: any) => n.id === item.id); if (need) openEditModal(need, "full"); }}
                                   className="text-xs font-bold text-indigo-600 hover:underline"
                                 >
                                   Editar
                                 </button>
                                 <button
-                                  onClick={() => { const need = needs.find(n => n.id === item.id); if (need) openEditModal(need, "priority"); }}
+                                  onClick={() => { const need = liveNeeds.find((n: any) => n.id === item.id); if (need) openEditModal(need, "priority"); }}
                                   className="text-xs font-bold text-amber-600 hover:underline"
                                 >
                                   Prioridad
@@ -1049,7 +1048,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             )}
                             {item.type === 'OFFER' && (
                               <>
-                                {item.verificationStatus !== 'VERIFIED' && (
+                                {item.verificationStatus !== 'VERIFIED' && item.verificationStatus !== 'ARCHIVED' && (
                                   <button
                                     onClick={async () => {
                                       if (!authToken) return;
@@ -1059,6 +1058,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                     className="text-xs font-bold text-emerald-600 hover:underline"
                                   >
                                     Verificar
+                                  </button>
+                                )}
+                                {item.verificationStatus === 'ARCHIVED' && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!authToken) return;
+                                      if (confirm('¿Publicar esta oferta? Volverá a ser visible.')) {
+                                        try { await verifyOfferMutation({ token: authToken, offerId: item.id as any, action: "publish" }); }
+                                        catch (e: any) { alert(e?.message || "Error"); }
+                                      }
+                                    }}
+                                    className="text-xs font-bold text-emerald-600 hover:underline"
+                                  >
+                                    Publicar
                                   </button>
                                 )}
                                 <button
@@ -1743,6 +1756,38 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     >
                       Cancelar
                     </button>
+
+                    {/* Archive / Publish button */}
+                    {editingNeed.verificationStatus === 'ARCHIVED' ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('¿Publicar esta necesidad? Volverá a ser visible como pendiente de verificación.')) return;
+                          try {
+                            await handleVerifyWithToken(editingNeed.id, { verificationStatus: "PENDING_VERIFICATION" });
+                            setEditingNeed(null);
+                          } catch (e: any) { alert(e?.message || 'Error al publicar'); }
+                        }}
+                        className="bg-emerald-100 text-emerald-800 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5"
+                      >
+                        Publicar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('¿Archivar esta publicación? Se ocultará de la vista pública.')) return;
+                          try {
+                            await handleVerifyWithToken(editingNeed.id, { verificationStatus: "ARCHIVED", status: "CLOSED" });
+                            setEditingNeed(null);
+                          } catch (e: any) { alert(e?.message || 'Error al archivar'); }
+                        }}
+                        className="bg-rose-100 text-rose-800 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5"
+                      >
+                        Archivar
+                      </button>
+                    )}
+
                     <button
                       onClick={handleSaveEdit}
                       className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2"
