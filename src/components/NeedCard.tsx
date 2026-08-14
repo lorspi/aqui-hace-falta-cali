@@ -36,6 +36,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   userLng,
   isSelected = false,
 }) => {
+  const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
   const verificationInfo = VERIFICATION_CONFIG[need.verificationStatus] || VERIFICATION_CONFIG.PENDING_VERIFICATION;
   const placeTypeLabel = PLACE_TYPE_LABELS[need.placeType] || 'Lugar de ayuda';
@@ -49,18 +50,24 @@ export const NeedCard: React.FC<NeedCardProps> = ({
     <div
       onClick={() => onSelect(need)}
       className={`bg-white rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between hover:shadow-md ${
-        priorityInfo.borderClass
+        isCollectionCenter ? 'border-l-4 border-l-purple-500 border-slate-200' : priorityInfo.borderClass
       } ${isSelected ? 'ring-2 ring-slate-900 border-slate-900 shadow-md' : 'border-slate-200'}`}
       id={`need-card-${need.id}`}
     >
       {/* Card Header & Badges */}
       <div className="p-5 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
-          <span
-            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
-          >
-            {priorityInfo.label}
-          </span>
+          {isCollectionCenter ? (
+            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+              Centro de Acopio
+            </span>
+          ) : (
+            <span
+              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
+            >
+              {priorityInfo.label}
+            </span>
+          )}
 
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">

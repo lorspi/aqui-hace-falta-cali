@@ -292,6 +292,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             {/* Priority selector */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">Nivel de prioridad</label>
+              {placeType === 'CENTRO_ACOPIO' ? (
+                <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 font-semibold">
+                  🟣 Los centros de acopio no requieren nivel de prioridad.
+                </p>
+              ) : (
               <div className="flex flex-wrap gap-2">
                 {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
                   const config = PRIORITY_CONFIG[p];
@@ -313,9 +318,12 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   );
                 })}
               </div>
+              )}
+              {placeType !== 'CENTRO_ACOPIO' && (
               <p className="text-[11px] text-slate-500 mt-1">
                 {PRIORITY_CONFIG[priority]?.explanation || ''}
               </p>
+              )}
             </div>
           </div>
 

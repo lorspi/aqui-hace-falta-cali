@@ -324,6 +324,11 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Prioridad</label>
+                {placeType === 'CENTRO_ACOPIO' ? (
+                  <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 font-semibold">
+                    🟣 Los centros de acopio no requieren nivel de prioridad.
+                  </p>
+                ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
                     const config = PRIORITY_CONFIG[p];
@@ -345,6 +350,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                     );
                   })}
                 </div>
+                )}
               </div>
             </div>
           </div>

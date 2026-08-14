@@ -76,6 +76,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
   if (!need) return null;
 
+  const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
   const verificationInfo = VERIFICATION_CONFIG[need.verificationStatus] || VERIFICATION_CONFIG.PENDING_VERIFICATION;
   const placeTypeLabel = PLACE_TYPE_LABELS[need.placeType] || 'Lugar de ayuda';
@@ -108,9 +109,15 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
         <div className="p-5 border-b border-slate-200 flex items-start justify-between gap-3 sticky top-0 bg-white/95 backdrop-blur-xs z-10">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[11px] ${priorityInfo.badgeClass}`}>
-                {priorityInfo.dot} Prioridad {priorityInfo.label}
-              </span>
+              {isCollectionCenter ? (
+                <span className="px-2.5 py-0.5 rounded-full font-bold uppercase text-[11px] bg-purple-50 text-purple-700 border border-purple-200">
+                  🟣 Centro de Acopio
+                </span>
+              ) : (
+                <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[11px] ${priorityInfo.badgeClass}`}>
+                  {priorityInfo.dot} Prioridad {priorityInfo.label}
+                </span>
+              )}
               <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full font-semibold border border-slate-200">
                 {placeTypeLabel}
               </span>

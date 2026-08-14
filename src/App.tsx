@@ -612,7 +612,7 @@ function MainApp() {
             <div className="hidden md:block md:absolute md:bottom-3 md:left-0 md:pointer-events-auto">
               <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
                 <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
-                  Prioridad de ayuda
+                  Leyenda del mapa
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />
@@ -629,6 +629,14 @@ function MainApp() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
                   <span className="text-slate-700">Baja</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
+                  <span className="text-slate-700">Centro de acopio</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                  <span className="text-slate-700">Oferta de ayuda</span>
                 </div>
               </div>
             </div>

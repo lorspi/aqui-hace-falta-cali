@@ -162,14 +162,23 @@ export const MapView: React.FC<MapViewProps> = ({
       if (!need.latitude || !need.longitude || isNaN(need.latitude) || isNaN(need.longitude)) return;
 
       const priority = need.priority || 'MEDIUM';
-      const colorHex =
-        priority === 'CRITICAL'
-          ? '#dc2626'
-          : priority === 'HIGH'
-          ? '#ea580c'
-          : priority === 'MEDIUM'
-          ? '#d97706'
-          : '#059669';
+      const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
+      const colorHex = isCollectionCenter
+        ? '#7c3aed'
+        : priority === 'CRITICAL'
+        ? '#dc2626'
+        : priority === 'HIGH'
+        ? '#ea580c'
+        : priority === 'MEDIUM'
+        ? '#d97706'
+        : '#059669';
+
+      // SVG icon for collection center (package-open from Lucide)
+      const collectionCenterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36"/></svg>`;
+
+      const innerContent = isCollectionCenter
+        ? collectionCenterSvg
+        : priority === 'CRITICAL' ? '!' : String(need.categories.length);
 
       const customIcon = L.divIcon({
         className: 'custom-map-pin',
@@ -189,7 +198,7 @@ export const MapView: React.FC<MapViewProps> = ({
             font-weight: bold;
             cursor: pointer;
           ">
-            ${priority === 'CRITICAL' ? '!' : need.categories.length}
+            ${innerContent}
           </div>
         `,
         iconSize: [36, 36],
@@ -204,11 +213,13 @@ export const MapView: React.FC<MapViewProps> = ({
         .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
         .join(' ');
 
+      const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
+
       const popupHtml = `
         <div style="font-family: sans-serif; min-width: 200px; padding: 2px;">
           <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
             <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
-              ${PRIORITY_CONFIG[priority].label.toUpperCase()}
+              ${priorityLabel}
             </span>
             <span style="font-size: 11px; color: #64748b; font-weight: 600;">${need.neighborhood}</span>
           </div>
@@ -295,6 +306,9 @@ export const MapView: React.FC<MapViewProps> = ({
     });
 
     visibleOffers.forEach((offer) => {
+      // SVG icon for offers (heart-handshake from Lucide)
+      const heartHandshakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/></svg>`;
+
       const customIcon = L.divIcon({
         className: 'custom-map-pin',
         html: `
@@ -313,7 +327,7 @@ export const MapView: React.FC<MapViewProps> = ({
             font-weight: bold;
             cursor: pointer;
           ">
-            ${offer.categories.length}
+            ${heartHandshakeSvg}
           </div>
         `,
         iconSize: [36, 36],
