@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake } from 'lucide-react';
-import { CityCombobox } from './CityCombobox';
 
 interface HeaderProps {
   onOpenCreateModal: () => void;
@@ -11,9 +10,6 @@ interface HeaderProps {
   isOffline: boolean;
   activeCount: number;
   criticalCount: number;
-  selectedCityId: string;
-  onCityChange: (cityId: string) => void;
-  needCounts?: Record<string, number>;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,9 +21,6 @@ export const Header: React.FC<HeaderProps> = ({
   isOffline,
   activeCount,
   criticalCount,
-  selectedCityId,
-  onCityChange,
-  needCounts,
 }) => {
   const [visible, setVisible] = useState(true);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -71,16 +64,16 @@ export const Header: React.FC<HeaderProps> = ({
     >
 
       {/* Main Header navigation bar */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
         <div className="flex items-center gap-4">
           <img src="/favicon.svg" alt="Aquí Hace Falta" className="w-8 h-8 rounded-lg shrink-0 md:hidden" />
           <img src="/logo.svg" alt="Aquí Hace Falta" className="w-10 h-10 rounded-xl shrink-0 hidden md:block" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl md:text-2xl font-black tracking-tighter text-slate-900 leading-none">
+              <h1 className="text-xl md:text-2xl font-black tracking-tighter text-slate-900 leading-none whitespace-nowrap">
                 AQUÍ HACE FALTA
               </h1>
-              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider whitespace-nowrap">
                 Valle del Cauca
               </span>
             </div>
@@ -92,17 +85,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* City selector + Quick action controls */}
+        {/* Quick action controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
-          {/* City combobox */}
-          <CityCombobox
-            value={selectedCityId}
-            onChange={onCityChange}
-            showAllOption
-            needCounts={needCounts}
-            className="w-full sm:w-52"
-          />
-
           {/* Action buttons — hidden on mobile, shown on desktop */}
           <div className="hidden md:flex items-center gap-2.5">
             <button

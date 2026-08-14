@@ -110,44 +110,43 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
       {/* Bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-lg rounded-t-2xl">
-        <div className="flex items-center justify-around px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-around px-4 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
           {/* Lista tab */}
           <button
             onClick={() => { onSetMobileView('LIST'); setTimeout(() => document.getElementById('mobile-list-anchor')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-            className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all ${
               mobileView === 'LIST'
                 ? 'bg-indigo-50 text-indigo-600'
                 : 'text-slate-500'
             }`}
           >
-            <List className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Lista</span>
+            <List className="w-4 h-4" />
+            <span className="text-[11px] font-bold">Lista</span>
           </button>
 
           {/* Action button — protrudes above the bar */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-13 h-13 bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center justify-center shadow-lg -mt-7 transition-colors"
-            style={{ width: '52px', height: '52px' }}
+            className="w-11 h-11 bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center justify-center shadow-lg -mt-5 transition-colors"
           >
             {isMenuOpen ? (
-              <X className="w-6 h-6 text-white" />
+              <X className="w-5 h-5 text-white" />
             ) : (
-              <Plus className="w-6 h-6 text-white" />
+              <Plus className="w-5 h-5 text-white" />
             )}
           </button>
 
           {/* Mapa tab */}
           <button
             onClick={() => { onSetMobileView('MAP'); setTimeout(() => document.getElementById('mobile-map-anchor')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-            className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all ${
               mobileView === 'MAP'
                 ? 'bg-indigo-50 text-indigo-600'
                 : 'text-slate-500'
             }`}
           >
-            <Map className="w-5 h-5" />
-            <span className="text-[10px] font-bold">Mapa</span>
+            <Map className="w-4 h-4" />
+            <span className="text-[11px] font-bold">Mapa</span>
           </button>
         </div>
       </div>

@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { Search, Filter, MapPin, X, ArrowUpDown, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Search, Filter, X, ArrowUpDown } from 'lucide-react';
 import { FilterState, HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus, ViewMode } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+import { CityCombobox } from './CityCombobox';
 
 interface FilterBarProps {
   filters: FilterState;
   onFilterChange: (updated: Partial<FilterState>) => void;
   onClearFilters: () => void;
-  onRequestLocation: () => void;
+  onRequestLocation: (lat: number, lng: number) => void;
   isLoadingLocation: boolean;
   totalResults: number;
   selectedCityName?: string;
   needsCount?: number;
   offersCount?: number;
+  selectedCityId: string;
+  onCityChange: (cityId: string) => void;
+  needCounts?: Record<string, number>;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -25,6 +29,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedCityName = 'la zona',
   needsCount = 0,
   offersCount = 0,
+  selectedCityId,
+  onCityChange,
+  needCounts,
 }) => {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -57,15 +64,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.priority !== 'ALL' ||
     filters.placeType !== 'ALL' ||
     filters.status !== 'ALL' ||
-    filters.verificationStatus !== 'ALL' ||
-    filters.distanceKm !== null;
+    filters.verificationStatus !== 'ALL';
 
   return (
     <div className="bg-white border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-3">
       {/* Top search & quick controls */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* ViewMode + Search — left side */}
+        {/* ViewMode + City + Search — left side */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 flex-1">
           {/* ViewMode Segmented Control */}
           <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 shrink-0 h-[38px]" role="group" aria-label="Modo de vista">
@@ -94,6 +100,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             ))}
           </div>
 
+          {/* City Combobox — left of search */}
+          <CityCombobox
+            value={selectedCityId}
+            onChange={onCityChange}
+            showAllOption
+            needCounts={needCounts}
+            onRequestLocation={(lat, lng) => onRequestLocation(lat, lng)}
+            isLoadingLocation={isLoadingLocation}
+            className="w-full md:w-48 shrink-0"
+          />
+
           {/* Search Input */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -116,40 +133,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Distance Dropdown & Geolocation */}
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-lg px-2 py-2 text-xs h-[38px]">
-            <button
-              onClick={onRequestLocation}
-              disabled={isLoadingLocation}
-              className={`p-1 rounded flex items-center gap-1 font-medium ${
-                filters.userLat ? 'bg-emerald-100 text-emerald-800' : 'hover:bg-slate-200 text-slate-700'
-              }`}
-              title="Obtener mi ubicación actual en Cali"
-            >
-              <MapPin className={`w-3.5 h-3.5 ${isLoadingLocation ? 'animate-bounce text-amber-600' : ''}`} />
-              <span className="hidden sm:inline">
-                {filters.userLat ? 'Ubicación activa' : 'Usar mi ubicación'}
-              </span>
-            </button>
-
-            <select
-              value={filters.distanceKm ?? 'ALL'}
-              onChange={(e) =>
-                onFilterChange({
-                  distanceKm: e.target.value === 'ALL' ? null : Number(e.target.value),
-                })
-              }
-              className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none pr-1"
-            >
-              <option value="ALL">Toda {selectedCityName}</option>
-              <option value="1">Hasta 1 km</option>
-              <option value="2">Hasta 2 km</option>
-              <option value="5">Hasta 5 km</option>
-              <option value="10">Hasta 10 km</option>
-            </select>
-          </div>
-
+        {/* Sort + Filters — on mobile: urgency and filters in one line */}
+        <div className="flex items-center gap-2">
           {/* Sort By */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 text-xs h-[38px]">
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -167,7 +152,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {/* More Filters Toggle */}
           <button
             onClick={() => setShowMoreFilters(!showMoreFilters)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all h-[38px] ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all h-[38px] flex-1 md:flex-none shrink-0 ${
               showMoreFilters || hasActiveFilters
                 ? 'bg-slate-900 text-white border-slate-900'
                 : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'

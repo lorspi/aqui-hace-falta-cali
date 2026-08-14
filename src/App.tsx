@@ -343,38 +343,20 @@ function MainApp() {
   const adminVerify = useMutation(api.admin.verifyNeed);
   const adminResolveReport = useMutation(api.admin.resolveReport);
 
-  // Geolocation
-  const handleRequestLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Tu navegador no soporta geolocalización.");
-      return;
+  // Geolocation — triggered from CityCombobox "Mi ubicación" option
+  const handleRequestLocation = (lat: number, lng: number) => {
+    setFilters((prev) => ({
+      ...prev,
+      userLat: lat,
+      userLng: lng,
+      sortBy: "DISTANCE",
+    }));
+    // Auto-detect city from user's position
+    const detectedCity = detectCityFromCoords(lat, lng);
+    if (detectedCity) {
+      handleCityChange(detectedCity.id);
     }
-    setIsLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setFilters((prev) => ({
-          ...prev,
-          userLat: latitude,
-          userLng: longitude,
-          distanceKm: prev.distanceKm || 5,
-          sortBy: "DISTANCE",
-        }));
-        // Auto-detect city from user's position
-        const detectedCity = detectCityFromCoords(latitude, longitude);
-        if (detectedCity) {
-          handleCityChange(detectedCity.id);
-        }
-        setIsLoadingLocation(false);
-      },
-      () => {
-        setIsLoadingLocation(false);
-        alert(
-          "No pudimos acceder a tu ubicación. Puedes buscar por barrio o explorar el mapa."
-        );
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+    setIsLoadingLocation(false);
   };
 
   // Handle map center change — detect city
@@ -552,12 +534,9 @@ function MainApp() {
         isOffline={isOffline}
         activeCount={activeCount}
         criticalCount={criticalCount}
-        selectedCityId={selectedCityId}
-        onCityChange={handleCityChange}
-        needCounts={combinedCounts}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[100px] sm:h-[110px] md:h-[80px]" />
+      <div className="h-[56px] md:h-[72px]" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
@@ -592,6 +571,9 @@ function MainApp() {
         selectedCityName={selectedCityId === ALL_VALLE_ID ? 'la zona' : VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'la zona'}
         needsCount={totalNeedsCount}
         offersCount={totalOffersCount}
+        selectedCityId={selectedCityId}
+        onCityChange={handleCityChange}
+        needCounts={combinedCounts}
       />
 
 
@@ -674,13 +656,7 @@ function MainApp() {
             {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Para ordenar por distancia, activa tu ubicación.</span>
-                <button
-                  onClick={handleRequestLocation}
-                  className="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg font-semibold text-[11px] shrink-0"
-                >
-                  Activar
-                </button>
+                <span>Para ordenar por distancia, activa tu ubicación desde el selector de ciudad.</span>
               </div>
             )}
 

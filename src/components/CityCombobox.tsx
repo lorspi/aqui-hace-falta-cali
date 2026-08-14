@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, MapPin, Search } from 'lucide-react';
-import { VALLE_CITIES, ALL_VALLE_ID, ValleCity } from '../data/valleCities';
+import { ChevronDown, MapPin, Search, Navigation } from 'lucide-react';
+import { VALLE_CITIES, ALL_VALLE_ID, ValleCity, detectCityFromCoords } from '../data/valleCities';
 
 interface CityComboboxProps {
   value: string;
@@ -9,6 +9,10 @@ interface CityComboboxProps {
   className?: string;
   /** Map of cityId → number of needs. Used to show counts and sort. */
   needCounts?: Record<string, number>;
+  /** Callback when user selects "Mi ubicación" — receives lat, lng of device */
+  onRequestLocation?: (lat: number, lng: number) => void;
+  /** Whether geolocation is currently loading */
+  isLoadingLocation?: boolean;
 }
 
 export const CityCombobox: React.FC<CityComboboxProps> = ({
@@ -17,9 +21,12 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
   showAllOption = false,
   className = '',
   needCounts,
+  onRequestLocation,
+  isLoadingLocation = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [locationError, setLocationError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +80,39 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 
   const totalNeeds = needCounts ? Object.values(needCounts).reduce((sum, n) => sum + n, 0) : 0;
 
+  const handleMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización.');
+      return;
+    }
+    setLocationError(false);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        // Detect which city the user is in
+        const detectedCity = detectCityFromCoords(latitude, longitude);
+        if (detectedCity) {
+          onChange(detectedCity.id);
+        } else {
+          // If not in any known city, select All Valle del Cauca
+          onChange(ALL_VALLE_ID);
+        }
+        // Notify parent about location
+        onRequestLocation?.(latitude, longitude);
+        setIsOpen(false);
+        setSearch('');
+      },
+      () => {
+        setLocationError(true);
+        // If denied, select All Valle del Cauca
+        onChange(ALL_VALLE_ID);
+        setIsOpen(false);
+        setSearch('');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Trigger button */}
@@ -114,6 +154,19 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 
           {/* Options list */}
           <div className="max-h-48 overflow-y-auto">
+            {/* Mi ubicación option */}
+            <button
+              type="button"
+              onClick={handleMyLocation}
+              className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-emerald-50 transition-colors flex items-center justify-between border-b border-slate-100 text-emerald-700"
+            >
+              <span className="flex items-center gap-2">
+                <Navigation className={`w-3 h-3 text-emerald-600 ${isLoadingLocation ? 'animate-pulse' : ''}`} />
+                <span>{isLoadingLocation ? 'Buscando ubicación...' : 'Mi ubicación'}</span>
+              </span>
+              <span className="text-[10px] text-emerald-500">GPS</span>
+            </button>
+
             {showAllOption && (
               <button
                 type="button"
