@@ -204,9 +204,6 @@ export const ModeradorPage: React.FC = () => {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 space-y-10">
 
-        {/* Pending Offers Moderation Section (only visible for logged-in moderators) */}
-        <PendingOffersSection />
-
         {/* Tareas del moderador */}
         <section className="space-y-4">
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
