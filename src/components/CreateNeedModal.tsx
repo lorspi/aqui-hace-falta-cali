@@ -3,6 +3,7 @@ import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Uplo
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
+import { showAlert } from './ConfirmDialog';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityCombobox } from './CityCombobox';
 import { VALLE_CITIES } from '../data/valleCities';
@@ -156,7 +157,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
-      alert('Por favor completa todos los campos requeridos (*).');
+      showAlert('Por favor completa todos los campos requeridos (*).', { title: 'Campos incompletos', variant: 'error' });
       return;
     }
 

@@ -70,8 +70,9 @@ export const Header: React.FC<HeaderProps> = ({
           <img src="/logo.svg" alt="Aquí Hace Falta" className="w-10 h-10 rounded-xl shrink-0 hidden md:block" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl md:text-2xl font-black tracking-tighter text-slate-900 leading-none whitespace-nowrap">
-                AQUÍ HACE FALTA
+              <h1 className="text-xl md:text-2xl font-black tracking-tighter leading-none whitespace-nowrap">
+                <span className="text-[#0f2b46]">Aquí </span>
+                <span className="text-[#2a9d8f]">Hace Falta</span>
               </h1>
               <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider whitespace-nowrap">
                 Valle del Cauca
@@ -147,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <button
-              onClick={onOpenAdminModal}
+              onClick={() => { window.location.href = '/panel'; }}
               className="w-full sm:w-auto px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
               title="Panel de moderación y verificación"
               id="btn-admin-panel"

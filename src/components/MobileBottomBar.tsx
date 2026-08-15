@@ -93,7 +93,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
             {/* Moderación (panel) */}
             <button
-              onClick={() => { setIsMenuOpen(false); onOpenAdminModal(); }}
+              onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
               className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
             >
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">

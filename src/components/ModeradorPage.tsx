@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
-import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2 } from 'lucide-react';
+import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2, LogIn } from 'lucide-react';
 import { CATEGORY_LABELS } from '../utils/formatters';
 
 /**
@@ -182,27 +182,41 @@ export const ModeradorPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-slate-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
-          <a href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-4 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Volver a la plataforma</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-indigo-500/20 border border-indigo-500/40">
-              <ShieldCheck className="w-8 h-8 text-indigo-400" />
-            </div>
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Guía del Moderador</h1>
-              <p className="text-sm text-slate-300 mt-1">
-                Aquí Hace Falta — Valle del Cauca
-              </p>
+              <a href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-3 transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Volver a la plataforma</span>
+              </a>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/20 border border-indigo-500/40">
+                  <ShieldCheck className="w-7 h-7 text-indigo-400" />
+                </div>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight">Guía del Moderador</h1>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Aquí Hace Falta — Valle del Cauca
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <a
+                href="/panel"
+                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Moderación</span>
+              </a>
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 space-y-10">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-10">
 
         {/* Tareas del moderador */}
         <section className="space-y-4">

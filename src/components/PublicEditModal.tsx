@@ -3,6 +3,7 @@ import { useAction, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
+import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
@@ -158,11 +159,11 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isModerator && !turnstileToken) {
-      alert('Completa la verificación anti-bot.');
+      showAlert('Completa la verificación anti-bot.', { title: 'Verificación requerida', variant: 'error' });
       return;
     }
     if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
-      alert('Por favor completa todos los campos requeridos (*).');
+      showAlert('Por favor completa todos los campos requeridos (*).', { title: 'Campos incompletos', variant: 'error' });
       return;
     }
 
@@ -199,7 +200,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       });
       setSubmitted(true);
     } catch (err: any) {
-      alert(err.message || 'Error al enviar la edición.');
+      showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -207,20 +208,20 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
   const handleArchive = async () => {
     if (!authToken || !need) return;
-    if (!confirm('¿Archivar esta publicación? Se ocultará de la vista pública.')) return;
+    if (!(await showConfirm('¿Archivar esta publicación? Se ocultará de la vista pública.', { title: 'Archivar publicación' }))) return;
     try {
       await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "ARCHIVED", status: "CLOSED" });
       setIsArchived(true);
-    } catch (e: any) { alert(e?.message || 'Error al archivar'); }
+    } catch (e: any) { showAlert(e?.message || 'Error al archivar', { title: 'Error', variant: 'error' }); }
   };
 
   const handlePublish = async () => {
     if (!authToken || !need) return;
-    if (!confirm('¿Publicar esta publicación? Volverá a ser visible como pendiente de verificación.')) return;
+    if (!(await showConfirm('¿Publicar esta publicación? Volverá a ser visible como pendiente de verificación.', { title: 'Publicar' }))) return;
     try {
       await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "PENDING_VERIFICATION" });
       setIsArchived(false);
-    } catch (e: any) { alert(e?.message || 'Error al publicar'); }
+    } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
 
   if (submitted) {

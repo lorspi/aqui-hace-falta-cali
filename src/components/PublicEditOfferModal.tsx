@@ -3,6 +3,7 @@ import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
+import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Offer } from '../types';
 import { CATEGORY_LABELS } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
@@ -144,7 +145,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
-      alert('Por favor completa todos los campos requeridos (*).');
+      showAlert('Por favor completa todos los campos requeridos (*).', { title: 'Campos incompletos', variant: 'error' });
       return;
     }
 
@@ -179,7 +180,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       });
       setSubmitted(true);
     } catch (err: any) {
-      alert(err.message || 'Error al enviar la edición.');
+      showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -187,20 +188,20 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   const handleArchive = async () => {
     if (!authToken || !offer) return;
-    if (!confirm('¿Archivar esta oferta? Se ocultará de la vista pública.')) return;
+    if (!(await showConfirm('¿Archivar esta oferta? Se ocultará de la vista pública.', { title: 'Archivar oferta' }))) return;
     try {
       await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "archive" });
       setIsArchived(true);
-    } catch (e: any) { alert(e?.message || 'Error al archivar'); }
+    } catch (e: any) { showAlert(e?.message || 'Error al archivar', { title: 'Error', variant: 'error' }); }
   };
 
   const handlePublish = async () => {
     if (!authToken || !offer) return;
-    if (!confirm('¿Publicar esta oferta? Volverá a ser visible como pendiente de verificación.')) return;
+    if (!(await showConfirm('¿Publicar esta oferta? Volverá a ser visible como pendiente de verificación.', { title: 'Publicar oferta' }))) return;
     try {
       await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "publish" });
       setIsArchived(false);
-    } catch (e: any) { alert(e?.message || 'Error al publicar'); }
+    } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
 
   if (submitted) {

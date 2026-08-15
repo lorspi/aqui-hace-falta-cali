@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, MapPin, Search, Navigation } from 'lucide-react';
 import { VALLE_CITIES, ALL_VALLE_ID, ValleCity, detectCityFromCoords } from '../data/valleCities';
+import { showAlert } from './ConfirmDialog';
 
 interface CityComboboxProps {
   value: string;
@@ -82,7 +83,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 
   const handleMyLocation = () => {
     if (!navigator.geolocation) {
-      alert('Tu navegador no soporta geolocalización.');
+      showAlert('Tu navegador no soporta geolocalización.', { title: 'Geolocalización no disponible', variant: 'info' });
       return;
     }
     setLocationError(false);

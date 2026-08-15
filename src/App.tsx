@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { showAlert } from "./components/ConfirmDialog";
 import { Id } from "../convex/_generated/dataModel";
 import {
   Map,
@@ -31,9 +32,9 @@ import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
-import { AdminDashboardModal } from "./components/AdminDashboardModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
 import { ModeradorPage } from "./components/ModeradorPage";
+import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
 
@@ -44,9 +45,10 @@ function convexNeedToNeed(doc: any): Need {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'moderador' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   if (path === 'moderador') return { type: 'moderador' };
+  if (path === 'panel') return { type: 'panel' };
 
   // Check for /:cityId/:needId/post or /:cityId/:needId/story
   const parts = path.split('/');
@@ -61,6 +63,10 @@ export default function App() {
 
   if (specialRoute?.type === 'moderador') {
     return <ModeradorPage />;
+  }
+
+  if (specialRoute?.type === 'panel') {
+    return <AdminPanelPage />;
   }
 
   if (specialRoute?.type === 'social') {
@@ -147,16 +153,10 @@ function MainApp() {
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [adminViewingDetail, setAdminViewingDetail] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
-
-  // Moderator edit state (from detail modal)
-  const [editingNeedFromDetail, setEditingNeedFromDetail] = useState<Need | null>(null);
-  const [editModeFromDetail, setEditModeFromDetail] = useState<"priority" | "full">("full");
 
   // Check if a moderator is logged in
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
@@ -404,11 +404,9 @@ function MainApp() {
         cityId: data.cityId || selectedCityId,
       });
       setIsCreateModalOpen(false);
-      alert(
-        '¡Solicitud guardada! Tu reporte aparecerá como "Pendiente de verificación" hasta ser confirmado.'
-      );
+      showAlert('¡Solicitud guardada! Tu reporte aparecerá como pendiente de verificación hasta ser confirmado.', { title: 'Solicitud guardada', variant: 'success' });
     } catch (err) {
-      alert("Error al enviar el reporte.");
+      showAlert("Error al enviar el reporte.", { title: "Error", variant: "error" });
     } finally {
       setIsSubmittingCreate(false);
     }
@@ -428,11 +426,9 @@ function MainApp() {
         description,
         reporterContact: contact,
       });
-      alert(
-        "Reporte enviado a moderación. Gracias por ayudar a mantener limpia la información."
-      );
+      showAlert("Reporte enviado a moderación. Gracias por ayudar a mantener limpia la información.", { title: "Reporte enviado", variant: "success" });
     } catch (e) {
-      alert("Error al enviar el reporte.");
+      showAlert("Error al enviar el reporte.", { title: "Error", variant: "error" });
     }
   };
 
@@ -450,9 +446,9 @@ function MainApp() {
         description: note,
         updatedBy,
       });
-      alert("Estado actualizado exitosamente.");
+      showAlert("Estado actualizado exitosamente.", { title: "Éxito", variant: "success" });
     } catch (e) {
-      alert("Error actualizando el estado.");
+      showAlert("Error actualizando el estado.", { title: "Error", variant: "error" });
     }
   };
 
@@ -460,7 +456,7 @@ function MainApp() {
   const handleAdminVerify = async (needId: string, updates: Partial<Need>) => {
     const token = localStorage.getItem("ahf_admin_token");
     if (!token) {
-      alert("Sesión expirada. Inicia sesión de nuevo.");
+      showAlert("Sesión expirada. Inicia sesión de nuevo.", { title: "Sesión expirada", variant: "error" });
       return;
     }
     try {
@@ -477,7 +473,7 @@ function MainApp() {
         categories: updates.categories,
       });
     } catch (e) {
-      alert("Error en moderación.");
+      showAlert("Error en moderación.", { title: "Error", variant: "error" });
     }
   };
 
@@ -488,7 +484,7 @@ function MainApp() {
   ) => {
     const token = localStorage.getItem("ahf_admin_token");
     if (!token) {
-      alert("Sesión expirada. Inicia sesión de nuevo.");
+      showAlert("Sesión expirada. Inicia sesión de nuevo.", { title: "Sesión expirada", variant: "error" });
       return;
     }
     try {
@@ -498,7 +494,7 @@ function MainApp() {
         action,
       });
     } catch (e) {
-      alert("Error al resolver el reporte.");
+      showAlert("Error al resolver el reporte.", { title: "Error", variant: "error" });
     }
   };
 
@@ -521,7 +517,7 @@ function MainApp() {
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-        onOpenAdminModal={() => setIsAdminModalOpen(true)}
+        onOpenAdminModal={() => { window.location.href = '/panel'; }}
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
           setMobileView("MAP");
@@ -778,10 +774,9 @@ function MainApp() {
       </main>
 
       {/* Modals */}
-      <div className={adminViewingDetail ? 'relative z-[60]' : ''}>
       <NeedDetailModal
         need={selectedNeed}
-        onClose={() => { handleSelectNeed(null); setAdminViewingDetail(false); }}
+        onClose={() => { handleSelectNeed(null); }}
         shareUrl={selectedNeed ? getNeedUrl(selectedNeed) : undefined}
         onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
@@ -790,21 +785,14 @@ function MainApp() {
         isModeratorLoggedIn={isModeratorLoggedIn}
         isAdmin={isAdminUser}
         onAdminEditNeed={(need) => {
-          setEditingNeedFromDetail(need);
-          setEditModeFromDetail("full");
           handleSelectNeed(null);
-          setAdminViewingDetail(false);
-          setIsAdminModalOpen(true);
+          setSelectedForPublicEdit(need);
         }}
         onAdminChangePriority={(need) => {
-          setEditingNeedFromDetail(need);
-          setEditModeFromDetail("priority");
           handleSelectNeed(null);
-          setAdminViewingDetail(false);
-          setIsAdminModalOpen(true);
+          setSelectedForPublicEdit(need);
         }}
       />
-      </div>
 
       <QuieroAyudarModal
         need={selectedForHelp}
@@ -843,48 +831,22 @@ function MainApp() {
         onSubmitUpdate={handleUpdateStatus}
       />
 
-      <AdminDashboardModal
-        isOpen={isAdminModalOpen}
-        onClose={() => {
-          setIsAdminModalOpen(false);
-          setEditingNeedFromDetail(null);
-        }}
-        needs={needs}
-        reports={reports}
-        auditLogs={auditLogs}
-        onVerifyNeed={handleAdminVerify}
-        onResolveReport={handleAdminResolveReport}
-        onResetDemoData={handleResetDemoData}
-        initialEditNeed={editingNeedFromDetail}
-        initialEditMode={editModeFromDetail}
-        onViewNeed={(need) => {
-          setAdminViewingDetail(true);
-          handleSelectNeed(need);
-        }}
-        onViewOffer={(offer) => {
-          setAdminViewingDetail(true);
-          handleSelectOffer(offer);
-        }}
-      />
-
       <CreateOfferModal
         isOpen={showCreateOffer}
         onClose={() => setShowCreateOffer(false)}
         selectedCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
       />
 
-      <div className={adminViewingDetail ? 'relative z-[60]' : ''}>
       <OfferDetailModal
         offer={selectedOffer}
         isOpen={!!selectedOffer}
-        onClose={() => { handleSelectOffer(null); setAdminViewingDetail(false); }}
+        onClose={() => { handleSelectOffer(null); }}
         shareUrl={selectedOffer ? getOfferUrl(selectedOffer) : undefined}
         isModeratorLoggedIn={isModeratorLoggedIn}
         isAdmin={isAdminUser}
         onOpenPublicEdit={(offer) => setSelectedOfferForEdit(offer)}
         onAdminEditOffer={(offer) => setSelectedOfferForEdit(offer)}
       />
-      </div>
 
       {/* Footer — temporarily removed (file preserved for future use) */}
 
@@ -895,7 +857,7 @@ function MainApp() {
           onSetMobileView={setMobileView}
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-          onOpenAdminModal={() => setIsAdminModalOpen(true)}
+          onOpenAdminModal={() => { window.location.href = '/panel'; }}
           onScrollToMap={() => {
             setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
             setMobileView("MAP");

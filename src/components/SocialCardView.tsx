@@ -3,6 +3,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { toPng } from 'html-to-image';
+import { showAlert } from './ConfirmDialog';
 import { Need } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { VALLE_CITIES } from '../data/valleCities';
@@ -33,7 +34,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
       link.click();
     } catch (err) {
       console.error('Error generating image:', err);
-      alert('Error al generar la imagen. Intenta de nuevo.');
+      showAlert('Error al generar la imagen. Intenta de nuevo.', { title: 'Error', variant: 'error' });
     } finally {
       setIsGenerating(false);
     }

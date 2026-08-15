@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import App from "./App.tsx";
+import { DialogProvider } from "./components/ConfirmDialog.tsx";
 import "./index.css";
 
 const convex = new ConvexReactClient(
@@ -11,7 +12,9 @@ const convex = new ConvexReactClient(
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ConvexProvider client={convex}>
-      <App />
+      <DialogProvider>
+        <App />
+      </DialogProvider>
     </ConvexProvider>
   </StrictMode>
 );
