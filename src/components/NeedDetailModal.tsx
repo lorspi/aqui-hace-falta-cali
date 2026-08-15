@@ -118,9 +118,11 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   {priorityInfo.dot} Prioridad {priorityInfo.label}
                 </span>
               )}
-              <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full font-semibold border border-slate-200">
-                {placeTypeLabel}
-              </span>
+              {!isCollectionCenter && (
+                <span className="bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full font-semibold border border-slate-200">
+                  {placeTypeLabel}
+                </span>
+              )}
               <span className={`px-2 py-0.5 rounded font-semibold text-[11px] border ${verificationInfo.badgeClass}`}>
                 {verificationInfo.icon} {verificationInfo.label}
               </span>
