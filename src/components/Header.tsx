@@ -65,25 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Main Header navigation bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
-        <div className="flex items-center gap-4">
-          <img src="/favicon.svg" alt="Aquí Hace Falta" className="w-8 h-8 rounded-lg shrink-0 md:hidden" />
-          <img src="/logo.svg" alt="Aquí Hace Falta" className="w-10 h-10 rounded-xl shrink-0 hidden md:block" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl md:text-2xl font-black tracking-tighter leading-none whitespace-nowrap">
-                <span className="text-[#0f2b46]">Aquí </span>
-                <span className="text-[#2a9d8f]">Hace Falta</span>
-              </h1>
-              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider whitespace-nowrap">
-                Valle del Cauca
-              </span>
-            </div>
-            <div className="hidden md:flex items-center gap-2 mt-1">
-              <p className="text-[0.65rem] font-semibold text-slate-500 uppercase tracking-widest">
-                Plataforma Ciudadana de Coordinación de Ayuda
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center">
+          <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 md:h-10 w-auto" />
         </div>
 
         {/* Quick action controls */}
