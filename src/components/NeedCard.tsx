@@ -124,7 +124,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
                     {requested > 0 && fulfilled > 0 && (
                       <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-indigo-600 rounded-full transition-all duration-300"
+                          className="h-full bg-brand-blue rounded-full transition-all duration-300"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
@@ -180,7 +180,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
               e.stopPropagation();
               onHelp(need);
             }}
-            className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
+            className="bg-brand-blue hover:bg-brand-blue/90 active:bg-brand-blue/80 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
             id={`btn-help-${need.id}`}
           >
             <HeartHandshake className="w-3.5 h-3.5 text-indigo-200" />

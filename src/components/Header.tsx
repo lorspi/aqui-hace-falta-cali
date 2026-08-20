@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
               <button
                 onClick={() => setShowHelpMenu(!showHelpMenu)}
-                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
                 id="btn-quiero-ayudar"
               >
                 <HeartHandshake className="w-4 h-4" />

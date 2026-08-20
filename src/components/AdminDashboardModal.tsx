@@ -1329,7 +1329,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 <button
                   onClick={handleSaveUser}
                   disabled={isSavingUser}
-                  className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs disabled:opacity-50"
+                  className="bg-brand-blue text-white font-bold px-4 py-2 rounded-xl text-xs disabled:opacity-50"
                 >
                   {isSavingUser ? "Guardando..." : "Guardar cambios"}
                 </button>

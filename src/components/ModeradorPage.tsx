@@ -205,7 +205,7 @@ export const ModeradorPage: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <a
                 href="/panel"
-                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Moderación</span>

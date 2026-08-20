@@ -531,7 +531,7 @@ function MainApp() {
   const hasDemoData = needs.some((n) => n.isDemoData);
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900 antialiased">
+    <div className="min-h-screen bg-brand-surface flex flex-col text-brand-text antialiased">
       {/* Platform Header */}
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -630,7 +630,7 @@ function MainApp() {
                   Leyenda del mapa
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
                   <span className="text-slate-700">Crítica</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -638,7 +638,7 @@ function MainApp() {
                   <span className="text-slate-700">Alta</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
                   <span className="text-slate-700">Media</span>
                 </div>
                 <div className="flex items-center gap-2">

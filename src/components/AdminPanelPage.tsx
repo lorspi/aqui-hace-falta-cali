@@ -435,7 +435,7 @@ export const AdminPanelPage: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <a
                 href="/moderador"
-                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Guía del Moderador</span>
@@ -1238,7 +1238,7 @@ export const AdminPanelPage: React.FC = () => {
               <button
                 onClick={handleSaveUser}
                 disabled={isSavingUser}
-                className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs disabled:opacity-50"
+                className="bg-brand-blue text-white font-bold px-4 py-2 rounded-xl text-xs disabled:opacity-50"
               >
                 {isSavingUser ? "Guardando..." : "Guardar cambios"}
               </button>

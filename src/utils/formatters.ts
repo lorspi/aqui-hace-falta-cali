@@ -30,10 +30,10 @@ export const PRIORITY_CONFIG: Record<
   CRITICAL: {
     label: 'Urgente',
     dot: '🔴',
-    badgeClass: 'bg-red-50 text-red-700 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic border border-red-200',
-    borderClass: 'border-l-4 border-l-red-500 border-slate-200',
-    textClass: 'text-red-700 font-bold',
-    bgClass: 'bg-red-50 text-red-900 border-red-200',
+    badgeClass: 'bg-brand-red/10 text-brand-red px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic border border-brand-red/20',
+    borderClass: 'border-l-4 border-l-brand-red border-slate-200',
+    textClass: 'text-brand-red font-bold',
+    bgClass: 'bg-brand-red/10 text-brand-red border-brand-red/20',
     explanation: 'Situación grave con riesgo directo. Necesidad urgente e inmediata.',
   },
   HIGH: {
@@ -48,10 +48,10 @@ export const PRIORITY_CONFIG: Record<
   MEDIUM: {
     label: 'Prioridad Media',
     dot: '🟡',
-    badgeClass: 'bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-amber-200',
-    borderClass: 'border-l-4 border-l-amber-400 border-slate-200',
+    badgeClass: 'bg-brand-yellow/15 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-brand-yellow/30',
+    borderClass: 'border-l-4 border-l-brand-yellow border-slate-200',
     textClass: 'text-amber-800 font-bold',
-    bgClass: 'bg-amber-50 text-amber-900 border-amber-200',
+    bgClass: 'bg-brand-yellow/15 text-amber-900 border-brand-yellow/30',
     explanation: 'Necesidad relevante pero no de respuesta inmediata.',
   },
   LOW: {

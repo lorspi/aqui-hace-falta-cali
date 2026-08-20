@@ -127,7 +127,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
           {/* Action button — protrudes above the bar */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-11 h-11 bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center justify-center shadow-lg -mt-5 transition-colors"
+            className="w-11 h-11 bg-brand-blue hover:bg-brand-blue/90 rounded-xl flex items-center justify-center shadow-lg -mt-5 transition-colors"
           >
             {isMenuOpen ? (
               <X className="w-5 h-5 text-white" />

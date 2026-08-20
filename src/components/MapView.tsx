@@ -165,11 +165,11 @@ export const MapView: React.FC<MapViewProps> = ({
       const colorHex = isCollectionCenter
         ? '#7c3aed'
         : priority === 'CRITICAL'
-        ? '#dc2626'
+        ? '#CE3B3B'
         : priority === 'HIGH'
         ? '#ea580c'
         : priority === 'MEDIUM'
-        ? '#d97706'
+        ? '#F2C33D'
         : '#059669';
 
       // SVG icon for collection center (package-open from Lucide)

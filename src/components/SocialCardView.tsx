@@ -70,7 +70,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
         <button
           onClick={handleDownload}
           disabled={isGenerating}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
+          className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-5 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
         >
           {isGenerating ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Generando...</>
@@ -92,7 +92,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
           }}
         >
           {/* Background accent */}
-          <div className="absolute top-0 left-0 right-0 h-3" style={{ backgroundColor: need.priority === 'CRITICAL' ? '#dc2626' : need.priority === 'HIGH' ? '#ea580c' : need.priority === 'MEDIUM' ? '#d97706' : '#059669' }} />
+          <div className="absolute top-0 left-0 right-0 h-3" style={{ backgroundColor: need.priority === 'CRITICAL' ? '#CE3B3B' : need.priority === 'HIGH' ? '#ea580c' : need.priority === 'MEDIUM' ? '#F2C33D' : '#059669' }} />
 
           {/* Header with logo and branding */}
           <div className="px-16 pt-16 pb-8 flex items-center justify-between">
@@ -104,9 +104,9 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
               </div>
             </div>
             <div className={`px-6 py-3 rounded-xl text-lg font-black uppercase tracking-wider ${
-              need.priority === 'CRITICAL' ? 'bg-red-600 text-white' :
+              need.priority === 'CRITICAL' ? 'bg-brand-red text-white' :
               need.priority === 'HIGH' ? 'bg-orange-500 text-white' :
-              need.priority === 'MEDIUM' ? 'bg-amber-500 text-slate-900' :
+              need.priority === 'MEDIUM' ? 'bg-brand-yellow text-brand-text' :
               'bg-emerald-600 text-white'
             }`}>
               {priorityInfo.label}
