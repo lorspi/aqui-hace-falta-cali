@@ -179,6 +179,25 @@ function MainApp() {
     };
   }, []);
 
+  // Favicon claro/oscuro según el tema del sistema
+  useEffect(() => {
+    const favicon = document.getElementById('favicon') as HTMLLinkElement;
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const updateFavicon = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (favicon) {
+        // Si el tema es oscuro (fondo oscuro), cargamos el favicon claro (dark variant)
+        // Si el tema es claro (fondo claro), cargamos el favicon oscuro (default)
+        favicon.href = e.matches ? '/favicon-dark.svg' : '/favicon.svg';
+      }
+    };
+
+    updateFavicon(darkModeMediaQuery);
+    darkModeMediaQuery.addEventListener('change', updateFavicon);
+
+    return () => darkModeMediaQuery.removeEventListener('change', updateFavicon);
+  }, []);
+
   // --- CONVEX QUERIES ---
   const needCounts = useQuery(api.needs.countsByCity) || {};
   const offerCounts = useQuery(api.offers.countsByCity) || {};
@@ -512,7 +531,7 @@ function MainApp() {
   const hasDemoData = needs.some((n) => n.isDemoData);
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-slate-100 flex flex-col text-slate-900 antialiased">
       {/* Platform Header */}
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}

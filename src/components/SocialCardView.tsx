@@ -88,7 +88,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
           style={{
             width: 1080,
             height: isStory ? 1920 : 1080,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontFamily: 'Hanken Grotesk, system-ui, -apple-system, sans-serif',
           }}
         >
           {/* Background accent */}

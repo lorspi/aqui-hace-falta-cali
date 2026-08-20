@@ -215,7 +215,7 @@ export const MapView: React.FC<MapViewProps> = ({
       const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
 
       const popupHtml = `
-        <div style="font-family: sans-serif; min-width: 200px; padding: 2px;">
+        <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
           <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
             <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
               ${priorityLabel}
@@ -342,7 +342,7 @@ export const MapView: React.FC<MapViewProps> = ({
         .join(' ');
 
       const popupHtml = `
-        <div style="font-family: sans-serif; min-width: 200px; padding: 2px;">
+        <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
           <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
             <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
               OFERTA
@@ -440,7 +440,7 @@ export const MapView: React.FC<MapViewProps> = ({
           zIndexOffset: 1000,
         }).addTo(map);
         userMarkerRef.current.bindPopup(
-          '<div style="font-family: sans-serif; text-align: center; padding: 2px;"><strong style="font-size: 12px;">📍 Tu ubicación</strong></div>'
+          '<div style="font-family: \'Hanken Grotesk\', sans-serif; text-align: center; padding: 2px;"><strong style="font-size: 12px;">📍 Tu ubicación</strong></div>'
         );
       }
     } else if (userMarkerRef.current) {
