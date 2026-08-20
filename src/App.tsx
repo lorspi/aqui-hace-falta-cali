@@ -36,7 +36,7 @@ import { MobileBottomBar } from "./components/MobileBottomBar";
 import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
-import { VALLE_CITIES, ALL_VALLE_ID, detectCityFromCoords } from "./data/valleCities";
+import { ALL_COLOMBIA_ID, findCityById, getCityDisplayName, detectCityFromCoords } from "./data/colombiaCities";
 
 // Adapter: converts Convex document (with _id) to our Need type (with id)
 function convexNeedToNeed(doc: any): Need {
@@ -97,13 +97,13 @@ function MainApp() {
   const [selectedCityId, setSelectedCityId] = useState<string>(() => {
     const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
     const citySlug = parts[0];
-    if (!citySlug || citySlug === ALL_VALLE_ID) return ALL_VALLE_ID;
-    const match = VALLE_CITIES.find((c) => c.id === citySlug);
-    return match ? match.id : 'cali';
+    if (!citySlug || citySlug === ALL_COLOMBIA_ID) return ALL_COLOMBIA_ID;
+    const match = findCityById(citySlug);
+    return match ? match.id : ALL_COLOMBIA_ID;
   });
 
   // Build current URL base for the city
-  const getCityPath = (cityId: string) => cityId === ALL_VALLE_ID ? '/' : `/${cityId}`;
+  const getCityPath = (cityId: string) => cityId === ALL_COLOMBIA_ID ? '/' : `/${cityId}`;
 
   // Sync URL when city changes
   const handleCityChange = (cityId: string) => {
@@ -111,9 +111,9 @@ function MainApp() {
     if (!selectedNeedRef.current) {
       window.history.replaceState(null, '', getCityPath(cityId));
     }
-    const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
-    document.title = cityId === ALL_VALLE_ID
-      ? 'Aquí Hace Falta — Valle del Cauca'
+    const cityName = getCityDisplayName(cityId);
+    document.title = cityId === ALL_COLOMBIA_ID
+      ? 'Aquí Hace Falta — Colombia'
       : `Aquí Hace Falta — ${cityName}`;
   };
 
@@ -194,17 +194,17 @@ function MainApp() {
 
   // Always-on count queries (never skipped, for tab counters)
   const allNeedsForCount = useQuery(api.needs.list, {
-    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+    cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
   });
   const allOffersForCount = useQuery(api.offers.list, {
-    cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+    cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
   });
   const totalNeedsCount = allNeedsForCount?.length ?? 0;
   const totalOffersCount = allOffersForCount?.length ?? 0;
 
   const rawNeeds = useQuery(api.needs.list,
     filters.viewMode === "OFFERS" ? "skip" : {
-      cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+      cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
       search: filters.search || undefined,
       category:
         filters.categories.length === 1 ? filters.categories[0] : undefined,
@@ -225,7 +225,7 @@ function MainApp() {
   // Offers query — only active when ViewMode is "OFFERS" or "ALL"
   const rawOffers = useQuery(api.offers.list,
     filters.viewMode === "NEEDS" ? "skip" : {
-      cityId: selectedCityId !== ALL_VALLE_ID ? selectedCityId : undefined,
+      cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
       search: filters.search || undefined,
       category:
         filters.categories.length === 1 ? filters.categories[0] : undefined,
@@ -564,7 +564,7 @@ function MainApp() {
         onRequestLocation={handleRequestLocation}
         isLoadingLocation={isLoadingLocation}
         totalResults={needs.length + offers.length}
-        selectedCityName={selectedCityId === ALL_VALLE_ID ? 'la zona' : VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'la zona'}
+        selectedCityName={selectedCityId === ALL_COLOMBIA_ID ? 'la zona' : getCityDisplayName(selectedCityId)}
         needsCount={totalNeedsCount}
         offersCount={totalOffersCount}
         selectedCityId={selectedCityId}
@@ -644,10 +644,10 @@ function MainApp() {
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
                 <span>
                   {filters.viewMode === "OFFERS"
-                    ? `Ofertas disponibles${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
+                    ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
                     : filters.viewMode === "ALL"
-                    ? `Necesidades y ofertas${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
-                    : `Necesidades activas${selectedCityId !== ALL_VALLE_ID ? ` en ${VALLE_CITIES.find(c => c.id === selectedCityId)?.name || 'Valle'}` : ''}`
+                    ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                    : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
                   }
                 </span>
                 <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
@@ -804,7 +804,7 @@ function MainApp() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateNeed}
         isSubmitting={isSubmittingCreate}
-        initialCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
+        initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : 'cali'}
       />
 
       <ReportModal
@@ -834,7 +834,7 @@ function MainApp() {
       <CreateOfferModal
         isOpen={showCreateOffer}
         onClose={() => setShowCreateOffer(false)}
-        selectedCityId={selectedCityId !== ALL_VALLE_ID ? selectedCityId : 'cali'}
+        selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : 'cali'}
       />
 
       <OfferDetailModal

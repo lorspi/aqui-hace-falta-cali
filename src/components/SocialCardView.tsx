@@ -6,7 +6,7 @@ import { toPng } from 'html-to-image';
 import { showAlert } from './ConfirmDialog';
 import { Need } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
-import { VALLE_CITIES } from '../data/valleCities';
+import { getCityDisplayName } from '../data/colombiaCities';
 import { Download, Loader2 } from 'lucide-react';
 
 interface SocialCardViewProps {
@@ -51,7 +51,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
   const { _id, _creationTime, updates, ...rest } = rawNeed as any;
   const need: Need = { id: _id, ...rest };
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
-  const cityName = VALLE_CITIES.find(c => c.id === need.cityId)?.name || 'Valle del Cauca';
+  const cityName = getCityDisplayName(need.cityId) || 'Colombia';
   const isStory = format === 'story';
 
   return (

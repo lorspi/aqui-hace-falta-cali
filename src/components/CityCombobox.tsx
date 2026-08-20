@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, MapPin, Search, Navigation } from 'lucide-react';
-import { VALLE_CITIES, ALL_VALLE_ID, ValleCity, detectCityFromCoords } from '../data/valleCities';
+import {
+  DEPARTMENTS,
+  ALL_COLOMBIA_ID,
+  findCityById,
+  findDepartmentByCityId,
+  detectCityFromCoords,
+} from '../data/colombiaCities';
 import { showAlert } from './ConfirmDialog';
 
 interface CityComboboxProps {
@@ -8,7 +14,7 @@ interface CityComboboxProps {
   onChange: (cityId: string) => void;
   showAllOption?: boolean;
   className?: string;
-  /** Map of cityId → number of needs. Used to show counts and sort. */
+  /** Map of cityId → number of needs/offers. Used to show counts and filter departments. */
   needCounts?: Record<string, number>;
   /** Callback when user selects "Mi ubicación" — receives lat, lng of device */
   onRequestLocation?: (lat: number, lng: number) => void;
@@ -27,31 +33,57 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [locationError, setLocationError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedCity = VALLE_CITIES.find((c) => c.id === value);
+  const selectedCity = findCityById(value);
+  const selectedDept = findDepartmentByCityId(value);
   const selectedCount = needCounts?.[value] ?? 0;
-  const displayLabel = value === ALL_VALLE_ID
-    ? 'Todo el Valle del Cauca'
-    : selectedCity?.name || 'Seleccionar ciudad';
+  const displayLabel = value === ALL_COLOMBIA_ID
+    ? 'Todo Colombia'
+    : selectedCity
+      ? `${selectedCity.name}${selectedDept ? `, ${selectedDept.name}` : ''}`
+      : 'Seleccionar ciudad';
 
-  // Filter by search, then sort: cities with needs first (alphabetical), then cities without (alphabetical)
-  const sortedCities = useMemo(() => {
-    const filtered = VALLE_CITIES.filter((city) =>
-      city.name.toLowerCase().includes(search.toLowerCase())
-    );
+  const totalNeeds = needCounts
+    ? Object.values(needCounts).reduce((sum, n) => sum + n, 0)
+    : 0;
 
-    if (!needCounts) return filtered;
+  // Build grouped list: only departments/cities that have entries, filtered by search
+  const groupedCities = useMemo(() => {
+    const searchLower = search.toLowerCase();
 
-    const withNeeds = filtered.filter((c) => (needCounts[c.id] || 0) > 0);
-    const withoutNeeds = filtered.filter((c) => (needCounts[c.id] || 0) === 0);
+    // If there are needCounts, only show departments/cities with data
+    // If no needCounts, show all (fallback)
+    const hasCountData = needCounts && Object.keys(needCounts).length > 0;
 
-    withNeeds.sort((a, b) => a.name.localeCompare(b.name, 'es'));
-    withoutNeeds.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const groups: { department: string; departmentId: string; cities: { id: string; name: string; count: number }[] }[] = [];
 
-    return [...withNeeds, ...withoutNeeds];
+    for (const dept of DEPARTMENTS) {
+      const citiesWithData = dept.cities
+        .filter((city) => {
+          // If we have count data, only show cities with entries
+          if (hasCountData && !(needCounts![city.id] > 0)) return false;
+          // Apply search filter
+          if (search && !city.name.toLowerCase().includes(searchLower) && !dept.name.toLowerCase().includes(searchLower)) return false;
+          return true;
+        })
+        .map((city) => ({
+          id: city.id,
+          name: city.name,
+          count: needCounts?.[city.id] || 0,
+        }));
+
+      if (citiesWithData.length > 0) {
+        groups.push({
+          department: dept.name,
+          departmentId: dept.id,
+          cities: citiesWithData,
+        });
+      }
+    }
+
+    return groups;
   }, [search, needCounts]);
 
   // Close on click outside
@@ -79,34 +111,26 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
     setSearch('');
   };
 
-  const totalNeeds = needCounts ? Object.values(needCounts).reduce((sum, n) => sum + n, 0) : 0;
-
   const handleMyLocation = () => {
     if (!navigator.geolocation) {
       showAlert('Tu navegador no soporta geolocalización.', { title: 'Geolocalización no disponible', variant: 'info' });
       return;
     }
-    setLocationError(false);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        // Detect which city the user is in
         const detectedCity = detectCityFromCoords(latitude, longitude);
         if (detectedCity) {
           onChange(detectedCity.id);
         } else {
-          // If not in any known city, select All Valle del Cauca
-          onChange(ALL_VALLE_ID);
+          onChange(ALL_COLOMBIA_ID);
         }
-        // Notify parent about location
         onRequestLocation?.(latitude, longitude);
         setIsOpen(false);
         setSearch('');
       },
       () => {
-        setLocationError(true);
-        // If denied, select All Valle del Cauca
-        onChange(ALL_VALLE_ID);
+        onChange(ALL_COLOMBIA_ID);
         setIsOpen(false);
         setSearch('');
       },
@@ -125,10 +149,10 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
         <span className="flex items-center gap-1.5 truncate">
           <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
           <span className="truncate">{displayLabel}</span>
-          {needCounts && selectedCount > 0 && value !== ALL_VALLE_ID && (
+          {needCounts && selectedCount > 0 && value !== ALL_COLOMBIA_ID && (
             <span className="text-[10px] font-bold text-slate-500">({selectedCount})</span>
           )}
-          {needCounts && value === ALL_VALLE_ID && totalNeeds > 0 && (
+          {needCounts && value === ALL_COLOMBIA_ID && totalNeeds > 0 && (
             <span className="text-[10px] font-bold text-slate-500">({totalNeeds})</span>
           )}
         </span>
@@ -147,14 +171,14 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar ciudad o municipio..."
+                placeholder="Buscar ciudad o departamento..."
                 className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
               />
             </div>
           </div>
 
           {/* Options list */}
-          <div className="max-h-48 overflow-y-auto">
+          <div className="max-h-60 overflow-y-auto">
             {/* Mi ubicación option */}
             <button
               type="button"
@@ -168,17 +192,18 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
               <span className="text-[10px] text-emerald-500">GPS</span>
             </button>
 
+            {/* All Colombia option */}
             {showAllOption && (
               <button
                 type="button"
-                onClick={() => handleSelect(ALL_VALLE_ID)}
+                onClick={() => handleSelect(ALL_COLOMBIA_ID)}
                 className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                  value === ALL_VALLE_ID ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'
+                  value === ALL_COLOMBIA_ID ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'
                 }`}
               >
                 <span className="flex items-center gap-2">
                   <MapPin className="w-3 h-3 text-indigo-500" />
-                  <span>Todo el Valle del Cauca</span>
+                  <span>Todo Colombia</span>
                 </span>
                 {needCounts && totalNeeds > 0 && (
                   <span className="text-[10px] font-bold text-slate-400">({totalNeeds})</span>
@@ -186,28 +211,37 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
               </button>
             )}
 
-            {sortedCities.length > 0 ? (
-              sortedCities.map((city) => {
-                const count = needCounts?.[city.id] || 0;
-                return (
-                  <button
-                    key={city.id}
-                    type="button"
-                    onClick={() => handleSelect(city.id)}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                      value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${count > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`} />
-                      <span>{city.name}</span>
+            {/* Grouped by department */}
+            {groupedCities.length > 0 ? (
+              groupedCities.map((group) => (
+                <div key={group.departmentId}>
+                  {/* Department header */}
+                  <div className="px-3 py-1.5 bg-slate-50 border-y border-slate-100 sticky top-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                      {group.department}
                     </span>
-                    {count > 0 && (
-                      <span className="text-[10px] font-bold text-indigo-600">({count})</span>
-                    )}
-                  </button>
-                );
-              })
+                  </div>
+                  {/* Cities in department */}
+                  {group.cities.map((city) => (
+                    <button
+                      key={city.id}
+                      type="button"
+                      onClick={() => handleSelect(city.id)}
+                      className={`w-full text-left px-3 pl-5 py-2 text-xs hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                        value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${city.count > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                        <span>{city.name}</span>
+                      </span>
+                      {city.count > 0 && (
+                        <span className="text-[10px] font-bold text-indigo-600">({city.count})</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ))
             ) : (
               <div className="px-3 py-3 text-xs text-slate-400 text-center">
                 No se encontró "{search}"

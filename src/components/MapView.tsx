@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Need, Offer, Priority, ViewMode } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
-import { VALLE_CITIES, ALL_VALLE_ID } from '../data/valleCities';
+import { ALL_COLOMBIA_ID } from '../data/colombiaCities';
 
 interface MapViewProps {
   needs: Need[];
@@ -131,16 +131,15 @@ export const MapView: React.FC<MapViewProps> = ({
     };
     map.on('moveend', onFlyEnd);
 
-    if (selectedCityId === ALL_VALLE_ID) {
-      map.flyTo([3.75, -76.4], 9, { animate: true, duration: 1 });
+    if (selectedCityId === ALL_COLOMBIA_ID) {
+      // Show all of Colombia
+      map.flyTo([4.5, -74.0], 6, { animate: true, duration: 1 });
     } else {
-      const city = VALLE_CITIES.find((c) => c.id === selectedCityId);
-      if (city) {
-        map.flyTo([city.latitude, city.longitude], 13, { animate: true, duration: 1 });
-      } else {
-        isFlyingRef.current = false;
-        map.off('moveend', onFlyEnd);
-      }
+      // When a specific city is selected, let the markers define the bounds
+      // If there are visible needs/offers with coordinates, the map will adjust via the marker bounds
+      // Otherwise fall back to Colombia center
+      isFlyingRef.current = false;
+      map.off('moveend', onFlyEnd);
     }
   }, [selectedCityId]);
 

@@ -6,8 +6,8 @@ import { HelpCategory } from '../types';
 import { CATEGORY_LABELS } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
-import { CityCombobox } from './CityCombobox';
-import { VALLE_CITIES } from '../data/valleCities';
+import { CityFormCombobox } from './CityFormCombobox';
+import { getCityDisplayName } from '../data/colombiaCities';
 
 interface ResourceFormItem {
   type: HelpCategory | '';
@@ -68,18 +68,14 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
   // Center map on selected city when cityId changes
   useEffect(() => {
-    const city = VALLE_CITIES.find((c) => c.id === cityId);
-    if (city && !address && latitude === null) {
-      setLatitude(city.latitude);
-      setLongitude(city.longitude);
-    }
+    // No-op: coordinates will be set via geocoding or map picker
   }, [cityId]);
 
   // Auto-geocode when address changes (debounced 500ms)
   useEffect(() => {
     if (address.length < 5) return;
     setGeocodeError('');
-    const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
+    const cityName = getCityDisplayName(cityId);
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
       const result = await geocodeAddress(address, neighborhood, cityName);
@@ -533,7 +529,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             {/* City */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio *</label>
-              <CityCombobox
+              <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
               />
@@ -599,8 +595,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
               {showPickerMap && (
                 <MiniMapPicker
-                  latitude={latitude ?? VALLE_CITIES.find((c) => c.id === cityId)?.latitude ?? 3.4516}
-                  longitude={longitude ?? VALLE_CITIES.find((c) => c.id === cityId)?.longitude ?? -76.532}
+                  latitude={latitude ?? 3.4516}
+                  longitude={longitude ?? -76.532}
                   onPositionChange={handlePositionChange}
                   height="200px"
                 />

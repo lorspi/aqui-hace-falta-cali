@@ -5,8 +5,8 @@ import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/fo
 import { geocodeAddress } from '../utils/geocoding';
 import { showAlert } from './ConfirmDialog';
 import { MiniMapPicker } from './MiniMapPicker';
-import { CityCombobox } from './CityCombobox';
-import { VALLE_CITIES } from '../data/valleCities';
+import { CityFormCombobox } from './CityFormCombobox';
+import { findCityById, getCityDisplayName } from '../data/colombiaCities';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
@@ -65,19 +65,16 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
   // Center map on selected city when cityId changes
+  // Note: without lat/lng in the new data model, we rely on geocoding after address entry
   useEffect(() => {
-    const city = VALLE_CITIES.find((c) => c.id === cityId);
-    if (city && !address) {
-      setLatitude(city.latitude);
-      setLongitude(city.longitude);
-    }
+    // No-op: coordinates will be set via geocoding or map picker
   }, [cityId]);
 
   // Auto-geocode when address or neighborhood changes (debounced)
   useEffect(() => {
     if (address.length < 5) return;
     setGeocodeError('');
-    const cityName = VALLE_CITIES.find((c) => c.id === cityId)?.name;
+    const cityName = getCityDisplayName(cityId);
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
       const result = await geocodeAddress(address, neighborhood, cityName);
@@ -86,12 +83,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
         setLongitude(result.longitude);
         setGeocodeError('');
       } else {
-        // Fallback: center on the selected city
-        const city = VALLE_CITIES.find((c) => c.id === cityId);
-        if (city) {
-          setLatitude(city.latitude);
-          setLongitude(city.longitude);
-        }
         setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
       }
       setIsGeocoding(false);
@@ -336,7 +327,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio *</label>
-              <CityCombobox
+              <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
               />
