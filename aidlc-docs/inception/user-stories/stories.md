@@ -55,6 +55,63 @@ Como equipo de conversación, quiero recibir confirmación de recepción de cada
 - Respuesta 200 por evento recibido.
 - Errores → códigos y mensajes estructurados (400/409/500).
 
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: Evento válido se confirma con 200
+  Given el equipo de conversación envía un POST con un evento válido
+    And el evento incluye `event.id`, `type`, `data.conversation_id` y `data.body`
+  When el receptor procesa el evento
+  Then responde 200 OK
+    And el ACK confirma la recepción y devuelve el `event.id` del evento
+
+Scenario: Body que no es JSON válido devuelve 400
+  Given el equipo de conversación envía un POST con un body que no es JSON válido
+  When el receptor intenta procesar el evento
+  Then responde 400 Bad Request
+    And el error es estructurado con `code` y `message`
+
+Scenario Outline: Evento con un campo requerido faltante devuelve 400
+  Given el equipo de conversación envía un evento sin el campo <campo>
+  When el receptor valida el evento
+  Then responde 400 Bad Request
+    And el error estructurado indica el campo faltante (<campo>)
+
+  Examples:
+    | campo                |
+    | event.id             |
+    | type                 |
+    | data.conversation_id |
+    | data.body            |
+
+Scenario: Evento con tipo de dato inválido devuelve 400
+  Given el equipo de conversación envía un evento cuyo `type` no es una cadena válida
+  When el receptor valida el evento
+  Then responde 400 Bad Request
+    And el error estructurado detalla la causa de validación
+
+Scenario: Reenvío del mismo event.id devuelve 409
+  Given el receptor ya procesó con éxito un evento con `event.id` "evt-123"
+  When el equipo de conversación reenvía un POST con el mismo `event.id`
+  Then responde 409 Conflict
+    And el error estructurado indica que el evento ya fue recibido
+    And no se crea un duplicado en `ingest_responses`
+
+Scenario: Fallo interno de persistencia devuelve 500
+  Given el receptor recibe un evento válido
+    But la base de datos no está disponible
+  When el receptor intenta persistir el evento
+  Then responde 500 Internal Server Error
+    And el error estructurado es genérico (sin exponer detalles internos)
+
+Scenario: Evento de completado sin coordenadas se confirma con 200
+  Given el equipo de conversación envía el evento de completado de una conversación sin coordenadas
+  When el receptor confirma la recepción del evento
+  Then responde 200 OK
+    And el ACK confirma la recepción aunque falten coordenadas
+    And el enriquecimiento por geocoding queda como paso posterior (no bloquea el ACK)
+```
+
 ## S8 — Documentación del contrato de integración
 Como equipo, quiero documentar el contrato para alinear a ambos equipos.
 
