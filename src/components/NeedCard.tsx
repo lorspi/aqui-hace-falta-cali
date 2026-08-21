@@ -86,7 +86,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
             >
               <span>
                 {need.verificationStatus === 'VERIFIED'
-                  ? t('cardVerifiedBy')
+                  ? `✓ ${t('cardVerifiedBy')}`
                   : need.verificationStatus === 'PENDING_VERIFICATION'
                   ? t('cardPendingVerification')
                   : need.verificationStatus === 'REPORTED'

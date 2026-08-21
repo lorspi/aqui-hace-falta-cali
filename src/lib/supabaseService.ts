@@ -71,6 +71,8 @@ export function useNeeds(filters: FilterState, selectedCityId: string) {
 
     if (filters.verificationStatus !== 'ALL') {
       query = query.eq('verification_status', filters.verificationStatus);
+    } else if (!filters.includeArchived) {
+      query = query.neq('verification_status', 'ARCHIVED');
     }
 
     query = query.order('created_at', { ascending: false });
@@ -136,6 +138,8 @@ export function useOffers(filters: FilterState, selectedCityId: string) {
 
     if (filters.verificationStatus !== 'ALL') {
       query = query.eq('verification_status', filters.verificationStatus);
+    } else if (!filters.includeArchived) {
+      query = query.neq('verification_status', 'ARCHIVED');
     }
 
     query = query.order('created_at', { ascending: false });
@@ -349,6 +353,52 @@ export async function addNeedUpdateNote(params: {
     },
   ]);
   if (error) throw error;
+}
+
+export async function fetchNeedUpdateLogs(needId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('update_logs')
+    .select('*')
+    .eq('need_id', needId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[supabaseService] Error fetching update_logs:', error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    needId: row.need_id,
+    previousStatus: row.previous_status,
+    newStatus: row.new_status,
+    description: row.description,
+    updatedBy: row.updated_by || 'Ciudadano anónimo',
+    createdAt: row.created_at,
+  }));
+}
+
+export async function fetchOfferUpdateLogs(offerId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('offer_update_logs')
+    .select('*')
+    .eq('offer_id', offerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[supabaseService] Error fetching offer_update_logs:', error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    offerId: row.offer_id,
+    previousStatus: row.previous_status,
+    newStatus: row.new_status,
+    description: row.description,
+    updatedBy: row.updated_by || 'Ciudadano anónimo',
+    createdAt: row.created_at,
+  }));
 }
 
 // ==========================================

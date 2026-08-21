@@ -147,7 +147,7 @@ export const VERIFICATION_CONFIG: Record<
   { label: string; badgeClass: string; icon: string; description: string }
 > = {
   VERIFIED: {
-    label: '✓ Verificado',
+    label: 'Verificado',
     badgeClass: 'text-indigo-600 bg-indigo-50/80 border-indigo-200 font-bold uppercase text-[10px] tracking-wider',
     icon: '✓',
     description: 'Confirmada por una fuente oficial, organización responsable o moderación.',

@@ -121,11 +121,11 @@ export const AdminPanelPage: React.FC = () => {
 
   // Fetch Needs & Offers from Supabase
   const { needs, refetch: refetchNeeds } = useNeeds(
-    { search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'ALL', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'NEEDS' },
+    { search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'ALL', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'NEEDS', includeArchived: true },
     'ALL_COLOMBIA'
   );
   const { offers, refetch: refetchOffers } = useOffers(
-    { search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'ALL', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'OFFERS' },
+    { search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'ALL', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'OFFERS', includeArchived: true },
     'ALL_COLOMBIA'
   );
 
@@ -223,27 +223,47 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  const handleDeleteNeedItem = async (id: string, title: string) => {
-    if (!(await showConfirm(`¿Eliminar la necesidad "${title}"? Esta acción no se puede deshacer.`, { title: 'Eliminar necesidad' }))) return;
+  const handleArchiveNeedItem = async (id: string, title: string) => {
+    if (!(await showConfirm(`¿Archivar la necesidad "${title}"?`, { title: 'Archivar necesidad' }))) return;
     try {
-      await deleteNeed(id, currentUser?.email || 'moderador@lorspi.com');
+      await updateNeed(id, { verificationStatus: 'ARCHIVED' });
+      await addNeedUpdateNote({
+        needId: id,
+        previousStatus: 'NEED_HELP_NOW',
+        newStatus: 'CLOSED',
+        description: 'Archivada por el equipo de moderación.',
+        updatedBy: currentUser?.name ? `[MOD] ${currentUser.name}` : '[MOD] Moderador',
+      });
+      await logAudit(
+        'ARCHIVE_NEED',
+        currentUser?.email || 'moderador@lorspi.com',
+        `Necesidad ID ${id} ("${title}") fue archivada.`,
+        id
+      );
       refetchNeeds();
       loadData();
-      showAlert('Necesidad eliminada exitosamente.', { title: 'Éxito', variant: 'success' });
+      showAlert('Necesidad archivada exitosamente.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
-      showAlert(err.message || 'Error al eliminar', { title: 'Error', variant: 'error' });
+      showAlert(err.message || 'Error al archivar', { title: 'Error', variant: 'error' });
     }
   };
 
-  const handleDeleteOfferItem = async (id: string, title: string) => {
-    if (!(await showConfirm(`¿Eliminar la oferta "${title}"? Esta acción no se puede deshacer.`, { title: 'Eliminar oferta' }))) return;
+  const handleArchiveOfferItem = async (id: string, title: string) => {
+    if (!(await showConfirm(`¿Archivar la oferta "${title}"?`, { title: 'Archivar oferta' }))) return;
     try {
-      await deleteOffer(id, currentUser?.email || 'moderador@lorspi.com');
+      await updateOffer(id, { verificationStatus: 'ARCHIVED' });
+      await logAudit(
+        'ARCHIVE_OFFER',
+        currentUser?.email || 'moderador@lorspi.com',
+        `Oferta ID ${id} ("${title}") fue archivada.`,
+        undefined,
+        id
+      );
       refetchOffers();
       loadData();
-      showAlert('Oferta eliminada exitosamente.', { title: 'Éxito', variant: 'success' });
+      showAlert('Oferta archivada exitosamente.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
-      showAlert(err.message || 'Error al eliminar', { title: 'Error', variant: 'error' });
+      showAlert(err.message || 'Error al archivar', { title: 'Error', variant: 'error' });
     }
   };
 
@@ -660,74 +680,233 @@ export const AdminPanelPage: React.FC = () => {
         {/* TAB 3: ALL NEEDS & OFFERS */}
         {activeTab === 'ALL' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <h3 className="font-black text-slate-900 text-sm">
                 Gestión Global ({needs.length} Necesidades, {offers.length} Ofertas)
               </h3>
-              <div className="relative w-full sm:w-64">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                  placeholder="Filtrar por título..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
-                />
+              
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                <div className="relative flex-1 sm:w-60 min-w-[200px]">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    placeholder="Filtrar por título o barrio..."
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+
+                {/* Filter 1: Type */}
+                <select
+                  value={adminTypeFilter}
+                  onChange={(e) => setAdminTypeFilter(e.target.value)}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="ALL">Todas (necesidades + ofertas)</option>
+                  <option value="NEEDS">Solo necesidades</option>
+                  <option value="OFFERS">Solo ofertas</option>
+                </select>
+
+                {/* Filter 2: Priority */}
+                <select
+                  value={adminPriorityFilter}
+                  onChange={(e) => setAdminPriorityFilter(e.target.value)}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="ALL">Todas las prioridades</option>
+                  <option value="CRITICAL">🔴 Crítica</option>
+                  <option value="HIGH">🟠 Alta</option>
+                  <option value="MEDIUM">🟡 Media</option>
+                  <option value="LOW">🟢 Baja</option>
+                </select>
+
+                {/* Filter 3: Verification */}
+                <select
+                  value={adminVerificationFilter}
+                  onChange={(e) => setAdminVerificationFilter(e.target.value)}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="ALL">Todas las verificaciones</option>
+                  <option value="VERIFIED">✓ Verificadas</option>
+                  <option value="PENDING_VERIFICATION">◷ Pendientes</option>
+                  <option value="REPORTED">⚠️ Reportadas</option>
+                  <option value="ARCHIVED">📁 Archivadas</option>
+                </select>
+
+                {(adminSearch || adminPriorityFilter !== 'ALL' || adminVerificationFilter !== 'ALL' || adminTypeFilter !== 'ALL') && (
+                  <button
+                    onClick={() => {
+                      setAdminSearch('');
+                      setAdminPriorityFilter('ALL');
+                      setAdminVerificationFilter('ALL');
+                      setAdminTypeFilter('ALL');
+                    }}
+                    className="text-xs text-rose-600 font-bold hover:underline ml-1"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
-                    <th className="p-3">Título</th>
-                    <th className="p-3">Tipo</th>
-                    <th className="p-3">Ubicación</th>
-                    <th className="p-3">Estado Verificación</th>
-                    <th className="p-3 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {needs
-                    .filter((n) => !adminSearch || n.title.toLowerCase().includes(adminSearch.toLowerCase()))
-                    .map((n) => (
-                      <tr key={n.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{n.title}</td>
-                        <td className="p-3"><span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Necesidad</span></td>
-                        <td className="p-3 text-slate-600">{n.neighborhood}, {n.address}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${n.verificationStatus === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                            {n.verificationStatus}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-2">
-                          <button onClick={() => setEditingNeedViaModal(n)} className="text-blue-600 font-bold hover:underline">Editar</button>
-                          <button onClick={() => handleDeleteNeedItem(n.id, n.title)} className="text-red-600 font-bold hover:underline">Eliminar</button>
-                        </td>
-                      </tr>
-                    ))}
+            {(() => {
+              type CombinedItem = {
+                id: string;
+                type: 'NEED' | 'OFFER';
+                item: Need | Offer;
+                title: string;
+                neighborhood: string;
+                address: string;
+                priority?: Priority;
+                verificationStatus: VerificationStatus;
+                updatedAt: string;
+              };
 
-                  {offers
-                    .filter((o) => !adminSearch || o.title.toLowerCase().includes(adminSearch.toLowerCase()))
-                    .map((o) => (
-                      <tr key={o.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{o.title}</td>
-                        <td className="p-3"><span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">Oferta</span></td>
-                        <td className="p-3 text-slate-600">{o.neighborhood}, {o.address}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${o.verificationStatus === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                            {o.verificationStatus}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-2">
-                          <button onClick={() => setEditingOfferViaModal(o)} className="text-blue-600 font-bold hover:underline">Editar</button>
-                          <button onClick={() => handleDeleteOfferItem(o.id, o.title)} className="text-red-600 font-bold hover:underline">Eliminar</button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+              const needItems: CombinedItem[] = (adminTypeFilter === 'OFFERS' ? [] : needs).map((n) => ({
+                id: n.id,
+                type: 'NEED' as const,
+                item: n,
+                title: n.title,
+                neighborhood: n.neighborhood,
+                address: n.address,
+                priority: n.priority,
+                verificationStatus: n.verificationStatus,
+                updatedAt: n.updatedAt,
+              }));
+
+              const offerItems: CombinedItem[] = (adminTypeFilter === 'NEEDS' ? [] : offers).map((o) => ({
+                id: o.id,
+                type: 'OFFER' as const,
+                item: o,
+                title: o.title,
+                neighborhood: o.neighborhood,
+                address: o.address,
+                priority: undefined,
+                verificationStatus: o.verificationStatus,
+                updatedAt: o.updatedAt,
+              }));
+
+              const filteredItems = [...needItems, ...offerItems].filter((item) => {
+                if (adminSearch) {
+                  const q = adminSearch.toLowerCase();
+                  if (
+                    !item.title.toLowerCase().includes(q) &&
+                    !item.neighborhood.toLowerCase().includes(q) &&
+                    !item.address.toLowerCase().includes(q)
+                  )
+                    return false;
+                }
+                if (adminPriorityFilter !== 'ALL' && item.priority !== adminPriorityFilter) return false;
+                if (adminVerificationFilter !== 'ALL' && item.verificationStatus !== adminVerificationFilter) return false;
+                return true;
+              }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+              return (
+                <div className="space-y-3">
+                  <div className="text-xs text-slate-500 font-medium">
+                    Mostrando <strong>{filteredItems.length}</strong> publicaciones de {needs.length + offers.length} totales
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                          <th className="p-3">Título / Ubicación</th>
+                          <th className="p-3">Tipo</th>
+                          <th className="p-3">Prioridad</th>
+                          <th className="p-3">Estado Verificación</th>
+                          <th className="p-3 text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-6 text-center text-slate-400 italic">
+                              No se encontraron publicaciones con los filtros seleccionados.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredItems.map((entry) => (
+                            <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="p-3">
+                                <p className="font-bold text-slate-900">{entry.title}</p>
+                                <p className="text-[11px] text-slate-500">{entry.neighborhood}, {entry.address}</p>
+                              </td>
+                              <td className="p-3">
+                                {entry.type === 'NEED' ? (
+                                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
+                                    Necesidad
+                                  </span>
+                                ) : (
+                                  <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
+                                    Oferta
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {entry.priority ? (
+                                  <span className="font-bold text-[11px]">
+                                    {entry.priority === 'CRITICAL' ? '🔴 Crítica' : entry.priority === 'HIGH' ? '🟠 Alta' : entry.priority === 'MEDIUM' ? '🟡 Media' : '🟢 Baja'}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                  entry.verificationStatus === 'VERIFIED'
+                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                    : entry.verificationStatus === 'PENDING_VERIFICATION'
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : entry.verificationStatus === 'REPORTED'
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {entry.verificationStatus === 'VERIFIED'
+                                    ? '✓ Verificada'
+                                    : entry.verificationStatus === 'PENDING_VERIFICATION'
+                                    ? '◷ Pendiente'
+                                    : entry.verificationStatus === 'REPORTED'
+                                    ? '⚠️ Reportada'
+                                    : '📁 Archivada'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right space-x-2">
+                                <button
+                                  onClick={() => {
+                                    if (entry.type === 'NEED') {
+                                      setEditingNeedViaModal(entry.item as Need);
+                                    } else {
+                                      setEditingOfferViaModal(entry.item as Offer);
+                                    }
+                                  }}
+                                  className="text-blue-600 font-bold hover:underline"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (entry.type === 'NEED') {
+                                      handleArchiveNeedItem(entry.id, entry.title);
+                                    } else {
+                                      handleArchiveOfferItem(entry.id, entry.title);
+                                    }
+                                  }}
+                                  className="text-slate-600 font-bold hover:underline"
+                                >
+                                  Archivar
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

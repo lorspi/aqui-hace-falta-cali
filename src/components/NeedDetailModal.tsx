@@ -28,6 +28,7 @@ import {
   getCategoryLabel,
   getPlaceTypeLabel,
 } from '../utils/formatters';
+import { fetchNeedUpdateLogs } from '../lib/supabaseService';
 import { useTranslation } from '../i18n/LanguageContext';
 import { trackClarityEvent } from '../utils/analytics';
 
@@ -60,8 +61,15 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 }) => {
   const { language, t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [updateLogs, setUpdateLogs] = useState<any[]>([]);
 
-  const updateLogs: any[] = [];
+  React.useEffect(() => {
+    if (need?.id) {
+      fetchNeedUpdateLogs(need.id).then((logs) => setUpdateLogs(logs));
+    } else {
+      setUpdateLogs([]);
+    }
+  }, [need?.id]);
 
   React.useEffect(() => {
     if (need) {
@@ -302,6 +310,45 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
               )}
             </div>
           </div>
+
+          {/* Historial de cambios */}
+          {updateLogs && updateLogs.length > 0 && (
+            <div className="space-y-2.5 pt-3 border-t border-slate-200">
+              <div className="flex items-center gap-2 font-bold text-slate-800 text-xs sm:text-sm">
+                <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>Historial de cambios ({updateLogs.length})</span>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs modal-scroll">
+                {updateLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1 transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                        {log.updatedBy?.startsWith('[MOD] ') ? (
+                          <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        ) : (
+                          <span className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                            ✓
+                          </span>
+                        )}
+                        <span>{log.updatedBy?.replace('[MOD] ', '') || 'Ciudadano anónimo'}</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                        {formatTimeAgo(log.createdAt, language)}
+                      </span>
+                    </div>
+
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                      {log.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

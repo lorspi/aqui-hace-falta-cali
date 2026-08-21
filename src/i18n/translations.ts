@@ -16,8 +16,12 @@ export const translations = {
     selectLanguage: 'Idioma',
 
     // Banner & Disclaimer
-    disclaimerTitle: 'Plataforma de coordinación de ayuda comunitaria durante la emergencia.',
-    disclaimerDesc: 'Si requiere atención de emergencia vital o rescate inmediato, comuníquese a las líneas oficiales de Bomberos (119), Policía (123) o Cruz Roja (132).',
+    disclaimerTitle: 'Aviso importante:',
+    disclaimerDescText: 'Esta plataforma es una capa ciudadana de ayuda y',
+    disclaimerDescHighlight: 'no sustituye los canales oficiales de emergencia.',
+    emergencyLinesLabel: 'Líneas de emergencia:',
+    redCrossLabel: 'Cruz Roja',
+    firefightersLabel: 'Bomberos',
     demoNoticeTitle: 'Modo Demostración Activo:',
     demoNoticeDesc: 'Algunos reportes son datos de prueba creados para simular el funcionamiento durante una emergencia real.',
 
@@ -63,7 +67,7 @@ export const translations = {
     cardViewOfferDetails: 'Ver detalles de oferta',
     cardHowToHelp: '¿Cómo ayudar?',
     cardContactDirect: 'Contactar',
-    cardVerifiedBy: 'Verificado por',
+    cardVerifiedBy: 'Verificado',
     cardPendingVerification: 'Pendiente de verificación',
     cardReported: 'Reportada',
     cardArchived: 'Archivada',
@@ -258,10 +262,14 @@ export const translations = {
     selectLanguage: 'Language',
 
     // Banner & Disclaimer
-    disclaimerTitle: 'Community aid coordination platform during the emergency.',
-    disclaimerDesc: 'If you require vital emergency care or immediate rescue, please contact official emergency lines: Fire Department (119), Police (123), or Red Cross (132).',
+    disclaimerTitle: 'Important notice:',
+    disclaimerDescText: 'This platform is a community help layer and',
+    disclaimerDescHighlight: 'does not replace official emergency channels.',
+    emergencyLinesLabel: 'Emergency lines:',
+    redCrossLabel: 'Red Cross',
+    firefightersLabel: 'Fire Dept',
     demoNoticeTitle: 'Demo Mode Active:',
-    demoNoticeDesc: 'Some reports are test data created to simulate platform operations during a real emergency.',
+    demoNoticeDesc: 'Some reports are test data created to simulate real emergency operation.',
 
     // Filter Bar & Search
     searchPlaceholder: 'Search by title, neighborhood or description...',
@@ -305,7 +313,7 @@ export const translations = {
     cardViewOfferDetails: 'View offer details',
     cardHowToHelp: 'How to help?',
     cardContactDirect: 'Contact',
-    cardVerifiedBy: 'Verified by',
+    cardVerifiedBy: 'Verified',
     cardPendingVerification: 'Pending verification',
     cardReported: 'Reported',
     cardArchived: 'Archived',
@@ -500,10 +508,14 @@ export const translations = {
     selectLanguage: 'Idioma',
 
     // Banner & Disclaimer
-    disclaimerTitle: 'Plataforma de coordenação de ajuda comunitária durante a emergência.',
-    disclaimerDesc: 'Se precisar de atendimento de emergência vital ou resgate imediato, entre em contato com as linhas oficiais de Bombeiros (119), Polícia (123) ou Cruz Vermelha (132).',
+    disclaimerTitle: 'Aviso importante:',
+    disclaimerDescText: 'Esta plataforma é uma camada de ajuda comunitária e',
+    disclaimerDescHighlight: 'não substitui os canais oficiais de emergência.',
+    emergencyLinesLabel: 'Linhas de emergência:',
+    redCrossLabel: 'Cruz Vermelha',
+    firefightersLabel: 'Bombeiros',
     demoNoticeTitle: 'Modo de Demonstração Ativo:',
-    demoNoticeDesc: 'Alguns relatórios são dados de teste criados para simular o funcionamento durante uma emergência real.',
+    demoNoticeDesc: 'Alguns relatórios são dados de teste criados para simular a operação de emergência.',
 
     // Filter Bar & Search
     searchPlaceholder: 'Buscar por título, bairro ou descrição...',
@@ -547,7 +559,7 @@ export const translations = {
     cardViewOfferDetails: 'Ver detalhes da oferta',
     cardHowToHelp: 'Como ajudar?',
     cardContactDirect: 'Contatar',
-    cardVerifiedBy: 'Verificado por',
+    cardVerifiedBy: 'Verificado',
     cardPendingVerification: 'Pendente de verificação',
     cardReported: 'Reportado',
     cardArchived: 'Arquivado',
@@ -742,8 +754,12 @@ export const translations = {
     selectLanguage: 'Langue',
 
     // Banner & Disclaimer
-    disclaimerTitle: 'Plateforme de coordination de l\'aide communautaire d\'urgence.',
-    disclaimerDesc: 'Si vous avez besoin d\'une prise en charge d\'urgence vitale ou d\'un sauvetage immédiat, contactez les lignes officielles: Pompiers (119), Police (123) ou Croix-Rouge (132).',
+    disclaimerTitle: 'Avis important:',
+    disclaimerDescText: 'Cette plateforme est une couche d\'aide citoyenne et',
+    disclaimerDescHighlight: 'ne remplace pas les canaux d\'urgence officiels.',
+    emergencyLinesLabel: 'Lignes d\'urgence:',
+    redCrossLabel: 'Croix-Rouge',
+    firefightersLabel: 'Pompiers',
     demoNoticeTitle: 'Mode Démonstration Actif:',
     demoNoticeDesc: 'Certains signalements sont des données de test créées pour simuler le fonctionnement lors d\'une urgence réelle.',
 
@@ -789,7 +805,7 @@ export const translations = {
     cardViewOfferDetails: 'Voir détails de l\'offre',
     cardHowToHelp: 'Comment aider?',
     cardContactDirect: 'Contacter',
-    cardVerifiedBy: 'Vérifié par',
+    cardVerifiedBy: 'Vérifié',
     cardPendingVerification: 'En attente de vérification',
     cardReported: 'Signalé',
     cardArchived: 'Archivé',

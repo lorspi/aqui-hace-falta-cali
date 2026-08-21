@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { submitOfferReport, updateOffer } from '../lib/supabaseService';
+import { submitOfferReport, updateOffer, fetchOfferUpdateLogs } from '../lib/supabaseService';
 import {
   X,
   MapPin,
@@ -122,7 +122,15 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   const [statusSuccess, setStatusSuccess] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const updateLogs: any[] = [];
+  const [updateLogs, setUpdateLogs] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (offer?.id && isOpen) {
+      fetchOfferUpdateLogs(offer.id).then((logs) => setUpdateLogs(logs));
+    } else {
+      setUpdateLogs([]);
+    }
+  }, [offer?.id, isOpen]);
 
   // Block body scroll when modal is open
   React.useEffect(() => {

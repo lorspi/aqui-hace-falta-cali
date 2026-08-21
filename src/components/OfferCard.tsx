@@ -43,7 +43,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
           <div className="flex items-center gap-1.5">
             {offer.verificationStatus === 'VERIFIED' && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border text-indigo-600 bg-indigo-50/80 border-indigo-200">
-                <span>{t('cardVerifiedBy')}</span>
+                <span>✓ {t('cardVerifiedBy')}</span>
               </span>
             )}
           </div>
