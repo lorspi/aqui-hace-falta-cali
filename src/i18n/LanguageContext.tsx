@@ -12,11 +12,12 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ahf_language');
-      if (saved === 'es' || saved === 'en') return saved;
-      // Auto-detect browser language
+      const saved = localStorage.getItem('ahf_language') as Language;
+      if (saved === 'es' || saved === 'en' || saved === 'pt' || saved === 'fr') return saved;
       const navLang = navigator.language.toLowerCase();
       if (navLang.startsWith('en')) return 'en';
+      if (navLang.startsWith('pt')) return 'pt';
+      if (navLang.startsWith('fr')) return 'fr';
     }
     return 'es';
   });

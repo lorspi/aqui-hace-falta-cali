@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { List, Map, Plus, PlusCircle, ShieldCheck, X, MapPin, Heart } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 
 interface MobileBottomBarProps {
   mobileView: 'LIST' | 'MAP';
@@ -37,25 +38,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
           {/* Menu items */}
           <div className="relative z-10 flex flex-col items-center gap-3 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-200">
-            {/* Language toggle button */}
-            <div className="flex items-center gap-2 bg-white rounded-xl p-2 shadow-lg border border-slate-200">
+            {/* Language Selector Dropdown */}
+            <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-lg border border-slate-200">
               <span className="text-xs font-semibold text-slate-500">{t('selectLanguage')}:</span>
-              <button
-                onClick={() => setLanguage('es')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  language === 'es' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
-                }`}
-              >
-                Español
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  language === 'en' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'
-                }`}
-              >
-                English
-              </button>
+              <LanguageSelector />
             </div>
 
             {/* Necesito Ayuda */}

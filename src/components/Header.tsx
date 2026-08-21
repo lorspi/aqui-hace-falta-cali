@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake, Globe } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
   onOpenCreateModal: () => void;
@@ -89,26 +90,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
           {/* Action buttons — hidden on mobile, shown on desktop */}
           <div className="hidden md:flex items-center gap-2.5">
-            {/* Language toggle desktop */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 mr-1">
-              <Globe className="w-3.5 h-3.5 text-slate-500 ml-1 mr-0.5" />
-              <button
-                onClick={() => setLanguage('es')}
-                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
-                  language === 'es' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                ES
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
-                  language === 'en' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                EN
-              </button>
-            </div>
+            {/* Language Switcher Dropdown with Flags */}
+            <LanguageSelector />
 
             <button
               onClick={onOpenCreateModal}
