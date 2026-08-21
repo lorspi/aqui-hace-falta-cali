@@ -17,6 +17,72 @@ Como sistema receptor, quiero un endpoint HTTP que reciba los eventos del webhoo
 - Valida estructura mínima del body → 400 con errores detallados.
 - Responde 200 por cada evento.
 
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: El endpoint acepta un evento crudo válido y responde 200
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el equipo de conversación envía un POST con Content-Type application/json y un evento crudo válido (id, type, conversation_id, body)
+  Then el receptor responde 200 OK
+  And el evento queda disponible para la validación y persistencia posteriores
+```
+
+```gherkin
+Scenario: El endpoint acepta eventos de cualquier type, incluido el de completado
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el equipo de conversación envía un evento con type 'conversation_completed'
+  Then el receptor responde 200 OK
+  And el type del evento no condiciona su aceptación en el endpoint
+```
+
+```gherkin
+Scenario: El endpoint rechaza un body que no es JSON válido
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el equipo de conversación envía un POST con un body vacío o no parseable como JSON
+  Then el receptor responde 400 Bad Request
+  And el error detalla que el body debe ser un JSON válido
+```
+
+```gherkin
+Scenario: El endpoint rechaza un evento con campos mínimos faltantes
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When se envía un evento JSON sin id, type, conversation_id o body
+  Then el receptor responde 400 Bad Request
+  And el error detalla los campos faltantes o con formato inválido
+```
+
+```gherkin
+Scenario: Un reenvío con el mismo event_id se acepta en el endpoint
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el remitente reenvía un evento con el mismo event_id ya recibido previamente
+  Then el receptor responde 200 OK
+  And la deduplicación se delega a la capa de idempotencia (S4/S6)
+```
+
+```gherkin
+Scenario: El endpoint acepta peticiones sin autenticación
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el equipo de conversación envía un POST sin token ni credenciales
+  Then el receptor responde 200 OK
+  And la autenticación queda registrada como deuda de seguridad (ver S8)
+```
+
+```gherkin
+Scenario: Un evento sin coordenadas se acepta en el endpoint
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When se envía un evento crudo que cumple la estructura mínima pero no incluye latitud ni longitud
+  Then el receptor responde 200 OK
+  And el enriquecimiento con geocoding queda delegado a la capa de mapeo (S5)
+```
+
+```gherkin
+Scenario: El endpoint responde 200 por cada evento de una ráfaga
+  Given el endpoint POST /webhook/events del receptor de eventos
+  When el equipo de conversación envía varios eventos en secuencia
+  Then cada evento recibe una respuesta 200 OK
+  And ninguno se rechaza por razones de transporte
+```
+
 ## S3 — Validación y mapeo de eventos
 Como sistema receptor, quiero validar y mapear los eventos crudos a nuestro modelo (`Need`) para garantizar integridad.
 
