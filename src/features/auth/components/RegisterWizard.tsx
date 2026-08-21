@@ -254,6 +254,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
             {currentStep === 3 && (
               <Step3Identity
+                role={role}
                 fullName={fullName}
                 documentType={documentType}
                 documentNumber={documentNumber}
@@ -269,6 +270,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
             {currentStep === 4 && (
               <Step4Account
+                role={role}
                 phoneCountryCode={phoneCountryCode}
                 phoneNumber={phoneNumber}
                 email={email}

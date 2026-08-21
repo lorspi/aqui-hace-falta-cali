@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Phone, UserPlus, Loader2 } from 'lucide-react';
+import { UserRole } from '../../schemas/registerSchema';
 
 interface Step4AccountProps {
+  role?: UserRole;
   phoneCountryCode: string;
   phoneNumber: string;
   email: string;
@@ -30,6 +32,7 @@ const COUNTRY_CODES = [
 ];
 
 export const Step4Account: React.FC<Step4AccountProps> = ({
+  role,
   phoneCountryCode,
   phoneNumber,
   email,
@@ -44,14 +47,38 @@ export const Step4Account: React.FC<Step4AccountProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
+  const getRoleBadge = (r?: UserRole) => {
+    switch (r) {
+      case 'rescatista':
+        return { label: 'Rescatista / Operativo', icon: '🚚', color: 'bg-amber-50 text-amber-900 border-amber-200' };
+      case 'acopio':
+        return { label: 'Centro de Acopio', icon: '📦', color: 'bg-purple-50 text-purple-900 border-purple-200' };
+      case 'entidad_profesional':
+        return { label: 'Entidad / Profesional', icon: '🛡️', color: 'bg-slate-100 text-slate-900 border-slate-300' };
+      case 'voluntario':
+      default:
+        return { label: 'Voluntario / Donante', icon: '❤️', color: 'bg-blue-50 text-blue-900 border-blue-200' };
+    }
+  };
+
+  const badge = getRoleBadge(role);
+
   return (
     <div className="space-y-6">
       {/* Encabezado del Paso 4 */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Tu cuenta
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Tu cuenta
+          </h2>
+          {role && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.color}`}>
+              <span>{badge.icon}</span>
+              <span>{badge.label}</span>
+            </span>
+          )}
+        </div>
+        <p className="text-xs sm:text-sm text-slate-500">
           Configura tus datos de contacto y credenciales de acceso seguras.
         </p>
       </div>
