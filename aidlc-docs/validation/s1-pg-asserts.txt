@@ -1,0 +1,134 @@
+=== [1] needs: existencia, PK uuid, columnas, defaults ===
+    check_    | ok 
+--------------+----
+ needs exists | t
+
+     column_name     |     data_type     |              column_default               | is_nullable 
+---------------------+-------------------+-------------------------------------------+-------------
+ address             | text              |                                           | NO
+ categories          | jsonb             | '[]'::jsonb                               | YES
+ city_id             | character varying | 'cali'::character varying                 | NO
+ contact_email       | text              |                                           | YES
+ contact_name        | text              |                                           | NO
+ contact_phone       | text              |                                           | YES
+ contact_whatsapp    | text              |                                           | YES
+ id                  | uuid              | uuid_generate_v4()                        | NO
+ latitude            | double precision  |                                           | YES
+ longitude           | double precision  |                                           | YES
+ neighborhood        | text              |                                           | NO
+ place_type          | character varying | 'EDIFICIO_AFECTADO'::character varying    | YES
+ priority            | character varying | 'MEDIUM'::character varying               | YES
+ requester_type      | character varying | 'PERSONA'::character varying              | YES
+ status              | character varying | 'NEED_HELP_NOW'::character varying        | YES
+ verification_status | character varying | 'PENDING_VERIFICATION'::character varying | YES
+
+=== [2] needs: índices esperados ===
+       indexname        
+------------------------
+ idx_needs_created_at
+ idx_needs_priority
+ idx_needs_status
+ idx_needs_verification
+
+=== [3] needs: defaults del modelo ===
+     column_name     |              column_default               
+---------------------+-------------------------------------------
+ priority            | 'MEDIUM'::character varying
+ status              | 'NEED_HELP_NOW'::character varying
+ verification_status | 'PENDING_VERIFICATION'::character varying
+
+=== [4] ingest_responses: existencia, columnas, unicidad ===
+         check_          | ok 
+-------------------------+----
+ ingest_responses exists | t
+
+    column_name    |        data_type         |        column_default        | is_nullable 
+-------------------+--------------------------+------------------------------+-------------
+ body              | jsonb                    |                              | YES
+ conversation_id   | text                     |                              | YES
+ created_at        | timestamp with time zone | now()                        | YES
+ event_id          | text                     |                              | NO
+ from              | text                     |                              | YES
+ id                | uuid                     | uuid_generate_v4()           | NO
+ message_type      | text                     |                              | YES
+ processed_at      | timestamp with time zone |                              | YES
+ processing_status | character varying        | 'PENDING'::character varying | YES
+ raw_payload       | jsonb                    |                              | YES
+ received_at       | timestamp with time zone | now()                        | YES
+ type              | text                     |                              | YES
+ workflow_step     | text                     |                              | YES
+
+        constraint_name        | constraint_type 
+-------------------------------+-----------------
+ ingest_responses_event_id_key | UNIQUE
+
+=== [5] RLS habilitado en ambas tablas ===
+    tablename     | rowsecurity 
+------------------+-------------
+ ingest_responses | t
+ needs            | t
+
+=== [6] ingest_responses: sin políticas (anon bloqueado) ===
+ politicas_sobre_ingest_responses 
+----------------------------------
+                                0
+
+=== [7] Preparar rol anon (como Supabase) ===
+DO
+GRANT
+GRANT
+GRANT
+=== [8] anon NO puede leer ingest_responses (RLS) ===
+SET
+ count 
+-------
+     0
+
+--- debería fallar (si llegamos aquí, NO bloqueado) ---
+RESET
+=== [9] anon NO puede escribir en ingest_responses (RLS) ===
+SET
+ERROR:  new row violates row-level security policy for table "ingest_responses"
+--- debería fallar (si llegamos aquí, NO bloqueado) ---
+RESET
+=== [10] anon NO puede leer needs con filtro de WhatsApp (solo político) ===
+SET
+ count 
+-------
+     1
+
+RESET
+=== [11] service_role/superuser (BYPASSRLS) INSERT + SELECT en ingest_responses ===
+ERROR:  duplicate key value violates unique constraint "ingest_responses_event_id_key"
+ event_id | conversation_id | processing_status 
+----------+-----------------+-------------------
+ evt_123  | conv_1          | PENDING
+
+=== [12] Reenvío con mismo event_id: rechazado por constraint único ===
+--- debería fallar por duplicado (si llegamos aquí, NO único) ---
+=== [13] Evento con campos faltantes: solo event_id obligatorio, resto NULL ===
+ERROR:  duplicate key value violates unique constraint "ingest_responses_event_id_key"
+ERROR:  duplicate key value violates unique constraint "ingest_responses_event_id_key"
+ event_id | type | conversation_id | from |         body          | processing_status 
+----------+------+-----------------+------+-----------------------+-------------------
+ evt_min  |      |                 |      | {"body": "solo esto"} | PENDING
+
+=== [14] ingest_responses sin event_id: rechazado (NOT NULL) ===
+ERROR:  null value in column "event_id" of relation "ingest_responses" violates not-null constraint
+--- debería fallar por NOT NULL (si llegamos aquí, NO obligatorio) ---
+=== [15] needs sin title: rechazado (NOT NULL) ===
+--- debería fallar por NOT NULL (si llegamos aquí, NO obligatorio) ---
+=== [16] needs sin lat/lng: permitido (geocoding posterior) ===
+ERROR:  null value in column "title" of relation "needs" violates not-null constraint
+                  id                  |           title           | latitude | longitude |  source  | priority |    status     | verification_status  
+--------------------------------------+---------------------------+----------+-----------+----------+----------+---------------+----------------------
+ 598ced91-aee0-4cf5-a0f9-904c9b92d0ae | Incidente sin coordenadas |          |           | WhatsApp | MEDIUM   | NEED_HELP_NOW | PENDING_VERIFICATION
+
+INSERT 0 1
+=== [17] Enriquecimiento posterior: UPDATE lat/lng/ciudad sobre la fila anterior ===
+           title           | latitude | longitude | city_id 
+---------------------------+----------+-----------+---------
+ Incidente sin coordenadas |   3.4516 |   -76.532 | cali
+ Incidente sin coordenadas |   3.4516 |   -76.532 | cali
+
+UPDATE 2
