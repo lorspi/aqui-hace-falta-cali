@@ -61,3 +61,70 @@ Como equipo, quiero documentar el contrato para alinear a ambos equipos.
 **Criterios de aceptación:**
 - Documento con el esquema de los eventos crudos, el evento de completado, ejemplos y códigos de error.
 - Nota explícita: autenticación abierta (deuda de seguridad).
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: El contrato documenta el esquema de los eventos crudos
+  Given existe el documento del contrato de integración
+  When un integrante del equipo de conversación lo consulta para conocer el formato de los eventos
+  Then encuentra el esquema de los eventos crudos con todos sus campos
+    And el esquema incluye `event.id`, `type`, `data.conversation_id`, `data.from`, `data.body`, `data.message_type` y `data.workflow.step`
+    And el documento indica que el transporte es un POST HTTP con JSON al endpoint del receptor
+
+Scenario: El contrato documenta el evento de completado
+  Given existe el documento del contrato de integración
+  When un integrante del equipo de conversación consulta cómo se marca el fin de la conversación
+  Then encuentra el esquema del evento de completado (otro `type` distinto de `message.received`)
+    And el documento explica que ese evento dispara la creación del incidente en `needs`
+
+Scenario: El contrato incluye ejemplos de payloads
+  Given existe el documento del contrato de integración
+  When un desarrollador de cualquiera de los dos equipos revisa el documento
+  Then encuentra al menos un ejemplo de payload válido por cada tipo de evento soportado
+    And los ejemplos cubren el evento crudo `message.received` y el evento de completado
+
+Scenario: El contrato documenta los códigos de error
+  Given existe el documento del contrato de integración
+  When el equipo de conversación implementa el manejo de errores de la integración
+  Then encuentra una tabla con los códigos de error (400/409/500)
+    And cada código incluye su significado, cuándo aplica y la acción esperada del remitente
+
+Scenario Outline: El contrato especifica la validación de campos faltantes
+  Given existe el documento del contrato de integración
+  When el equipo de conversación revisa qué pasa si envía un evento sin el campo <campo>
+  Then encuentra que el receptor responde 400 Bad Request
+    And el error estructurado indica el campo faltante (<campo>)
+
+  Examples:
+    | campo                |
+    | event.id             |
+    | type                 |
+    | data.conversation_id |
+    | data.body            |
+
+Scenario: El contrato especifica el comportamiento ante reenvíos con el mismo event.id
+  Given existe el documento del contrato de integración
+  When el equipo de conversación consulta cómo reintentar un evento ya enviado
+  Then encuentra que el receptor es idempotente por `event.id`
+    And el documento especifica que un reenvío con el mismo `event.id` no crea duplicados
+    And el documento indica el código de respuesta esperado ante un evento duplicado
+
+Scenario: El contrato especifica el enriquecimiento cuando faltan coordenadas
+  Given existe el documento del contrato de integración
+  When el equipo de conversación envía un evento de completado sin coordenadas ni ciudad resuelta
+  Then el documento especifica que el receptor enriquece el incidente con geocoding y detección de ciudad
+    And el documento aclara que la falta de coordenadas no bloquea la confirmación (ACK) del evento
+
+Scenario: El contrato declara la autenticación abierta como deuda de seguridad
+  Given existe el documento del contrato de integración
+  When el equipo de conversación evalúa los requisitos de autenticación para conectarse
+  Then encuentra la nota explícita de que la autenticación está abierta actualmente
+    And el documento la marca como deuda de seguridad pendiente de resolver con API key/HMAC
+
+Scenario: El contrato está disponible y versionado para ambos equipos
+  Given existe el documento del contrato de integración
+  When un integrante de cualquiera de los dos equipos necesita la versión vigente del contrato
+  Then encuentra el documento en el lugar compartido del proyecto
+    And el documento está versionado y cualquier cambio mantiene actualizados los ejemplos y códigos de error
+```
