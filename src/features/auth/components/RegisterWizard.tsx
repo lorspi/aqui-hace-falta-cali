@@ -91,8 +91,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const email: string = watch('email');
   const password: string = watch('password');
 
-  // Determinar si es flujo de organización o individual
-  const isOrgFlow = role === 'entidad_profesional' || role === 'acopio' || role === 'rescatista';
+  // Determinar si es flujo de organización o individual (Únicamente entidad_profesional usa 7 pasos)
+  const isOrgFlow = role === 'entidad_profesional';
   const totalSteps = isOrgFlow ? 7 : 4;
 
   // Control de navegación y validación dinámica por paso
@@ -146,7 +146,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
     try {
       const fullPhone = `${data.phoneCountryCode}${data.phoneNumber.trim()}`;
-      const isOrg = data.role === 'entidad_profesional' || data.role === 'acopio' || data.role === 'rescatista';
+      const isOrg = data.role === 'entidad_profesional';
 
       // Construcción de la Metadata de Usuario para Supabase Auth
       const userMetadata: Record<string, any> = {
