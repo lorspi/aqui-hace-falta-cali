@@ -431,6 +431,47 @@ export interface ValleCity {
   radiusKm: number;
 }
 
+export const KNOWN_CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "cali": { lat: 3.4516, lng: -76.5320 },
+  "bogota": { lat: 4.7110, lng: -74.0721 },
+  "medellin": { lat: 6.2442, lng: -75.5812 },
+  "barranquilla": { lat: 10.9639, lng: -74.7964 },
+  "cartagena": { lat: 10.3910, lng: -75.5144 },
+  "cartagena-de-indias": { lat: 10.3910, lng: -75.5144 },
+  "ibague": { lat: 4.4389, lng: -75.2322 },
+  "quibdo": { lat: 5.6947, lng: -76.6611 },
+  "bucaramanga": { lat: 7.1254, lng: -73.1198 },
+  "pereira": { lat: 4.8133, lng: -75.6961 },
+  "manizales": { lat: 5.0689, lng: -75.5174 },
+  "villavicencio": { lat: 4.1420, lng: -73.6266 },
+  "armenia": { lat: 4.5339, lng: -75.6811 },
+  "popayan": { lat: 2.4419, lng: -76.6061 },
+  "cucuta": { lat: 7.8939, lng: -72.5078 },
+  "pasto": { lat: 1.2136, lng: -77.2811 },
+  "buenaventura": { lat: 3.8824, lng: -77.0198 },
+  "tulua": { lat: 4.0847, lng: -76.1994 },
+  "chia": { lat: 4.8608, lng: -74.0537 },
+  "jamundi": { lat: 3.2618, lng: -76.5394 },
+  "yumbo": { lat: 3.5847, lng: -76.4967 },
+  "palmira": { lat: 3.5394, lng: -76.3036 },
+  "mosquera": { lat: 4.7059, lng: -74.2302 },
+  "chocó": { lat: 5.6947, lng: -76.6611 },
+  "choco": { lat: 5.6947, lng: -76.6611 },
+  "nacional": { lat: 4.5709, lng: -74.2973 },
+  "virtual": { lat: 4.5709, lng: -74.2973 },
+};
+
+export function getCityCoordinates(cityId: string): { lat: number; lng: number } {
+  if (!cityId) return { lat: 3.4516, lng: -76.5320 };
+  const clean = cityId.toLowerCase().trim();
+  if (KNOWN_CITY_COORDS[clean]) return KNOWN_CITY_COORDS[clean];
+
+  const foundKey = Object.keys(KNOWN_CITY_COORDS).find((k) => clean.includes(k) || k.includes(clean));
+  if (foundKey) return KNOWN_CITY_COORDS[foundKey];
+
+  return { lat: 3.4516, lng: -76.5320 };
+}
+
 export const ALL_VALLE_ID = ALL_COLOMBIA_ID;
 
 /** Legacy VALLE_CITIES - now returns all cities as a flat array for compatibility */

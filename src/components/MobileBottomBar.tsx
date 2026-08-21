@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { List, Map, Plus, PlusCircle, HeartHandshake, ShieldCheck, X, MapPin, Heart } from 'lucide-react';
+import { List, Map, Plus, PlusCircle, ShieldCheck, X, MapPin, Heart } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 
 interface MobileBottomBarProps {
   mobileView: 'LIST' | 'MAP';
@@ -20,6 +22,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
   onScrollToMap,
   listCount,
 }) => {
+  const { language, setLanguage, t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -35,73 +38,64 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
           {/* Menu items */}
           <div className="relative z-10 flex flex-col items-center gap-3 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-200">
+            {/* Language Selector Dropdown */}
+            <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-lg border border-slate-200">
+              <span className="text-xs font-semibold text-slate-500">{t('selectLanguage')}:</span>
+              <LanguageSelector />
+            </div>
+
             {/* Necesito Ayuda */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateModal(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-64"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                 <PlusCircle className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-800 block">Necesito Ayuda</span>
-                <span className="text-[11px] text-slate-500">Registra una necesidad</span>
+                <span className="text-sm font-semibold text-slate-800 block">{t('publishNeed')}</span>
+                <span className="text-[11px] text-slate-500">{t('createNeedSubtitle')}</span>
               </div>
             </button>
 
             {/* Ver necesidades */}
             <button
               onClick={() => { setIsMenuOpen(false); onScrollToMap(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-64"
             >
               <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
                 <MapPin className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-800 block">Ver necesidades</span>
-                <span className="text-[11px] text-slate-500">Explora el mapa</span>
+                <span className="text-sm font-semibold text-slate-800 block">{t('viewNeeds')}</span>
+                <span className="text-[11px] text-slate-500">{t('mapView')}</span>
               </div>
             </button>
 
             {/* Publicar ayuda */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateOfferModal(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-64"
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
                 <Heart className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-800 block">Publicar ayuda</span>
-                <span className="text-[11px] text-slate-500">Registra recursos disponibles</span>
+                <span className="text-sm font-semibold text-slate-800 block">{t('offerHelp')}</span>
+                <span className="text-[11px] text-slate-500">{t('createOfferSubtitle')}</span>
               </div>
             </button>
 
             {/* Ser moderador */}
             <button
               onClick={() => { setIsMenuOpen(false); window.location.href = '/moderador'; }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-64"
             >
               <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-800 block">Ser moderador</span>
-                <span className="text-[11px] text-slate-500">Verifica información</span>
-              </div>
-            </button>
-
-            {/* Moderación (panel) */}
-            <button
-              onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-60"
-            >
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-slate-600" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-slate-800 block">Moderación</span>
-                <span className="text-[11px] text-slate-500">Panel de administración</span>
+                <span className="text-sm font-semibold text-slate-800 block">{t('moderatorView')}</span>
               </div>
             </button>
           </div>
@@ -121,7 +115,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
             }`}
           >
             <List className="w-4 h-4" />
-            <span className="text-[11px] font-bold">Lista</span>
+            <span className="text-[11px] font-bold">{t('listView')}</span>
           </button>
 
           {/* Action button — protrudes above the bar */}
@@ -146,7 +140,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
             }`}
           >
             <Map className="w-4 h-4" />
-            <span className="text-[11px] font-bold">Mapa</span>
+            <span className="text-[11px] font-bold">{t('mapView')}</span>
           </button>
         </div>
       </div>

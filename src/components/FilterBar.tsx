@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Search, Filter, X, ArrowUpDown } from 'lucide-react';
 import { FilterState, HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus, ViewMode } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { CityCombobox } from './CityCombobox';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -33,6 +34,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onCityChange,
   needCounts,
 }) => {
+  const { language, t } = useTranslation();
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
 
@@ -41,9 +43,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
   const viewModeOptions: { value: ViewMode; label: string; count?: number }[] = [
-    { value: 'ALL', label: 'Todos', count: needsCount + offersCount },
-    { value: 'NEEDS', label: 'Necesidades', count: needsCount },
-    { value: 'OFFERS', label: 'Ofertas', count: offersCount },
+    { value: 'ALL', label: t('viewAll'), count: needsCount + offersCount },
+    { value: 'NEEDS', label: t('viewNeeds'), count: needsCount },
+    { value: 'OFFERS', label: t('viewOffers'), count: offersCount },
   ];
 
   const currentViewMode = filters.viewMode ?? 'ALL';
@@ -74,7 +76,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {/* ViewMode + City + Search — left side */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 flex-1">
           {/* ViewMode Segmented Control */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 shrink-0 h-[38px]" role="group" aria-label="Modo de vista">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 shrink-0 h-[38px]" role="group">
             {viewModeOptions.map((option) => (
               <button
                 key={option.value}
@@ -84,7 +86,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
                 }`}
-                aria-pressed={currentViewMode === option.value}
               >
                 {option.label}
                 {option.count != null && option.count > 0 && (
@@ -100,7 +101,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             ))}
           </div>
 
-          {/* City Combobox — left of search */}
+          {/* City Combobox */}
           <CityCombobox
             value={selectedCityId}
             onChange={onCityChange}
@@ -118,7 +119,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               type="text"
               value={filters.search}
               onChange={(e) => onFilterChange({ search: e.target.value })}
-              placeholder="Buscar por recurso (agua, palas, escombros, voluntarios)..."
+              placeholder={t('searchPlaceholder')}
               className="w-full pl-9 pr-8 py-2 text-sm bg-slate-100 border-none rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 h-[38px]"
               id="filter-search-input"
             />
@@ -133,7 +134,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
         </div>
 
-        {/* Sort + Filters — on mobile: urgency and filters in one line */}
+        {/* Sort + Filters */}
         <div className="flex items-center gap-2">
           {/* Sort By */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 text-xs h-[38px]">
@@ -143,9 +144,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onChange={(e) => onFilterChange({ sortBy: e.target.value as any })}
               className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
             >
-              <option value="PRIORITY">Más urgente primero</option>
-              <option value="RECENT">Más recientes</option>
-              <option value="DISTANCE">Más cercanos a mí</option>
+              <option value="PRIORITY">{t('sortUrgency')}</option>
+              <option value="RECENT">{t('sortRecent')}</option>
+              <option value="DISTANCE">{t('sortDistance')}</option>
             </select>
           </div>
 
@@ -159,7 +160,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Filtros</span>
+            <span>{t('filterPriority')}</span>
             {hasActiveFilters && (
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
@@ -171,24 +172,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {showMoreFilters && (
         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3 text-xs animate-in fade-in duration-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Priority — hidden when ViewMode is OFFERS */}
+            {/* Priority */}
             {currentViewMode !== 'OFFERS' && (
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Prioridad
-                  {currentViewMode === 'ALL' && (
-                    <span className="text-[10px] text-slate-500 font-normal ml-1">(solo necesidades)</span>
-                  )}
+                  {t('filterPriority')}
                 </label>
                 <select
                   value={filters.priority}
                   onChange={(e) => onFilterChange({ priority: e.target.value as any })}
                   className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
                 >
-                  <option value="ALL">Todas las prioridades</option>
+                  <option value="ALL">{t('priorityAll')}</option>
                   {prioritiesList.map((p) => (
                     <option key={p} value={p}>
-                      {PRIORITY_CONFIG[p].dot} {PRIORITY_CONFIG[p].label}
+                      {PRIORITY_CONFIG[p].dot} {language === 'en' ? (p === 'CRITICAL' ? t('priorityCritical') : p === 'HIGH' ? t('priorityHigh') : p === 'MEDIUM' ? t('priorityMedium') : t('priorityLow')) : PRIORITY_CONFIG[p].label}
                     </option>
                   ))}
                 </select>
@@ -197,16 +195,16 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
             {/* Place Type */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Tipo de lugar</label>
+              <label className="block font-semibold text-slate-700 mb-1">{t('filterPlaceType')}</label>
               <select
                 value={filters.placeType}
                 onChange={(e) => onFilterChange({ placeType: e.target.value as any })}
                 className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
               >
-                <option value="ALL">Todos los lugares</option>
+                <option value="ALL">{t('viewAll')}</option>
                 {placeTypesList.map((pt) => (
                   <option key={pt} value={pt}>
-                    {PLACE_TYPE_LABELS[pt]}
+                    {getPlaceTypeLabel(pt, language)}
                   </option>
                 ))}
               </select>
@@ -214,24 +212,23 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
             {/* Verification Status */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Verificación</label>
+              <label className="block font-semibold text-slate-700 mb-1">{t('filterVerification')}</label>
               <select
                 value={filters.verificationStatus}
                 onChange={(e) => onFilterChange({ verificationStatus: e.target.value as any })}
                 className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
               >
-                <option value="ALL">Todas las verificaciones</option>
-                <option value="VERIFIED">✓ Solo información verificada</option>
-                <option value="PENDING_VERIFICATION">◷ Pendientes de verificación</option>
-                <option value="REPORTED">⚠️ Reportadas</option>
+                <option value="ALL">{t('viewAll')}</option>
+                <option value="VERIFIED">✓ {t('cardVerifiedBy')}</option>
+                <option value="PENDING_VERIFICATION">◷ {t('cardPendingVerification')}</option>
+                <option value="REPORTED">⚠️ {t('cardReported')}</option>
               </select>
             </div>
-
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-slate-200">
             <span className="text-slate-500 font-medium">
-              Mostrando <strong className="text-slate-900">{totalResults}</strong> resultados
+              <strong className="text-slate-900">{totalResults}</strong> {t('resultsFound')}
             </span>
             {hasActiveFilters && (
               <button
@@ -239,7 +236,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 className="text-red-700 hover:text-red-900 font-semibold hover:underline flex items-center gap-1"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Restablecer todos los filtros</span>
+                <span>{t('clearFilters')}</span>
               </button>
             )}
           </div>
@@ -254,7 +251,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onClick={() => setShowCategories(!showCategories)}
               className="text-slate-800 font-bold text-sm hover:text-indigo-700 transition-colors flex items-center gap-1.5"
             >
-              Categorías de ayuda
+              {t('filterCategory')}
               <svg
                 className={`w-4 h-4 text-slate-400 transition-transform ${showCategories ? 'rotate-180' : ''}`}
                 fill="none"
@@ -269,18 +266,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 onClick={() => onFilterChange({ categories: [] })}
                 className="bg-indigo-100 text-indigo-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold normal-case inline-flex items-center gap-1 hover:bg-indigo-200 transition-colors"
               >
-                {filters.categories.length} seleccionado{filters.categories.length > 1 ? 's' : ''}
+                {filters.categories.length}
                 <X className="w-3 h-3" />
               </button>
             )}
           </span>
         </div>
 
-        {/* Selected categories summary (when collapsed) */}
+        {/* Selected categories summary */}
         {!showCategories && filters.categories.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {filters.categories.map((cat) => {
-              const item = CATEGORY_LABELS[cat];
+              const item = getCategoryLabel(cat, language);
               return (
                 <span
                   key={cat}
@@ -305,7 +302,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
             {categoriesList.map((cat) => {
               const isSelected = filters.categories.includes(cat);
-              const item = CATEGORY_LABELS[cat];
+              const item = getCategoryLabel(cat, language);
               return (
                 <button
                   key={cat}

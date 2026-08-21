@@ -1,7 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useMutation, useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { submitOfferReport, updateOffer, fetchOfferUpdateLogs } from '../lib/supabaseService';
 import {
   X,
   MapPin,
@@ -29,8 +27,10 @@ import {
   CATEGORY_LABELS,
   VERIFICATION_CONFIG,
   formatTimeAgo,
+  getCategoryLabel,
 } from '../utils/formatters';
-import { computeOfferStatusFromResources } from '../../convex/offerStatusLogic';
+import { useTranslation } from '../i18n/LanguageContext';
+import { computeOfferStatusFromResources } from '../utils/offerStatusLogic';
 
 interface OfferDetailModalProps {
   offer: Offer | null;
@@ -104,6 +104,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   onAdminEditOffer,
   onOpenPublicEdit,
 }) => {
+  const { language, t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('NOT_NEEDED_ANYMORE');
@@ -121,15 +122,15 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   const [statusSuccess, setStatusSuccess] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const submitReport = useMutation(api.offers.submitReport);
-  const updateStatus = useMutation(api.offers.updateStatus);
+  const [updateLogs, setUpdateLogs] = useState<any[]>([]);
 
-  // Fetch offer detail with update logs
-  const offerDetail = useQuery(
-    api.offers.getById,
-    offer ? { id: offer.id as Id<"offers"> } : "skip"
-  );
-  const updateLogs = (offerDetail as any)?.updates || [];
+  React.useEffect(() => {
+    if (offer?.id && isOpen) {
+      fetchOfferUpdateLogs(offer.id).then((logs) => setUpdateLogs(logs));
+    } else {
+      setUpdateLogs([]);
+    }
+  }, [offer?.id, isOpen]);
 
   // Block body scroll when modal is open
   React.useEffect(() => {
@@ -218,10 +219,9 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
             status: resourceStatuses[res.id] || 'PENDING',
           }))
         : undefined;
-      await updateStatus({
-        offerId: offer.id as Id<"offers">,
-        offerStatus: !hasResources && selectedStatus ? selectedStatus : undefined,
-        resources: updatedResources,
+      await updateOffer(offer.id, {
+        offerStatus: (!hasResources && selectedStatus ? selectedStatus : offer.offerStatus) as OfferStatus,
+        resources: updatedResources as any,
       });
       setStatusSuccess(true);
     } catch (err: any) {
@@ -237,8 +237,8 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
     setIsSubmittingReport(true);
     setReportError(null);
     try {
-      await submitReport({
-        offerId: offer.id as Id<"offers">,
+      await submitOfferReport({
+        offerId: offer.id,
         reason: reportReason,
         description: reportDescription,
         reporterContact: reporterContact || undefined,

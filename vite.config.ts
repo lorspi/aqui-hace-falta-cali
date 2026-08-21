@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: 8080,
-      ...(allowedHosts.length > 0 && { allowedHosts }),
+      allowedHosts: true,
     },
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             vendor: ["react", "react-dom"],
-            convex: ["convex", "convex/react"],
+            supabase: ["@supabase/supabase-js"],
             map: ["leaflet"],
             ui: ["lucide-react", "motion"],
           },

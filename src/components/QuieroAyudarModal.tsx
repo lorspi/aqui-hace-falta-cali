@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { X, HeartHandshake, MapPin, MessageSquare, Phone, ExternalLink, Calendar, CheckCircle2 } from 'lucide-react';
 import { Need } from '../types';
-import { CATEGORY_LABELS, buildWhatsappLink } from '../utils/formatters';
+import { CATEGORY_LABELS, buildWhatsappLink, getCategoryLabel } from '../utils/formatters';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface QuieroAyudarModalProps {
   need: Need | null;
@@ -9,6 +10,8 @@ interface QuieroAyudarModalProps {
 }
 
 export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onClose }) => {
+  const { language, t } = useTranslation();
+
   useEffect(() => {
     if (need) {
       document.body.classList.add("modal-open");
@@ -32,8 +35,8 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
               <HeartHandshake className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-lg">Ofrecer ayuda</h3>
-              <p className="text-xs text-slate-500">Vas a contactar a este punto para coordinar tu aporte.</p>
+              <h3 className="font-bold text-slate-900 text-lg">{t('quieroAyudarTitle')}</h3>
+              <p className="text-xs text-slate-500">{t('quieroAyudarSubtitle')}</p>
             </div>
           </div>
           <button
@@ -51,27 +54,27 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
           <div className="space-y-1 text-xs text-slate-700">
             <div className="flex items-center gap-1.5 font-semibold text-slate-900">
               <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
-              <span>{need.address} ({need.neighborhood}, Cali)</span>
+              <span>{need.address} ({need.neighborhood})</span>
             </div>
             {need.operatingHours && (
               <div className="flex items-center gap-1.5 text-slate-600">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>Horario: {need.operatingHours}</span>
+                <span>{t('detailOperatingHours')} {need.operatingHours}</span>
               </div>
             )}
           </div>
 
           <div className="border-t border-slate-200 pt-2.5 space-y-1.5">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Necesidades prioritarias:
+              {t('priorityNeeds')}
             </span>
             <div className="space-y-1 text-xs text-slate-800">
               {need.resources.map((r) => (
                 <div key={r.id} className="flex items-center justify-between">
-                  <span>• {r.description || CATEGORY_LABELS[r.type]?.label}</span>
+                  <span>• {r.description || getCategoryLabel(r.type, language)?.label}</span>
                   {r.requestedQuantity && (
                     <span className="font-semibold text-slate-900">
-                      Faltan: {r.requestedQuantity - (r.fulfilledQuantity || 0)} {r.unit || ''}
+                      {t('remainingNeed')} {r.requestedQuantity - (r.fulfilledQuantity || 0)} {r.unit || ''}
                     </span>
                   )}
                 </div>
@@ -82,18 +85,18 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
 
         {/* Contact actions */}
         <div className="space-y-2.5">
-          <p className="text-xs text-slate-600 font-medium">Elige el canal directo de coordinación:</p>
+          <p className="text-xs text-slate-600 font-medium">{t('chooseChannel')}</p>
 
           <div className="grid grid-cols-1 gap-2">
             {need.contactWhatsapp && (
               <a
-                href={buildWhatsappLink(need.contactWhatsapp, need.title, need.categories)}
+                href={buildWhatsappLink(need.contactWhatsapp, need.title, need.categories, language)}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Escribir por WhatsApp</span>
+                <span>{t('writeWhatsapp')}</span>
               </a>
             )}
 
@@ -103,7 +106,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold p-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 <Phone className="w-4 h-4" />
-                <span>Llamar por teléfono ({need.contactPhone})</span>
+                <span>{t('callPhone')} ({need.contactPhone})</span>
               </a>
             )}
 
@@ -114,7 +117,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
               className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-300 transition-all"
             >
               <ExternalLink className="w-4 h-4" />
-              <span>Abrir ruta en Google Maps</span>
+              <span>{t('openGoogleMaps')}</span>
             </a>
           </div>
         </div>
@@ -123,7 +126,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
         <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <span>
-            Recuerda confirmar con el responsable la disponibilidad y las medidas de seguridad antes de desplazarte.
+            {t('confirmDisclaimer')}
           </span>
         </div>
       </div>

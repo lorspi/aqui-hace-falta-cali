@@ -193,4 +193,5 @@ export interface FilterState {
   userLng: number | null;
   sortBy: 'PRIORITY' | 'RECENT' | 'DISTANCE';
   viewMode: ViewMode;
+  includeArchived?: boolean;
 }

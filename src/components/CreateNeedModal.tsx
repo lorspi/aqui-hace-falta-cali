@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Upload, Search, Loader2 } from 'lucide-react';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { showAlert } from './ConfirmDialog';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
 import { findCityById, getCityDisplayName } from '../data/colombiaCities';
+import { useTranslation } from '../i18n/LanguageContext';
+import { trackClarityEvent } from '../utils/analytics';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   isSubmitting,
   initialCityId = 'cali',
 }) => {
+  const { language, t } = useTranslation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [placeType, setPlaceType] = useState<PlaceType>('EDIFICIO_AFECTADO');
@@ -31,12 +34,12 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [neighborhood, setNeighborhood] = useState('');
   const [cityId, setCityId] = useState(initialCityId);
 
-  // Sync cityId when modal opens with a different initial value
   useEffect(() => {
     if (isOpen) {
       setCityId(initialCityId);
     }
   }, [isOpen, initialCityId]);
+
   const [latitude, setLatitude] = useState(3.4325);
   const [longitude, setLongitude] = useState(-76.5412);
   const [contactName, setContactName] = useState('');
@@ -49,14 +52,10 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [operatingHours, setOperatingHours] = useState('');
   const [source, setSource] = useState('Reporte ciudadano en línea');
 
-  // Resource items builder (optional)
   const [resources, setResources] = useState<
     Array<{ type: HelpCategory; description: string; requestedQuantity: number; unit: string }>
   >([]);
 
-  // Duplicate warning state
-  const [duplicateMatches, setDuplicateMatches] = useState<Need[]>([]);
-  const [hasCheckedDuplicates, setHasCheckedDuplicates] = useState(false);
   const [showPickerMap, setShowPickerMap] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
@@ -64,13 +63,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
-  // Center map on selected city when cityId changes
-  // Note: without lat/lng in the new data model, we rely on geocoding after address entry
-  useEffect(() => {
-    // No-op: coordinates will be set via geocoding or map picker
-  }, [cityId]);
-
-  // Auto-geocode when address or neighborhood changes (debounced)
   useEffect(() => {
     if (address.length < 5) return;
     setGeocodeError('');
@@ -78,47 +70,22 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
       const result = await geocodeAddress(address, neighborhood, cityName);
-      if (result) {
-        setLatitude(result.latitude);
-        setLongitude(result.longitude);
-        setGeocodeError('');
-      } else {
-        setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
-      }
       setIsGeocoding(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [address, neighborhood, cityId]);
+      if (result) {
+        setLatitude(result.lat);
+        setLongitude(result.lng);
+      } else {
+        setGeocodeError(language === 'en' ? 'Exact address not found. Click map to select.' : 'No pudimos encontrar la dirección exacta. Haz clic en el mapa para ubicar el punto.');
+      }
+    }, 800);
 
-  // Check duplicate matches when neighborhood or title changes
-  useEffect(() => {
-    if (title.length > 5 || neighborhood.length > 3) {
-      const timer = setTimeout(async () => {
-        try {
-          const res = await fetch('/api/needs/check-duplicate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, neighborhood, latitude, longitude }),
-          });
-          const json = await res.json();
-          if (json.hasDuplicates) {
-            setDuplicateMatches(json.matches || []);
-            setHasCheckedDuplicates(true);
-          } else {
-            setDuplicateMatches([]);
-          }
-        } catch (e) {
-          // Ignore
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [title, neighborhood, latitude, longitude]);
+    return () => clearTimeout(timer);
+  }, [address, neighborhood, cityId, language]);
 
   useEffect(() => {
     if (isOpen) {
-      document.body.classList.add("modal-open");
-      return () => document.body.classList.remove("modal-open");
+      document.body.classList.add('modal-open');
+      return () => document.body.classList.remove('modal-open');
     }
   }, [isOpen]);
 
@@ -137,7 +104,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const handleAddResource = () => {
     setResources([
       ...resources,
-      { type: selectedCategories[0] || 'VOLUNTARIADO_GENERAL', description: '', requestedQuantity: 5, unit: 'unidades' },
+      { type: selectedCategories[0] || 'ESCOMBROS', description: '', requestedQuantity: 1, unit: '' },
     ]);
   };
 
@@ -147,40 +114,51 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
-      showAlert('Por favor completa todos los campos requeridos (*).', { title: 'Campos incompletos', variant: 'error' });
+    if (!title || !description || !address || !neighborhood) {
+      await showAlert(language === 'en' ? 'Please fill in all required fields.' : 'Por favor completa todos los campos obligatorios.');
       return;
     }
+
+    const formattedResources = resources.map((r, i) => ({
+      id: String(i),
+      type: r.type,
+      description: r.description,
+      requestedQuantity: r.requestedQuantity,
+      fulfilledQuantity: 0,
+      unit: r.unit,
+      status: 'PENDING' as const,
+    }));
 
     await onSubmit({
       title,
       description,
       placeType,
       categories: selectedCategories,
-      resources: resources.map((r, i) => ({
-        id: `r-new-${i}`,
-        type: r.type,
-        description: r.description || CATEGORY_LABELS[r.type]?.label || 'Recurso',
-        requestedQuantity: Number(r.requestedQuantity) || 0,
-        fulfilledQuantity: 0,
-        unit: r.unit || 'unidades',
-        status: 'PENDING',
-      })),
+      resources: formattedResources.length > 0 ? formattedResources : undefined,
+      cityId,
       address,
       neighborhood,
       latitude,
       longitude,
       contactName,
-      contactPhone,
-      contactWhatsapp,
-      contactEmail,
-      organizationName,
+      contactPhone: contactPhone || undefined,
+      contactWhatsapp: contactWhatsapp || undefined,
+      contactEmail: contactEmail || undefined,
+      organizationName: organizationName || undefined,
       requesterType,
-      operatingHours,
+      priority: placeType === 'CENTRO_ACOPIO' ? 'MEDIUM' : priority,
+      operatingHours: operatingHours || undefined,
       source,
-      priority,
-      cityId,
     });
+
+    trackClarityEvent('create_need', {
+      placeType,
+      cityId,
+      priority,
+      categoriesCount: selectedCategories.length,
+    });
+
+    onClose();
   };
 
   return (
@@ -192,15 +170,15 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
-            <h2 className="text-xl font-black text-slate-900">Registrar punto de necesidad</h2>
+            <h2 className="text-xl font-black text-slate-900">{t('createNeedTitle')}</h2>
             <p className="text-xs text-slate-500">
-              Registra una oportunidad de ayuda o comunidad afectada en tu ciudad.
+              {t('createNeedSubtitle')}
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100"
-            id="btn-close-create-modal"
+            id="btn-close-create-need-modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -208,49 +186,30 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-5 text-xs text-slate-800">
-          {/* Duplicate warning alert */}
-          {duplicateMatches.length > 0 && (
-            <div className="bg-amber-50 border-2 border-amber-300 p-3.5 rounded-xl space-y-2">
-              <div className="flex items-center gap-2 text-amber-900 font-bold">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Posibles duplicados detectados cerca de esta zona:</span>
-              </div>
-              <ul className="space-y-1 text-amber-950 pl-6 list-disc">
-                {duplicateMatches.map((m) => (
-                  <li key={m.id}>
-                    <strong>{m.title}</strong> — {m.neighborhood} ({m.address})
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[11px] text-amber-800 italic">
-                Revisa si la necesidad ya existe para evitar dispersar la información. Si es un punto distinto, puedes continuar.
-              </p>
-            </div>
-          )}
-
-          {/* Section 1: Title & Place Type */}
+          {/* Section 1: Basic Info */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              1. ¿Qué está pasando?
+              {t('sectionWhatYouNeed')}
             </h3>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Título corto de la necesidad *
+                {t('needTitleLabel')}
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej: Edificio residencial - Remoción de escombros en San Fernando"
+                placeholder={t('needTitlePlaceholder')}
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-sm"
+                id="input-need-title"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tipo de lugar *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('placeTypeFormLabel')}</label>
                 <select
                   value={placeType}
                   onChange={(e) => setPlaceType(e.target.value as PlaceType)}
@@ -258,63 +217,59 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 >
                   {placeTypesList.map((pt) => (
                     <option key={pt} value={pt}>
-                      {PLACE_TYPE_LABELS[pt]}
+                      {getPlaceTypeLabel(pt, language)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">¿Quién solicita ayuda?</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('requesterTypeLabel')}</label>
                 <select
                   value={requesterType}
                   onChange={(e) => setRequesterType(e.target.value as any)}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
                 >
-                  <option value="PERSONA">Persona individual</option>
-                  <option value="COMUNIDAD">Comité comunitario / Vecinos</option>
-                  <option value="ORGANIZACION">Organización / ONG</option>
-                  <option value="FUNDACION">Fundación</option>
-                  <option value="EMPRESA">Empresa</option>
-                  <option value="OTRO">Otro</option>
+                  <option value="PERSONA">{language === 'en' ? 'Individual person' : 'Persona individual'}</option>
+                  <option value="COMUNIDAD">{language === 'en' ? 'Community board / Neighbors' : 'Comité comunitario / Vecinos'}</option>
+                  <option value="ORGANIZACION">{language === 'en' ? 'Organization / NGO' : 'Organización / ONG'}</option>
+                  <option value="FUNDACION">{language === 'en' ? 'Foundation' : 'Fundación'}</option>
+                  <option value="EMPRESA">{language === 'en' ? 'Company' : 'Empresa'}</option>
+                  <option value="OTRO">{language === 'en' ? 'Other' : 'Otro'}</option>
                 </select>
               </div>
             </div>
 
             {/* Priority selector */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Nivel de prioridad</label>
+              <label className="block font-bold text-slate-700 mb-1">{t('urgencyLevelLabel')}</label>
               {placeType === 'CENTRO_ACOPIO' ? (
                 <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 font-semibold">
-                  🟣 Los centros de acopio no requieren nivel de prioridad.
+                  🟣 {language === 'en' ? 'Collection centers do not require a priority level.' : 'Los centros de acopio no requieren nivel de prioridad.'}
                 </p>
               ) : (
-              <div className="flex flex-wrap gap-2">
-                {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
-                  const config = PRIORITY_CONFIG[p];
-                  const isSelected = priority === p;
-                  return (
-                    <button
-                      type="button"
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                        isSelected
-                          ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>{config.dot}</span>
-                      <span>{config.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              )}
-              {placeType !== 'CENTRO_ACOPIO' && (
-              <p className="text-[11px] text-slate-500 mt-1">
-                {PRIORITY_CONFIG[priority]?.explanation || ''}
-              </p>
+                <div className="flex flex-wrap gap-2">
+                  {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
+                    const config = PRIORITY_CONFIG[p];
+                    const isSelected = priority === p;
+                    const pLabel = language === 'en' ? (p === 'CRITICAL' ? t('priorityCritical') : p === 'HIGH' ? t('priorityHigh') : p === 'MEDIUM' ? t('priorityMedium') : t('priorityLow')) : config.label;
+                    return (
+                      <button
+                        type="button"
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400`
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{config.dot}</span>
+                        <span>{pLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
@@ -322,11 +277,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* Section 2: Location */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              2. ¿Dónde está ubicado?
+              {t('sectionNeedLocation')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio *</label>
+              <label className="block font-bold text-slate-700 mb-1">{t('cityLabel')}</label>
               <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
@@ -335,44 +290,38 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Barrio *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('neighborhoodLabel')}</label>
                 <input
                   type="text"
                   required
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="Ej: San Fernando, Siloé, Granada, El Peñón..."
+                  placeholder={t('neighborhoodPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('addressLabel')}</label>
                 <input
                   type="text"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Ej: Calle 5 con Carrera 44, o Calle 5 # 34-12"
+                  placeholder={t('addressPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación...
+                    <Loader2 className="w-3 h-3 animate-spin" /> {t('geocodingSearching')}
                   </p>
                 )}
                 {geocodeError && (
                   <p className="text-xs text-amber-600 mt-1">{geocodeError}</p>
                 )}
-                {!isGeocoding && !geocodeError && address.length >= 5 && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    📍 Ubicación: {latitude.toFixed(4)}, {longitude.toFixed(4)}
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* Interactive Map Position Selector */}
             <div className="space-y-1.5">
               <button
                 type="button"
@@ -380,7 +329,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 className="text-xs text-slate-900 font-bold hover:underline flex items-center gap-1"
               >
                 <MapPin className="w-3.5 h-3.5 text-red-600" />
-                <span>{showPickerMap ? 'Ocultar mapa de ubicación' : 'Ajustar punto exacto en el mapa de Cali'}</span>
+                <span>{showPickerMap ? t('hideLocationMap') : t('adjustPointOnMap')}</span>
               </button>
 
               {showPickerMap && (
@@ -397,19 +346,20 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Categories & Itemized Resources */}
+          {/* Section 3: Categories & Resources */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              3. ¿Qué necesitan?
+              {t('sectionCategories')}
             </h3>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1.5">
-                Categorías de ayuda (selección múltiple)
+                {t('selectOneCategory')}
               </label>
               <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
                 {categoriesList.map((cat) => {
                   const isSel = selectedCategories.includes(cat);
+                  const item = getCategoryLabel(cat, language);
                   return (
                     <button
                       type="button"
@@ -421,7 +371,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {CATEGORY_LABELS[cat]?.icon} {CATEGORY_LABELS[cat]?.label}
+                      {item?.icon} {item?.label}
                     </button>
                   );
                 })}
@@ -431,13 +381,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             {/* Itemized Resources builder */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-bold text-slate-700">Recursos o insumos requeridos</label>
+                <label className="font-bold text-slate-700">{t('sectionNeedResources')}</label>
                 <button
                   type="button"
                   onClick={handleAddResource}
                   className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Añadir insumo
+                  <Plus className="w-3.5 h-3.5" /> {t('addResource')}
                 </button>
               </div>
 
@@ -452,11 +402,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     }}
                     className="p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
                   >
-                    {categoriesList.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]?.label}
-                      </option>
-                    ))}
+                    {categoriesList.map((c) => {
+                      const item = getCategoryLabel(c, language);
+                      return (
+                        <option key={c} value={c}>
+                          {item?.label}
+                        </option>
+                      );
+                    })}
                   </select>
 
                   <input
@@ -467,7 +420,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       updated[idx].description = e.target.value;
                       setResources(updated);
                     }}
-                    placeholder="Descripción (ej: Palas metálicas, Cajas de agua...)"
+                    placeholder={t('resourceDescPlaceholder')}
                     className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs min-w-[140px]"
                   />
 
@@ -480,7 +433,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       updated[idx].requestedQuantity = Number(e.target.value);
                       setResources(updated);
                     }}
-                    placeholder="Cantidad"
+                    placeholder={t('resourceQty')}
                     className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
@@ -492,7 +445,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       updated[idx].unit = e.target.value;
                       setResources(updated);
                     }}
-                    placeholder="Unidad (ej: pers, cajas)"
+                    placeholder={t('resourceUnitPlaceholder')}
                     className="w-20 p-1.5 bg-white border border-slate-300 rounded text-xs"
                   />
 
@@ -511,14 +464,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Descripción detallada de la necesidad *
+                {t('needDescLabel')}
               </label>
               <textarea
                 required
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Explica detalladamente la situación, accesos, requerimientos especiales o puntos de referencia..."
+                placeholder={t('needDescPlaceholder')}
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
               />
             </div>
@@ -527,23 +480,23 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* Section 4: Contact & Verification */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              4. Contacto del responsable
+              {t('sectionContact')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nombre del responsable / contacto</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactNameLabel')}</label>
                 <input
                   type="text"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Ej: Carlos Restrepo"
+                  placeholder={t('contactNamePlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">WhatsApp de contacto</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactWhatsappLabel')}</label>
                 <input
                   type="text"
                   value={contactWhatsapp}
@@ -554,7 +507,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Teléfono móvil / fijo</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactPhoneLabel')}</label>
                 <input
                   type="text"
                   value={contactPhone}
@@ -565,23 +518,23 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Organización / Entidad (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('organizationLabel')}</label>
                 <input
                   type="text"
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="Ej: Junta de Acción Comunal / Defensa Civil"
+                  placeholder={t('organizationPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Horario de atención (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('operatingHoursLabel')}</label>
                 <input
                   type="text"
                   value={operatingHours}
                   onChange={(e) => setOperatingHours(e.target.value)}
-                  placeholder="Ej: 8:00 a.m. - 5:00 p.m. / 24 horas / Solo fines de semana"
+                  placeholder={t('operatingHoursPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
@@ -593,10 +546,10 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-bold text-emerald-900">
-                Proceso de verificación responsable:
+                {t('verificationNoticeTitle')}
               </strong>
               <span>
-                Tu reporte se guardará inicialmente como <strong>"Pendiente de verificación"</strong>. Un moderador o fuente oficial confirmará la información antes de marcarla como verificada.
+                {t('verificationNoticeDesc')}
               </span>
             </div>
           </div>
@@ -608,7 +561,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
             >
-              Cancelar
+              {t('cancelButton')}
             </button>
             <button
               type="submit"
@@ -617,11 +570,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               id="btn-submit-create-need"
             >
               {isSubmitting ? (
-                <span>Guardando...</span>
+                <span>{t('savingButton')}</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Publicar Necesidad</span>
+                  <span>{t('publishNeedButton')}</span>
                 </>
               )}
             </button>

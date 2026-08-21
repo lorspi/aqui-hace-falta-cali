@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { updateOffer, addOfferUpdateNote } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Offer } from '../types';
-import { CATEGORY_LABELS } from '../utils/formatters';
+import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface PublicEditOfferModalProps {
   offer: Offer | null;
@@ -16,7 +15,9 @@ interface PublicEditOfferModalProps {
 }
 
 export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offer, onClose, moderatorName }) => {
+  const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   // Form state
   const [title, setTitle] = useState('');
@@ -37,7 +38,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   >([]);
 
   // Edit metadata
-  const [editorName, setEditorName] = useState('');
+  const [editorName, setEditorName] = useState(moderatorName || '');
   const [editReason, setEditReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -45,12 +46,9 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
 
-  const updateFields = useMutation(api.offers.updateFields);
-  const archiveOfferMutation = useMutation(api.offers.verify);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
 
   const [isArchived, setIsArchived] = useState(false);
-  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   // Pre-fill from offer
   useEffect(() => {
@@ -87,7 +85,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       setShowPickerMap(false);
       setIsArchived(offer.verificationStatus === 'ARCHIVED');
     }
-  }, [offer]);
+  }, [offer, moderatorName]);
 
   useEffect(() => {
     if (offer) {
@@ -106,25 +104,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
-  };
-
-  const handleAddResource = () => {
-    setResources([
-      ...resources,
-      {
-        id: `res-${Date.now()}`,
-        type: selectedCategories[0] || 'VOLUNTARIADO_GENERAL',
-        description: '',
-        quantity: undefined,
-        fulfilledQuantity: 0,
-        unit: undefined,
-        status: 'AVAILABLE',
-      },
-    ]);
-  };
-
-  const handleRemoveResource = (index: number) => {
-    setResources(resources.filter((_, i) => i !== index));
   };
 
   const handleGeocode = async () => {
@@ -151,8 +130,21 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
     setIsSubmitting(true);
     try {
-      await updateFields({
-        offerId: offer.id as Id<"offers">,
+      if (!offer) return;
+      
+      const changedFields: string[] = [];
+      if (title !== offer.title) changedFields.push('título');
+      if (description !== offer.description) changedFields.push('descripción');
+      if (address !== offer.address) changedFields.push('dirección');
+      if (neighborhood !== offer.neighborhood) changedFields.push('barrio');
+      if (contactName !== offer.contactName) changedFields.push('contacto');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(offer.categories)) changedFields.push('categorías');
+
+      const changesSummary = changedFields.length > 0 ? `Cambios: ${changedFields.join(', ')}` : 'Edición de información';
+      const logReason = editReason.trim() ? `${editReason.trim()}. ${changesSummary}` : changesSummary;
+      const finalUpdatedBy = isModerator ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`) : (editorName.trim() || 'Ciudadano anónimo');
+
+      await updateOffer(offer.id, {
         title,
         description,
         categories: selectedCategories,
@@ -166,18 +158,16 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
         contactEmail: contactEmail || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-        resources: resources.map((r) => ({
-          id: r.id,
-          type: r.type,
-          description: r.description || CATEGORY_LABELS[r.type]?.label || 'Recurso',
-          quantity: r.quantity || undefined,
-          fulfilledQuantity: r.fulfilledQuantity || 0,
-          unit: r.unit || undefined,
-          status: (r.quantity && r.fulfilledQuantity && r.fulfilledQuantity >= r.quantity) ? 'EXHAUSTED' : 'AVAILABLE',
-        })),
-        editorName: isModerator ? `[MOD] ${editorName}` : (editorName || undefined),
-        editReason: editReason || undefined,
       });
+
+      await addOfferUpdateNote({
+        offerId: offer.id,
+        previousStatus: offer.verificationStatus,
+        newStatus: offer.verificationStatus,
+        description: logReason,
+        updatedBy: finalUpdatedBy,
+      });
+
       setSubmitted(true);
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
@@ -190,8 +180,10 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     if (!authToken || !offer) return;
     if (!(await showConfirm('¿Archivar esta oferta? Se ocultará de la vista pública.', { title: 'Archivar oferta' }))) return;
     try {
-      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "archive" });
+      await updateOffer(offer.id, { verificationStatus: 'ARCHIVED' });
       setIsArchived(true);
+      showAlert('Oferta archivada correctamente.', { title: 'Archivada', variant: 'success' });
+      onClose();
     } catch (e: any) { showAlert(e?.message || 'Error al archivar', { title: 'Error', variant: 'error' }); }
   };
 
@@ -199,8 +191,9 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     if (!authToken || !offer) return;
     if (!(await showConfirm('¿Publicar esta oferta? Volverá a ser visible como pendiente de verificación.', { title: 'Publicar oferta' }))) return;
     try {
-      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "publish" });
+      await updateOffer(offer.id, { verificationStatus: 'PENDING_VERIFICATION' });
       setIsArchived(false);
+      showAlert('Oferta publicada correctamente.', { title: 'Publicada', variant: 'success' });
     } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
 

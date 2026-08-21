@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAction, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { updateNeed } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
 import { Turnstile } from './Turnstile';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface PublicEditModalProps {
   need: Need | null;
@@ -18,6 +17,7 @@ interface PublicEditModalProps {
 }
 
 export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose, moderatorName }) => {
+  const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
   // Form state — mirrors CreateNeedModal
   const [title, setTitle] = useState('');
@@ -47,9 +47,6 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [showPickerMap, setShowPickerMap] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
-
-  const submitEdit = useAction(api.publicEditAction.submitEdit);
-  const archiveMutation = useMutation(api.admin.verifyNeed);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
@@ -146,20 +143,24 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     setIsGeocoding(true);
     setGeocodeError('');
     const result = await geocodeAddress(address, neighborhood);
-    if (result) {
-      setLatitude(result.latitude);
-      setLongitude(result.longitude);
-      setGeocodeError('');
-    } else {
-      setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+    try {
+      const fullAddr = neighborhood ? `${address}, ${neighborhood}, Cali` : `${address}, Cali`;
+      const res = await geocodeAddress(fullAddr);
+      if (res) {
+        setLatitude(res.latitude);
+        setLongitude(res.longitude);
+      }
+    } catch {
+      // Ignore geocoding failure silently
+    } finally {
+      setIsGeocoding(false);
     }
-    setIsGeocoding(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isModerator && !turnstileToken) {
-      showAlert('Completa la verificación anti-bot.', { title: 'Verificación requerida', variant: 'error' });
+    if (!isModerator && !isTurnstileValid) {
+      showAlert('Por favor completa la verificación de seguridad (reCAPTCHA/Turnstile).', { title: 'Verificación requerida', variant: 'error' });
       return;
     }
     if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
@@ -169,9 +170,35 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
     setIsSubmitting(true);
     try {
-      await submitEdit({
-        turnstileToken: turnstileToken || 'moderator-bypass',
-        needId: need.id as Id<"needs">,
+      if (!need) return;
+
+      const changedFields: string[] = [];
+      if (title !== need.title) changedFields.push('título');
+      if (description !== need.description) changedFields.push('descripción');
+      if (placeType !== need.placeType) changedFields.push('tipo de lugar');
+      if (address !== need.address) changedFields.push('dirección');
+      if (neighborhood !== need.neighborhood) changedFields.push('barrio');
+      if (priority !== need.priority) changedFields.push('prioridad');
+      if (contactName !== need.contactName) changedFields.push('contacto');
+      if (contactWhatsapp !== need.contactWhatsapp) changedFields.push('WhatsApp');
+      if (contactPhone !== need.contactPhone) changedFields.push('teléfono');
+      if (organizationName !== need.organizationName) changedFields.push('organización');
+      if (operatingHours !== need.operatingHours) changedFields.push('horario');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(need.categories)) changedFields.push('categorías');
+
+      const changesSummary = changedFields.length > 0
+        ? `Cambios: ${changedFields.join(', ')}`
+        : 'Edición de información';
+
+      const logReason = editReason.trim()
+        ? `${editReason.trim()}. ${changesSummary}`
+        : changesSummary;
+
+      const finalUpdatedBy = isModerator
+        ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`)
+        : (editorName.trim() || 'Ciudadano anónimo');
+
+      await updateNeed(need.id, {
         title,
         description,
         placeType,
@@ -185,19 +212,18 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         contactWhatsapp: contactWhatsapp || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-        resources: resources.map((r) => ({
-          id: r.id,
-          type: r.type,
-          description: r.description || CATEGORY_LABELS[r.type]?.label || 'Recurso',
-          requestedQuantity: r.requestedQuantity || 0,
-          fulfilledQuantity: r.fulfilledQuantity || 0,
-          unit: r.unit || 'unidades',
-          status: r.status || 'PENDING',
-        })),
-        editorName: isModerator ? `[MOD] ${editorName}` : (editorName || undefined),
-        editReason: editReason || undefined,
         priority,
+        lastUpdatedBy: finalUpdatedBy,
       });
+
+      await addNeedUpdateNote({
+        needId: need.id,
+        previousStatus: need.status,
+        newStatus: need.status,
+        description: logReason,
+        updatedBy: finalUpdatedBy,
+      });
+
       setSubmitted(true);
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
@@ -210,17 +236,21 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     if (!authToken || !need) return;
     if (!(await showConfirm('¿Archivar esta publicación? Se ocultará de la vista pública.', { title: 'Archivar publicación' }))) return;
     try {
-      await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "ARCHIVED", status: "CLOSED" });
+      await updateNeed(need.id, { verificationStatus: 'ARCHIVED' });
       setIsArchived(true);
-    } catch (e: any) { showAlert(e?.message || 'Error al archivar', { title: 'Error', variant: 'error' }); }
+      showAlert('Publicación archivada correctamente.', { title: 'Archivada', variant: 'success' });
+      onClose();
+    } catch (err: any) {
+      showAlert(err.message || 'Error al archivar.', { title: 'Error', variant: 'error' });
+    }
   };
-
   const handlePublish = async () => {
     if (!authToken || !need) return;
     if (!(await showConfirm('¿Publicar esta publicación? Volverá a ser visible como pendiente de verificación.', { title: 'Publicar' }))) return;
     try {
-      await archiveMutation({ token: authToken, id: need.id as Id<"needs">, verificationStatus: "PENDING_VERIFICATION" });
+      await updateNeed(need.id, { verificationStatus: 'PENDING_VERIFICATION' });
       setIsArchived(false);
+      showAlert('Publicación puesta en pendiente de verificación.', { title: 'Publicada', variant: 'success' });
     } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
 
