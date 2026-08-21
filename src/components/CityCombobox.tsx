@@ -8,17 +8,15 @@ import {
   detectCityFromCoords,
 } from '../data/colombiaCities';
 import { showAlert } from './ConfirmDialog';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface CityComboboxProps {
   value: string;
   onChange: (cityId: string) => void;
   showAllOption?: boolean;
   className?: string;
-  /** Map of cityId → number of needs/offers. Used to show counts and filter departments. */
   needCounts?: Record<string, number>;
-  /** Callback when user selects "Mi ubicación" — receives lat, lng of device */
   onRequestLocation?: (lat: number, lng: number) => void;
-  /** Whether geolocation is currently loading */
   isLoadingLocation?: boolean;
 }
 
@@ -31,6 +29,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
   onRequestLocation,
   isLoadingLocation = false,
 }) => {
+  const { language, t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,31 +39,24 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
   const selectedDept = findDepartmentByCityId(value);
   const selectedCount = needCounts?.[value] ?? 0;
   const displayLabel = value === ALL_COLOMBIA_ID
-    ? 'Todo Colombia'
+    ? t('allCities')
     : selectedCity
       ? `${selectedCity.name}${selectedDept ? `, ${selectedDept.name}` : ''}`
-      : 'Seleccionar ciudad';
+      : (language === 'en' ? 'Select city' : 'Seleccionar ciudad');
 
   const totalNeeds = needCounts
     ? Object.values(needCounts).reduce((sum, n) => sum + n, 0)
     : 0;
 
-  // Build grouped list: only departments/cities that have entries, filtered by search
   const groupedCities = useMemo(() => {
     const searchLower = search.toLowerCase();
-
-    // If there are needCounts, only show departments/cities with data
-    // If no needCounts, show all (fallback)
     const hasCountData = needCounts && Object.keys(needCounts).length > 0;
-
     const groups: { department: string; departmentId: string; cities: { id: string; name: string; count: number }[] }[] = [];
 
     for (const dept of DEPARTMENTS) {
       const citiesWithData = dept.cities
         .filter((city) => {
-          // If we have count data, only show cities with entries
           if (hasCountData && !(needCounts![city.id] > 0)) return false;
-          // Apply search filter
           if (search && !city.name.toLowerCase().includes(searchLower) && !dept.name.toLowerCase().includes(searchLower)) return false;
           return true;
         })
@@ -86,7 +78,6 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
     return groups;
   }, [search, needCounts]);
 
-  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -98,7 +89,6 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Focus input when opening
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -113,7 +103,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 
   const handleMyLocation = () => {
     if (!navigator.geolocation) {
-      showAlert('Tu navegador no soporta geolocalización.', { title: 'Geolocalización no disponible', variant: 'info' });
+      showAlert(language === 'en' ? 'Your browser does not support geolocation.' : 'Tu navegador no soporta geolocalización.', { title: language === 'en' ? 'Geolocation unavailable' : 'Geolocalización no disponible', variant: 'info' });
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -171,7 +161,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar ciudad o departamento..."
+                placeholder={language === 'en' ? 'Search city or department...' : 'Buscar ciudad o departamento...'}
                 className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
               />
             </div>
@@ -187,7 +177,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
             >
               <span className="flex items-center gap-2">
                 <Navigation className={`w-3 h-3 text-emerald-600 ${isLoadingLocation ? 'animate-pulse' : ''}`} />
-                <span>{isLoadingLocation ? 'Buscando ubicación...' : 'Mi ubicación'}</span>
+                <span>{isLoadingLocation ? (language === 'en' ? 'Searching location...' : 'Buscando ubicación...') : t('useMyLocation')}</span>
               </span>
               <span className="text-[10px] text-emerald-500">GPS</span>
             </button>
@@ -203,7 +193,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
               >
                 <span className="flex items-center gap-2">
                   <MapPin className="w-3 h-3 text-indigo-500" />
-                  <span>Todo Colombia</span>
+                  <span>{t('allCities')}</span>
                 </span>
                 {needCounts && totalNeeds > 0 && (
                   <span className="text-[10px] font-bold text-slate-400">({totalNeeds})</span>
@@ -215,13 +205,11 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
             {groupedCities.length > 0 ? (
               groupedCities.map((group) => (
                 <div key={group.departmentId}>
-                  {/* Department header */}
                   <div className="px-3 py-1.5 bg-slate-50 border-y border-slate-100 sticky top-0">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                       {group.department}
                     </span>
                   </div>
-                  {/* Cities in department */}
                   {group.cities.map((city) => (
                     <button
                       key={city.id}
@@ -244,7 +232,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
               ))
             ) : (
               <div className="px-3 py-3 text-xs text-slate-400 text-center">
-                No se encontró "{search}"
+                {language === 'en' ? `Not found "${search}"` : `No se encontró "${search}"`}
               </div>
             )}
           </div>

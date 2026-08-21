@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake, Globe } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface HeaderProps {
   onOpenCreateModal: () => void;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeCount,
   criticalCount,
 }) => {
+  const { language, setLanguage, t } = useTranslation();
   const [visible, setVisible] = useState(true);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const helpMenuRef = useRef<HTMLDivElement>(null);
@@ -43,7 +45,6 @@ export const Header: React.FC<HeaderProps> = ({
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
-      // Show header when scrolling up (even a little), hide when scrolling down
       if (currentY < lastScrollY.current || currentY < 50) {
         setVisible(true);
       } else if (currentY > lastScrollY.current && currentY > 100) {
@@ -62,24 +63,60 @@ export const Header: React.FC<HeaderProps> = ({
         visible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-
       {/* Main Header navigation bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
-        <div className="flex items-center">
+        <div className="flex items-center justify-between w-full md:w-auto">
           <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 md:h-10 w-auto" />
+
+          {/* Language toggle for mobile */}
+          <div className="flex md:hidden items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => setLanguage('es')}
+              className={`px-2 py-0.5 text-xs font-bold rounded ${language === 'es' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
+            >
+              ES
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2 py-0.5 text-xs font-bold rounded ${language === 'en' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
+            >
+              EN
+            </button>
+          </div>
         </div>
 
         {/* Quick action controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
           {/* Action buttons — hidden on mobile, shown on desktop */}
           <div className="hidden md:flex items-center gap-2.5">
+            {/* Language toggle desktop */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 mr-1">
+              <Globe className="w-3.5 h-3.5 text-slate-500 ml-1 mr-0.5" />
+              <button
+                onClick={() => setLanguage('es')}
+                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                  language === 'es' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                ES
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-2 py-1 text-xs font-bold rounded transition-colors ${
+                  language === 'en' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+
             <button
               onClick={onOpenCreateModal}
               className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
               id="btn-create-need"
             >
               <PlusCircle className="w-4 h-4 text-slate-600" />
-              <span>Necesito Ayuda</span>
+              <span>{t('publishNeed')}</span>
             </button>
 
             {/* Quiero Ayudar — Dropdown */}
@@ -90,20 +127,20 @@ export const Header: React.FC<HeaderProps> = ({
                 id="btn-quiero-ayudar"
               >
                 <HeartHandshake className="w-4 h-4" />
-                <span>Quiero Ayudar</span>
+                <span>{t('offerHelp')}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelpMenu ? 'rotate-180' : ''}`} />
               </button>
 
               {showHelpMenu && (
-                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-60 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
                   >
                     <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
-                      <span className="font-semibold block">Ver necesidades</span>
-                      <span className="text-[11px] text-slate-500">Explora el mapa de necesidades</span>
+                      <span className="font-semibold block">{t('viewNeeds')}</span>
+                      <span className="text-[11px] text-slate-500">{t('mapView')}</span>
                     </div>
                   </button>
                   <button
@@ -112,8 +149,8 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <Heart className="w-4 h-4 text-blue-600 shrink-0" />
                     <div>
-                      <span className="font-semibold block">Publicar ayuda</span>
-                      <span className="text-[11px] text-slate-500">Registra recursos disponibles</span>
+                      <span className="font-semibold block">{t('offerHelp')}</span>
+                      <span className="text-[11px] text-slate-500">{t('createOfferSubtitle')}</span>
                     </div>
                   </button>
                   <button
@@ -122,8 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
                     <div>
-                      <span className="font-semibold block">Ser moderador</span>
-                      <span className="text-[11px] text-slate-500">Verifica información</span>
+                      <span className="font-semibold block">{t('moderatorView')}</span>
                     </div>
                   </button>
                 </div>
@@ -137,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
               id="btn-admin-panel"
             >
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Moderación</span>
+              <span>{t('moderatorView')}</span>
             </button>
           </div>
         </div>

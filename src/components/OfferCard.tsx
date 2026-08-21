@@ -1,45 +1,24 @@
 import React from 'react';
 import { MapPin, Clock, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Offer, OfferStatus, VerificationStatus } from '../types';
-import { CATEGORY_LABELS, VERIFICATION_CONFIG, formatTimeAgo } from '../utils/formatters';
+import { CATEGORY_LABELS, VERIFICATION_CONFIG, getCategoryLabel, formatTimeAgo } from '../utils/formatters';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface OfferCardProps {
   offer: Offer;
   onClick: () => void;
 }
 
-const OFFER_STATUS_CONFIG: Record<OfferStatus, { label: string; badgeClass: string }> = {
-  AVAILABLE: {
-    label: 'Disponible',
-    badgeClass: 'bg-green-50 text-green-700 border-green-200',
-  },
-  PARTIALLY_AVAILABLE: {
-    label: 'Parcialmente disponible',
-    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  EXHAUSTED: {
-    label: 'Agotado',
-    badgeClass: 'bg-red-50 text-red-700 border-red-200',
-  },
-  CLOSED: {
-    label: 'Cerrado',
-    badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
-  },
-};
-
-function renderVerificationBadge(status: VerificationStatus) {
-  const info = VERIFICATION_CONFIG[status];
-  if (!info) return null;
-  if (status === 'REPORTED' || status === 'ARCHIVED') return null;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${info.badgeClass}`}>
-      <span>{info.label}</span>
-    </span>
-  );
-}
-
 export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
-  const statusInfo = OFFER_STATUS_CONFIG[offer.offerStatus] || OFFER_STATUS_CONFIG.AVAILABLE;
+  const { language, t } = useTranslation();
+
+  const offerStatusLabels: Record<OfferStatus, string> = {
+    AVAILABLE: t('statusAvailable'),
+    PARTIALLY_AVAILABLE: t('statusPartiallyAvailable'),
+    EXHAUSTED: t('statusExhausted'),
+    CLOSED: t('statusClosed'),
+  };
+
   const isInactive = offer.offerStatus === 'EXHAUSTED' || offer.offerStatus === 'CLOSED';
 
   return (
@@ -54,13 +33,19 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
       <div className={`p-5 space-y-2.5 ${isInactive ? 'line-through decoration-slate-400' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
           <span
-            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${statusInfo.badgeClass}`}
+            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+              isInactive ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-green-50 text-green-700 border-green-200'
+            }`}
           >
-            {statusInfo.label}
+            {offerStatusLabels[offer.offerStatus] || offerStatusLabels.AVAILABLE}
           </span>
 
           <div className="flex items-center gap-1.5">
-            {renderVerificationBadge(offer.verificationStatus)}
+            {offer.verificationStatus === 'VERIFIED' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border text-indigo-600 bg-indigo-50/80 border-indigo-200">
+                <span>{t('cardVerifiedBy')}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -71,15 +56,18 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
 
         {/* Categories Pills */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {offer.categories.map((c) => (
-            <span
-              key={c}
-              className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-blue-200 flex items-center gap-1"
-            >
-              <span>{CATEGORY_LABELS[c]?.icon || '🔹'}</span>
-              <span>{CATEGORY_LABELS[c]?.label || c}</span>
-            </span>
-          ))}
+          {offer.categories.map((c) => {
+            const item = getCategoryLabel(c, language);
+            return (
+              <span
+                key={c}
+                className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-blue-200 flex items-center gap-1"
+              >
+                <span>{item?.icon || '🔹'}</span>
+                <span>{item?.label || c}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -92,7 +80,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
           </div>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span>Actualizado {formatTimeAgo(offer.updatedAt)}</span>
+            <span>{formatTimeAgo(offer.updatedAt, language)}</span>
             {offer.verificationStatus === 'VERIFIED' && (
               <ShieldCheck className="w-3 h-3 text-indigo-500 shrink-0" />
             )}

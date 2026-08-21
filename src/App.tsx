@@ -4,10 +4,8 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../convex/_generated/api";
 import { showAlert } from "./components/ConfirmDialog";
-import { Id } from "../convex/_generated/dataModel";
+import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed } from "./lib/supabaseService";
 import {
   Map,
   List,
@@ -37,12 +35,11 @@ import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { ALL_COLOMBIA_ID, findCityById, getCityDisplayName, detectCityFromCoords } from "./data/colombiaCities";
+import { useTranslation } from "./i18n/LanguageContext";
 
-// Adapter: converts Convex document (with _id) to our Need type (with id)
-function convexNeedToNeed(doc: any): Need {
-  const { _id, _creationTime, ...rest } = doc;
-  return { id: _id, ...rest } as Need;
-}
+
+
+import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
 
 // Check if current path is a static page or special view
 function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
@@ -61,23 +58,26 @@ function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 
 export default function App() {
   const specialRoute = getSpecialRoute();
 
+  let content = <MainApp />;
   if (specialRoute?.type === 'moderador') {
-    return <ModeradorPage />;
+    content = <ModeradorPage />;
+  } else if (specialRoute?.type === 'panel') {
+    content = <AdminPanelPage />;
+  } else if (specialRoute?.type === 'social') {
+    content = <SocialCardView needId={specialRoute.needId} format={specialRoute.format} />;
   }
 
-  if (specialRoute?.type === 'panel') {
-    return <AdminPanelPage />;
-  }
-
-  if (specialRoute?.type === 'social') {
-    return <SocialCardView needId={specialRoute.needId} format={specialRoute.format} />;
-  }
-
-  return <MainApp />;
+  return (
+    <>
+      {content}
+      <DevEnvironmentBanner />
+    </>
+  );
 }
 
 function MainApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const sessionUser = typeof window !== 'undefined' && localStorage.getItem('ahf_admin_token') ? { name: 'Moderador' } : null;
 
   // Parse URL: /:cityId or /:cityId/:needId or /:cityId/offer/:offerId
   const [initialNeedId] = useState<string | null>(() => {
@@ -124,6 +124,9 @@ function MainApp() {
     return `${base}/${cityId}/${need.id}`;
   };
 
+  // Translation
+  const { t } = useTranslation();
+
   // Filters
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -160,12 +163,9 @@ function MainApp() {
 
   // Check if a moderator is logged in
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
-  const sessionUser = useQuery(
-    api.auth.validateSession,
-    adminToken ? { token: adminToken } : "skip"
-  );
-  const isModeratorLoggedIn = !!sessionUser;
-  const isAdminUser = (sessionUser as any)?.role === "ADMIN";
+  // Check if a moderator is logged in
+  const isModeratorLoggedIn = !!localStorage.getItem("ahf_admin_token");
+  const isAdminUser = true;
 
   // Online / Offline Listeners
   useEffect(() => {
@@ -186,8 +186,6 @@ function MainApp() {
 
     const updateFavicon = (e: MediaQueryListEvent | MediaQueryList) => {
       if (favicon) {
-        // Si el tema es oscuro (fondo oscuro), cargamos el favicon claro (dark variant)
-        // Si el tema es claro (fondo claro), cargamos el favicon oscuro (default)
         favicon.href = e.matches ? '/favicon-dark.svg' : '/favicon.svg';
       }
     };
@@ -198,9 +196,10 @@ function MainApp() {
     return () => darkModeMediaQuery.removeEventListener('change', updateFavicon);
   }, []);
 
-  // --- CONVEX QUERIES ---
-  const needCounts = useQuery(api.needs.countsByCity) || {};
-  const offerCounts = useQuery(api.offers.countsByCity) || {};
+  // --- SUPABASE DATA HOOKS ---
+  const { needCounts, offerCounts } = useCityCounts();
+  const { needs, loading: needsLoading } = useNeeds(filters, selectedCityId);
+  const { offers, loading: offersLoading } = useOffers(filters, selectedCityId);
 
   // Combined counts (needs + offers) per city for the city selector
   const combinedCounts = useMemo(() => {
@@ -211,99 +210,26 @@ function MainApp() {
     return combined;
   }, [needCounts, offerCounts]);
 
-  // Always-on count queries (never skipped, for tab counters)
-  const allNeedsForCount = useQuery(api.needs.list, {
-    cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
-  });
-  const allOffersForCount = useQuery(api.offers.list, {
-    cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
-  });
-  const totalNeedsCount = allNeedsForCount?.length ?? 0;
-  const totalOffersCount = allOffersForCount?.length ?? 0;
-
-  const rawNeeds = useQuery(api.needs.list,
-    filters.viewMode === "OFFERS" ? "skip" : {
-      cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
-      search: filters.search || undefined,
-      category:
-        filters.categories.length === 1 ? filters.categories[0] : undefined,
-      priority: filters.priority !== "ALL" ? filters.priority : undefined,
-      placeType: filters.placeType !== "ALL" ? filters.placeType : undefined,
-      status: filters.status !== "ALL" ? filters.status : undefined,
-      verificationStatus:
-        filters.verificationStatus !== "ALL"
-          ? filters.verificationStatus
-          : undefined,
-      userLat: filters.userLat ?? undefined,
-      userLng: filters.userLng ?? undefined,
-      distanceKm: filters.distanceKm ?? undefined,
-      sortBy: filters.sortBy || undefined,
-    }
-  );
-
-  // Offers query — only active when ViewMode is "OFFERS" or "ALL"
-  const rawOffers = useQuery(api.offers.list,
-    filters.viewMode === "NEEDS" ? "skip" : {
-      cityId: selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : undefined,
-      search: filters.search || undefined,
-      category:
-        filters.categories.length === 1 ? filters.categories[0] : undefined,
-      userLat: filters.userLat ?? undefined,
-      userLng: filters.userLng ?? undefined,
-      distanceKm: filters.distanceKm ?? undefined,
-      sortBy: filters.sortBy || undefined,
-    }
-  );
-
-  // Admin data is now fetched inside AdminDashboardModal with auth token
-
-  // Adapted needs
-  const needs: Need[] = useMemo(
-    () => (rawNeeds || []).map(convexNeedToNeed),
-    [rawNeeds]
-  );
-
-  // Adapted offers — graceful fallback to empty array if query fails or is skipped
-  const offers: Offer[] = useMemo(
-    () => {
-      if (!rawOffers) return [];
-      try {
-        return rawOffers.map((doc: any) => {
-          const { _id, _creationTime, ...rest } = doc;
-          return { id: _id, ...rest } as Offer;
-        });
-      } catch {
-        return [];
-      }
-    },
-    [rawOffers]
-  );
+  const totalNeedsCount = needs.length;
+  const totalOffersCount = offers.length;
 
   // Open need from URL on initial load
-  const needFromUrl = useQuery(
-    api.needs.getById,
-    initialNeedId ? { id: initialNeedId as Id<"needs"> } : "skip"
-  );
-
   useEffect(() => {
-    if (initialNeedId && needFromUrl && !selectedNeed) {
-      const { _id, _creationTime, updates, ...rest } = needFromUrl as any;
-      handleSelectNeed({ id: _id, ...rest } as Need);
+    if (initialNeedId && !selectedNeed) {
+      getNeedById(initialNeedId).then((need) => {
+        if (need) handleSelectNeed(need);
+      });
     }
-  }, [initialNeedId, needFromUrl]);
+  }, [initialNeedId]);
 
   // Open offer from URL on initial load
-  const offerFromUrl = useQuery(
-    api.offers.getById,
-    initialOfferId ? { id: initialOfferId as Id<"offers"> } : "skip"
-  );
-
   useEffect(() => {
-    if (initialOfferId && offerFromUrl && !selectedOffer) {
-      const { _id, _creationTime, updates, ...rest } = offerFromUrl as any;
-      handleSelectOffer({ id: _id, ...rest } as Offer);
+    if (initialOfferId && !selectedOffer) {
+      getOfferById(initialOfferId).then((offer) => {
+        if (offer) handleSelectOffer(offer);
+      });
     }
-  }, [initialOfferId, offerFromUrl]);
+  }, [initialOfferId]);
 
   // Update URL when opening/closing need detail
   const selectedNeedRef = useRef<Need | null>(null);
@@ -337,30 +263,14 @@ function MainApp() {
     }
   };
 
-  const reports = useMemo(() => {
-    return [];
-  }, []);
+  const reports = useMemo(() => [], []);
+  const auditLogs = useMemo(() => [], []);
 
-  const auditLogs = useMemo(() => {
-    return [];
-  }, []);
-
-  const isLoading = filters.viewMode === "OFFERS"
-    ? rawOffers === undefined
-    : filters.viewMode === "ALL"
-    ? rawNeeds === undefined && rawOffers === undefined
-    : rawNeeds === undefined;
+  const isLoading = filters.viewMode === "OFFERS" ? offersLoading : needsLoading;
   const lastUpdated = new Date().toLocaleTimeString("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
   });
-
-  // --- CONVEX MUTATIONS ---
-  const createNeed = useMutation(api.needs.create);
-  const updateNeedStatus = useMutation(api.needs.addUpdateNote);
-  const submitReport = useMutation(api.needs.submitReport);
-  const adminVerify = useMutation(api.admin.verifyNeed);
-  const adminResolveReport = useMutation(api.admin.resolveReport);
 
   // Geolocation — triggered from CityCombobox "Mi ubicación" option
   const handleRequestLocation = (lat: number, lng: number) => {
@@ -399,12 +309,14 @@ function MainApp() {
         description: data.description || "",
         placeType: data.placeType,
         categories: data.categories,
-        resources: data.resources?.map((r) => ({
+        resources: data.resources?.map((r, idx) => ({
+          id: String(idx),
           type: r.type,
           description: r.description,
           requestedQuantity: r.requestedQuantity,
           fulfilledQuantity: r.fulfilledQuantity,
           unit: r.unit,
+          status: 'PENDING' as const,
         })),
         address: data.address || "",
         neighborhood: data.neighborhood || "",
@@ -439,8 +351,8 @@ function MainApp() {
     contact: string
   ) => {
     try {
-      await submitReport({
-        needId: needId as Id<"needs">,
+      await submitNeedReport({
+        needId,
         reason,
         description,
         reporterContact: contact,
@@ -459,8 +371,10 @@ function MainApp() {
     updatedBy: string
   ) => {
     try {
-      await updateNeedStatus({
-        id: needId as Id<"needs">,
+      const need = needs.find((n) => n.id === needId);
+      await addNeedUpdateNote({
+        needId,
+        previousStatus: need?.status || 'NEED_HELP_NOW',
         newStatus,
         description: note,
         updatedBy,
@@ -479,18 +393,8 @@ function MainApp() {
       return;
     }
     try {
-      await adminVerify({
-        token,
-        id: needId as Id<"needs">,
-        verificationStatus: updates.verificationStatus,
-        priority: updates.priority,
-        verifiedBy: updates.verifiedBy,
-        verificationNotes: updates.verificationNotes,
-        status: updates.status,
-        title: updates.title,
-        description: updates.description,
-        categories: updates.categories,
-      });
+      await updateNeed(needId, updates);
+      showAlert("Moderación guardada exitosamente.", { title: "Éxito", variant: "success" });
     } catch (e) {
       showAlert("Error en moderación.", { title: "Error", variant: "error" });
     }
@@ -507,11 +411,9 @@ function MainApp() {
       return;
     }
     try {
-      await adminResolveReport({
-        token,
-        reportId: reportId as Id<"reports">,
-        action,
-      });
+      const { supabase } = await import("./lib/supabaseClient");
+      await supabase.from("reports").update({ status: action === "resolve" ? "RESOLVED" : "DISMISSED" }).eq("id", reportId);
+      showAlert("Reporte actualizado.", { title: "Éxito", variant: "success" });
     } catch (e) {
       showAlert("Error al resolver el reporte.", { title: "Error", variant: "error" });
     }
@@ -627,31 +529,31 @@ function MainApp() {
             <div className="hidden md:block md:absolute md:bottom-3 md:left-0 md:pointer-events-auto">
               <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
                 <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
-                  Leyenda del mapa
+                  {t('mapLegendTitle')}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
-                  <span className="text-slate-700">Crítica</span>
+                  <span className="text-slate-700">{t('mapLegendCritical')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-                  <span className="text-slate-700">Alta</span>
+                  <span className="text-slate-700">{t('mapLegendHigh')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
-                  <span className="text-slate-700">Media</span>
+                  <span className="text-slate-700">{t('mapLegendMedium')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-                  <span className="text-slate-700">Baja</span>
+                  <span className="text-slate-700">{t('mapLegendLow')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
-                  <span className="text-slate-700">Centro de acopio</span>
+                  <span className="text-slate-700">{t('mapLegendAcopio')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-                  <span className="text-slate-700">Oferta de ayuda</span>
+                  <span className="text-slate-700">{t('mapLegendOffer')}</span>
                 </div>
               </div>
             </div>

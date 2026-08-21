@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             vendor: ["react", "react-dom"],
-            convex: ["convex", "convex/react"],
+            supabase: ["@supabase/supabase-js"],
             map: ["leaflet"],
             ui: ["lucide-react", "motion"],
           },

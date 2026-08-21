@@ -1,7 +1,8 @@
 import React from 'react';
 import { MapPin, Clock, CheckCircle2, AlertCircle, HelpCircle, HeartHandshake, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Need } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, VERIFICATION_CONFIG, formatTimeAgo } from '../utils/formatters';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, VERIFICATION_CONFIG, getCategoryLabel, formatTimeAgo } from '../utils/formatters';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface NeedCardProps {
   need: Need;
@@ -12,7 +13,6 @@ interface NeedCardProps {
   isSelected?: boolean;
 }
 
-// Calculate distance in km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -36,10 +36,10 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   userLng,
   isSelected = false,
 }) => {
+  const { language, t } = useTranslation();
   const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
   const verificationInfo = VERIFICATION_CONFIG[need.verificationStatus] || VERIFICATION_CONFIG.PENDING_VERIFICATION;
-  const placeTypeLabel = PLACE_TYPE_LABELS[need.placeType] || 'Lugar de ayuda';
 
   const distanceText =
     userLat && userLng && need.latitude && need.longitude
@@ -59,13 +59,21 @@ export const NeedCard: React.FC<NeedCardProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
           {isCollectionCenter ? (
             <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-              Centro de Acopio
+              {language === 'en' ? 'Collection Center' : 'Centro de Acopio'}
             </span>
           ) : (
             <span
               className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
             >
-              {priorityInfo.label}
+              {language === 'en'
+                ? need.priority === 'CRITICAL'
+                  ? t('priorityCritical')
+                  : need.priority === 'HIGH'
+                  ? t('priorityHigh')
+                  : need.priority === 'MEDIUM'
+                  ? t('priorityMedium')
+                  : t('priorityLow')
+                : priorityInfo.label}
             </span>
           )}
 
@@ -76,7 +84,15 @@ export const NeedCard: React.FC<NeedCardProps> = ({
             <span
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${verificationInfo.badgeClass}`}
             >
-              <span>{verificationInfo.label}</span>
+              <span>
+                {need.verificationStatus === 'VERIFIED'
+                  ? t('cardVerifiedBy')
+                  : need.verificationStatus === 'PENDING_VERIFICATION'
+                  ? t('cardPendingVerification')
+                  : need.verificationStatus === 'REPORTED'
+                  ? t('cardReported')
+                  : t('cardArchived')}
+              </span>
             </span>
           </div>
         </div>
@@ -95,19 +111,20 @@ export const NeedCard: React.FC<NeedCardProps> = ({
         {need.resources && need.resources.length > 0 && (
           <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1.5 text-xs mt-2">
             <div className="font-bold text-slate-400 text-[10px] uppercase tracking-widest">
-              Requeridos:
+              {t('cardResourcesNeeded')}
             </div>
             <div className="space-y-1.5">
               {need.resources.slice(0, 3).map((r) => {
                 const requested = r.requestedQuantity || 0;
                 const fulfilled = r.fulfilledQuantity || 0;
                 const percentage = requested > 0 ? Math.min(100, Math.round((fulfilled / requested) * 100)) : 0;
+                const catLabel = getCategoryLabel(r.type, language)?.label || r.type;
 
                 return (
                   <div key={r.id} className="space-y-0.5">
                     <div className="flex items-center justify-between text-xs text-slate-800">
                       <span className="font-medium truncate max-w-[200px]">
-                        • {r.description || CATEGORY_LABELS[r.type]?.label}
+                        • {r.description || catLabel}
                       </span>
                       {requested > 0 && fulfilled > 0 ? (
                         <span className="font-bold shrink-0 text-slate-900 text-[11px]">
@@ -115,10 +132,10 @@ export const NeedCard: React.FC<NeedCardProps> = ({
                         </span>
                       ) : requested > 0 ? (
                         <span className="text-slate-500 font-semibold text-[11px]">
-                          Se necesitan {requested} {r.unit || ''}
+                          {requested} {r.unit || ''}
                         </span>
                       ) : (
-                        <span className="text-indigo-600 font-bold text-[11px]">Requerido</span>
+                        <span className="text-indigo-600 font-bold text-[11px]">{t('priorityCritical')}</span>
                       )}
                     </div>
                     {requested > 0 && fulfilled > 0 && (
@@ -132,26 +149,24 @@ export const NeedCard: React.FC<NeedCardProps> = ({
                   </div>
                 );
               })}
-              {need.resources.length > 3 && (
-                <div className="text-[10px] text-slate-400 uppercase font-semibold italic pt-0.5">
-                  + {need.resources.length - 3} necesidades más...
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {/* Categories Pills */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {need.categories.map((c) => (
-            <span
-              key={c}
-              className="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-slate-200 flex items-center gap-1"
-            >
-              <span>{CATEGORY_LABELS[c]?.icon || '🔹'}</span>
-              <span>{CATEGORY_LABELS[c]?.label || c}</span>
-            </span>
-          ))}
+          {need.categories.map((c) => {
+            const item = getCategoryLabel(c, language);
+            return (
+              <span
+                key={c}
+                className="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-slate-200 flex items-center gap-1"
+              >
+                <span>{item?.icon || '🔹'}</span>
+                <span>{item?.label || c}</span>
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -167,7 +182,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
           </div>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span>Actualizado {formatTimeAgo(need.updatedAt)}</span>
+            <span>{formatTimeAgo(need.updatedAt, language)}</span>
             {need.lastUpdatedBy?.startsWith('[MOD]') && (
               <ShieldCheck className="w-3 h-3 text-indigo-500 shrink-0" />
             )}
@@ -184,7 +199,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
             id={`btn-help-${need.id}`}
           >
             <HeartHandshake className="w-3.5 h-3.5 text-indigo-200" />
-            <span>Quiero ayudar</span>
+            <span>{t('cardHowToHelp')}</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,28 @@
 import { HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus } from '../types';
 
+export const CATEGORY_LABELS_EN: Record<HelpCategory, { label: string; icon: string }> = {
+  ESCOMBROS: { label: 'Debris removal', icon: '⛏️' },
+  MANO_OBRA: { label: 'Labor / Volunteers', icon: '👷' },
+  TRANSPORTE: { label: 'Transport / Freight', icon: '🚚' },
+  ALIMENTOS: { label: 'Donate food', icon: '🍞' },
+  AGUA: { label: 'Donate drinking water', icon: '💧' },
+  ROPA: { label: 'Clothing & blankets', icon: '👕' },
+  MEDICAMENTOS: { label: 'Medicines / First aid', icon: '💊' },
+  SANGRE: { label: 'Blood donation', icon: '🩸' },
+  DINERO: { label: 'Financial contribution', icon: '💳' },
+  HERRAMIENTAS: { label: 'Hand tools', icon: '🛠️' },
+  MAQUINARIA: { label: 'Heavy machinery', icon: '🚜' },
+  OPERARIOS_MAQUINARIA: { label: 'Machinery operators', icon: '🏗️' },
+  ATENCION_MEDICA: { label: 'Medical care', icon: '🩺' },
+  APOYO_PSICOLOGICO: { label: 'Psychological support', icon: '🧠' },
+  ALOJAMIENTO: { label: 'Shelter / Tents', icon: '⛺' },
+  ANIMALES: { label: 'Animal care', icon: '🐾' },
+  LOGISTICA: { label: 'Logistics support', icon: '📋' },
+  CLASIFICACION_DONACIONES: { label: 'Donation sorting', icon: '📦' },
+  VOLUNTARIADO_GENERAL: { label: 'General volunteering', icon: '🤝' },
+  OTRO: { label: 'Other type of help', icon: '🔹' },
+};
+
 export const CATEGORY_LABELS: Record<HelpCategory, { label: string; icon: string }> = {
   ESCOMBROS: { label: 'Remover escombros', icon: '⛏️' },
   MANO_OBRA: { label: 'Mano de obra', icon: '👷' },
@@ -22,6 +45,10 @@ export const CATEGORY_LABELS: Record<HelpCategory, { label: string; icon: string
   VOLUNTARIADO_GENERAL: { label: 'Voluntariado general', icon: '🤝' },
   OTRO: { label: 'Otro tipo de ayuda', icon: '🔹' },
 };
+
+export function getCategoryLabel(cat: HelpCategory, lang: 'es' | 'en' = 'es') {
+  return lang === 'en' ? CATEGORY_LABELS_EN[cat] || CATEGORY_LABELS[cat] : CATEGORY_LABELS[cat];
+}
 
 export const PRIORITY_CONFIG: Record<
   Priority,
@@ -103,6 +130,19 @@ export const STATUS_CONFIG: Record<NeedStatus, { label: string; badgeClass: stri
   CLOSED: { label: 'Cerrado / Finalizado', badgeClass: 'bg-gray-100 text-gray-700 border-gray-300' },
 };
 
+export const PLACE_TYPE_LABELS_EN: Record<PlaceType, string> = {
+  EDIFICIO_AFECTADO: 'Affected building',
+  CENTRO_ACOPIO: 'Collection center',
+  CENTRO_DISTRIBUCION: 'Distribution center',
+  HOSPITAL: 'Hospital / Medical center',
+  BANCO_SANGRE: 'Blood bank',
+  REFUGIO: 'Shelter / Refuge',
+  COMUNIDAD_AFECTADA: 'Affected community',
+  PUNTO_LOGISTICO: 'Logistics hub',
+  ORGANIZACION: 'Organization',
+  OTRO: 'Other location type',
+};
+
 export const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   EDIFICIO_AFECTADO: 'Edificio afectado',
   CENTRO_ACOPIO: 'Centro de acopio',
@@ -116,7 +156,11 @@ export const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   OTRO: 'Otro tipo de lugar',
 };
 
-export function formatTimeAgo(isoString: string): string {
+export function getPlaceTypeLabel(type: PlaceType, lang: 'es' | 'en' = 'es') {
+  return lang === 'en' ? PLACE_TYPE_LABELS_EN[type] || PLACE_TYPE_LABELS[type] : PLACE_TYPE_LABELS[type];
+}
+
+export function formatTimeAgo(isoString: string, lang: 'es' | 'en' = 'es'): string {
   try {
     const date = new Date(isoString);
     const now = new Date();
@@ -125,22 +169,30 @@ export function formatTimeAgo(isoString: string): string {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
+    if (lang === 'en') {
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
+      if (diffHours < 24) return `${diffHours} h ago`;
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    }
+
     if (diffMins < 1) return 'Hace un instante';
     if (diffMins < 60) return `Hace ${diffMins} min`;
     if (diffHours < 24) return `Hace ${diffHours} h`;
     return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
   } catch (e) {
-    return 'Recientemente';
+    return lang === 'en' ? 'Recently' : 'Recientemente';
   }
 }
 
-export function buildWhatsappLink(phone: string, title: string, categories: HelpCategory[]): string {
+export function buildWhatsappLink(phone: string, title: string, categories: HelpCategory[], lang: 'es' | 'en' = 'es'): string {
   let cleanPhone = phone.replace(/[^0-9]/g, '');
-  // Add Colombia country code if not already present
   if (cleanPhone.length === 10 && cleanPhone.startsWith('3')) {
     cleanPhone = '57' + cleanPhone;
   }
-  const catNames = categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ');
-  const message = `Hola, vi en la plataforma 'Aquí Hace Falta' la necesidad: "${title}" (${catNames}). Me gustaría ofrecer mi ayuda.`;
+  const catNames = categories.map((c) => getCategoryLabel(c, lang)?.label || c).join(', ');
+  const message = lang === 'en'
+    ? `Hello, I saw on the 'Aquí Hace Falta' platform the need: "${title}" (${catNames}). I would like to offer my help.`
+    : `Hola, vi en la plataforma 'Aquí Hace Falta' la necesidad: "${title}" (${catNames}). Me gustaría ofrecer mi ayuda.`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }

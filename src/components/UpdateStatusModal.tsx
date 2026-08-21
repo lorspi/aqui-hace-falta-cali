@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Need, NeedStatus } from '../types';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface UpdateStatusModalProps {
   need: Need | null;
@@ -13,6 +14,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   onClose,
   onSubmitUpdate,
 }) => {
+  const { t } = useTranslation();
   const [newStatus, setNewStatus] = useState<NeedStatus>(need?.status || 'NEED_HELP_NOW');
   const [note, setNote] = useState('');
   const [updatedBy, setUpdatedBy] = useState('');
@@ -47,7 +49,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               <RefreshCw className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Actualizar estado del punto</h3>
+              <h3 className="font-bold text-slate-900 text-base">{t('updateStatusTitle')}</h3>
               <p className="text-xs text-slate-500 truncate max-w-[240px]">{need.title}</p>
             </div>
           </div>
@@ -58,38 +60,38 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs text-slate-800">
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Nuevo estado *</label>
+            <label className="block font-bold text-slate-700 mb-1">{t('coverageStatusLabel')} *</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as NeedStatus)}
               className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900"
             >
-              <option value="NEED_HELP_NOW">🔴 Necesita ayuda ahora</option>
-              <option value="RECEIVING_HELP">🔵 Recibiendo ayuda</option>
-              <option value="PARTIALLY_COVERED">🟣 Ayuda parcialmente cubierta</option>
-              <option value="COVERED">🟢 Ayuda totalmente cubierta</option>
-              <option value="CLOSED">⚪ Punto cerrado / Ya no recibe ayuda</option>
+              <option value="NEED_HELP_NOW">🔴 {t('statusNeedHelpNow')}</option>
+              <option value="RECEIVING_HELP">🔵 {t('statusReceivingHelp')}</option>
+              <option value="PARTIALLY_COVERED">🟣 {t('statusPartiallyCovered')}</option>
+              <option value="COVERED">🟢 {t('statusCovered')}</option>
+              <option value="CLOSED">⚪ {t('statusClosed')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Detalle de la actualización</label>
+            <label className="block font-bold text-slate-700 mb-1">{t('editReasonLabel')}</label>
             <textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ej: Ya llegaron los 10 voluntarios de escombros. Ahora solo faltan 5 garrafones de agua..."
+              placeholder={t('editReasonPlaceholder')}
               className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
             />
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Tu nombre o rol en el punto</label>
+            <label className="block font-bold text-slate-700 mb-1">{t('editorNameLabel')}</label>
             <input
               type="text"
               value={updatedBy}
               onChange={(e) => setUpdatedBy(e.target.value)}
-              placeholder="Ej: Voluntario en terreno / Coordinador de acopio"
+              placeholder={t('editorNamePlaceholder')}
               className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
             />
           </div>
@@ -100,7 +102,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               onClick={onClose}
               className="px-3 py-2 text-slate-600 font-semibold hover:bg-slate-100 rounded-lg"
             >
-              Cancelar
+              {t('cancelButton')}
             </button>
             <button
               type="submit"
@@ -108,7 +110,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Guardar actualización</span>
+              <span>{t('saveStatusButton')}</span>
             </button>
           </div>
         </form>

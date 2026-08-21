@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { updateOffer } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Offer } from '../types';
-import { CATEGORY_LABELS } from '../utils/formatters';
+import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface PublicEditOfferModalProps {
   offer: Offer | null;
@@ -16,6 +15,7 @@ interface PublicEditOfferModalProps {
 }
 
 export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offer, onClose, moderatorName }) => {
+  const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
 
   // Form state
@@ -45,8 +45,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
 
-  const updateFields = useMutation(api.offers.updateFields);
-  const archiveOfferMutation = useMutation(api.offers.verify);
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
 
   const [isArchived, setIsArchived] = useState(false);
@@ -151,8 +149,8 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
     setIsSubmitting(true);
     try {
-      await updateFields({
-        offerId: offer.id as Id<"offers">,
+      if (!offer) return;
+      await updateOffer(offer.id, {
         title,
         description,
         categories: selectedCategories,
@@ -166,17 +164,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
         contactEmail: contactEmail || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-        resources: resources.map((r) => ({
-          id: r.id,
-          type: r.type,
-          description: r.description || CATEGORY_LABELS[r.type]?.label || 'Recurso',
-          quantity: r.quantity || undefined,
-          fulfilledQuantity: r.fulfilledQuantity || 0,
-          unit: r.unit || undefined,
-          status: (r.quantity && r.fulfilledQuantity && r.fulfilledQuantity >= r.quantity) ? 'EXHAUSTED' : 'AVAILABLE',
-        })),
-        editorName: isModerator ? `[MOD] ${editorName}` : (editorName || undefined),
-        editReason: editReason || undefined,
       });
       setSubmitted(true);
     } catch (err: any) {
@@ -190,8 +177,10 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     if (!authToken || !offer) return;
     if (!(await showConfirm('¿Archivar esta oferta? Se ocultará de la vista pública.', { title: 'Archivar oferta' }))) return;
     try {
-      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "archive" });
+      await updateOffer(offer.id, { verificationStatus: 'ARCHIVED' });
       setIsArchived(true);
+      showAlert('Oferta archivada correctamente.', { title: 'Archivada', variant: 'success' });
+      onClose();
     } catch (e: any) { showAlert(e?.message || 'Error al archivar', { title: 'Error', variant: 'error' }); }
   };
 
@@ -199,8 +188,9 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     if (!authToken || !offer) return;
     if (!(await showConfirm('¿Publicar esta oferta? Volverá a ser visible como pendiente de verificación.', { title: 'Publicar oferta' }))) return;
     try {
-      await archiveOfferMutation({ token: authToken, offerId: offer.id as Id<"offers">, action: "publish" });
+      await updateOffer(offer.id, { verificationStatus: 'PENDING_VERIFICATION' });
       setIsArchived(false);
+      showAlert('Oferta publicada correctamente.', { title: 'Publicada', variant: 'success' });
     } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
 

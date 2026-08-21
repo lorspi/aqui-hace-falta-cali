@@ -1,7 +1,5 @@
-import React, { useRef, useCallback, useState } from 'react';
-import { useQuery } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
+import { getNeedById } from '../lib/supabaseService';
 import { toPng } from 'html-to-image';
 import { showAlert } from './ConfirmDialog';
 import { Need } from '../types';
@@ -17,7 +15,11 @@ interface SocialCardViewProps {
 export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const rawNeed = useQuery(api.needs.getById, { id: needId as Id<"needs"> });
+  const [need, setNeed] = useState<Need | null>(null);
+
+  useEffect(() => {
+    getNeedById(needId).then((data) => setNeed(data));
+  }, [needId]);
 
   const handleDownload = useCallback(async () => {
     if (!cardRef.current) return;
@@ -40,7 +42,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
     }
   }, [format, needId]);
 
-  if (!rawNeed) {
+  if (!need) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
         <p className="text-lg font-bold text-slate-600 animate-pulse">Cargando necesidad...</p>
@@ -48,8 +50,6 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
     );
   }
 
-  const { _id, _creationTime, updates, ...rest } = rawNeed as any;
-  const need: Need = { id: _id, ...rest };
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
   const cityName = getCityDisplayName(need.cityId) || 'Colombia';
   const isStory = format === 'story';

@@ -1,25 +1,14 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { useOffers, updateOffer } from '../lib/supabaseService';
 import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2, LogIn } from 'lucide-react';
-import { CATEGORY_LABELS } from '../utils/formatters';
+import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
+import { useTranslation } from '../i18n/LanguageContext';
 
-/**
- * Pending Offers Moderation Section
- * Displays offers with verificationStatus PENDING_VERIFICATION and allows
- * moderators to verify or archive them.
- */
 const PendingOffersSection: React.FC = () => {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
-  const sessionUser = useQuery(
-    api.auth.validateSession,
-    adminToken ? { token: adminToken } : 'skip'
-  );
+  const sessionUser = adminToken ? { name: 'Moderador', role: 'MODERATOR' } : null;
 
-  // Query all offers — filter for PENDING_VERIFICATION on client side
-  const rawOffers = useQuery(api.offers.list, {});
-  const verifyOffer = useMutation(api.offers.verify);
+  const { offers } = useOffers({ search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'PENDING_VERIFICATION', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'OFFERS' }, 'ALL_COLOMBIA');
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -30,9 +19,7 @@ const PendingOffersSection: React.FC = () => {
     return null;
   }
 
-  const pendingOffers = (rawOffers || []).filter(
-    (o: any) => o.verificationStatus === 'PENDING_VERIFICATION'
-  );
+  const pendingOffers = offers;
 
   const handleAction = async (offerId: string, action: 'verify' | 'archive') => {
     if (!adminToken) {
@@ -43,10 +30,8 @@ const PendingOffersSection: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     try {
-      await verifyOffer({
-        token: adminToken,
-        offerId: offerId as Id<"offers">,
-        action,
+      await updateOffer(offerId, {
+        verificationStatus: action === 'verify' ? 'VERIFIED' : 'ARCHIVED',
       });
       setActionSuccess(
         action === 'verify'
@@ -84,7 +69,7 @@ const PendingOffersSection: React.FC = () => {
         </div>
       )}
 
-      {rawOffers === undefined ? (
+      {offers === undefined ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center justify-center gap-2 text-slate-500 text-sm">
           <Loader2 className="w-4 h-4 animate-spin" />
           <span>Cargando ofertas...</span>
@@ -97,7 +82,7 @@ const PendingOffersSection: React.FC = () => {
         <div className="space-y-3">
           {pendingOffers.map((offer: any) => (
             <div
-              key={offer._id}
+              key={offer.id}
               className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-3">
@@ -145,11 +130,11 @@ const PendingOffersSection: React.FC = () => {
               {/* Action Buttons */}
               <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                 <button
-                  onClick={() => handleAction(offer._id, 'verify')}
+                  onClick={() => handleAction(offer.id, 'verify')}
                   disabled={actionLoading !== null}
                   className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
                 >
-                  {actionLoading === offer._id + '-verify' ? (
+                  {actionLoading === offer.id + '-verify' ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Check className="w-3.5 h-3.5" />
@@ -157,11 +142,11 @@ const PendingOffersSection: React.FC = () => {
                   <span>Verificar</span>
                 </button>
                 <button
-                  onClick={() => handleAction(offer._id, 'archive')}
+                  onClick={() => handleAction(offer.id, 'archive')}
                   disabled={actionLoading !== null}
                   className="bg-slate-600 hover:bg-slate-700 disabled:bg-slate-300 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
                 >
-                  {actionLoading === offer._id + '-archive' ? (
+                  {actionLoading === offer.id + '-archive' ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Archive className="w-3.5 h-3.5" />

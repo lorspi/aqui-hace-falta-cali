@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Loader2, CheckCircle2, ShieldCheck, Plus, Trash2 } from 'lucide-react';
-import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { createOffer } from '../lib/supabaseService';
 import { HelpCategory } from '../types';
-import { CATEGORY_LABELS } from '../utils/formatters';
+import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
 import { getCityDisplayName } from '../data/colombiaCities';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface ResourceFormItem {
   type: HelpCategory | '';
@@ -27,6 +27,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   onClose,
   selectedCityId = 'cali',
 }) => {
+  const { language, t } = useTranslation();
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -43,7 +45,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   const [organizationName, setOrganizationName] = useState('');
   const [operatingHours, setOperatingHours] = useState('');
 
-  // Resources state (task 7.2)
+  // Resources state
   const [resources, setResources] = useState<ResourceFormItem[]>([]);
 
   // UI state
@@ -54,24 +56,14 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Convex mutation (task 7.3)
-  const createOffer = useMutation(api.offers.create);
-
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
 
-  // Sync cityId when modal opens with a different initial value
   useEffect(() => {
     if (isOpen) {
       setCityId(selectedCityId);
     }
   }, [isOpen, selectedCityId]);
 
-  // Center map on selected city when cityId changes
-  useEffect(() => {
-    // No-op: coordinates will be set via geocoding or map picker
-  }, [cityId]);
-
-  // Auto-geocode when address changes (debounced 500ms)
   useEffect(() => {
     if (address.length < 5) return;
     setGeocodeError('');
@@ -79,25 +71,23 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     const timer = setTimeout(async () => {
       setIsGeocoding(true);
       const result = await geocodeAddress(address, neighborhood, cityName);
+      setIsGeocoding(false);
       if (result) {
-        setLatitude(result.latitude);
-        setLongitude(result.longitude);
-        setGeocodeError('');
-        // Clear location error if it was set
+        setLatitude(result.lat);
+        setLongitude(result.lng);
         setErrors((prev) => {
           const next = { ...prev };
           delete next.location;
           return next;
         });
       } else {
-        setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+        setGeocodeError(language === 'en' ? 'Exact address not found. Please click the map to select.' : 'No pudimos encontrar la dirección exacta. Haz clic en el mapa para ubicar el punto.');
       }
-      setIsGeocoding(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [address, neighborhood, cityId]);
+    }, 800);
 
-  // Block body scroll when modal is open
+    return () => clearTimeout(timer);
+  }, [address, neighborhood, cityId, language]);
+
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add('modal-open');
@@ -113,7 +103,6 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
-    // Clear category error on change
     setErrors((prev) => {
       const next = { ...prev };
       delete next.categories;
@@ -125,35 +114,35 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'El título es obligatorio';
+      newErrors.title = language === 'en' ? 'Title is required' : 'El título es obligatorio';
     } else if (title.length > 120) {
-      newErrors.title = 'El título no puede superar 120 caracteres';
+      newErrors.title = language === 'en' ? 'Title cannot exceed 120 characters' : 'El título no puede superar 120 caracteres';
     }
 
     if (!description.trim()) {
-      newErrors.description = 'La descripción es obligatoria';
+      newErrors.description = language === 'en' ? 'Description is required' : 'La descripción es obligatoria';
     } else if (description.length > 1000) {
-      newErrors.description = 'La descripción no puede superar 1000 caracteres';
+      newErrors.description = language === 'en' ? 'Description cannot exceed 1000 characters' : 'La descripción no puede superar 1000 caracteres';
     }
 
     if (selectedCategories.length === 0) {
-      newErrors.categories = 'Selecciona al menos una categoría';
+      newErrors.categories = language === 'en' ? 'Select at least one category' : 'Selecciona al menos una categoría';
     }
 
     if (!address.trim()) {
-      newErrors.address = 'La dirección es obligatoria';
+      newErrors.address = language === 'en' ? 'Address is required' : 'La dirección es obligatoria';
     }
 
     if (!neighborhood.trim()) {
-      newErrors.neighborhood = 'El barrio es obligatorio';
+      newErrors.neighborhood = language === 'en' ? 'Neighborhood is required' : 'El barrio es obligatorio';
     }
 
     if (!contactName.trim()) {
-      newErrors.contactName = 'El nombre del contacto es obligatorio';
+      newErrors.contactName = language === 'en' ? 'Contact name is required' : 'El nombre del contacto es obligatorio';
     }
 
     if (latitude === null || longitude === null) {
-      newErrors.location = 'Selecciona una ubicación en el mapa o ingresa una dirección válida';
+      newErrors.location = language === 'en' ? 'Select a location on the map or enter a valid address' : 'Selecciona una ubicación en el mapa o ingresa una dirección válida';
     }
 
     setErrors(newErrors);
@@ -162,21 +151,20 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setIsSubmitting(true);
     setErrors({});
 
     try {
-      // Filter only non-empty resource items
       const validResources = resources
         .filter((r) => r.type && r.description.trim())
-        .map((r) => ({
-          type: r.type as string,
+        .map((r, index) => ({
+          id: String(index),
+          type: r.type as HelpCategory,
           description: r.description.trim(),
           quantity: r.quantity !== '' ? Number(r.quantity) : undefined,
           unit: r.unit.trim() || undefined,
+          status: 'AVAILABLE' as const,
         }));
 
       await createOffer({
@@ -197,7 +185,6 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
         operatingHours: operatingHours.trim() || undefined,
       });
 
-      // Success: show confirmation and reset
       setIsSubmitting(false);
       setSubmitSuccess(true);
 
@@ -208,26 +195,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
       }, 2500);
     } catch (error: any) {
       setIsSubmitting(false);
-      // Parse error and show inline
-      const message = error?.message || error?.data || 'Error al crear la oferta. Revisa tu conexión.';
-      // Try to map specific field errors
-      if (message.includes("'title'")) {
-        setErrors((prev) => ({ ...prev, title: message }));
-      } else if (message.includes("'description'")) {
-        setErrors((prev) => ({ ...prev, description: message }));
-      } else if (message.includes("'address'")) {
-        setErrors((prev) => ({ ...prev, address: message }));
-      } else if (message.includes("'neighborhood'")) {
-        setErrors((prev) => ({ ...prev, neighborhood: message }));
-      } else if (message.includes("'contactName'") || message.includes("'contact'")) {
-        setErrors((prev) => ({ ...prev, contactName: message }));
-      } else if (message.includes("categoría") || message.includes("categories")) {
-        setErrors((prev) => ({ ...prev, categories: message }));
-      } else if (message.includes("recurso") || message.includes("resource")) {
-        setErrors((prev) => ({ ...prev, resources: message }));
-      } else {
-        setErrors((prev) => ({ ...prev, general: message }));
-      }
+      const message = error?.message || error?.data || (language === 'en' ? 'Error creating offer.' : 'Error al crear la oferta.');
+      setErrors((prev) => ({ ...prev, general: message }));
     }
   };
 
@@ -252,7 +221,6 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     setShowPickerMap(false);
   };
 
-  // Resource management (task 7.2)
   const addResource = () => {
     if (resources.length >= 20) return;
     setResources([...resources, { type: '', description: '', quantity: '', unit: '' }]);
@@ -271,7 +239,6 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   const handlePositionChange = (lat: number, lng: number) => {
     setLatitude(lat);
     setLongitude(lng);
-    // Clear location error
     setErrors((prev) => {
       const next = { ...prev };
       delete next.location;
@@ -288,9 +255,9 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
-            <h2 className="text-xl font-black text-slate-900">Registrar oferta de ayuda</h2>
+            <h2 className="text-xl font-black text-slate-900">{t('createOfferTitle')}</h2>
             <p className="text-xs text-slate-500">
-              Publica recursos disponibles para ayudar a la comunidad.
+              {t('createOfferSubtitle')}
             </p>
           </div>
           <button
@@ -307,13 +274,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
           {/* Section 1: Title & Description */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              1. ¿Qué ofreces?
+              {t('sectionWhatYouOffer')}
             </h3>
 
             {/* Title */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Título de la oferta *
+                {t('offerTitleLabel')}
               </label>
               <input
                 type="text"
@@ -323,7 +290,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   if (errors.title) setErrors((prev) => { const n = { ...prev }; delete n.title; return n; });
                 }}
                 maxLength={120}
-                placeholder="Ej: Centro de acopio - Alimentos y ropa en buen estado"
+                placeholder={t('offerTitlePlaceholder')}
                 className={`w-full p-2.5 bg-slate-50 border rounded-lg focus:bg-white text-sm ${errors.title ? 'border-red-400' : 'border-slate-300'}`}
               />
               <div className="flex justify-between mt-0.5">
@@ -337,7 +304,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             {/* Description */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Descripción detallada *
+                {t('offerDescLabel')}
               </label>
               <textarea
                 rows={3}
@@ -347,7 +314,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   if (errors.description) setErrors((prev) => { const n = { ...prev }; delete n.description; return n; });
                 }}
                 maxLength={1000}
-                placeholder="Describe los recursos disponibles, horarios, condiciones de acceso o cualquier información relevante..."
+                placeholder={t('offerDescPlaceholder')}
                 className={`w-full p-2.5 bg-slate-50 border rounded-lg text-xs ${errors.description ? 'border-red-400' : 'border-slate-300'}`}
               />
               <div className="flex justify-between mt-0.5">
@@ -362,16 +329,17 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
           {/* Section 2: Categories */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              2. Categorías de ayuda *
+              {t('sectionCategories')}
             </h3>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1.5">
-                Selecciona al menos una categoría
+                {t('selectOneCategory')}
               </label>
               <div className={`flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 border rounded-xl ${errors.categories ? 'border-red-400' : 'border-slate-200'}`}>
                 {categoriesList.map((cat) => {
                   const isSel = selectedCategories.includes(cat);
+                  const item = getCategoryLabel(cat, language);
                   return (
                     <button
                       type="button"
@@ -383,7 +351,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {CATEGORY_LABELS[cat]?.icon} {CATEGORY_LABELS[cat]?.label}
+                      {item?.icon} {item?.label}
                     </button>
                   );
                 })}
@@ -392,16 +360,16 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Location */}
+          {/* Section 3: Resources */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              3. Recursos disponibles
+              {t('sectionResources')}
             </h3>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block font-bold text-slate-700">
-                  Recursos: {resources.length}/20
+                  {t('resourcesCount')} {resources.length}/20
                 </label>
                 <button
                   type="button"
@@ -410,13 +378,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:text-slate-400 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Agregar recurso
+                  {t('addResource')}
                 </button>
               </div>
 
               {resources.length === 0 && (
                 <p className="text-[11px] text-slate-400 italic">
-                  Opcional: agrega recursos específicos que ofreces (máximo 20).
+                  {t('optionalAddResources')}
                 </p>
               )}
 
@@ -427,60 +395,56 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-500">
-                      Recurso #{index + 1}
+                      {t('resourceItemNum')}{index + 1}
                     </span>
                     <button
                       type="button"
                       onClick={() => removeResource(index)}
                       className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      title="Eliminar recurso"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Type dropdown */}
                     <div>
                       <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
-                        Tipo *
+                        {t('resourceType')}
                       </label>
                       <select
                         value={resource.type}
                         onChange={(e) => updateResource(index, 'type', e.target.value as HelpCategory)}
                         className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
                       >
-                        <option value="">Seleccionar tipo...</option>
-                        {categoriesList.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {CATEGORY_LABELS[cat]?.icon} {CATEGORY_LABELS[cat]?.label}
-                          </option>
-                        ))}
+                        <option value="">{t('selectType')}</option>
+                        {categoriesList.map((cat) => {
+                          const item = getCategoryLabel(cat, language);
+                          return (
+                            <option key={cat} value={cat}>
+                              {item?.icon} {item?.label}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
-                    {/* Description */}
                     <div>
                       <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
-                        Descripción *
+                        {t('resourceDesc')}
                       </label>
                       <input
                         type="text"
                         value={resource.description}
                         onChange={(e) => updateResource(index, 'description', e.target.value)}
                         maxLength={200}
-                        placeholder="Ej: Agua embotellada 500ml"
+                        placeholder={t('resourceDescPlaceholder')}
                         className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
                       />
-                      <p className={`text-[10px] text-right ${resource.description.length > 200 ? 'text-red-600' : 'text-slate-400'}`}>
-                        {resource.description.length}/200
-                      </p>
                     </div>
 
-                    {/* Quantity */}
                     <div>
                       <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
-                        Cantidad
+                        {t('resourceQty')}
                       </label>
                       <input
                         type="number"
@@ -496,39 +460,33 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                       />
                     </div>
 
-                    {/* Unit */}
                     <div>
                       <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
-                        Unidad
+                        {t('resourceUnit')}
                       </label>
                       <input
                         type="text"
                         value={resource.unit}
                         onChange={(e) => updateResource(index, 'unit', e.target.value)}
                         maxLength={30}
-                        placeholder="Ej: botellas, kg, cajas..."
+                        placeholder={t('resourceUnitPlaceholder')}
                         className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
                       />
                     </div>
                   </div>
                 </div>
               ))}
-
-              {errors.resources && (
-                <p className="text-red-600 text-[11px] mt-1">{errors.resources}</p>
-              )}
             </div>
           </div>
 
           {/* Section 4: Location */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              4. ¿Dónde está ubicado?
+              {t('sectionLocation')}
             </h3>
 
-            {/* City */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Ciudad / Municipio *</label>
+              <label className="block font-bold text-slate-700 mb-1">{t('cityLabel')}</label>
               <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
@@ -536,9 +494,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Neighborhood */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Barrio *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('neighborhoodLabel')}</label>
                 <input
                   type="text"
                   value={neighborhood}
@@ -546,15 +503,14 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     setNeighborhood(e.target.value);
                     if (errors.neighborhood) setErrors((prev) => { const n = { ...prev }; delete n.neighborhood; return n; });
                   }}
-                  placeholder="Ej: San Fernando, Siloé, Granada..."
+                  placeholder={t('neighborhoodPlaceholder')}
                   className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.neighborhood ? 'border-red-400' : 'border-slate-300'}`}
                 />
                 {errors.neighborhood && <p className="text-red-600 text-[11px] mt-0.5">{errors.neighborhood}</p>}
               </div>
 
-              {/* Address */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('addressLabel')}</label>
                 <input
                   type="text"
                   value={address}
@@ -562,27 +518,21 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     setAddress(e.target.value);
                     if (errors.address) setErrors((prev) => { const n = { ...prev }; delete n.address; return n; });
                   }}
-                  placeholder="Ej: Calle 5 con Carrera 44"
+                  placeholder={t('addressPlaceholder')}
                   className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.address ? 'border-red-400' : 'border-slate-300'}`}
                 />
                 {errors.address && <p className="text-red-600 text-[11px] mt-0.5">{errors.address}</p>}
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación...
+                    <Loader2 className="w-3 h-3 animate-spin" /> {t('geocodingSearching')}
                   </p>
                 )}
                 {geocodeError && (
                   <p className="text-xs text-amber-600 mt-1">{geocodeError}</p>
                 )}
-                {!isGeocoding && !geocodeError && address.length >= 5 && latitude !== null && longitude !== null && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    📍 Ubicación: {latitude.toFixed(4)}, {longitude.toFixed(4)}
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* Map Picker */}
             <div className="space-y-1.5">
               <button
                 type="button"
@@ -590,7 +540,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 className="text-xs text-slate-900 font-bold hover:underline flex items-center gap-1"
               >
                 <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                <span>{showPickerMap ? 'Ocultar mapa de ubicación' : 'Ajustar punto exacto en el mapa'}</span>
+                <span>{showPickerMap ? t('hideLocationMap') : t('adjustPointOnMap')}</span>
               </button>
 
               {showPickerMap && (
@@ -601,23 +551,18 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   height="200px"
                 />
               )}
-
-              {errors.location && (
-                <p className="text-red-600 text-[11px] mt-1">{errors.location}</p>
-              )}
             </div>
           </div>
 
           {/* Section 5: Contact */}
           <div className="space-y-3">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              5. Datos de contacto
+              {t('sectionContact')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Contact Name (required) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nombre del contacto *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactNameLabel')}</label>
                 <input
                   type="text"
                   value={contactName}
@@ -625,15 +570,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     setContactName(e.target.value);
                     if (errors.contactName) setErrors((prev) => { const n = { ...prev }; delete n.contactName; return n; });
                   }}
-                  placeholder="Ej: María González"
+                  placeholder={t('contactNamePlaceholder')}
                   className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.contactName ? 'border-red-400' : 'border-slate-300'}`}
                 />
-                {errors.contactName && <p className="text-red-600 text-[11px] mt-0.5">{errors.contactName}</p>}
               </div>
 
-              {/* Contact Phone (optional) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Teléfono (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactPhoneLabel')}</label>
                 <input
                   type="text"
                   value={contactPhone}
@@ -643,9 +586,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 />
               </div>
 
-              {/* Contact WhatsApp (optional) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">WhatsApp (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactWhatsappLabel')}</label>
                 <input
                   type="text"
                   value={contactWhatsapp}
@@ -655,9 +597,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 />
               </div>
 
-              {/* Contact Email (optional) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Correo electrónico (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('contactEmailLabel')}</label>
                 <input
                   type="email"
                   value={contactEmail}
@@ -667,26 +608,24 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 />
               </div>
 
-              {/* Organization Name (optional) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Organización (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('organizationLabel')}</label>
                 <input
                   type="text"
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="Ej: Cruz Roja / Fundación XYZ"
+                  placeholder={t('organizationPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
 
-              {/* Operating Hours (optional) */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Horario de atención (opcional)</label>
+                <label className="block font-bold text-slate-700 mb-1">{t('operatingHoursLabel')}</label>
                 <input
                   type="text"
                   value={operatingHours}
                   onChange={(e) => setOperatingHours(e.target.value)}
-                  placeholder="Ej: 8:00 a.m. - 5:00 p.m."
+                  placeholder={t('operatingHoursPlaceholder')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
               </div>
@@ -698,10 +637,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-bold text-blue-900">
-                Proceso de verificación:
+                {t('verificationNoticeTitle')}
               </strong>
               <span>
-                Tu oferta se guardará como <strong>"Pendiente de verificación"</strong>. Un moderador confirmará la información antes de mostrarla como verificada en el mapa.
+                {t('verificationNoticeDesc')}
               </span>
             </div>
           </div>
@@ -718,8 +657,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center gap-3 text-sm text-emerald-800">
               <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
               <div>
-                <strong className="block font-bold">¡Oferta publicada exitosamente! 🎉</strong>
-                <span className="text-xs text-emerald-700">Se mostrará en el mapa tras ser verificada por un moderador.</span>
+                <strong className="block font-bold">{t('publishedSuccessTitle')}</strong>
+                <span className="text-xs text-emerald-700">{t('publishedSuccessDesc')}</span>
               </div>
             </div>
           )}
@@ -731,7 +670,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
             >
-              Cancelar
+              {t('cancelButton')}
             </button>
             <button
               type="submit"
@@ -742,17 +681,17 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Guardando...</span>
+                  <span>{t('savingButton')}</span>
                 </>
               ) : submitSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>¡Publicada!</span>
+                  <span>{t('publishedBtn')}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Publicar Oferta</span>
+                  <span>{t('publishOfferButton')}</span>
                 </>
               )}
             </button>

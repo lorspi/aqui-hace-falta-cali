@@ -132,8 +132,8 @@ export const MapView: React.FC<MapViewProps> = ({
     map.on('moveend', onFlyEnd);
 
     if (selectedCityId === ALL_COLOMBIA_ID) {
-      // Show all of Colombia
-      map.flyTo([4.5, -74.0], 6, { animate: true, duration: 1 });
+      // Focus on main emergency region (Cali / Valle del Cauca)
+      map.flyTo([3.4516, -76.532], 12, { animate: true, duration: 1 });
     } else {
       // When a specific city is selected, let the markers define the bounds
       // If there are visible needs/offers with coordinates, the map will adjust via the marker bounds
@@ -282,7 +282,7 @@ export const MapView: React.FC<MapViewProps> = ({
     if (isPickerMode) return; // Don't render offer pins in location picker mode
 
     // When ViewMode is "NEEDS", do NOT render offer markers
-    if (viewMode === 'NEEDS' || !viewMode) return;
+    if (viewMode === 'NEEDS') return;
 
     // Only render offers that are VERIFIED or PENDING_VERIFICATION and AVAILABLE or PARTIALLY_AVAILABLE
     const visibleOffers = (offers || []).filter((offer) => {
