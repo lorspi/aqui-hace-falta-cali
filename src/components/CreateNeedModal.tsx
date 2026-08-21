@@ -8,6 +8,7 @@ import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
 import { findCityById, getCityDisplayName } from '../data/colombiaCities';
 import { useTranslation } from '../i18n/LanguageContext';
+import { trackClarityEvent } from '../utils/analytics';
 
 interface CreateNeedModalProps {
   isOpen: boolean;
@@ -148,6 +149,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       priority: placeType === 'CENTRO_ACOPIO' ? 'MEDIUM' : priority,
       operatingHours: operatingHours || undefined,
       source,
+    });
+
+    trackClarityEvent('create_need', {
+      placeType,
+      cityId,
+      priority,
+      categoriesCount: selectedCategories.length,
     });
 
     onClose();

@@ -29,6 +29,7 @@ import {
   getPlaceTypeLabel,
 } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
+import { trackClarityEvent } from '../utils/analytics';
 
 interface NeedDetailModalProps {
   need: Need | null;
@@ -282,6 +283,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   href={buildWhatsappLink(need.contactWhatsapp, need.title, need.categories, language)}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={() => trackClarityEvent('contact_whatsapp', { needId: need.id })}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-all"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -337,6 +339,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
             <button
               onClick={() => {
+                trackClarityEvent('click_help', { needId: need.id });
                 onClose();
                 onOpenQuieroAyudar(need);
               }}

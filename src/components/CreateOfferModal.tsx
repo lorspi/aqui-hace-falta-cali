@@ -8,6 +8,7 @@ import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
 import { getCityDisplayName } from '../data/colombiaCities';
 import { useTranslation } from '../i18n/LanguageContext';
+import { trackClarityEvent } from '../utils/analytics';
 
 interface ResourceFormItem {
   type: HelpCategory | '';
@@ -183,6 +184,11 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
         contactEmail: contactEmail.trim() || undefined,
         organizationName: organizationName.trim() || undefined,
         operatingHours: operatingHours.trim() || undefined,
+      });
+
+      trackClarityEvent('create_offer', {
+        cityId,
+        categoriesCount: selectedCategories.length,
       });
 
       setIsSubmitting(false);
