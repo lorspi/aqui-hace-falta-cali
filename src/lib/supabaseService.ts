@@ -355,6 +355,26 @@ export async function addNeedUpdateNote(params: {
   if (error) throw error;
 }
 
+export async function addOfferUpdateNote(params: {
+  offerId: string;
+  previousStatus: string;
+  newStatus: string;
+  description: string;
+  updatedBy: string;
+}): Promise<void> {
+  const { error } = await supabase.from('offer_update_logs').insert([
+    {
+      offer_id: params.offerId,
+      previous_status: params.previousStatus,
+      new_status: params.newStatus,
+      description: params.description,
+      updated_by: params.updatedBy,
+      created_at: new Date().toISOString(),
+    },
+  ]);
+  if (error) throw error;
+}
+
 export async function fetchNeedUpdateLogs(needId: string): Promise<any[]> {
   const { data, error } = await supabase
     .from('update_logs')

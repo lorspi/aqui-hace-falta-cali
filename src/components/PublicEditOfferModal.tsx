@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { updateOffer } from '../lib/supabaseService';
+import { updateOffer, addOfferUpdateNote } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Offer } from '../types';
@@ -17,6 +17,7 @@ interface PublicEditOfferModalProps {
 export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offer, onClose, moderatorName }) => {
   const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   // Form state
   const [title, setTitle] = useState('');
@@ -37,7 +38,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   >([]);
 
   // Edit metadata
-  const [editorName, setEditorName] = useState('');
+  const [editorName, setEditorName] = useState(moderatorName || '');
   const [editReason, setEditReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -48,7 +49,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
 
   const [isArchived, setIsArchived] = useState(false);
-  const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
   // Pre-fill from offer
   useEffect(() => {
@@ -85,7 +85,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       setShowPickerMap(false);
       setIsArchived(offer.verificationStatus === 'ARCHIVED');
     }
-  }, [offer]);
+  }, [offer, moderatorName]);
 
   useEffect(() => {
     if (offer) {
@@ -104,25 +104,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
-  };
-
-  const handleAddResource = () => {
-    setResources([
-      ...resources,
-      {
-        id: `res-${Date.now()}`,
-        type: selectedCategories[0] || 'VOLUNTARIADO_GENERAL',
-        description: '',
-        quantity: undefined,
-        fulfilledQuantity: 0,
-        unit: undefined,
-        status: 'AVAILABLE',
-      },
-    ]);
-  };
-
-  const handleRemoveResource = (index: number) => {
-    setResources(resources.filter((_, i) => i !== index));
   };
 
   const handleGeocode = async () => {
@@ -150,6 +131,19 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     setIsSubmitting(true);
     try {
       if (!offer) return;
+      
+      const changedFields: string[] = [];
+      if (title !== offer.title) changedFields.push('título');
+      if (description !== offer.description) changedFields.push('descripción');
+      if (address !== offer.address) changedFields.push('dirección');
+      if (neighborhood !== offer.neighborhood) changedFields.push('barrio');
+      if (contactName !== offer.contactName) changedFields.push('contacto');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(offer.categories)) changedFields.push('categorías');
+
+      const changesSummary = changedFields.length > 0 ? `Cambios: ${changedFields.join(', ')}` : 'Edición de información';
+      const logReason = editReason.trim() ? `${editReason.trim()}. ${changesSummary}` : changesSummary;
+      const finalUpdatedBy = isModerator ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`) : (editorName.trim() || 'Ciudadano anónimo');
+
       await updateOffer(offer.id, {
         title,
         description,
@@ -165,6 +159,15 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
       });
+
+      await addOfferUpdateNote({
+        offerId: offer.id,
+        previousStatus: offer.verificationStatus,
+        newStatus: offer.verificationStatus,
+        description: logReason,
+        updatedBy: finalUpdatedBy,
+      });
+
       setSubmitted(true);
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });

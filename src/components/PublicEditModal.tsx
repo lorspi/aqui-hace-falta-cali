@@ -143,20 +143,24 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     setIsGeocoding(true);
     setGeocodeError('');
     const result = await geocodeAddress(address, neighborhood);
-    if (result) {
-      setLatitude(result.latitude);
-      setLongitude(result.longitude);
-      setGeocodeError('');
-    } else {
-      setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+    try {
+      const fullAddr = neighborhood ? `${address}, ${neighborhood}, Cali` : `${address}, Cali`;
+      const res = await geocodeAddress(fullAddr);
+      if (res) {
+        setLatitude(res.latitude);
+        setLongitude(res.longitude);
+      }
+    } catch {
+      // Ignore geocoding failure silently
+    } finally {
+      setIsGeocoding(false);
     }
-    setIsGeocoding(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isModerator && !turnstileToken) {
-      showAlert('Completa la verificación anti-bot.', { title: 'Verificación requerida', variant: 'error' });
+    if (!isModerator && !isTurnstileValid) {
+      showAlert('Por favor completa la verificación de seguridad (reCAPTCHA/Turnstile).', { title: 'Verificación requerida', variant: 'error' });
       return;
     }
     if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
@@ -167,6 +171,33 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     setIsSubmitting(true);
     try {
       if (!need) return;
+
+      const changedFields: string[] = [];
+      if (title !== need.title) changedFields.push('título');
+      if (description !== need.description) changedFields.push('descripción');
+      if (placeType !== need.placeType) changedFields.push('tipo de lugar');
+      if (address !== need.address) changedFields.push('dirección');
+      if (neighborhood !== need.neighborhood) changedFields.push('barrio');
+      if (priority !== need.priority) changedFields.push('prioridad');
+      if (contactName !== need.contactName) changedFields.push('contacto');
+      if (contactWhatsapp !== need.contactWhatsapp) changedFields.push('WhatsApp');
+      if (contactPhone !== need.contactPhone) changedFields.push('teléfono');
+      if (organizationName !== need.organizationName) changedFields.push('organización');
+      if (operatingHours !== need.operatingHours) changedFields.push('horario');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(need.categories)) changedFields.push('categorías');
+
+      const changesSummary = changedFields.length > 0
+        ? `Cambios: ${changedFields.join(', ')}`
+        : 'Edición de información';
+
+      const logReason = editReason.trim()
+        ? `${editReason.trim()}. ${changesSummary}`
+        : changesSummary;
+
+      const finalUpdatedBy = isModerator
+        ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`)
+        : (editorName.trim() || 'Ciudadano anónimo');
+
       await updateNeed(need.id, {
         title,
         description,
@@ -182,7 +213,17 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
         priority,
+        lastUpdatedBy: finalUpdatedBy,
       });
+
+      await addNeedUpdateNote({
+        needId: need.id,
+        previousStatus: need.status,
+        newStatus: need.status,
+        description: logReason,
+        updatedBy: finalUpdatedBy,
+      });
+
       setSubmitted(true);
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });

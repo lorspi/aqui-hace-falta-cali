@@ -49,8 +49,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [mapInitialized, setMapInitialized] = useState(false);
   const scrollHintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Default Cali Center
-  const caliCenter: [number, number] = [3.4516, -76.532];
+  // Default Colombia Center (Panorámica Nacional ~4.57, -74.29)
+  const colombiaCenter: [number, number] = [4.5709, -74.2973];
 
   // Initialize Map
   useEffect(() => {
@@ -73,9 +73,21 @@ export const MapView: React.FC<MapViewProps> = ({
       return () => observer.disconnect();
     }
 
+    const isColombiaView = !selectedCityId || selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia';
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+    let initialCenter: [number, number] = colombiaCenter;
+    let initialZoom = isMobile ? 5.6 : 6.0;
+
+    if (!isColombiaView && selectedCityId) {
+      const coords = getCityCoordinates(selectedCityId);
+      initialCenter = [coords.lat, coords.lng];
+      initialZoom = 13;
+    }
+
     const map = L.map(mapContainerRef.current, {
-      center: caliCenter,
-      zoom: 13,
+      center: initialCenter,
+      zoom: initialZoom,
       zoomControl: true,
       scrollWheelZoom: false,
     } as any);
@@ -132,8 +144,9 @@ export const MapView: React.FC<MapViewProps> = ({
     map.on('moveend', onFlyEnd);
 
     if (selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
-      // Focus on Colombia overview
-      map.flyTo([4.5709, -74.2973], 6, { animate: true, duration: 1.2 });
+      // Focus on Colombia overview (macro zoom)
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+      map.flyTo(colombiaCenter, isMobile ? 5.6 : 6.0, { animate: true, duration: 1.2 });
     } else {
       const coords = getCityCoordinates(selectedCityId);
       map.flyTo([coords.lat, coords.lng], 13, { animate: true, duration: 1.2 });

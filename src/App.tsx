@@ -400,14 +400,30 @@ function MainApp() {
   ) => {
     try {
       const need = needs.find((n) => n.id === needId);
+      const isMod = isModeratorLoggedIn || isAdminUser;
+      const modName = (sessionUser as any)?.name || 'Moderador';
+      
+      const finalUpdatedBy = isMod
+        ? (updatedBy.startsWith('[MOD] ') ? updatedBy : `[MOD] ${updatedBy || modName}`)
+        : (updatedBy.trim() || 'Ciudadano anónimo');
+
+      const descText = note.trim()
+        ? note.trim()
+        : `Cambio de estado a ${newStatus}`;
+
       await addNeedUpdateNote({
         needId,
         previousStatus: need?.status || 'NEED_HELP_NOW',
         newStatus,
-        description: note,
-        updatedBy,
+        description: descText,
+        updatedBy: finalUpdatedBy,
       });
-      showAlert("Estado actualizado exitosamente.", { title: "Éxito", variant: "success" });
+
+      if (need) {
+        await updateNeed(needId, { status: newStatus, lastUpdatedBy: finalUpdatedBy });
+      }
+
+      showAlert("¡Operación exitosa!", { title: "Éxito", variant: "success" });
     } catch (e) {
       showAlert("Error actualizando el estado.", { title: "Error", variant: "error" });
     }
@@ -779,6 +795,7 @@ function MainApp() {
         need={selectedForStatusUpdate}
         onClose={() => setSelectedForStatusUpdate(null)}
         onSubmitUpdate={handleUpdateStatus}
+        moderatorName={isModeratorLoggedIn || isAdminUser ? ((sessionUser as any)?.name || 'Juan Perez') : undefined}
       />
 
       <CreateOfferModal
