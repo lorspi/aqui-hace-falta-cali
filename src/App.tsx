@@ -213,6 +213,32 @@ function MainApp() {
   const totalNeedsCount = needs.length;
   const totalOffersCount = offers.length;
 
+  // Filtered needs for list view (cards list)
+  const displayedNeeds = useMemo(() => {
+    if (!selectedCityId || selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
+      return needs;
+    }
+    const cleanSel = selectedCityId.toLowerCase().trim();
+    return needs.filter((n) => {
+      const cId = (n.cityId || '').toLowerCase();
+      const neigh = (n.neighborhood || '').toLowerCase();
+      return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
+    });
+  }, [needs, selectedCityId]);
+
+  // Filtered offers for list view (cards list)
+  const displayedOffers = useMemo(() => {
+    if (!selectedCityId || selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
+      return offers;
+    }
+    const cleanSel = selectedCityId.toLowerCase().trim();
+    return offers.filter((o) => {
+      const cId = (o.cityId || '').toLowerCase();
+      const neigh = (o.neighborhood || '').toLowerCase();
+      return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
+    });
+  }, [offers, selectedCityId]);
+
   // Open need from URL on initial load
   useEffect(() => {
     if (initialNeedId && !selectedNeed) {
@@ -572,7 +598,7 @@ function MainApp() {
                   }
                 </span>
                 <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
-                  {filters.viewMode === "OFFERS" ? offers.length : filters.viewMode === "ALL" ? needs.length + offers.length : needs.length}
+                  {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
                 </span>
               </h3>
             </div>
@@ -598,9 +624,9 @@ function MainApp() {
                   </div>
                 ))}
               </div>
-            ) : (filters.viewMode === "NEEDS" && needs.length === 0) ||
-                (filters.viewMode === "OFFERS" && offers.length === 0) ||
-                (filters.viewMode === "ALL" && needs.length === 0 && offers.length === 0) ? (
+            ) : (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
+                (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
+                (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0) ? (
               <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
                 <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
                 <h4 className="font-bold text-slate-900 text-base">
@@ -634,7 +660,7 @@ function MainApp() {
             ) : (
               <div className="space-y-3 md:overflow-y-auto md:flex-1 md:max-h-[calc(100vh-280px)] md:pr-1 cards-scroll">
                 {/* ViewMode: NEEDS — only needs */}
-                {filters.viewMode === "NEEDS" && needs.map((need) => (
+                {filters.viewMode === "NEEDS" && displayedNeeds.map((need) => (
                   <NeedCard
                     key={need.id}
                     need={need}
@@ -647,7 +673,7 @@ function MainApp() {
                 ))}
 
                 {/* ViewMode: OFFERS — only offers */}
-                {filters.viewMode === "OFFERS" && offers.map((offer) => (
+                {filters.viewMode === "OFFERS" && displayedOffers.map((offer) => (
                   <OfferCard
                     key={offer.id}
                     offer={offer}
@@ -658,9 +684,9 @@ function MainApp() {
                 {/* ViewMode: ALL — sectioned: needs then offers */}
                 {filters.viewMode === "ALL" && (
                   <>
-                    {needs.length > 0 && (
+                    {displayedNeeds.length > 0 && (
                       <>
-                        {needs.map((need) => (
+                        {displayedNeeds.map((need) => (
                           <NeedCard
                             key={need.id}
                             need={need}
@@ -673,9 +699,9 @@ function MainApp() {
                         ))}
                       </>
                     )}
-                    {offers.length > 0 && (
+                    {displayedOffers.length > 0 && (
                       <>
-                        {offers.map((offer) => (
+                        {displayedOffers.map((offer) => (
                           <OfferCard
                             key={offer.id}
                             offer={offer}

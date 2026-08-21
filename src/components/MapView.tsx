@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Need, Offer, Priority, ViewMode } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
-import { ALL_COLOMBIA_ID } from '../data/colombiaCities';
+import { ALL_COLOMBIA_ID, getCityCoordinates } from '../data/colombiaCities';
 
 interface MapViewProps {
   needs: Need[];
@@ -131,15 +131,12 @@ export const MapView: React.FC<MapViewProps> = ({
     };
     map.on('moveend', onFlyEnd);
 
-    if (selectedCityId === ALL_COLOMBIA_ID) {
-      // Focus on main emergency region (Cali / Valle del Cauca)
-      map.flyTo([3.4516, -76.532], 12, { animate: true, duration: 1 });
+    if (selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
+      // Focus on Colombia overview
+      map.flyTo([4.5709, -74.2973], 6, { animate: true, duration: 1.2 });
     } else {
-      // When a specific city is selected, let the markers define the bounds
-      // If there are visible needs/offers with coordinates, the map will adjust via the marker bounds
-      // Otherwise fall back to Colombia center
-      isFlyingRef.current = false;
-      map.off('moveend', onFlyEnd);
+      const coords = getCityCoordinates(selectedCityId);
+      map.flyTo([coords.lat, coords.lng], 13, { animate: true, duration: 1.2 });
     }
   }, [selectedCityId]);
 

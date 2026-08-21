@@ -57,10 +57,6 @@ export function useNeeds(filters: FilterState, selectedCityId: string) {
 
     let query = supabase.from('needs').select('*');
 
-    if (selectedCityId && selectedCityId !== 'ALL_COLOMBIA' && selectedCityId !== ALL_COLOMBIA_ID) {
-      query = query.eq('city_id', selectedCityId);
-    }
-
     if (filters.status !== 'ALL') {
       query = query.eq('status', filters.status);
     }
@@ -137,10 +133,6 @@ export function useOffers(filters: FilterState, selectedCityId: string) {
     }
 
     let query = supabase.from('offers').select('*');
-
-    if (selectedCityId && selectedCityId !== 'ALL_COLOMBIA' && selectedCityId !== ALL_COLOMBIA_ID) {
-      query = query.eq('city_id', selectedCityId);
-    }
 
     if (filters.verificationStatus !== 'ALL') {
       query = query.eq('verification_status', filters.verificationStatus);
