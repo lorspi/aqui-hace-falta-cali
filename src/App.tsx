@@ -28,6 +28,7 @@ import { OfferCard } from "./components/OfferCard";
 import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
+import { RegisterWizard } from "./features/auth/components/RegisterWizard";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
@@ -156,6 +157,7 @@ function MainApp() {
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
@@ -465,6 +467,7 @@ function MainApp() {
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => { window.location.href = '/panel'; }}
+        onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
           setMobileView("MAP");
@@ -815,6 +818,10 @@ function MainApp() {
           listCount={needs.length + offers.length}
         />
       </div>
+      <RegisterWizard
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ interface HeaderProps {
   onOpenCreateModal: () => void;
   onOpenCreateOfferModal: () => void;
   onOpenAdminModal: () => void;
+  onOpenRegisterModal?: () => void;
   onScrollToMap: () => void;
   lastUpdated: string;
   isOffline: boolean;
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreateModal,
   onOpenCreateOfferModal,
   onOpenAdminModal,
+  onOpenRegisterModal,
   onScrollToMap,
   lastUpdated,
   isOffline,
@@ -92,6 +94,17 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center gap-2.5">
             {/* Language Switcher Dropdown with Flags */}
             <LanguageSelector />
+
+            {/* Registrarse Button */}
+            {onOpenRegisterModal && (
+              <button
+                onClick={onOpenRegisterModal}
+                className="w-full sm:w-auto px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs md:text-sm font-bold transition-colors flex items-center justify-center gap-1.5"
+                id="btn-register"
+              >
+                <span>Registrarse</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenCreateModal}
