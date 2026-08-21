@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, ArrowRight, X, UserPlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import {
-  registerSchema,
-  RegisterFormData,
   UserRole,
+  OrganizationType,
   DocumentType,
 } from '../schemas/registerSchema';
 import { Step1Role } from './steps/Step1Role';
 import { Step2Location } from './steps/Step2Location';
 import { Step3Identity } from './steps/Step3Identity';
 import { Step4Account } from './steps/Step4Account';
+import { StepOrgCategory } from './steps/StepOrgCategory';
+import { StepOrgMapLocation } from './steps/StepOrgMapLocation';
+import { StepOrgDetails } from './steps/StepOrgDetails';
+import { StepOrgAccount } from './steps/StepOrgAccount';
 
 interface RegisterWizardProps {
   isOpen?: boolean;
@@ -32,21 +34,27 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Inicialización de React Hook Form con Zod Resolver
+  // Inicialización de React Hook Form
   const {
     watch,
     setValue,
     trigger,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+  } = useForm<any>({
     defaultValues: {
       role: 'voluntario',
+      organizationType: 'bomberos_defensa_civil',
       country: 'Colombia',
       department: 'Quindío',
       city: 'Armenia',
       isAutoDetected: true,
+      searchAddress: '',
+      latitude: 3.4516,
+      longitude: -76.532,
+      orgName: '',
+      orgDescription: '',
+      orgWebsiteOrSocial: '',
       fullName: '',
       documentType: 'cedula',
       documentNumber: '',
@@ -60,34 +68,65 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
   if (!isOpen) return null;
 
-  // Valores observados en tiempo real
-  const role = watch('role');
-  const country = watch('country');
-  const department = watch('department');
-  const city = watch('city');
-  const isAutoDetected = watch('isAutoDetected');
-  const fullName = watch('fullName');
-  const documentType = watch('documentType');
-  const documentNumber = watch('documentNumber');
-  const phoneCountryCode = watch('phoneCountryCode');
-  const phoneNumber = watch('phoneNumber');
-  const email = watch('email');
-  const password = watch('password');
+  const errStr = (err: any): string | undefined => (err?.message ? String(err.message) : undefined);
 
-  // Control de navegación y validación por paso
+  // Valores observados en tiempo real
+  const role: UserRole = watch('role');
+  const organizationType: OrganizationType = watch('organizationType');
+  const country: string = watch('country');
+  const department: string = watch('department');
+  const city: string = watch('city');
+  const isAutoDetected: boolean = watch('isAutoDetected');
+  const searchAddress: string = watch('searchAddress');
+  const latitude: number = watch('latitude');
+  const longitude: number = watch('longitude');
+  const orgName: string = watch('orgName');
+  const orgDescription: string = watch('orgDescription');
+  const orgWebsiteOrSocial: string = watch('orgWebsiteOrSocial');
+  const fullName: string = watch('fullName');
+  const documentType: DocumentType = watch('documentType');
+  const documentNumber: string = watch('documentNumber');
+  const phoneCountryCode: string = watch('phoneCountryCode');
+  const phoneNumber: string = watch('phoneNumber');
+  const email: string = watch('email');
+  const password: string = watch('password');
+
+  // Determinar si es flujo de organización o individual
+  const isOrgFlow = role === 'entidad_profesional' || role === 'acopio' || role === 'rescatista';
+  const totalSteps = isOrgFlow ? 7 : 4;
+
+  // Control de navegación y validación dinámica por paso
   const handleNextStep = async () => {
     setServerError(null);
     let isValidStep = false;
 
-    if (currentStep === 1) {
-      isValidStep = await trigger(['role']);
-    } else if (currentStep === 2) {
-      isValidStep = await trigger(['country', 'department', 'city']);
-    } else if (currentStep === 3) {
-      isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
+    if (!isOrgFlow) {
+      // Flujo Individual (4 Pasos)
+      if (currentStep === 1) {
+        isValidStep = await trigger(['role']);
+      } else if (currentStep === 2) {
+        isValidStep = await trigger(['country', 'department', 'city']);
+      } else if (currentStep === 3) {
+        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
+      }
+    } else {
+      // Flujo Organización (7 Pasos)
+      if (currentStep === 1) {
+        isValidStep = await trigger(['role']);
+      } else if (currentStep === 2) {
+        isValidStep = await trigger(['organizationType']);
+      } else if (currentStep === 3) {
+        isValidStep = await trigger(['country', 'department', 'city']);
+      } else if (currentStep === 4) {
+        isValidStep = await trigger(['searchAddress', 'latitude', 'longitude']);
+      } else if (currentStep === 5) {
+        isValidStep = await trigger(['orgName']);
+      } else if (currentStep === 6) {
+        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
+      }
     }
 
-    if (isValidStep && currentStep < 4) {
+    if (isValidStep && currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     }
   };
@@ -99,30 +138,45 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     }
   };
 
-  // Envío final del Paso 4 a Supabase Auth
-  const onSubmitFinal: SubmitHandler<RegisterFormData> = async (data) => {
+  // Envío final del Formulario a Supabase Auth y Base de Datos
+  const onSubmitFinal: SubmitHandler<any> = async (data) => {
     setIsSubmitting(true);
     setServerError(null);
     setSuccessMessage(null);
 
     try {
       const fullPhone = `${data.phoneCountryCode}${data.phoneNumber.trim()}`;
+      const isOrg = data.role === 'entidad_profesional' || data.role === 'acopio' || data.role === 'rescatista';
 
-      // Llamada a Supabase Auth signUp con metadata completa
+      // Construcción de la Metadata de Usuario para Supabase Auth
+      const userMetadata: Record<string, any> = {
+        full_name: data.fullName.trim(),
+        phone: fullPhone,
+        document_type: data.documentType,
+        document_number: data.documentNumber.trim(),
+        country: data.country,
+        department: data.department,
+        city: data.city,
+        role: data.role,
+        is_verified: false,
+      };
+
+      if (isOrg) {
+        userMetadata.organization_type = data.organizationType;
+        userMetadata.org_name = data.orgName?.trim();
+        userMetadata.org_description = data.orgDescription?.trim();
+        userMetadata.org_website = data.orgWebsiteOrSocial?.trim();
+        userMetadata.search_address = data.searchAddress?.trim();
+        userMetadata.latitude = data.latitude;
+        userMetadata.longitude = data.longitude;
+      }
+
+      // Registro en Supabase Auth
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email.trim(),
         password: data.password,
         options: {
-          data: {
-            full_name: data.fullName.trim(),
-            phone: fullPhone,
-            document_type: data.documentType,
-            document_number: data.documentNumber.trim(),
-            country: data.country,
-            department: data.department,
-            city: data.city,
-            role: data.role,
-          },
+          data: userMetadata,
         },
       });
 
@@ -132,9 +186,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
       console.log('[RegisterWizard] Registration Successful:', authData);
 
-      // Si Supabase creó la tabla profiles dinámicamente
-      try {
-        if (authData.user) {
+      // Inserción / Sincronización en la base de datos de Supabase
+      if (authData.user) {
+        // Sincronización en tabla de Perfiles
+        try {
           await supabase.from('profiles').insert([
             {
               id: authData.user.id,
@@ -147,19 +202,45 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
               city: data.city,
               role: data.role,
               email: data.email.trim(),
+              is_verified: false,
             },
           ]);
+        } catch (dbErr) {
+          console.warn('[RegisterWizard] Profiles table insert note:', dbErr);
         }
-      } catch (dbErr) {
-        console.warn('[RegisterWizard] Note: profiles table insert handled via trigger or fallback:', dbErr);
+
+        // Sincronización en la tabla de Organizaciones si aplica
+        if (isOrg) {
+          try {
+            await supabase.from('organizations').insert([
+              {
+                user_id: authData.user.id,
+                org_name: data.orgName?.trim(),
+                organization_type: data.organizationType,
+                description: data.orgDescription?.trim(),
+                website_or_social: data.orgWebsiteOrSocial?.trim(),
+                address: data.searchAddress?.trim(),
+                latitude: data.latitude,
+                longitude: data.longitude,
+                is_verified: false,
+              },
+            ]);
+          } catch (orgErr) {
+            console.warn('[RegisterWizard] Organizations table insert note:', orgErr);
+          }
+        }
       }
 
-      setSuccessMessage('¡Cuenta creada exitosamente! Revisa tu correo si requieres confirmación.');
+      setSuccessMessage(
+        isOrg
+          ? '¡Solicitud de organización registrada! Verificaremos la información y activaremos tu insignia.'
+          : '¡Cuenta registrada exitosamente! Revisa tu correo si requieres confirmación.'
+      );
 
       setTimeout(() => {
         if (onSuccess) onSuccess();
         if (onClose) onClose();
-      }, 2000);
+      }, 2500);
     } catch (err: any) {
       console.error('[RegisterWizard] Error signing up:', err);
       const msg =
@@ -180,8 +261,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         <div className="px-6 sm:px-8 pt-6 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
-              Paso {currentStep} de 4
+              Paso {currentStep} de {totalSteps}
             </span>
+            {isOrgFlow && (
+              <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                Organización / Entidad
+              </span>
+            )}
           </div>
           {onClose && (
             <button
@@ -194,10 +280,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           )}
         </div>
 
-        {/* Indicador Superior de Progreso (4 Segmentos Rectangulares) */}
+        {/* Indicador Superior de Progreso (Segmentos Rectangulares Adaptables 4 o 7) */}
         <div className="px-6 sm:px-8 py-3">
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((stepNum) => {
+          <div className={`grid gap-1.5 ${isOrgFlow ? 'grid-cols-7' : 'grid-cols-4'}`}>
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((stepNum) => {
               const isActive = stepNum <= currentStep;
               return (
                 <div
@@ -230,65 +316,175 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           )}
         </div>
 
-        {/* Cuerpo del Formulario Multi-Paso */}
+        {/* Cuerpo del Formulario Multi-Paso Adaptable */}
         <form onSubmit={handleSubmit(onSubmitFinal)} className="flex flex-col justify-between flex-1">
           <div className="px-6 sm:px-8 py-4 flex-1">
+            
+            {/* Paso 1: Selección de Rol (Común para ambos flujos) */}
             {currentStep === 1 && (
               <Step1Role
                 selectedRole={role}
-                onSelectRole={(r: UserRole) => setValue('role', r, { shouldValidate: true })}
-              />
-            )}
-
-            {currentStep === 2 && (
-              <Step2Location
-                country={country}
-                department={department}
-                city={city}
-                isAutoDetected={isAutoDetected}
-                onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
-              />
-            )}
-
-            {currentStep === 3 && (
-              <Step3Identity
-                role={role}
-                fullName={fullName}
-                documentType={documentType}
-                documentNumber={documentNumber}
-                errors={{
-                  fullName: errors.fullName?.message,
-                  documentNumber: errors.documentNumber?.message,
+                onSelectRole={(r: UserRole) => {
+                  setValue('role', r, { shouldValidate: true });
+                  // Si cambia el rol y pasa de individual a org o viceversa, resetear a paso 1
+                  setCurrentStep(1);
                 }}
-                onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
-                onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
-                onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
               />
             )}
 
-            {currentStep === 4 && (
-              <Step4Account
-                role={role}
-                phoneCountryCode={phoneCountryCode}
-                phoneNumber={phoneNumber}
-                email={email}
-                password={password}
-                isSubmitting={isSubmitting}
-                errors={{
-                  phoneCountryCode: errors.phoneCountryCode?.message,
-                  phoneNumber: errors.phoneNumber?.message,
-                  email: errors.email?.message,
-                  password: errors.password?.message,
-                }}
-                onChangePhoneCountryCode={(val) => setValue('phoneCountryCode', val, { shouldValidate: true })}
-                onChangePhoneNumber={(val) => setValue('phoneNumber', val, { shouldValidate: true })}
-                onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
-                onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
-                onSubmitForm={handleSubmit(onSubmitFinal)}
-              />
+            {/* Renderizado para Flujo Individual (4 Pasos) */}
+            {!isOrgFlow && (
+              <>
+                {currentStep === 2 && (
+                  <Step2Location
+                    country={country}
+                    department={department}
+                    city={city}
+                    isAutoDetected={isAutoDetected}
+                    onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
+                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
+                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                  />
+                )}
+
+                {currentStep === 3 && (
+                  <Step3Identity
+                    role={role}
+                    fullName={fullName}
+                    documentType={documentType}
+                    documentNumber={documentNumber}
+                    errors={{
+                      fullName: errStr(errors.fullName),
+                      documentNumber: errStr(errors.documentNumber),
+                    }}
+                    onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
+                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
+                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
+                  />
+                )}
+
+                {currentStep === 4 && (
+                  <Step4Account
+                    role={role}
+                    phoneCountryCode={phoneCountryCode}
+                    phoneNumber={phoneNumber}
+                    email={email}
+                    password={password}
+                    isSubmitting={isSubmitting}
+                    errors={{
+                      phoneCountryCode: errStr(errors.phoneCountryCode),
+                      phoneNumber: errStr(errors.phoneNumber),
+                      email: errStr(errors.email),
+                      password: errStr(errors.password),
+                    }}
+                    onChangePhoneCountryCode={(val) => setValue('phoneCountryCode', val, { shouldValidate: true })}
+                    onChangePhoneNumber={(val) => setValue('phoneNumber', val, { shouldValidate: true })}
+                    onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
+                    onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
+                    onSubmitForm={handleSubmit(onSubmitFinal)}
+                  />
+                )}
+              </>
             )}
+
+            {/* Renderizado para Flujo de Organización (7 Pasos) */}
+            {isOrgFlow && (
+              <>
+                {/* Paso 2 Org: ¿Qué representas? */}
+                {currentStep === 2 && (
+                  <StepOrgCategory
+                    selectedType={organizationType}
+                    onSelectType={(t) => setValue('organizationType', t, { shouldValidate: true })}
+                  />
+                )}
+
+                {/* Paso 3 Org: ¿Dónde estás? (Territorio) */}
+                {currentStep === 3 && (
+                  <Step2Location
+                    country={country}
+                    department={department}
+                    city={city}
+                    isAutoDetected={isAutoDetected}
+                    onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
+                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
+                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                  />
+                )}
+
+                {/* Paso 4 Org: ¿Dónde están ubicados? (Mapa y Pin) */}
+                {currentStep === 4 && (
+                  <StepOrgMapLocation
+                    searchAddress={searchAddress}
+                    latitude={latitude}
+                    longitude={longitude}
+                    cityName={city}
+                    errors={{
+                      searchAddress: errStr(errors.searchAddress),
+                    }}
+                    onChangeSearchAddress={(val) => setValue('searchAddress', val, { shouldValidate: true })}
+                    onChangeCoordinates={(lat, lng) => {
+                      setValue('latitude', lat, { shouldValidate: true });
+                      setValue('longitude', lng, { shouldValidate: true });
+                    }}
+                  />
+                )}
+
+                {/* Paso 5 Org: Tu organización (Datos Entidad) */}
+                {currentStep === 5 && (
+                  <StepOrgDetails
+                    orgName={orgName}
+                    orgDescription={orgDescription}
+                    orgWebsiteOrSocial={orgWebsiteOrSocial}
+                    errors={{
+                      orgName: errStr(errors.orgName),
+                    }}
+                    onChangeOrgName={(val) => setValue('orgName', val, { shouldValidate: true })}
+                    onChangeOrgDescription={(val) => setValue('orgDescription', val, { shouldValidate: true })}
+                    onChangeOrgWebsiteOrSocial={(val) => setValue('orgWebsiteOrSocial', val, { shouldValidate: true })}
+                  />
+                )}
+
+                {/* Paso 6 Org: ¿Quién eres? (Representante) */}
+                {currentStep === 6 && (
+                  <Step3Identity
+                    role={role}
+                    fullName={fullName}
+                    documentType={documentType}
+                    documentNumber={documentNumber}
+                    errors={{
+                      fullName: errStr(errors.fullName),
+                      documentNumber: errStr(errors.documentNumber),
+                    }}
+                    onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
+                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
+                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
+                  />
+                )}
+
+                {/* Paso 7 Org: Tu cuenta (Variante Org con Banner Verificación) */}
+                {currentStep === 7 && (
+                  <StepOrgAccount
+                    phoneCountryCode={phoneCountryCode}
+                    phoneNumber={phoneNumber}
+                    email={email}
+                    password={password}
+                    isSubmitting={isSubmitting}
+                    errors={{
+                      phoneCountryCode: errStr(errors.phoneCountryCode),
+                      phoneNumber: errStr(errors.phoneNumber),
+                      email: errStr(errors.email),
+                      password: errStr(errors.password),
+                    }}
+                    onChangePhoneCountryCode={(val) => setValue('phoneCountryCode', val, { shouldValidate: true })}
+                    onChangePhoneNumber={(val) => setValue('phoneNumber', val, { shouldValidate: true })}
+                    onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
+                    onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
+                    onSubmitForm={handleSubmit(onSubmitFinal)}
+                  />
+                )}
+              </>
+            )}
+
           </div>
 
           {/* Botones Inferiores de Navegación */}
@@ -308,7 +504,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 <div />
               )}
 
-              {currentStep < 4 ? (
+              {currentStep < totalSteps ? (
                 <button
                   type="button"
                   onClick={handleNextStep}
