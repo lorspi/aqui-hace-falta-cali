@@ -1,0 +1,138 @@
+############################################################
+# DEV-37 — Confirmación al remitente / ACK (S7)
+# Fecha: 2026-08-22T05:40:53Z
+# Rama: agent/DEV-37
+############################################################
+
+=== 1. Evento válido evt_s7_001 -> 200, ACK devuelve event.id ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s7_001",
+  "type": "message.received",
+  "conversation_id": "conv_s7_ack",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s7_001","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"8f080d05-7282-469f-b346-e361c2b8e656","event_id":"evt_s7_001","processing_status":"RECEIVED","received_at":"2026-08-22T05:40:53.115+00:00","created_at":"2026-08-22T05:40:53.115+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- fila en ingest_responses:
+evt_s7_001|message.received|conv_s7_ack|RECEIVED
+
+=== 2. Body no JSON válido -> 400 ===
+--- payload: {not json
+{"code":"invalid_json","message":"El body debe ser un JSON válido.","details":{"issues":[{"path":[],"message":"No se pudo parsear el body como JSON."}]}}
+--- HTTP 400
+
+
+=== 3a. Sin event.id -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "type": "message.received",
+  "conversation_id": "conv_s7_ack",
+  "data": { "body": "sin id", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["id"],"message":"id: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+
+=== 3b. Sin data.conversation_id -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s7_003",
+  "type": "message.received",
+  "data": { "body": "sin conv", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["conversation_id"],"message":"conversation_id: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+
+=== 4. type numérico -> 400 (detalla la causa de validación) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s7_004",
+  "type": 42,
+  "conversation_id": "conv_s7_ack",
+  "data": { "body": "type inválido", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["type"],"message":"type: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+
+=== 5a. Primer envío evt-123 -> 200 ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt-123",
+  "type": "message.received",
+  "conversation_id": "conv_s7_ack",
+  "data": { "body": "Necesito ayuda", "from": "573001234567" }
+}
+{"ok":true,"status":"accepted","event_id":"evt-123","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"e9670d91-b853-47cf-9723-23d88f91531e","event_id":"evt-123","processing_status":"RECEIVED","received_at":"2026-08-22T05:40:53.298+00:00","created_at":"2026-08-22T05:40:53.298+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 5b. Reenvío del mismo event.id evt-123 -> 409 (sin duplicado) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt-123",
+  "type": "message.received",
+  "conversation_id": "conv_s7_ack",
+  "data": { "body": "Necesito ayuda", "from": "573001234567" }
+}
+{"code":"duplicate_event","message":"El evento con event.id 'evt-123' ya fue recibido. No se creó un duplicado.","details":{"event_id":"evt-123","type":"message.received","record":{"id":"e9670d91-b853-47cf-9723-23d88f91531e","event_id":"evt-123","processing_status":"RECEIVED","received_at":"2026-08-22T05:40:53.298+00:00","created_at":"2026-08-22T05:40:53.298+00:00"}}}
+--- HTTP 409
+
+--- nº de filas para evt-123 (debe ser 1, NO hay duplicado):
+1
+
+=== 7a. message.received de conv_s7_nocoords (sin coordenadas) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s7_m1",
+  "type": "message.received",
+  "conversation_id": "conv_s7_nocoords",
+  "data": {
+    "body": "Necesito ayuda, sin datos de ubicación",
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s7_m1","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"1721632e-a330-41b5-9c7a-c45bee3685ca","event_id":"evt_s7_m1","processing_status":"RECEIVED","received_at":"2026-08-22T05:40:53.366+00:00","created_at":"2026-08-22T05:40:53.366+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 7b. Completado de conv_s7_nocoords (sin coordenadas) -> 200 ACK ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s7_c1",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s7_nocoords",
+  "data": {
+    "body": "Conversación finalizada",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s7_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"e8dd90e9-98d6-461c-8a38-13caf43df576","event_id":"evt_s7_c1","processing_status":"RECEIVED","received_at":"2026-08-22T05:40:53.378+00:00","created_at":"2026-08-22T05:40:53.378+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"ed70e600-ed59-42f9-804d-ed517354049c","conversation_id":"conv_s7_nocoords","source_event_id":"evt_s7_c1","title":"Necesito ayuda, sin datos de ubicación","description":"Necesito ayuda, sin datos de ubicación","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+--- incidente creado (lat/lng NULL, enriquecimiento PENDIENTE):
+conv_s7_nocoords|||PENDING
+
+=== Fin de la batería de evidencia DEV-37 ===
+
+======================================================================
+ESCENARIO 6 — Fallo interno de persistencia → 500 (genérico)
+======================================================================
+Demo en ejecución contra el handler real (store que lanza):
+  [webhook:server-side] persistence_failed: connection to postgres failed: password authentication failed (db_core)
+  --- HTTP 500
+  --- body (lo que ve el remitente):
+  {"code":"persistence_failed","message":"Error interno al persistir el evento. Inténtalo de nuevo."}
+
+  ✓ El remitente ve un error estructurado y GENÉRICO (sin detalles internos).
+  ✓ La causa real queda SOLO en el log server-side (logError → console.error).

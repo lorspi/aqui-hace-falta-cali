@@ -1,0 +1,288 @@
+############################################################
+# DEV-35 — Creación del incidente al completar (S5)
+# Fecha: 2026-08-22T05:04:10Z
+# Rama: agent/DEV-35
+############################################################
+
+=== 1a. message.received de conv_s5_a (mensaje 1) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_a1",
+  "type": "message.received",
+  "conversation_id": "conv_s5_a",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_a1","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"8e8f7425-85e1-4762-badc-f58d010a0026","event_id":"evt_s5_a1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.644+00:00","created_at":"2026-08-22T05:03:58.644+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 1b. message.received de conv_s5_a (mensaje 2) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_a2",
+  "type": "message.received",
+  "conversation_id": "conv_s5_a",
+  "data": {
+    "body": "Quedo en San Fernando",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_details" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_a2","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"7f25f4df-6006-4be3-9a44-6bde068a5eb4","event_id":"evt_s5_a2","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.69+00:00","created_at":"2026-08-22T05:03:58.69+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_DETAILS","contribution":"DETAILS","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 1c. Evento de completado para conv_s5_a ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c1",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_a",
+  "data": {
+    "body": "Conversación finalizada",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"e060911d-f669-420e-ae40-eb427b93afc0","event_id":"evt_s5_c1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.703+00:00","created_at":"2026-08-22T05:03:58.703+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"6b33d2b1-bbf6-4867-bf34-b4e7b91c6662","conversation_id":"conv_s5_a","source_event_id":"evt_s5_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio | Quedo en San Fernando","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+--- incidente en needs (defaults, contact_whatsapp, mensajes acumulados):
+evt_s5_c1|conv_s5_a|WhatsApp|573001234567|MEDIUM|NEED_HELP_NOW|PENDING_VERIFICATION|terremoto-cali-2026|cali|Por confirmar|Por confirmar|||PENDING|Necesito agua potable en mi barrio | Quedo en San Fernando
+
+=== 2a. message.received con coordenadas (conv_s5_b) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_b1",
+  "type": "message.received",
+  "conversation_id": "conv_s5_b",
+  "data": {
+    "body": { "text": "Estoy aquí", "latitude": 3.4516, "longitude": -76.532 },
+    "from": "573001234567",
+    "message_type": "location"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_b1","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"3a83e60d-0935-47cc-8c39-df1aed18ab5a","event_id":"evt_s5_b1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.849+00:00","created_at":"2026-08-22T05:03:58.849+00:00"},"mapping":{"result":"mapped","message_type":"LOCATION","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":false}}
+--- HTTP 200
+
+
+=== 2b. Completado para conv_s5_b ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c2",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_b",
+  "data": {
+    "body": "Terminamos",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c2","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"50a47684-0985-45be-9cf4-719ca9d355af","event_id":"evt_s5_c2","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.86+00:00","created_at":"2026-08-22T05:03:58.86+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"8e787d33-20c2-40e1-9b00-dfe22cb21709","conversation_id":"conv_s5_b","source_event_id":"evt_s5_c2","title":"Estoy aquí","description":"Estoy aquí","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":3.4516,"longitude":-76.532,"city_id":"cali","location_enrichment_status":"RESOLVED"}}
+--- HTTP 200
+
+--- incidente con coordenadas y city_id (sin geocoding):
+conv_s5_b|3.4516|-76.532|cali|RESOLVED
+
+=== 3a. message.received con address/neighborhood (conv_s5_c) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c1m",
+  "type": "message.received",
+  "conversation_id": "conv_s5_c",
+  "data": {
+    "body": { "text": "Necesito ayuda", "address": "Calle 5 #10-20", "neighborhood": "San Fernando" },
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c1m","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"ec742481-141a-4f3d-bb4f-81ac83131a38","event_id":"evt_s5_c1m","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.917+00:00","created_at":"2026-08-22T05:03:58.917+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 3b. Completado para conv_s5_c (dispara geocoding) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c3",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_c",
+  "data": {
+    "body": "Listo",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c3","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"ba76d062-db29-4098-be16-a2eda0393b52","event_id":"evt_s5_c3","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.927+00:00","created_at":"2026-08-22T05:03:58.927+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"674d538c-d557-417f-9a0c-de6bccc3fa44","conversation_id":"conv_s5_c","source_event_id":"evt_s5_c3","title":"Necesito ayuda","description":"Necesito ayuda","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Calle 5 #10-20","neighborhood":"San Fernando","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":3.4250619,"longitude":-76.5463238,"city_id":"cali","location_enrichment_status":"RESOLVED"}}
+--- HTTP 200
+
+--- incidente enriquecido con geocoding (lat/lng + city_id):
+conv_s5_c|Calle 5 #10-20|San Fernando|3.4250619|-76.5463238|cali|RESOLVED
+
+=== 4a. message.received sin coordenadas ni dirección (conv_s5_d) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_d1",
+  "type": "message.received",
+  "conversation_id": "conv_s5_d",
+  "data": {
+    "body": "Necesito ayuda, sin datos de ubicación",
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_d1","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"6cdfa191-cfbd-47bd-a4c6-53625aa30b44","event_id":"evt_s5_d1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:59.555+00:00","created_at":"2026-08-22T05:03:59.555+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 4b. Completado para conv_s5_d ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c4",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_d",
+  "data": {
+    "body": "Fin",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c4","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"c3e457c9-3df0-4dc9-a0fe-eda595a68d86","event_id":"evt_s5_c4","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:59.567+00:00","created_at":"2026-08-22T05:03:59.567+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"20e2d2c7-e273-408d-b4a4-c52e15567b05","conversation_id":"conv_s5_d","source_event_id":"evt_s5_c4","title":"Necesito ayuda, sin datos de ubicación","description":"Necesito ayuda, sin datos de ubicación","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+--- incidente creado igual con lat/lng NULL y PENDING:
+conv_s5_d|||PENDING
+
+=== 5. Reenvío del evento de completado evt_s5_c1 (conv_s5_a) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c1",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_a",
+  "data": {
+    "body": "Conversación finalizada",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"e060911d-f669-420e-ae40-eb427b93afc0","event_id":"evt_s5_c1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:58.703+00:00","created_at":"2026-08-22T05:03:58.703+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"6b33d2b1-bbf6-4867-bf34-b4e7b91c6662","conversation_id":"conv_s5_a","source_event_id":"evt_s5_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio | Quedo en San Fernando","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+--- nº de incidentes para conv_s5_a (debe ser 1):
+1
+
+=== 6. Evento de completado sin conversation_id -> 400 ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c6",
+  "type": "conversation_completed",
+  "conversation_id": "",
+  "data": {
+    "body": "fin",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"error":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["conversation_id"],"message":"conversation_id: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+--- filas en needs con source_event_id=evt_s5_c6 (debe ser 0):
+0
+
+=== 7. Completado para conv_999 sin mensajes previos -> 409 ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c7",
+  "type": "conversation_completed",
+  "conversation_id": "conv_999",
+  "data": {
+    "body": "Fin",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"error":"no_messages","message":"No hay mensajes acumulados previos para la conversación; no se crea el incidente.","details":{"conversation_id":"conv_999"}}
+--- HTTP 409
+
+--- filas en needs para conv_999 (debe ser 0):
+0
+
+=== 8. Completado con from inválido (conv_s5_h) -> 400 ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c8",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_h",
+  "data": {
+    "body": "Fin",
+    "from": "numero-invalido",
+    "workflow": { "step": "completed" }
+  }
+}
+{"error":"invalid_from","message":"El evento de completado quedó registrado en ingest_responses para auditoría, pero no se creó el incidente.","details":{"issue":"data.from 'numero-invalido' no es un número de WhatsApp válido (E.164)."}}
+--- HTTP 400
+
+--- el evento quedó en ingest_responses para auditoría:
+evt_s5_c8|conversation_completed|conv_s5_h|numero-invalido|RECEIVED
+--- filas en needs para conv_s5_h (debe ser 0):
+0
+
+=== 9a. message.received de conv_s5_e (mensaje) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_e1",
+  "type": "message.received",
+  "conversation_id": "conv_s5_e",
+  "data": {
+    "body": "Mensaje de E",
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_e1","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"8161b992-7c0b-4295-aa10-86f29aa4406c","event_id":"evt_s5_e1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:59.883+00:00","created_at":"2026-08-22T05:03:59.883+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 9b. message.received de conv_s5_f (mensaje) ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_f1",
+  "type": "message.received",
+  "conversation_id": "conv_s5_f",
+  "data": {
+    "body": "Mensaje de F",
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_f1","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"f2e2e58a-b0e4-432c-89a7-88576b8df6e4","event_id":"evt_s5_f1","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:59.893+00:00","created_at":"2026-08-22T05:03:59.893+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 9c. Completado solo para conv_s5_e ===
+--- POST http://127.0.0.1:8081
+--- payload: {
+  "id": "evt_s5_c9",
+  "type": "conversation_completed",
+  "conversation_id": "conv_s5_e",
+  "data": {
+    "body": "Fin",
+    "from": "573001234567",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s5_c9","type":"conversation_completed","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"c5d19292-b159-4b85-a542-03ea4da9e3cf","event_id":"evt_s5_c9","processing_status":"RECEIVED","received_at":"2026-08-22T05:03:59.902+00:00","created_at":"2026-08-22T05:03:59.902+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"duplicate","id":"b6bfafdc-9396-4bd6-bbad-fd662bf07c79","conversation_id":"conv_s5_e","source_event_id":"evt_s5_c9","title":"Mensaje de E","description":"Mensaje de E","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+--- incidente de conv_s5_e (solo mensajes de E, no de F):
+conv_s5_e|Mensaje de E
+--- conv_s5_f permanece sin incidente (debe ser 0):
+0
+
+=== Fin de la batería de evidencia DEV-35 ===
