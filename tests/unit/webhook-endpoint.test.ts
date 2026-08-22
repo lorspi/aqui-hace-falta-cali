@@ -152,6 +152,34 @@ describe("S2 — Endpoint POST /webhook/events", () => {
     }
   });
 
+  it("el ACK 200 incluye el mapeo a borrador de Need (S3) con defaults", async () => {
+    const res = await post(buildValidEvent());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.mapping).toBeDefined();
+    expect(body.mapping.result).toBe("mapped");
+    expect(body.mapping.message_type).toBe("TEXT");
+    expect(body.mapping.workflow_step).toBe("AWAITING_LOCATION");
+    expect(body.mapping.priority).toBe("MEDIUM");
+    expect(body.mapping.status).toBe("NEED_HELP_NOW");
+    expect(body.mapping.verification_status).toBe("PENDING_VERIFICATION");
+    expect(body.mapping.source).toBe("WhatsApp");
+    expect(body.mapping.contact_whatsapp).toBe("573001234567");
+    expect(body.mapping.builds_incident).toBe(true);
+    expect(body.mapping.location_pending_geocoding).toBe(true);
+  });
+
+  it("el ACK de un type distinto a message.received mapea sin armar incidente (S3)", async () => {
+    const res = await post(buildValidEvent({ type: "conversation_completed" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.mapping).toBeDefined();
+    expect(body.mapping.builds_incident).toBe(false);
+    expect(body.mapping.incident_ready).toBe(true);
+  });
+
   it("rechaza métodos distintos de POST con 405", async () => {
     const res = await handleWebhookEvent(
       new Request("http://127.0.0.1:54321/functions/v1/webhook/events", {
