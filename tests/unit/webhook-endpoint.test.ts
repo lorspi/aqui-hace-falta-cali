@@ -4,6 +4,10 @@ import {
   validateWebhookEvent,
   MINIMAL_FIELDS,
 } from "../../supabase/functions/_shared/webhook-event.ts";
+import {
+  createInMemoryIngestResponsesStore,
+  type IngestResponsesStore,
+} from "../../supabase/functions/_shared/ingest-persistence.ts";
 
 // ============================================================================
 // Unit Tests — S2: Endpoint receptor de eventos (DEV-32)
@@ -40,6 +44,22 @@ async function post(
       headers: { "content-type": contentType },
       body,
     }),
+  );
+}
+
+/** POST que inyecta un store de ingest_responses (persistencia S4). */
+async function postWithStore(
+  store: ReturnType<typeof createInMemoryIngestResponsesStore>,
+  payload: unknown,
+): Promise<Response> {
+  const body = typeof payload === "string" ? payload : JSON.stringify(payload);
+  return handleWebhookEvent(
+    new Request("http://127.0.0.1:54321/functions/v1/webhook/events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }),
+    { ingestStore: store },
   );
 }
 
@@ -295,5 +315,162 @@ describe("S2 — Validación de estructura mínima (validateWebhookEvent)", () =
       buildValidEvent({ data: { body: "Sin coordenadas" } }),
     );
     expect(result.valid).toBe(true);
+  });
+});
+
+// ============================================================================
+// Escenarios HTTP de persistencia (S4)
+// ============================================================================
+
+describe("S4 — Persistencia del evento crudo vía HTTP", () => {
+  it("persiste un evento válido: raw_event intacto, metadatos y RECEIVED", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const event = buildValidEvent();
+
+    const res = await postWithStore(store, event);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    // ACK de persistencia.
+    expect(body.persisted).toBe(true);
+    expect(body.duplicate).toBe(false);
+    expect(body.record.processing_status).toBe("RECEIVED");
+    expect(body.record.event_id).toBe("evt_001");
+    expect(body.record.received_at).toBeTruthy();
+    expect(body.record.created_at).toBeTruthy();
+
+    // La fila guarda el evento crudo sin modificar y los metadatos.
+    const row = store.get("evt_001")!;
+    expect(row.raw_event).toEqual(event);
+    expect(row.type).toBe("message.received");
+    expect(row.conversation_id).toBe("conv_001");
+    expect(row.from).toBe("573001234567");
+    expect(row.body).toBe("Necesito agua potable en mi barrio");
+    expect(row.message_type).toBe("TEXT");
+    expect(row.workflow_step).toBe("AWAITING_LOCATION");
+    expect(row.processing_status).toBe("RECEIVED");
+  });
+
+  it("un reenvío con el mismo event.id no crea duplicados y devuelve la fila existente", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const event = buildValidEvent();
+
+    const first = await postWithStore(store, event);
+    expect((await first.json()).persisted).toBe(true);
+
+    const resend = await postWithStore(store, event);
+    expect(resend.status).toBe(200);
+    const body = await resend.json();
+    expect(body.persisted).toBe(false);
+    expect(body.duplicate).toBe(true);
+    expect(body.record.event_id).toBe("evt_001");
+
+    expect(store.size()).toBe(1);
+    expect(store.all().filter((r) => r.event_id === "evt_001")).toHaveLength(1);
+  });
+
+  it("un reenvío con body distinto no modifica la fila original", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const original = buildValidEvent();
+    const first = await postWithStore(store, original);
+    const firstBody = await first.json();
+    const originalRaw = store.get("evt_001")!.raw_event;
+    const originalReceivedAt = firstBody.record.received_at;
+
+    // Reenvío con el mismo id pero body distinto.
+    const resend = await postWithStore(
+      store,
+      buildValidEvent({
+        data: { ...original.data, body: "Body MODIFICADO" },
+      }),
+    );
+    expect(resend.status).toBe(200);
+    const resendBody = await resend.json();
+    expect(resendBody.duplicate).toBe(true);
+
+    // La fila original conserva su raw_event y sus timestamps sin cambios.
+    const row = store.get("evt_001")!;
+    expect(row.raw_event).toEqual(originalRaw);
+    expect(row.received_at).toBe(originalReceivedAt);
+    expect(row.body).toBe("Necesito agua potable en mi barrio");
+  });
+
+  it("un evento sin campos obligatorios devuelve 400 y NO persiste", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const res = await postWithStore(store, {
+      data: { from: "573001234567" },
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("validation_failed");
+    const issuePaths = body.details.issues.map((i: { path: string[] }) =>
+      i.path.join("."),
+    );
+    for (const field of MINIMAL_FIELDS) {
+      expect(issuePaths).toContain(field);
+    }
+
+    // No se crea ninguna fila en ingest_responses.
+    expect(store.size()).toBe(0);
+  });
+
+  it("un evento sin coordenadas se persiste tal cual (geocoding pendiente, S5)", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const event = buildValidEvent({ data: { body: "Necesito ayuda" } });
+
+    const res = await postWithStore(store, event);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.persisted).toBe(true);
+    expect(body.record.processing_status).toBe("RECEIVED");
+
+    const row = store.get(event.id)!;
+    expect(row.raw_event).toEqual(event);
+    // El mapeo S3 deja la ubicación pendiente de geocoding.
+    expect(body.mapping.location_pending_geocoding).toBe(true);
+  });
+
+  it("eventos distintos de la misma conversación generan filas separadas", async () => {
+    const store = createInMemoryIngestResponsesStore();
+
+    const evtA = buildValidEvent({ id: "evt_conv_a" });
+    const evtB = buildValidEvent({ id: "evt_conv_b" });
+
+    const resA = await postWithStore(store, evtA);
+    const resB = await postWithStore(store, evtB);
+
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+    expect((await resA.json()).persisted).toBe(true);
+    expect((await resB.json()).persisted).toBe(true);
+
+    expect(store.size()).toBe(2);
+    expect(store.all().map((r) => r.event_id).sort()).toEqual([
+      "evt_conv_a",
+      "evt_conv_b",
+    ]);
+  });
+
+  it("un error de persistencia devuelve 500 estructurado", async () => {
+    const failingStore: IngestResponsesStore = {
+      async insertIfAbsent() {
+        throw new Error("db caída");
+      },
+    };
+
+    const res = await handleWebhookEvent(
+      new Request("http://127.0.0.1:54321/functions/v1/webhook/events", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildValidEvent()),
+      }),
+      { ingestStore: failingStore },
+    );
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("persistence_failed");
+    expect(body.details.cause).toContain("db caída");
   });
 });

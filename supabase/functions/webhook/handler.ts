@@ -1,6 +1,6 @@
 // =============================================================================
-// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2+S3)
-// Tickets: DEV-32 (S2), DEV-33 (S3)
+// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2+S3+S4)
+// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4)
 //
 // Handler puro sobre Web Standard (Request/Response): sin dependencias de
 // Deno, por lo que es testeable con vitest en Node y ejecutable en la Edge
@@ -25,12 +25,28 @@
 //     verification_status/source, contact_whatsapp, location_pending_geocoding).
 //   - Los eventos de type distinto a `message.received` se mapean con
 //     `builds_incident=false` (no arman incidente; insumo de S5).
-//   - La persistencia (S4), la creación del incidente (S5) y la idempotencia
-//     durable (S6) se delegan a capas posteriores; aquí no se persiste.
+//
+// Persistencia (escenarios Gherkin S4):
+//   - Cuando se inyecta un `ingestStore` (deps), cada evento válido se persiste
+//     en `ingest_responses` con `raw_event` intacto, metadatos y
+//     `processing_status=RECEIVED`.
+//   - Idempotencia por `event.id`: un reenvío no duplica ni modifica la fila
+//     original; el ACK 200 devuelve la fila existente con `duplicate=true`.
+//   - Evento sin campos obligatorios → 400 y NO se persiste ninguna fila.
+//   - Evento sin coordenadas → se persiste tal cual (geocoding pendiente, S5).
+//   - Eventos distintos de la misma conversación → filas separadas.
+//   - Un error de persistencia → 500 estructurado (`persistence_failed`).
 // =============================================================================
 
-import { validateWebhookEvent } from "../_shared/webhook-event.ts";
+import {
+  type RawWebhookEvent,
+  validateWebhookEvent,
+} from "../_shared/webhook-event.ts";
 import { mapEventToNeedDraft } from "../_shared/need-mapper.ts";
+import {
+  type IngestResponsesStore,
+  persistIngestResponse,
+} from "../_shared/ingest-persistence.ts";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -54,8 +70,17 @@ function jsonResponse(
   });
 }
 
+/** Dependencias opcionales del handler (permite mantenerlo PURE en tests S2). */
+export interface WebhookDeps {
+  /** Store de `ingest_responses` para persistir el evento crudo (S4). */
+  ingestStore?: IngestResponsesStore;
+}
+
 /** Endpoint receptor de eventos crudos del webhook del equipo de conversación. */
-export async function handleWebhookEvent(req: Request): Promise<Response> {
+export async function handleWebhookEvent(
+  req: Request,
+  deps: WebhookDeps = {},
+): Promise<Response> {
   // Preflight CORS (aunque el consumo es server-to-server, se habilita por
   // comodidad en desarrollo y pruebas desde el navegador).
   if (req.method === "OPTIONS") {
@@ -119,10 +144,34 @@ export async function handleWebhookEvent(req: Request): Promise<Response> {
     );
   }
 
-  // Mapeo del evento a borrador de Need (S3). La persistencia (S4), la
-  // creación del incidente (S5) y la idempotencia durable (S6) se delegan a
-  // capas posteriores; aquí solo se incluye el resumen del mapeo en el ACK.
+  // Mapeo del evento a borrador de Need (S3). Se incluye el resumen en el ACK;
+  // el borrador completo queda disponible para la creación del incidente (S5).
   const mapping = mapEventToNeedDraft(payload);
+
+  // Persistencia del evento crudo (S4). Solo si se inyectó un store (en la
+  // Edge Function real siempre se inyecta). Un error de persistencia es un 500
+  // estructurado; la validación ya rechazó antes los eventos sin campos mínimos,
+  // por lo que aquí SOLO se persisten eventos válidos.
+  let persistence;
+  if (deps.ingestStore) {
+    try {
+      persistence = await persistIngestResponse(
+        deps.ingestStore,
+        payload as RawWebhookEvent,
+      );
+    } catch (err) {
+      return jsonResponse(
+        {
+          error: "persistence_failed",
+          message: "No se pudo persistir el evento en ingest_responses.",
+          details: {
+            cause: err instanceof Error ? err.message : String(err),
+          },
+        },
+        500,
+      );
+    }
+  }
 
   return jsonResponse(
     {
@@ -131,6 +180,21 @@ export async function handleWebhookEvent(req: Request): Promise<Response> {
       event_id: result.event.id,
       type: result.event.type,
       message: "Evento aceptado.",
+      // Resultado de la persistencia (S4). `duplicate=true` indica un reenvío:
+      // se devuelve la fila existente y no se creó ni modificó nada.
+      ...(persistence
+        ? {
+            persisted: persistence.inserted,
+            duplicate: persistence.duplicate,
+            record: {
+              id: persistence.record.id ?? null,
+              event_id: persistence.record.event_id,
+              processing_status: persistence.record.processing_status,
+              received_at: persistence.record.received_at,
+              created_at: persistence.record.created_at,
+            },
+          }
+        : {}),
       // Resumen del borrador de Need generado por el mapeo (S3).
       ...(mapping.draft
         ? {

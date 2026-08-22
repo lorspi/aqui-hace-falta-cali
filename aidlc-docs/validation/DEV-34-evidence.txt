@@ -1,0 +1,129 @@
+############################################################
+# DEV-34 — Persistencia del evento crudo (S4)
+# Fecha: 2026-08-22T04:38:42Z
+# Rama: agent/DEV-34
+############################################################
+
+=== 1. Evento válido -> se persiste con RECEIVED y raw_event intacto ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_001",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_001","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"c8c84146-2def-43e8-9093-055b2f92ccca","event_id":"evt_001","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.179+00:00","created_at":"2026-08-22T04:38:35.179+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- fila en DB (raw_event == payload completo, metadatos copiados):
+evt_001|message.received|conv_001|573001234567|TEXT|AWAITING_LOCATION|RECEIVED|evt_001|"Necesito agua potable en mi barrio"
+
+=== 2. Reenvío del mismo event.id (evt_001) -> duplicate=true, sin fila nueva ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_001",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_001","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"c8c84146-2def-43e8-9093-055b2f92ccca","event_id":"evt_001","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.179+00:00","created_at":"2026-08-22T04:38:35.179+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- nº de filas para evt_001 (debe ser 1):
+1
+
+=== 3. Reenvío del mismo id con body distinto -> no modifica la fila original ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_001",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "BODY MODIFICADO en el reenvío",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_001","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"c8c84146-2def-43e8-9093-055b2f92ccca","event_id":"evt_001","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.179+00:00","created_at":"2026-08-22T04:38:35.179+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- la fila conserva su raw_event y body ORIGINALES:
+"Necesito agua potable en mi barrio"|Necesito agua potable en mi barrio|2026-08-22 04:38:35.179+00|2026-08-22 04:38:35.179+00
+
+=== 4. Evento sin campos mínimos -> 400 con campos faltantes, sin fila ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_004",
+  "type": "message.received",
+  "data": { "from": "573001234567" }
+}
+{"error":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["conversation_id"],"message":"conversation_id: campo requerido (string no vacío)."},{"path":["body"],"message":"body: campo requerido (en data.body o body)."}]}}
+--- HTTP 400
+
+--- filas para evt_004 (debe ser 0):
+0
+
+=== 5. Evento sin coordenadas -> se persiste tal cual ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_005",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Necesito ayuda, no tengo coordenadas",
+    "from": "573001234567",
+    "message_type": "text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_005","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"2d7c7219-fb92-44d9-abab-38ce6c80b592","event_id":"evt_005","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.455+00:00","created_at":"2026-08-22T04:38:35.455+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- fila en DB (sin lat/lng; raw_event intacto; RECEIVED):
+evt_005|RECEIVED|Necesito ayuda, no tengo coordenadas
+
+=== 6a. Evento A de la conversación conv_002 ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_conv_a",
+  "type": "message.received",
+  "conversation_id": "conv_002",
+  "data": {
+    "body": "Primer mensaje",
+    "from": "573001234567"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_conv_a","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"92479848-3483-4b29-9123-7f7413c58c4f","event_id":"evt_conv_a","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.531+00:00","created_at":"2026-08-22T04:38:35.531+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 6b. Evento B de la misma conversación conv_002 (id distinto) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_conv_b",
+  "type": "message.received",
+  "conversation_id": "conv_002",
+  "data": {
+    "body": "Segundo mensaje",
+    "from": "573001234567"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_conv_b","type":"message.received","message":"Evento aceptado.","persisted":false,"duplicate":true,"record":{"id":"3fa5eaa7-9742-4b9c-a417-d6a715abe3fb","event_id":"evt_conv_b","processing_status":"RECEIVED","received_at":"2026-08-22T04:38:35.563+00:00","created_at":"2026-08-22T04:38:35.563+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+--- filas para conv_002 (debe ser 2, cada evento con su fila):
+evt_conv_a|conv_002
+evt_conv_b|conv_002
+
+=== Fin de la batería de evidencia DEV-34 ===
+Serving functions locally (minimal bootstrap for S4)...
