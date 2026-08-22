@@ -1,0 +1,148 @@
+############################################################
+# DEV-38 — Documentación del contrato de integración (S8)
+# Fecha: 2026-08-22T05:55:41Z
+# Rama: agent/DEV-38
+############################################################
+
+=== 1. message.received con data.conversation_id -> 200 ACK ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_001",
+  "type": "message.received",
+  "data": {
+    "conversation_id": "conv_s8_001",
+    "from": "573001234567",
+    "body": "Necesito agua potable en mi barrio",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s8_001","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"866c6a42-2572-4a56-9ebb-428d2c3670d2","event_id":"evt_s8_001","processing_status":"RECEIVED","received_at":"2026-08-22T05:55:41.766+00:00","created_at":"2026-08-22T05:55:41.766+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 2a. Sin event.id -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "type": "message.received",
+  "data": { "conversation_id": "conv_s8_001", "body": "sin id", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["id"],"message":"id: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+
+=== 2b. Sin type -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_002",
+  "data": { "conversation_id": "conv_s8_001", "body": "sin type", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["type"],"message":"type: campo requerido (string no vacío)."}]}}
+--- HTTP 400
+
+
+=== 2c. Sin data.conversation_id -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_003",
+  "type": "message.received",
+  "data": { "body": "sin conv", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["conversation_id"],"message":"conversation_id: campo requerido (string no vacío), en data.conversation_id o conversation_id."}]}}
+--- HTTP 400
+
+
+=== 2d. Sin data.body -> 400 (indica el campo) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_004",
+  "type": "message.received",
+  "data": { "conversation_id": "conv_s8_001", "from": "573001234567" }
+}
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["body"],"message":"body: campo requerido (en data.body o body)."}]}}
+--- HTTP 400
+
+
+=== 3a. Primer envío evt_s8_dup -> 200 ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_dup",
+  "type": "message.received",
+  "data": { "conversation_id": "conv_s8_001", "body": "Necesito ayuda", "from": "573001234567" }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s8_dup","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"69f7ddb2-2d6c-4737-a284-10808477a9f8","event_id":"evt_s8_dup","processing_status":"RECEIVED","received_at":"2026-08-22T05:55:41.833+00:00","created_at":"2026-08-22T05:55:41.833+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 3b. Reenvío del mismo event.id -> 409 (sin duplicado) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_dup",
+  "type": "message.received",
+  "data": { "conversation_id": "conv_s8_001", "body": "Necesito ayuda", "from": "573001234567" }
+}
+{"code":"duplicate_event","message":"El evento con event.id 'evt_s8_dup' ya fue recibido. No se creó un duplicado.","details":{"event_id":"evt_s8_dup","type":"message.received","record":{"id":"69f7ddb2-2d6c-4737-a284-10808477a9f8","event_id":"evt_s8_dup","processing_status":"RECEIVED","received_at":"2026-08-22T05:55:41.833+00:00","created_at":"2026-08-22T05:55:41.833+00:00"}}}
+--- HTTP 409
+
+
+=== 4a. message.received de conv_s8_nocoords (sin coordenadas) ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_m1",
+  "type": "message.received",
+  "data": { "conversation_id": "conv_s8_nocoords", "body": "Necesito ayuda sin ubicación", "from": "573001234567" }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s8_m1","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"7dfc65dc-3f96-444d-8ad2-80d6ff1cb445","event_id":"evt_s8_m1","processing_status":"RECEIVED","received_at":"2026-08-22T05:55:41.866+00:00","created_at":"2026-08-22T05:55:41.866+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 4b. Completado de conv_s8_nocoords (sin coordenadas) -> 200 ACK ===
+--- POST http://127.0.0.1:8081/webhook
+--- payload: {
+  "id": "evt_s8_c1",
+  "type": "conversation_completed",
+  "data": { "conversation_id": "conv_s8_nocoords", "body": "Conversación finalizada", "from": "573001234567", "workflow": { "step": "completed" } }
+}
+{"ok":true,"status":"accepted","event_id":"evt_s8_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"562333cd-3cda-4d06-aa8f-9e7486138b9f","event_id":"evt_s8_c1","processing_status":"RECEIVED","received_at":"2026-08-22T05:55:41.876+00:00","created_at":"2026-08-22T05:55:41.876+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"4129955d-0a74-4b88-88e8-65a6f6a7bc88","conversation_id":"conv_s8_nocoords","source_event_id":"evt_s8_c1","title":"Necesito ayuda sin ubicación","description":"Necesito ayuda sin ubicación","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+--- HTTP 200
+
+
+=== 5. El documento del contrato existe en el lugar compartido ===
+OK: documentacion/Contrato-de-Integracion.md existe
+1:# 🔌 Contrato de Integración — Receptor de eventos del bot de WhatsApp
+2:
+3:> **Versión**: 1.0 (2026-08-22) — S8
+4:> **Estado**: Vigente
+5:> **Audiencia**: equipos de **conversación** (remitente) y **receptor** (RA-DAR / Aquí Hace Falta).
+6:> Este documento es la fuente de verdad del contrato HTTP entre el agente de
+7:> WhatsApp de "Aquí hace falta" y el receptor de eventos.
+8:
+9:---
+10:
+11:## 1. Propósito
+12:
+13:El equipo de **conversación** construyó el agente de WhatsApp que conversa con el
+14:ciudadano. Cuando la conversación produce eventos, el agente los envía a nuestro
+15:**receptor** mediante un webhook HTTP. Este documento define el formato exacto de
+16:esos eventos, las respuestas que el receptor devuelve y el comportamiento
+17:esperado de ambas partes para alinear la integración.
+18:
+19:---
+20:
+
+=== Fin de la batería de evidencia DEV-38 ===
+
+======================================================================
+VERIFICACIÓN EN BD (Postgres 17 local)
+======================================================================
+
+--- filas en ingest_responses (persistencia con data.conversation_id):
+evt_s8_001|message.received|conv_s8_001|RECEIVED
+evt_s8_dup|message.received|conv_s8_001|RECEIVED
+evt_s8_c1|conversation_completed|conv_s8_nocoords|RECEIVED
+
+--- incidente creado (conv_s8_nocoords sin coordenadas → PENDING):
+conv_s8_nocoords|evt_s8_c1|||PENDING
+
+--- nº de filas para evt_s8_dup (debe ser 1, NO hay duplicado):
+1

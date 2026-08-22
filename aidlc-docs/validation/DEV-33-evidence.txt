@@ -1,0 +1,139 @@
+
+=== 1. Evento válido -> borrador de Need con defaults ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_001",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_001","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 2. message_type inconsistente ('Text') se normaliza a TEXT ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_002",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Foto de la zona",
+    "message_type": "Text"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_002","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":null,"location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 3. message_type 'image' se normaliza a IMAGE ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_003",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Adjunto imagen",
+    "message_type": "image"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_003","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"IMAGE","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":null,"location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 4. workflow.step 'completed' -> incident_ready true (delegado a S5) ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_004",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Listo, esa es toda la información",
+    "message_type": "text",
+    "workflow": { "step": "completed" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_004","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":true,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":null,"location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 5. Faltan body y conversation_id -> 400 con detalle de campos ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_005",
+  "type": "message.received",
+  "data": { "from": "573001234567" }
+}
+{"error":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["conversation_id"],"message":"conversation_id: campo requerido (string no vacío)."},{"path":["body"],"message":"body: campo requerido (en data.body o body)."}]}}
+--- HTTP 400
+
+
+=== 6. id vacío y body numérico -> 400 indicando cada campo inválido ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": { "body": 42 }
+}
+{"error":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["id"],"message":"id: campo requerido (string no vacío)."},{"path":["body"],"message":"body: debe ser un string o un objeto."}]}}
+--- HTTP 400
+
+
+=== 7. Reenvío del mismo event.id (evt_001) -> ACK 200 (dedupe durable en S4/S6) ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_001",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_001","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 8. Sin coordenadas, con address/neighborhood en el body -> pendiente de geocoding ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_008",
+  "type": "message.received",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": {
+      "text": "Necesito ayuda en mi barrio",
+      "address": "Calle 5 #10-20",
+      "neighborhood": "San Fernando"
+    },
+    "from": "573001234567"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_008","type":"message.received","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== 9. type conversation_completed -> builds_incident false, incident_ready true ===
+--- POST http://127.0.0.1:54341/functions/v1/webhook
+--- payload: {
+  "id": "evt_009",
+  "type": "conversation_completed",
+  "conversation_id": "conv_001",
+  "data": {
+    "body": "Conversación finalizada",
+    "from": "573001234567"
+  }
+}
+{"ok":true,"status":"accepted","event_id":"evt_009","type":"conversation_completed","message":"Evento aceptado.","mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+--- HTTP 200
+
+
+=== Fin de la batería de evidencia DEV-33 ===
