@@ -55,6 +55,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [mapReady, setMapReady] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Connector lines for displaced overlapping markers
+  const displacementLinesRef = useRef<L.Polyline[]>([]);
 
   // Clustering hook
   const { loadNeedsIndex, loadOffersIndex, getClusters, getClusterExpansionZoom } =
@@ -126,6 +128,10 @@ export const MapView: React.FC<MapViewProps> = ({
   const renderNeedsClusters = useCallback(() => {
     const map = mapInstanceRef.current;
     if (!map || isPickerMode || viewMode === 'OFFERS') return;
+
+    // Clear displacement lines
+    displacementLinesRef.current.forEach((line) => line.remove());
+    displacementLinesRef.current = [];
 
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
@@ -410,14 +416,90 @@ export const MapView: React.FC<MapViewProps> = ({
     });
   }, [getClusters, getClusterExpansionZoom, isPickerMode, viewMode, onSelectOffer, onHoverMarker]);
 
+  // Auto-displace overlapping markers so all are accessible
+  const displaceOverlappingMarkers = useCallback(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Remove previous connector lines
+    displacementLinesRef.current.forEach((line) => line.remove());
+    displacementLinesRef.current = [];
+
+    const allMarkers = [...markersRef.current, ...offerMarkersRef.current];
+    if (allMarkers.length < 2) return;
+
+    const nearbyDistance = 24; // pixels
+    const spreadRadius = 22; // pixels offset from center
+    const processed = new Set<L.Marker>();
+
+    for (let i = 0; i < allMarkers.length; i++) {
+      const marker = allMarkers[i];
+      if (processed.has(marker)) continue;
+
+      const markerPoint = map.latLngToContainerPoint(marker.getLatLng());
+      const group: L.Marker[] = [marker];
+
+      // Find all markers near this one
+      for (let j = i + 1; j < allMarkers.length; j++) {
+        const other = allMarkers[j];
+        if (processed.has(other)) continue;
+        const otherPoint = map.latLngToContainerPoint(other.getLatLng());
+        if (markerPoint.distanceTo(otherPoint) < nearbyDistance) {
+          group.push(other);
+        }
+      }
+
+      if (group.length <= 1) continue;
+
+      // Mark all as processed
+      group.forEach((m) => processed.add(m));
+
+      // Calculate center of the group
+      const centerPoint = group.reduce(
+        (acc, m) => {
+          const p = map.latLngToContainerPoint(m.getLatLng());
+          return L.point(acc.x + p.x / group.length, acc.y + p.y / group.length);
+        },
+        L.point(0, 0)
+      );
+
+      // Spread markers in a circle around center
+      const angleStep = (2 * Math.PI) / group.length;
+      const radius = group.length <= 3 ? spreadRadius : spreadRadius + (group.length - 3) * 6;
+
+      group.forEach((m, idx) => {
+        const originalLatLng = m.getLatLng();
+        const angle = angleStep * idx - Math.PI / 2;
+        const newPoint = L.point(
+          centerPoint.x + radius * Math.cos(angle),
+          centerPoint.y + radius * Math.sin(angle)
+        );
+        const newLatLng = map.containerPointToLatLng(newPoint);
+
+        // Move marker to displaced position
+        m.setLatLng(newLatLng);
+
+        // Draw connector line from displaced position to real position
+        const line = L.polyline([newLatLng, originalLatLng], {
+          color: '#334155',
+          weight: 2,
+          opacity: 0.7,
+          dashArray: '4 4',
+        }).addTo(map);
+        displacementLinesRef.current.push(line);
+      });
+    }
+  }, []);
+
   // Debounced cluster update on map move/zoom
   const debouncedUpdateClusters = useCallback(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       renderNeedsClusters();
       renderOffersClusters();
+      displaceOverlappingMarkers();
     }, 150);
-  }, [renderNeedsClusters, renderOffersClusters]);
+  }, [renderNeedsClusters, renderOffersClusters, displaceOverlappingMarkers]);
 
   // Initialize Map
   useEffect(() => {
@@ -538,7 +620,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
     loadNeedsIndex(needs);
     renderNeedsClusters();
-  }, [needs, isPickerMode, viewMode, mapInitialized, loadNeedsIndex, renderNeedsClusters]);
+    displaceOverlappingMarkers();
+  }, [needs, isPickerMode, viewMode, mapInitialized, loadNeedsIndex, renderNeedsClusters, displaceOverlappingMarkers]);
 
   // Load offers into Supercluster index and render
   useEffect(() => {
@@ -561,7 +644,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
     loadOffersIndex(visibleOffers);
     renderOffersClusters();
-  }, [offers, isPickerMode, viewMode, mapInitialized, loadOffersIndex, renderOffersClusters]);
+    displaceOverlappingMarkers();
+  }, [offers, isPickerMode, viewMode, mapInitialized, loadOffersIndex, renderOffersClusters, displaceOverlappingMarkers]);
 
   // Cross-highlight: when hoveredItemId changes, pan map and highlight the pin
   useEffect(() => {
