@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Lock, ChevronDown, MapPin, Heart, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck } from 'lucide-react';
+import { PlusCircle, Lock, ChevronDown, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -133,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreateOfferModal,
   onOpenAdminModal: _onOpenAdminModal,
   onOpenRegisterModal,
-  onScrollToMap,
+  onScrollToMap: _onScrollToMap,
   lastUpdated: _lastUpdated,
   isOffline: _isOffline,
   activeCount: _activeCount,
@@ -144,25 +144,14 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(true);
-  const [showHelpMenu, setShowHelpMenu] = useState(false);
-  const helpMenuRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
-
-  // Close help menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
-        setShowHelpMenu(false);
-      }
-    };
-    if (showHelpMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showHelpMenu]);
 
   useEffect(() => {
     const handleScroll = () => {
+      if (window.innerWidth >= 768) {
+        setVisible(true);
+        return;
+      }
       const currentY = window.scrollY;
       if (currentY < lastScrollY.current || currentY < 50) {
         setVisible(true);
@@ -179,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       className={`bg-white border-b border-slate-200 fixed top-0 left-0 right-0 z-40 shadow-xs transition-transform duration-300 ${
-        visible ? "translate-y-0" : "-translate-y-full"
+        visible ? "translate-y-0" : "-translate-y-full md:translate-y-0"
       }`}
     >
       {/* Main Header navigation bar */}
@@ -215,43 +204,15 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{t('publishNeed')}</span>
             </button>
 
-            {/* Quiero Ayudar — Dropdown */}
-            <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
-              <button
-                onClick={() => setShowHelpMenu(!showHelpMenu)}
-                className="btn-primary-blue text-xs"
-                id="btn-quiero-ayudar"
-              >
-                <HeartHandshake className="w-4 h-4" />
-                <span>{t('offerHelp')}</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHelpMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showHelpMenu && (
-                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-60 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <button
-                    onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="font-semibold block">{t('viewNeeds')}</span>
-                      <span className="text-[11px] text-slate-500">{t('mapView')}</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { setShowHelpMenu(false); onOpenCreateOfferModal(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <Heart className="w-4 h-4 text-blue-600 shrink-0" />
-                    <div>
-                      <span className="font-semibold block">{t('offerHelp')}</span>
-                      <span className="text-[11px] text-slate-500">{t('createOfferSubtitle')}</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Quiero Ayudar — Direct CTA */}
+            <button
+              onClick={onOpenCreateOfferModal}
+              className="btn-primary-blue text-xs"
+              id="btn-quiero-ayudar"
+            >
+              <HeartHandshake className="w-4 h-4" />
+              <span>{t('offerHelp')}</span>
+            </button>
 
             {/* User / Auth Dropdown */}
             <UserMenu
