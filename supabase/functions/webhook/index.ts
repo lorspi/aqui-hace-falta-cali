@@ -1,6 +1,6 @@
 // =============================================================================
-// webhook/index.ts — Edge Function receptora de eventos (S2 + S4)
-// Tickets: DEV-32, DEV-34
+// webhook/index.ts — Edge Function receptora de eventos (S2 + S4 + S5)
+// Tickets: DEV-32, DEV-34, DEV-35
 //
 // URL del endpoint (contrato del webhook):
 //   POST {SUPABASE_URL}/functions/v1/webhook
@@ -14,18 +14,22 @@
 //     `SUPABASE_SERVICE_ROLE_KEY` (inyectada por la plataforma / CLI). El rol
 //     service_role tiene BYPASSRLS y puede escribir en `ingest_responses`
 //     (S1: RLS sin políticas, anon bloqueado).
-//   - Se lo inyecta al handler para que S4 persista cada evento crudo.
+//   - Crea el store de `needs` (S1/S5) y el geocoder Nominatim (S5) para que
+//     el evento de completado cree el incidente con los mensajes acumulados.
+//   - Se inyectan al handler.
 // =============================================================================
 
 import { handleWebhookEvent } from "./handler.ts";
 import { createPostgrestIngestResponsesStore } from "../_shared/ingest-persistence.ts";
+import { createPostgrestNeedsStore } from "../_shared/needs-store.ts";
+import { createNominatimGeocoder } from "../_shared/geocoding.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error(
-    "webhook: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY son obligatorias para persistir el evento crudo (S4).",
+    "webhook: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY son obligatorias para persistir el evento crudo (S4) y crear el incidente (S5).",
   );
 }
 
@@ -34,4 +38,17 @@ const ingestStore = createPostgrestIngestResponsesStore({
   serviceRoleKey,
 });
 
-Deno.serve((req: Request) => handleWebhookEvent(req, { ingestStore }));
+const needsStore = createPostgrestNeedsStore({
+  url: supabaseUrl,
+  serviceRoleKey,
+});
+
+const geocoder = createNominatimGeocoder();
+
+Deno.serve((req: Request) =>
+  handleWebhookEvent(req, {
+    ingestStore,
+    incidentService: { needsStore },
+    geocoder,
+  }),
+);
