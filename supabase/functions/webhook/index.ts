@@ -50,5 +50,10 @@ Deno.serve((req: Request) =>
     ingestStore,
     incidentService: { needsStore },
     geocoder,
+    // S7: los errores internos (500) se registran server-side para
+    // trazabilidad sin exponer los detalles en la respuesta al remitente.
+    logError: (code, err) => {
+      console.error(`[webhook] ${code}`, err);
+    },
   }),
 );

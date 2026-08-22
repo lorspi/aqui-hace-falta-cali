@@ -1,4 +1,4 @@
-# Edge Function `webhook` — Endpoint receptor de eventos (S2+S3+S4+S5 / DEV-32, DEV-33, DEV-34, DEV-35)
+# Edge Function `webhook` — Endpoint receptor de eventos (S2–S7 / DEV-32 .. DEV-37)
 
 Endpoint HTTP que recibe los **eventos crudos** del webhook del equipo de
 conversación (agente WhatsApp de "Aquí hace falta").
@@ -40,12 +40,32 @@ En producción la base es `https://<project-ref>.supabase.co/functions/v1/webhoo
 | Caso | HTTP | Body |
 |------|------|------|
 | Evento válido (ACK) | `200` | `{ "ok": true, "status": "accepted", "event_id": "...", "type": "...", "persisted": true, "record": {...}, "mapping": { ... } }` |
-| Reenvío del mismo `event.id` | `200` | igual, con `persisted: false`, `duplicate: true` y `record` = fila existente |
-| Body no es JSON válido | `400` | `{ "error": "invalid_json", ... }` |
-| Campos mínimos faltantes / formato inválido | `400` | `{ "error": "validation_failed", "details": { "issues": [...] } }` |
-| Error de persistencia | `500` | `{ "error": "persistence_failed", ... }` |
-| Content-Type no es JSON | `415` | `{ "error": "invalid_content_type", ... }` |
-| Método distinto de POST | `405` | `{ "error": "method_not_allowed", ... }` |
+| Reenvío del mismo `event.id` | `409` | `{ "code": "duplicate_event", "message": "El evento con event.id '...' ya fue recibido...", "details": { "event_id": "...", "record": {...} } }` |
+| Body no es JSON válido | `400` | `{ "code": "invalid_json", "message": "...", "details": { "issues": [...] } }` |
+| Campos mínimos faltantes / formato inválido | `400` | `{ "code": "validation_failed", "message": "...", "details": { "issues": [...] } }` |
+| Error de persistencia (interno) | `500` | `{ "code": "persistence_failed", "message": "Error interno al persistir el evento. Inténtalo de nuevo." }` |
+| Error al crear el incidente (interno) | `500` | `{ "code": "incident_creation_failed", "message": "Error interno al crear el incidente. Inténtalo de nuevo." }` |
+| Content-Type no es JSON | `415` | `{ "code": "invalid_content_type", ... }` |
+| Método distinto de POST | `405` | `{ "code": "method_not_allowed", ... }` |
+
+## Confirmación al remitente — ACK (S7 / DEV-37)
+
+La historia S7 define el contrato de confirmación de cada evento:
+
+- **Respuesta 200 por evento recibido**: el ACK devuelve el `event.id` y el
+  `type` del evento en el body.
+- **Errores → códigos y mensajes estructurados**: todos los errores usan
+  `code` + `message` (con `details` para el contexto de validación).
+  - `400` → validación (JSON inválido / campos faltantes / formato inválido).
+  - `409` → reenvío del mismo `event.id` (`duplicate_event`): el evento ya fue
+    recibido; no se crea un duplicado en `ingest_responses`.
+  - `500` → fallo interno de persistencia / creación del incidente. El error es
+    **genérico**: no expone detalles internos (la causa real se registra
+    server-side vía el logger inyectado).
+- **Evento de completado sin coordenadas** → `200` OK: el ACK confirma la
+  recepción aunque falten coordenadas; el enriquecimiento por geocoding queda
+  como paso posterior (`location_enrichment_status=PENDING`) y **no bloquea** el
+  ACK.
 
 ## Persistencia del evento crudo (S4)
 

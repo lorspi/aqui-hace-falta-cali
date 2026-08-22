@@ -201,7 +201,7 @@ describe("S5 — Geocoding no disponible no bloquea la creación del incidente",
 });
 
 describe("S5 — Un reenvío del mismo evento de completado no crea un incidente duplicado", () => {
-  it("el reenvío se descarta en la capa de ingestión y NO re-ejecuta la creación del incidente (S6)", async () => {
+  it("el reenvío se descarta en la capa de ingestión y NO re-ejecuta la creación del incidente (S6 + S7)", async () => {
     const ingest = createInMemoryIngestResponsesStore();
     const needs = createInMemoryNeedsStore();
     const messages = [buildMessage()];
@@ -214,15 +214,15 @@ describe("S5 — Un reenvío del mismo evento de completado no crea un incidente
 
     // Reenvío del mismo evento de completado: la unicidad por event.id (S6)
     // lo resuelve como duplicate en la capa de ingestión ANTES de llegar al
-    // servicio de incidentes. No se crea ni se consulta un incidente nuevo.
+    // servicio de incidentes. El ACK del contrato S7 responde 409 Conflict.
     const resend = await postWith(ingest, needs, completion);
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const resendBody = await resend.json();
 
-    // El ACK señala el reenvío a nivel de ingestión (fila existente).
-    expect(resendBody.duplicate).toBe(true);
-    expect(resendBody.persisted).toBe(false);
-    expect(resendBody.record.event_id).toBe("evt_999");
+    // Error estructurado indicando que el evento ya fue recibido.
+    expect(resendBody.code).toBe("duplicate_event");
+    expect(resendBody.message).toContain("ya fue recibido");
+    expect(resendBody.details.record.event_id).toBe("evt_999");
     // No se re-ejecuta el procesamiento aguas abajo (S6 #8): no hay bloque
     // `incident` y el registro en needs no se duplica.
     expect(resendBody.incident).toBeUndefined();
@@ -241,7 +241,7 @@ describe("S5 — Un evento de completado sin conversation_id no crea incidente",
 
     // El 400 puede venir de la validación general S2 (validation_failed) o del
     // check específico S5 (missing_conversation_id). Ambos detallan el campo.
-    expect(["validation_failed", "missing_conversation_id"]).toContain(body.error);
+    expect(["validation_failed", "missing_conversation_id"]).toContain(body.code);
     const paths = (body.details?.issues ?? []).map((i: { path: string[] }) =>
       i.path.join("."),
     );
@@ -260,7 +260,7 @@ describe("S5 — Un evento de completado sin mensajes acumulados previos no crea
     expect(res.status).toBe(409);
     const body = await res.json();
 
-    expect(body.error).toBe("no_messages");
+    expect(body.code).toBe("no_messages");
     expect(body.details.conversation_id).toBe("conv_123");
     expect(needs.size()).toBe(0);
   });
@@ -277,7 +277,7 @@ describe("S5 — Un evento de completado con from inválido se rechaza", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
 
-    expect(body.error).toBe("invalid_from");
+    expect(body.code).toBe("invalid_from");
     expect(needs.size()).toBe(0);
 
     // El evento de completado quedó persistido en ingest_responses (auditoría).

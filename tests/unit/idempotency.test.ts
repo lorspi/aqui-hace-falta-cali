@@ -111,7 +111,7 @@ describe("S6 — El primer evento con un event.id nuevo se persiste una sola vez
 // ============================================================================
 
 describe("S6 — El reenvío con el mismo event.id no crea duplicados", () => {
-  it("no crea una segunda fila y devuelve el registro existente", async () => {
+  it("no crea una segunda fila y responde 409 con la fila existente (S7)", async () => {
     const ingest = createInMemoryIngestResponsesStore();
     const needs = createInMemoryNeedsStore();
     const event = buildValidEvent({ id: "evt_001" });
@@ -119,14 +119,14 @@ describe("S6 — El reenvío con el mismo event.id no crea duplicados", () => {
     const first = await postWith(ingest, needs, event);
     expect((await first.json()).persisted).toBe(true);
 
+    // S7: el reenvío de un event.id ya procesado con éxito responde 409
+    // Conflict (error estructurado) y devuelve la fila existente en details.
     const resend = await postWith(ingest, needs, event);
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const body = await resend.json();
-
-    // Se ignora o se devuelve el existente: duplicate=true, persisted=false.
-    expect(body.duplicate).toBe(true);
-    expect(body.persisted).toBe(false);
-    expect(body.record.event_id).toBe("evt_001");
+    expect(body.code).toBe("duplicate_event");
+    expect(body.message).toContain("ya fue recibido");
+    expect(body.details.record.event_id).toBe("evt_001");
 
     // Solo una fila.
     expect(ingest.size()).toBe(1);
@@ -139,7 +139,7 @@ describe("S6 — El reenvío con el mismo event.id no crea duplicados", () => {
 // ============================================================================
 
 describe("S6 — El reenvío con el mismo event.id pero body diferente no duplica ni sobreescribe", () => {
-  it("event.id tiene prioridad sobre el contenido; el body original se conserva", async () => {
+  it("event.id tiene prioridad sobre el contenido; el body original se conserva (409 S7)", async () => {
     const ingest = createInMemoryIngestResponsesStore();
     const needs = createInMemoryNeedsStore();
 
@@ -149,18 +149,17 @@ describe("S6 — El reenvío con el mismo event.id pero body diferente no duplic
     const originalRaw = ingest.get("evt_002")!.raw_event;
     const originalReceivedAt = firstBody.record.received_at;
 
-    // Reenvío con el mismo id pero body distinto.
+    // Reenvío con el mismo id pero body distinto → 409 (S7).
     const resend = await postWith(
       ingest,
       needs,
       buildValidEvent({ id: "evt_002", data: { body: "Body MODIFICADO" } }),
     );
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const resendBody = await resend.json();
 
     // No se crea una fila nueva y no se sobreescribe el body original.
-    expect(resendBody.duplicate).toBe(true);
-    expect(resendBody.persisted).toBe(false);
+    expect(resendBody.code).toBe("duplicate_event");
     const row = ingest.get("evt_002")!;
     expect(row.raw_event).toEqual(originalRaw);
     expect(row.body).toBe("Necesito agua potable en mi barrio");
@@ -187,15 +186,15 @@ describe("S6 — Reenvíos concurrentes del mismo event.id generan una sola fila
       postWith(ingest, needs, event),
     ]);
 
-    expect(resA.status).toBe(200);
-    expect(resB.status).toBe(200);
+    // Exactamente una insertó (200) y la otra fue un reenvío (409, S7).
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 409]);
 
     const bodyA = await resA.json();
     const bodyB = await resB.json();
 
-    // Exactamente una de las dos llamadas insertó; la otra fue duplicate.
     const inserted = [bodyA, bodyB].filter((b) => b.persisted === true);
-    const duplicates = [bodyA, bodyB].filter((b) => b.duplicate === true);
+    const duplicates = [bodyA, bodyB].filter((b) => b.code === "duplicate_event");
     expect(inserted).toHaveLength(1);
     expect(duplicates).toHaveLength(1);
 
@@ -294,7 +293,7 @@ describe("S6 — Un evento sin id se rechaza (no hay clave de idempotencia)", ()
       );
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.error).toBe("validation_failed");
+      expect(body.code).toBe("validation_failed");
       const issuePaths = body.details.issues.map((i: { path: string[] }) =>
         i.path.join("."),
       );
@@ -367,7 +366,7 @@ describe("S6 — Un reenvío tras un intento fallido de validación se procesa c
     });
     const failed = await postWith(ingest, needs, invalid);
     expect(failed.status).toBe(400);
-    expect((await failed.json()).error).toBe("validation_failed");
+    expect((await failed.json()).code).toBe("validation_failed");
     expect(ingest.size()).toBe(0);
 
     // Reenvío corregido con el mismo id 'evt_006' → se procesa como nuevo.
@@ -418,14 +417,15 @@ describe("S6 — La deduplicación por event.id protege el pipeline aguas abajo"
     expect(firstBody.incident.outcome).toBe("created");
     expect(needs.size()).toBe(1);
 
-    // Reenvío del mismo evento 'evt_007' → se descarta en ingestión.
+    // Reenvío del mismo evento 'evt_007' → se descarta en ingestión (S6) y el
+    // ACK del contrato S7 responde 409 Conflict con error estructurado.
     const resend = await postWith(ingest, needs, completion);
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const resendBody = await resend.json();
 
-    // ACK de reenvío a nivel de ingestión (fila existente, sin nuevo insert).
-    expect(resendBody.duplicate).toBe(true);
-    expect(resendBody.persisted).toBe(false);
+    // Error estructurado indicando que el evento ya fue recibido.
+    expect(resendBody.code).toBe("duplicate_event");
+    expect(resendBody.message).toContain("ya fue recibido");
 
     // No se vuelve a ejecutar el procesamiento aguas abajo: no se re-crea el
     // incidente (sin bloque `incident` y needs sigue con una sola fila).

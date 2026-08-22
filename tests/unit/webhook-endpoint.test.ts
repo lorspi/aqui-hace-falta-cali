@@ -104,7 +104,7 @@ describe("S2 — Endpoint POST /webhook/events", () => {
       const res = await post(raw);
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.error).toBe("invalid_json");
+      expect(body.code).toBe("invalid_json");
       expect(body.message.toLowerCase()).toContain("json");
       expect(body.details.issues).toBeDefined();
     }
@@ -118,7 +118,7 @@ describe("S2 — Endpoint POST /webhook/events", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("validation_failed");
+    expect(body.code).toBe("validation_failed");
 
     const issuePaths = body.details.issues.map((i: { path: string[] }) =>
       i.path.join("."),
@@ -208,7 +208,7 @@ describe("S2 — Endpoint POST /webhook/events", () => {
     );
     expect(res.status).toBe(405);
     const body = await res.json();
-    expect(body.error).toBe("method_not_allowed");
+    expect(body.code).toBe("method_not_allowed");
   });
 
   it("rechaza Content-Type distinto de application/json con 415", async () => {
@@ -218,7 +218,7 @@ describe("S2 — Endpoint POST /webhook/events", () => {
     );
     expect(res.status).toBe(415);
     const body = await res.json();
-    expect(body.error).toBe("invalid_content_type");
+    expect(body.code).toBe("invalid_content_type");
   });
 
   it("responde OPTIONS (preflight CORS) con 204", async () => {
@@ -351,25 +351,27 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
     expect(row.processing_status).toBe("RECEIVED");
   });
 
-  it("un reenvío con el mismo event.id no crea duplicados y devuelve la fila existente", async () => {
+  it("un reenvío con el mismo event.id no crea duplicados y responde 409 (S7)", async () => {
     const store = createInMemoryIngestResponsesStore();
     const event = buildValidEvent();
 
     const first = await postWithStore(store, event);
     expect((await first.json()).persisted).toBe(true);
 
+    // S7: el reenvío de un event.id ya procesado con éxito responde 409
+    // Conflict con error estructurado e incluye la fila existente en details.
     const resend = await postWithStore(store, event);
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const body = await resend.json();
-    expect(body.persisted).toBe(false);
-    expect(body.duplicate).toBe(true);
-    expect(body.record.event_id).toBe("evt_001");
+    expect(body.code).toBe("duplicate_event");
+    expect(body.message).toContain("evt_001");
+    expect(body.details.record.event_id).toBe("evt_001");
 
     expect(store.size()).toBe(1);
     expect(store.all().filter((r) => r.event_id === "evt_001")).toHaveLength(1);
   });
 
-  it("un reenvío con body distinto no modifica la fila original", async () => {
+  it("un reenvío con body distinto no modifica la fila original y responde 409 (S7)", async () => {
     const store = createInMemoryIngestResponsesStore();
     const original = buildValidEvent();
     const first = await postWithStore(store, original);
@@ -384,9 +386,9 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
         data: { ...original.data, body: "Body MODIFICADO" },
       }),
     );
-    expect(resend.status).toBe(200);
+    expect(resend.status).toBe(409);
     const resendBody = await resend.json();
-    expect(resendBody.duplicate).toBe(true);
+    expect(resendBody.code).toBe("duplicate_event");
 
     // La fila original conserva su raw_event y sus timestamps sin cambios.
     const row = store.get("evt_001")!;
@@ -403,7 +405,7 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("validation_failed");
+    expect(body.code).toBe("validation_failed");
     const issuePaths = body.details.issues.map((i: { path: string[] }) =>
       i.path.join("."),
     );
@@ -452,7 +454,7 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
     ]);
   });
 
-  it("un error de persistencia devuelve 500 estructurado", async () => {
+  it("un error de persistencia devuelve 500 estructurado y genérico (S7)", async () => {
     const failingStore: IngestResponsesStore = {
       async insertIfAbsent() {
         throw new Error("db caída");
@@ -470,7 +472,9 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
 
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("persistence_failed");
-    expect(body.details.cause).toContain("db caída");
+    expect(body.code).toBe("persistence_failed");
+    expect(body.message).toBeTruthy();
+    // S7: el 500 es genérico, NO expone detalles internos (ni `cause`).
+    expect(body.details?.cause).toBeUndefined();
   });
 });
