@@ -7,9 +7,11 @@ import { useTranslation } from '../i18n/LanguageContext';
 interface OfferCardProps {
   offer: Offer;
   onClick: () => void;
+  isHighlighted?: boolean;
+  onHover?: (id: string | null) => void;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighlighted = false, onHover }) => {
   const { language, t } = useTranslation();
 
   const offerStatusLabels: Record<OfferStatus, string> = {
@@ -24,9 +26,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick }) => {
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => onHover?.(offer.id)}
+      onMouseLeave={() => onHover?.(null)}
       className={`bg-white rounded-xl border border-blue-200 transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between hover:shadow-md ${
         isInactive ? 'opacity-50' : ''
-      }`}
+      } ${isHighlighted ? 'ring-2 ring-indigo-400 shadow-lg scale-[1.02]' : ''}`}
       id={`offer-card-${offer.id}`}
     >
       {/* Card Header & Badges */}

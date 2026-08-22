@@ -11,6 +11,8 @@ interface NeedCardProps {
   userLat?: number | null;
   userLng?: number | null;
   isSelected?: boolean;
+  isHighlighted?: boolean;
+  onHover?: (id: string | null) => void;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -35,6 +37,8 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   userLat,
   userLng,
   isSelected = false,
+  isHighlighted = false,
+  onHover,
 }) => {
   const { language, t } = useTranslation();
   const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
@@ -49,9 +53,11 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   return (
     <div
       onClick={() => onSelect(need)}
+      onMouseEnter={() => onHover?.(need.id)}
+      onMouseLeave={() => onHover?.(null)}
       className={`bg-white rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between hover:shadow-md ${
         isCollectionCenter ? 'border-l-4 border-l-purple-500 border-slate-200' : priorityInfo.borderClass
-      } ${isSelected ? 'ring-2 ring-slate-900 border-slate-900 shadow-md' : 'border-slate-200'}`}
+      } ${isSelected ? 'ring-2 ring-slate-900 border-slate-900 shadow-md' : isHighlighted ? 'ring-2 ring-indigo-400 shadow-lg scale-[1.02]' : 'border-slate-200'}`}
       id={`need-card-${need.id}`}
     >
       {/* Card Header & Badges */}

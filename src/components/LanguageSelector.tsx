@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Globe } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { Language } from '../i18n/translations';
 
@@ -10,10 +10,10 @@ interface LanguageOption {
 }
 
 const LANGUAGES: LanguageOption[] = [
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'es', label: 'Español', flag: '/idioma/es.svg' },
+  { code: 'en', label: 'English', flag: '/idioma/en.svg' },
+  { code: 'pt', label: 'Português', flag: '/idioma/pt.svg' },
+  { code: 'fr', label: 'Français', flag: '/idioma/fr.svg' },
 ];
 
 export const LanguageSelector: React.FC<{ className?: string }> = ({ className = '' }) => {
@@ -41,7 +41,7 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className =
         className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all shadow-2xs"
         id="btn-language-selector"
       >
-        <span className="text-base leading-none">{currentLang.flag}</span>
+        <img src={currentLang.flag} alt={currentLang.label} className="w-5 h-5 rounded-sm object-cover" />
         <span className="uppercase tracking-wider">{currentLang.code}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -65,7 +65,7 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className =
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-base leading-none">{lang.flag}</span>
+                  <img src={lang.flag} alt={lang.label} className="w-5 h-5 rounded-sm object-cover" />
                   <span>{lang.label}</span>
                 </span>
                 <span className="text-[10px] text-slate-400 uppercase font-mono">{lang.code}</span>

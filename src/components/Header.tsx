@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeCount,
   criticalCount,
 }) => {
-  const { language, setLanguage, t } = useTranslation();
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(true);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const helpMenuRef = useRef<HTMLDivElement>(null);
@@ -71,20 +71,9 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between w-full md:w-auto">
           <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 md:h-10 w-auto" />
 
-          {/* Language toggle for mobile */}
-          <div className="flex md:hidden items-center gap-1 bg-slate-100 p-1 rounded-lg">
-            <button
-              onClick={() => setLanguage('es')}
-              className={`px-2 py-0.5 text-xs font-bold rounded ${language === 'es' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
-            >
-              ES
-            </button>
-            <button
-              onClick={() => setLanguage('en')}
-              className={`px-2 py-0.5 text-xs font-bold rounded ${language === 'en' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'}`}
-            >
-              EN
-            </button>
+          {/* Language selector for mobile */}
+          <div className="flex md:hidden">
+            <LanguageSelector />
           </div>
         </div>
 

@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Need, Offer, Priority, ViewMode } from '../types';
 import { CATEGORY_LABELS, PRIORITY_CONFIG } from '../utils/formatters';
 import { ALL_COLOMBIA_ID, getCityCoordinates } from '../data/colombiaCities';
+import { useMapClustering, ClusterOrPoint, isCluster } from '../hooks/useMapClustering';
 
 interface MapViewProps {
   needs: Need[];
@@ -21,6 +22,9 @@ interface MapViewProps {
   offers?: Offer[];
   viewMode?: ViewMode;
   onSelectOffer?: (offer: Offer) => void;
+  // Cross-highlight
+  hoveredItemId?: string | null;
+  onHoverMarker?: (id: string | null) => void;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -37,20 +41,383 @@ export const MapView: React.FC<MapViewProps> = ({
   offers,
   viewMode,
   onSelectOffer,
+  hoveredItemId,
+  onHoverMarker,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<Record<string, L.Marker>>({});
-  const offerMarkersRef = useRef<Record<string, L.Marker>>({});
+  const markersRef = useRef<L.Marker[]>([]);
+  const offerMarkersRef = useRef<L.Marker[]>([]);
+  // Map from item ID to its marker for cross-highlight
+  const markerByIdRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
   const isFlyingRef = useRef(false);
-  const [showScrollHint, setShowScrollHint] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
-  const scrollHintTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clustering hook
+  const { loadNeedsIndex, loadOffersIndex, getClusters, getClusterExpansionZoom } =
+    useMapClustering({ radius: 60, maxZoom: 16 });
 
   // Default Colombia Center (Panorámica Nacional ~4.57, -74.29)
   const colombiaCenter: [number, number] = [4.5709, -74.2973];
+
+  // --- Cluster rendering helpers ---
+
+  const createNeedClusterIcon = (count: number): L.DivIcon => {
+    // Size scales with cluster count
+    const size = count < 10 ? 40 : count < 50 ? 48 : 56;
+    return L.divIcon({
+      className: 'custom-cluster-icon',
+      html: `
+        <div style="
+          background-color: #1e293b;
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: ${size < 48 ? 13 : 14}px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+          ${count}
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  };
+
+  const createOfferClusterIcon = (count: number): L.DivIcon => {
+    const size = count < 10 ? 40 : count < 50 ? 48 : 56;
+    return L.divIcon({
+      className: 'custom-cluster-icon',
+      html: `
+        <div style="
+          background-color: #2563eb;
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: ${size < 48 ? 13 : 14}px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+          ${count}
+        </div>
+      `,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  };
+
+  // Render clusters for needs on the map
+  const renderNeedsClusters = useCallback(() => {
+    const map = mapInstanceRef.current;
+    if (!map || isPickerMode || viewMode === 'OFFERS') return;
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+    // Clear need entries from markerById (keep offer entries)
+    Object.keys(markerByIdRef.current).forEach((key) => {
+      if (!offerMarkersRef.current.includes(markerByIdRef.current[key])) {
+        delete markerByIdRef.current[key];
+      }
+    });
+
+    const clusters = getClusters(map, 'needs');
+
+    clusters.forEach((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+
+      if (isCluster(feature)) {
+        // It's a cluster
+        const count = feature.properties.point_count;
+        const clusterId = feature.properties.cluster_id;
+        const icon = createNeedClusterIcon(count);
+        const marker = L.marker([lat, lng], { icon }).addTo(map);
+
+        marker.on('click', () => {
+          const expansionZoom = getClusterExpansionZoom(clusterId, 'needs');
+          map.flyTo([lat, lng], expansionZoom, { animate: true, duration: 0.5 });
+        });
+
+        markersRef.current.push(marker);
+      } else {
+        // It's a single point
+        const props = feature.properties as { kind: 'need'; item: Need };
+        const need = props.item;
+
+        const priority = need.priority || 'MEDIUM';
+        const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
+        const colorHex = isCollectionCenter
+          ? '#7c3aed'
+          : priority === 'CRITICAL'
+          ? '#CE3B3B'
+          : priority === 'HIGH'
+          ? '#ea580c'
+          : priority === 'MEDIUM'
+          ? '#F2C33D'
+          : '#059669';
+
+        const collectionCenterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36"/></svg>`;
+
+        const innerContent = isCollectionCenter
+          ? collectionCenterSvg
+          : priority === 'CRITICAL' ? '!' : String(need.categories.length);
+
+        const customIcon = L.divIcon({
+          className: 'custom-map-pin',
+          html: `
+            <div style="
+              background-color: ${colorHex};
+              width: 36px;
+              height: 36px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 14px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+              ${innerContent}
+            </div>
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+
+        const catIcons = need.categories
+          .slice(0, 3)
+          .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
+          .join(' ');
+
+        const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
+
+        const popupHtml = `
+          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+              <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
+                ${priorityLabel}
+              </span>
+              <span style="font-size: 11px; color: #64748b; font-weight: 600;">${need.neighborhood}</span>
+            </div>
+            <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
+              ${need.title}
+            </h4>
+            <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
+              ${catIcons} ${need.categories.map((c) => CATEGORY_LABELS[c]?.label).join(', ')}
+            </p>
+            <div style="margin-top: 6px;">
+              <button id="btn-popup-${need.id}" style="
+                width: 100%;
+                background-color: #0f172a;
+                color: white;
+                border: none;
+                padding: 6px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                Ver detalles y ayudar →
+              </button>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupHtml);
+
+        marker.on('popupopen', () => {
+          const btn = document.getElementById(`btn-popup-${need.id}`);
+          if (btn) {
+            btn.onclick = () => onSelectNeed(need);
+          }
+        });
+
+        let lastTap = 0;
+        marker.on('click', () => {
+          const now = Date.now();
+          if (now - lastTap < 400) {
+            onSelectNeed(need);
+          }
+          lastTap = now;
+        });
+
+        // Cross-highlight: hover on pin → notify parent
+        marker.on('mouseover', () => {
+          if (onHoverMarker) onHoverMarker(need.id);
+        });
+        marker.on('mouseout', () => {
+          if (onHoverMarker) onHoverMarker(null);
+        });
+
+        markerByIdRef.current[need.id] = marker;
+        markersRef.current.push(marker);
+      }
+    });
+  }, [getClusters, getClusterExpansionZoom, isPickerMode, viewMode, onSelectNeed, onHoverMarker]);
+
+  // Render clusters for offers on the map
+  const renderOffersClusters = useCallback(() => {
+    const map = mapInstanceRef.current;
+    if (!map || isPickerMode || viewMode === 'NEEDS') return;
+
+    // Clear existing offer markers
+    offerMarkersRef.current.forEach((m) => m.remove());
+    offerMarkersRef.current = [];
+    // Clear offer entries from markerById (keep need entries)
+    Object.keys(markerByIdRef.current).forEach((key) => {
+      if (!markersRef.current.includes(markerByIdRef.current[key])) {
+        delete markerByIdRef.current[key];
+      }
+    });
+
+    const clusters = getClusters(map, 'offers');
+
+    clusters.forEach((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+
+      if (isCluster(feature)) {
+        const count = feature.properties.point_count;
+        const clusterId = feature.properties.cluster_id;
+        const icon = createOfferClusterIcon(count);
+        const marker = L.marker([lat, lng], { icon }).addTo(map);
+
+        marker.on('click', () => {
+          const expansionZoom = getClusterExpansionZoom(clusterId, 'offers');
+          map.flyTo([lat, lng], expansionZoom, { animate: true, duration: 0.5 });
+        });
+
+        offerMarkersRef.current.push(marker);
+      } else {
+        const props = feature.properties as { kind: 'offer'; item: Offer };
+        const offer = props.item;
+
+        const heartHandshakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/></svg>`;
+
+        const customIcon = L.divIcon({
+          className: 'custom-map-pin',
+          html: `
+            <div style="
+              background-color: #2563eb;
+              width: 36px;
+              height: 36px;
+              border-radius: 50%;
+              border: 3px solid white;
+              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 14px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+              ${heartHandshakeSvg}
+            </div>
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+
+        const catIcons = offer.categories
+          .slice(0, 3)
+          .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
+          .join(' ');
+
+        const popupHtml = `
+          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+              <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
+                OFERTA
+              </span>
+              <span style="font-size: 11px; color: #64748b; font-weight: 600;">${offer.neighborhood}</span>
+            </div>
+            <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
+              ${offer.title}
+            </h4>
+            <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
+              ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
+            </p>
+            <div style="margin-top: 6px;">
+              <button id="btn-popup-offer-${offer.id}" style="
+                width: 100%;
+                background-color: #2563eb;
+                color: white;
+                border: none;
+                padding: 6px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                Ver detalles →
+              </button>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupHtml);
+
+        marker.on('popupopen', () => {
+          const btn = document.getElementById(`btn-popup-offer-${offer.id}`);
+          if (btn) {
+            btn.onclick = () => { if (onSelectOffer) onSelectOffer(offer); };
+          }
+        });
+
+        let lastTap = 0;
+        marker.on('click', () => {
+          const now = Date.now();
+          if (now - lastTap < 400) {
+            if (onSelectOffer) onSelectOffer(offer);
+          }
+          lastTap = now;
+        });
+
+        // Cross-highlight: hover on pin → notify parent
+        marker.on('mouseover', () => {
+          if (onHoverMarker) onHoverMarker(offer.id);
+        });
+        marker.on('mouseout', () => {
+          if (onHoverMarker) onHoverMarker(null);
+        });
+
+        markerByIdRef.current[offer.id] = marker;
+        offerMarkersRef.current.push(marker);
+      }
+    });
+  }, [getClusters, getClusterExpansionZoom, isPickerMode, viewMode, onSelectOffer, onHoverMarker]);
+
+  // Debounced cluster update on map move/zoom
+  const debouncedUpdateClusters = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      renderNeedsClusters();
+      renderOffersClusters();
+    }, 150);
+  }, [renderNeedsClusters, renderOffersClusters]);
 
   // Initialize Map
   useEffect(() => {
@@ -89,22 +456,8 @@ export const MapView: React.FC<MapViewProps> = ({
       center: initialCenter,
       zoom: initialZoom,
       zoomControl: true,
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
     } as any);
-
-    // Enable scroll zoom only when Ctrl/Cmd is held
-    map.on('mousedown', () => {});
-    mapContainerRef.current.addEventListener('wheel', (e) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        map.scrollWheelZoom.enable();
-      } else {
-        map.scrollWheelZoom.disable();
-        setShowScrollHint(true);
-        if (scrollHintTimeout.current) clearTimeout(scrollHintTimeout.current);
-        scrollHintTimeout.current = setTimeout(() => setShowScrollHint(false), 1500);
-      }
-    }, { passive: false });
 
     // OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -130,6 +483,24 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, [mapReady]);
 
+  // Re-render clusters on map move/zoom with debounce
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const onMoveEnd = () => {
+      debouncedUpdateClusters();
+    };
+
+    map.on('moveend', onMoveEnd);
+    map.on('zoomend', onMoveEnd);
+
+    return () => {
+      map.off('moveend', onMoveEnd);
+      map.off('zoomend', onMoveEnd);
+    };
+  }, [mapInitialized, debouncedUpdateClusters]);
+
   // Fly to selected city when it changes
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -153,258 +524,116 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [selectedCityId]);
 
-  // Update Markers for Needs
+  // Load needs into Supercluster index and render
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !mapInitialized) return;
+    if (isPickerMode) return;
+    if (viewMode === 'OFFERS') {
+      // Clear need markers when in OFFERS mode
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      return;
+    }
 
-    // Clear existing markers
-    Object.values(markersRef.current).forEach((m: L.Marker) => m.remove());
-    markersRef.current = {};
+    loadNeedsIndex(needs);
+    renderNeedsClusters();
+  }, [needs, isPickerMode, viewMode, mapInitialized, loadNeedsIndex, renderNeedsClusters]);
 
-    if (isPickerMode) return; // Don't render need pins in location picker mode
-
-    // When ViewMode is "OFFERS", do NOT render need markers
-    if (viewMode === 'OFFERS') return;
-
-    needs.forEach((need) => {
-      if (!need.latitude || !need.longitude || isNaN(need.latitude) || isNaN(need.longitude)) return;
-
-      const priority = need.priority || 'MEDIUM';
-      const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
-      const colorHex = isCollectionCenter
-        ? '#7c3aed'
-        : priority === 'CRITICAL'
-        ? '#CE3B3B'
-        : priority === 'HIGH'
-        ? '#ea580c'
-        : priority === 'MEDIUM'
-        ? '#F2C33D'
-        : '#059669';
-
-      // SVG icon for collection center (package-open from Lucide)
-      const collectionCenterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36"/></svg>`;
-
-      const innerContent = isCollectionCenter
-        ? collectionCenterSvg
-        : priority === 'CRITICAL' ? '!' : String(need.categories.length);
-
-      const customIcon = L.divIcon({
-        className: 'custom-map-pin',
-        html: `
-          <div style="
-            background-color: ${colorHex};
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-          ">
-            ${innerContent}
-          </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-      });
-
-      const marker = L.marker([need.latitude, need.longitude], { icon: customIcon }).addTo(map);
-
-      // Popup html
-      const catIcons = need.categories
-        .slice(0, 3)
-        .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
-        .join(' ');
-
-      const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
-
-      const popupHtml = `
-        <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
-          <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
-            <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
-              ${priorityLabel}
-            </span>
-            <span style="font-size: 11px; color: #64748b; font-weight: 600;">${need.neighborhood}</span>
-          </div>
-          <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
-            ${need.title}
-          </h4>
-          <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
-            ${catIcons} ${need.categories.map((c) => CATEGORY_LABELS[c]?.label).join(', ')}
-          </p>
-          <div style="margin-top: 6px;">
-            <button id="btn-popup-${need.id}" style="
-              width: 100%;
-              background-color: #0f172a;
-              color: white;
-              border: none;
-              padding: 6px;
-              border-radius: 6px;
-              font-size: 11px;
-              font-weight: bold;
-              cursor: pointer;
-            ">
-              Ver detalles y ayudar →
-            </button>
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupHtml);
-
-      marker.on('popupopen', () => {
-        const btn = document.getElementById(`btn-popup-${need.id}`);
-        if (btn) {
-          btn.onclick = () => onSelectNeed(need);
-        }
-      });
-
-      // On mobile, double-tap marker opens detail directly
-      let lastTap = 0;
-      marker.on('click', () => {
-        const now = Date.now();
-        if (now - lastTap < 400) {
-          // Double tap — open detail directly
-          onSelectNeed(need);
-        }
-        lastTap = now;
-      });
-
-      markersRef.current[need.id] = marker;
-    });
-  }, [needs, isPickerMode, onSelectNeed, viewMode, mapInitialized]);
-
-  // Update Markers for Offers
+  // Load offers into Supercluster index and render
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
-
-    // Clear existing offer markers
-    Object.values(offerMarkersRef.current).forEach((m) => m.remove());
-    offerMarkersRef.current = {};
-
-    if (isPickerMode) return; // Don't render offer pins in location picker mode
-
-    // When ViewMode is "NEEDS", do NOT render offer markers
-    if (viewMode === 'NEEDS') return;
+    if (!map || !mapInitialized) return;
+    if (isPickerMode) return;
+    if (viewMode === 'NEEDS') {
+      // Clear offer markers when in NEEDS mode
+      offerMarkersRef.current.forEach((m) => m.remove());
+      offerMarkersRef.current = [];
+      return;
+    }
 
     // Only render offers that are VERIFIED or PENDING_VERIFICATION and AVAILABLE or PARTIALLY_AVAILABLE
     const visibleOffers = (offers || []).filter((offer) => {
       if (offer.verificationStatus !== 'VERIFIED' && offer.verificationStatus !== 'PENDING_VERIFICATION') return false;
       if (offer.offerStatus !== 'AVAILABLE' && offer.offerStatus !== 'PARTIALLY_AVAILABLE') return false;
-      // Skip offers with invalid/missing lat/lng
-      if (
-        offer.latitude == null ||
-        offer.longitude == null ||
-        isNaN(offer.latitude) ||
-        isNaN(offer.longitude) ||
-        offer.latitude < -90 ||
-        offer.latitude > 90 ||
-        offer.longitude < -180 ||
-        offer.longitude > 180
-      ) {
-        return false;
-      }
       return true;
     });
 
-    visibleOffers.forEach((offer) => {
-      // SVG icon for offers (heart-handshake from Lucide)
-      const heartHandshakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/></svg>`;
+    loadOffersIndex(visibleOffers);
+    renderOffersClusters();
+  }, [offers, isPickerMode, viewMode, mapInitialized, loadOffersIndex, renderOffersClusters]);
 
-      const customIcon = L.divIcon({
-        className: 'custom-map-pin',
-        html: `
-          <div style="
-            background-color: #2563eb;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-          ">
-            ${heartHandshakeSvg}
-          </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-      });
+  // Cross-highlight: when hoveredItemId changes, pan map and highlight the pin
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
 
-      const marker = L.marker([offer.latitude, offer.longitude], { icon: customIcon }).addTo(map);
+    // Only apply on desktop
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) return;
 
-      // Build popup HTML matching need popup style
-      const catIcons = offer.categories
-        .slice(0, 3)
-        .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
-        .join(' ');
-
-      const popupHtml = `
-        <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
-          <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
-            <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
-              OFERTA
-            </span>
-            <span style="font-size: 11px; color: #64748b; font-weight: 600;">${offer.neighborhood}</span>
-          </div>
-          <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
-            ${offer.title}
-          </h4>
-          <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
-            ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
-          </p>
-          <div style="margin-top: 6px;">
-            <button id="btn-popup-offer-${offer.id}" style="
-              width: 100%;
-              background-color: #2563eb;
-              color: white;
-              border: none;
-              padding: 6px;
-              border-radius: 6px;
-              font-size: 11px;
-              font-weight: bold;
-              cursor: pointer;
-            ">
-              Ver detalles →
-            </button>
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupHtml);
-
-      marker.on('popupopen', () => {
-        const btn = document.getElementById(`btn-popup-offer-${offer.id}`);
-        if (btn) {
-          btn.onclick = () => { if (onSelectOffer) onSelectOffer(offer); };
-        }
-      });
-
-      // Double-tap opens detail directly
-      let lastTap = 0;
-      marker.on('click', () => {
-        const now = Date.now();
-        if (now - lastTap < 400) {
-          if (onSelectOffer) onSelectOffer(offer);
-        }
-        lastTap = now;
-      });
-
-      offerMarkersRef.current[offer.id] = marker as any;
+    // Reset all markers to normal scale
+    Object.values(markerByIdRef.current).forEach((marker) => {
+      const el = marker.getElement();
+      if (el) {
+        el.style.transform = el.style.transform.replace(/\s*scale\([^)]*\)/, '');
+        el.style.zIndex = '';
+        el.style.filter = '';
+      }
     });
-  }, [offers, isPickerMode, viewMode, mapInitialized, onSelectOffer]);
+
+    if (!hoveredItemId) return;
+
+    // Find the item's coordinates
+    const need = needs.find((n) => n.id === hoveredItemId);
+    const offer = (offers || []).find((o) => o.id === hoveredItemId);
+    const item = need || offer;
+    if (!item || !item.latitude || !item.longitude) return;
+
+    const markerExists = !!markerByIdRef.current[hoveredItemId];
+
+    if (markerExists) {
+      // Marker is visible — pan to it and highlight
+      map.panTo([item.latitude, item.longitude], { animate: true, duration: 0.4 });
+
+      // Highlight after pan completes
+      setTimeout(() => {
+        const marker = markerByIdRef.current[hoveredItemId];
+        if (marker) {
+          const el = marker.getElement();
+          if (el) {
+            el.style.transform += ' scale(1.4)';
+            el.style.zIndex = '10000';
+            el.style.filter = 'drop-shadow(0 0 6px rgba(0,0,0,0.4))';
+            el.style.transition = 'transform 0.15s ease, filter 0.15s ease';
+          }
+        }
+      }, 100);
+    } else {
+      // Marker is inside a cluster — zoom in to reveal it
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.min(currentZoom + 3, 16);
+      map.flyTo([item.latitude, item.longitude], targetZoom, { animate: true, duration: 0.6 });
+
+      // After zoom, re-render clusters and highlight the now-visible marker
+      setTimeout(() => {
+        renderNeedsClusters();
+        renderOffersClusters();
+        setTimeout(() => {
+          const marker = markerByIdRef.current[hoveredItemId];
+          if (marker) {
+            const el = marker.getElement();
+            if (el) {
+              el.style.transform += ' scale(1.4)';
+              el.style.zIndex = '10000';
+              el.style.filter = 'drop-shadow(0 0 6px rgba(0,0,0,0.4))';
+              el.style.transition = 'transform 0.15s ease, filter 0.15s ease';
+            }
+          }
+        }, 100);
+      }, 650);
+    }
+  }, [hoveredItemId]);
 
   // Center on Selected Need
   useEffect(() => {
@@ -412,8 +641,12 @@ export const MapView: React.FC<MapViewProps> = ({
     const need = needs.find((n) => n.id === selectedNeedId);
     if (need && need.latitude && need.longitude) {
       mapInstanceRef.current.setView([need.latitude, need.longitude], 15, { animate: true });
-      const marker = markersRef.current[need.id];
-      if (marker) marker.openPopup();
+      // After setting view, re-render clusters so the individual marker appears
+      // and we can open its popup
+      setTimeout(() => {
+        renderNeedsClusters();
+        renderOffersClusters();
+      }, 300);
     }
   }, [selectedNeedId, needs]);
 
@@ -564,14 +797,7 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       )}
 
-      {/* Scroll Zoom Hint */}
-      {showScrollHint && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="bg-slate-900/80 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg backdrop-blur-sm">
-            Usa <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-[10px] mx-0.5">Ctrl</kbd> + scroll para hacer zoom
-          </div>
-        </div>
-      )}
+
 
       {/* Picker Instructions */}
       {isPickerMode && (

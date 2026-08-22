@@ -13,6 +13,8 @@ import {
   AlertCircle,
   RefreshCw,
   MapPin,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { FilterState, Need, NeedStatus, Offer } from "./types";
 import { Header } from "./components/Header";
@@ -144,7 +146,26 @@ function MainApp() {
   });
 
   // Mobile view
-  const [mobileView, setMobileView] = useState<"LIST" | "MAP">("LIST");
+  const [mobileView, setMobileView] = useState<"LIST" | "MAP">("MAP");
+
+  // Cross-highlight between map pins and cards
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+
+  // Desktop expanded grid view (list takes full width, map hidden)
+  const [isGridExpanded, setIsGridExpanded] = useState(false);
+
+  // Auto-scroll to highlighted card when hovering a pin on the map
+  useEffect(() => {
+    if (!hoveredItemId) return;
+    // Only on desktop — avoid scroll interference on mobile
+    if (window.innerWidth < 768) return;
+    const cardEl =
+      document.getElementById(`need-card-${hoveredItemId}`) ||
+      document.getElementById(`offer-card-${hoveredItemId}`);
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [hoveredItemId]);
 
   // Selected need modals
   const [selectedNeed, setSelectedNeed] = useState<Need | null>(null);
@@ -539,14 +560,14 @@ function MainApp() {
       />
 
 
-      {/* Main Content Layout */}
-      <main className="flex-1 relative" ref={mainContentRef}>
-        {/* MAP — Full width background */}
+      {/* Main Content Layout — Split panel on desktop, toggle on mobile */}
+      <main className="flex-1 flex flex-col md:flex-row" ref={mainContentRef}>
+        {/* MAP PANEL — 60% width on desktop, full width toggle on mobile */}
         <div
           id="mobile-map-anchor"
-          className={`w-full h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] ${
+          className={`w-full md:w-[60%] lg:w-[65%] h-[calc(100vh-200px)] md:h-[calc(100vh-180px)] relative ${
             mobileView === "MAP" ? "block" : "hidden md:block"
-          }`}
+          } ${isGridExpanded ? "md:hidden" : ""}`}
         >
           <MapView
             needs={needs}
@@ -559,77 +580,86 @@ function MainApp() {
             offers={offers}
             viewMode={filters.viewMode}
             onSelectOffer={(offer) => handleSelectOffer(offer)}
+            hoveredItemId={hoveredItemId}
+            onHoverMarker={setHoveredItemId}
           />
+
+          {/* Priority Legend — bottom-left over map */}
+          <div className="hidden md:block absolute bottom-3 left-3 z-20">
+            <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
+              <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
+                {t('mapLegendTitle')}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
+                <span className="text-slate-700">{t('mapLegendCritical')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                <span className="text-slate-700">{t('mapLegendHigh')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
+                <span className="text-slate-700">{t('mapLegendMedium')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                <span className="text-slate-700">{t('mapLegendLow')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
+                <span className="text-slate-700">{t('mapLegendAcopio')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                <span className="text-slate-700">{t('mapLegendOffer')}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* LIST PANEL — Constrained to max-w-7xl, aligned right */}
+        {/* LIST PANEL — 40% width on desktop (or full width when expanded), full width toggle on mobile */}
         <div
           id="mobile-list-anchor"
-          className={`${
-            mobileView === "LIST" ? "block" : "hidden md:block"
-          } md:absolute md:inset-0 md:pointer-events-none z-20`}
+          className={`w-full ${isGridExpanded ? "md:w-full" : "md:w-[40%] lg:w-[35%]"} md:h-[calc(100vh-180px)] md:border-l md:border-slate-200 bg-white md:bg-slate-50 ${
+            mobileView === "LIST" ? "flex flex-col" : "hidden md:flex md:flex-col"
+          } ${isGridExpanded ? "md:border-l-0" : ""}`}
         >
-          <div className="md:max-w-7xl md:mx-auto md:px-4 md:px-8 md:h-full md:relative">
-            {/* Priority Legend — aligned left */}
-            <div className="hidden md:block md:absolute md:bottom-3 md:left-0 md:pointer-events-auto">
-              <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
-                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
-                  {t('mapLegendTitle')}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
-                  <span className="text-slate-700">{t('mapLegendCritical')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendHigh')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
-                  <span className="text-slate-700">{t('mapLegendMedium')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendLow')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendAcopio')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendOffer')}</span>
-                </div>
-              </div>
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white shrink-0">
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
+              <span>
+                {filters.viewMode === "OFFERS"
+                  ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                  : filters.viewMode === "ALL"
+                  ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                  : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                }
+              </span>
+              <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
+                {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
+              </span>
+            </h3>
+            {/* Expand/Collapse button — desktop only */}
+            <button
+              onClick={() => setIsGridExpanded((v) => !v)}
+              className="hidden md:flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              title={isGridExpanded ? "Volver a vista dividida" : "Expandir lista"}
+            >
+              {isGridExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Distance sort prompt when no geolocation */}
+          {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
+            <div className="mx-3 mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2 shrink-0">
+              <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Para ordenar por distancia, activa tu ubicación desde el selector de ciudad.</span>
             </div>
+          )}
 
-            {/* Cards panel — aligned right */}
-            <div className="p-3 pb-20 md:pb-0 md:p-0 md:absolute md:top-3 md:right-0 md:bottom-3 md:w-[380px] lg:w-[420px] md:pointer-events-auto">
-          <div className="p-3 md:p-0 space-y-3 md:h-full md:flex md:flex-col">
-            <div className="flex items-center justify-between bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 md:shadow-md md:border md:border-slate-200/80">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
-                <span>
-                  {filters.viewMode === "OFFERS"
-                    ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                    : filters.viewMode === "ALL"
-                    ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                    : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                  }
-                </span>
-                <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
-                  {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
-                </span>
-              </h3>
-            </div>
-
-            {/* Distance sort prompt when no geolocation */}
-            {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Para ordenar por distancia, activa tu ubicación desde el selector de ciudad.</span>
-              </div>
-            )}
-
+          {/* Cards list — scrollable */}
+          <div className={`flex-1 overflow-y-auto p-3 pb-20 md:pb-3 cards-scroll ${isGridExpanded ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max" : "space-y-3"}`}>
             {isLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -677,7 +707,7 @@ function MainApp() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-3 md:overflow-y-auto md:flex-1 md:max-h-[calc(100vh-280px)] md:pr-1 cards-scroll">
+              <>
                 {/* ViewMode: NEEDS — only needs */}
                 {filters.viewMode === "NEEDS" && displayedNeeds.map((need) => (
                   <NeedCard
@@ -688,6 +718,8 @@ function MainApp() {
                     userLat={filters.userLat}
                     userLng={filters.userLng}
                     isSelected={selectedNeed?.id === need.id}
+                    isHighlighted={!isGridExpanded && hoveredItemId === need.id}
+                    onHover={isGridExpanded ? undefined : setHoveredItemId}
                   />
                 ))}
 
@@ -697,6 +729,8 @@ function MainApp() {
                     key={offer.id}
                     offer={offer}
                     onClick={() => handleSelectOffer(offer)}
+                    isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
+                    onHover={isGridExpanded ? undefined : setHoveredItemId}
                   />
                 ))}
 
@@ -714,6 +748,8 @@ function MainApp() {
                             userLat={filters.userLat}
                             userLng={filters.userLng}
                             isSelected={selectedNeed?.id === need.id}
+                            isHighlighted={!isGridExpanded && hoveredItemId === need.id}
+                            onHover={isGridExpanded ? undefined : setHoveredItemId}
                           />
                         ))}
                       </>
@@ -725,17 +761,17 @@ function MainApp() {
                             key={offer.id}
                             offer={offer}
                             onClick={() => handleSelectOffer(offer)}
+                            isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
+                            onHover={isGridExpanded ? undefined : setHoveredItemId}
                           />
                         ))}
                       </>
                     )}
                   </>
                 )}
-              </div>
+              </>
             )}
           </div>
-          </div>
-        </div>
         </div>
       </main>
 
