@@ -1,6 +1,6 @@
 // =============================================================================
-// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2-S5)
-// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4), DEV-35 (S5)
+// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2-S6)
+// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4), DEV-35 (S5), DEV-36 (S6)
 //
 // Handler puro sobre Web Standard (Request/Response): sin dependencias de
 // Deno, por lo que es testeable con vitest en Node y ejecutable en la Edge
@@ -37,6 +37,24 @@
 //   - Eventos distintos de la misma conversación → filas separadas.
 //   - Un error de persistencia → 500 estructurado (`persistence_failed`).
 //
+// Deduplicación (escenarios Gherkin S6):
+//   - Clave de idempotencia: `event.id`. La UNIQUE(event_id) de
+//     ingest_responses (S1 + migración S6) resuelve los reenvíos y la
+//     condición de carrera de POSTs concurrentes con el mismo event.id.
+//   - Un reenvío (mismo event.id, incluso con body distinto) NO crea una fila
+//     nueva NI sobrescribe la original: el store devuelve la fila existente.
+//   - El reenvío se DESCARTA en la capa de ingestión: el handler responde 200
+//     con `duplicate=true` y NO re-ejecuta el mapeo (S3) ni el procesamiento
+//     aguas abajo (S5 no re-crea el incidente).
+//   - Un evento SIN id (o con id vacío) → 400 `validation_failed` detallando
+//     el campo faltante; NO se persiste y NO se invoca la deduplicación.
+//   - Eventos distintos (event.id distinto, aunque compartan conversation_id o
+//     contenido) se persisten por separado: la deduplicación NO usa el
+//     contenido ni conversation_id como clave.
+//   - Un reenvío tras un intento fallido de validación se procesa como nuevo:
+//     el intento fallido no persistió nada, así que el reenvío corregido con el
+//     mismo event.id inserta su fila sin conflicto.
+//
 // Creación del incidente (escenarios Gherkin S5):
 //   - Cuando se inyecta un `incidentService` (deps), el evento de completado
 //     dispara la creación del incidente en `needs` con los mensajes acumulados
@@ -56,7 +74,10 @@ import {
   type RawWebhookEvent,
   validateWebhookEvent,
 } from "../_shared/webhook-event.ts";
-import { mapEventToNeedDraft } from "../_shared/need-mapper.ts";
+import {
+  mapEventToNeedDraft,
+  type MappingResult,
+} from "../_shared/need-mapper.ts";
 import {
   type IngestResponsesStore,
   persistIngestResponse,
@@ -67,6 +88,7 @@ import {
 } from "../_shared/completion-service.ts";
 import { type Geocoder } from "../_shared/geocoding.ts";
 import { isCompletionEvent } from "../_shared/incident-builder.ts";
+import { type NeedRecord } from "../_shared/needs-store.ts";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -88,6 +110,49 @@ function jsonResponse(
       ...extraHeaders,
     },
   });
+}
+
+/** Serializa el resumen del mapeo (S3) para el ACK del endpoint. */
+function serializeMapping(mapping: MappingResult) {
+  if (!mapping.draft) return undefined;
+  const draft = mapping.draft;
+  return {
+    result: mapping.status,
+    message_type: draft.messageType,
+    workflow_step: draft.workflowStep,
+    contribution: draft.contribution,
+    builds_incident: draft.buildsIncident,
+    incident_ready: draft.incidentReady,
+    priority: draft.priority,
+    status: draft.status,
+    verification_status: draft.verificationStatus,
+    source: draft.source,
+    contact_whatsapp: draft.contactWhatsapp ?? null,
+    location_pending_geocoding: draft.locationPendingGeocoding,
+  };
+}
+
+/** Serializa un incidente (S5) para el ACK del endpoint (created/duplicate). */
+function serializeIncident(outcome: "created" | "duplicate", record: NeedRecord) {
+  return {
+    outcome,
+    id: record.id,
+    conversation_id: record.conversation_id,
+    source_event_id: record.source_event_id,
+    title: record.title,
+    description: record.description,
+    source: record.source,
+    contact_whatsapp: record.contact_whatsapp,
+    address: record.address,
+    neighborhood: record.neighborhood,
+    priority: record.priority,
+    status: record.status,
+    verification_status: record.verification_status,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    city_id: record.city_id,
+    location_enrichment_status: record.location_enrichment_status,
+  };
 }
 
 /** Dependencias opcionales del handler (permite mantenerlo PURE en tests S2). */
@@ -195,6 +260,36 @@ export async function handleWebhookEvent(
         500,
       );
     }
+  }
+
+  // ===========================================================================
+  // Descarte del reenvío en la capa de ingestión (S6).
+  // La unicidad durable de event_id (UNIQUE en ingest_responses, S1/S6) ya
+  // resolvió el reenvío como `duplicate` SIN insertar una fila nueva. Aquí se
+  // corta el pipeline: el reenvío NO vuelve a mapear (S3) ni re-ejecuta la
+  // creación del incidente aguas abajo (S5). El ACK devuelve la fila existente
+  // con el mismo cuerpo de respuesta de un primer evento (persisted=false,
+  // duplicate=true).
+  if (persistence?.duplicate) {
+    return jsonResponse(
+      {
+        ok: true,
+        status: "accepted",
+        event_id: result.event.id,
+        type: result.event.type,
+        message: "Evento ya registrado (reenvío). Se devuelve la fila existente.",
+        persisted: false,
+        duplicate: true,
+        record: {
+          id: persistence.record.id ?? null,
+          event_id: persistence.record.event_id,
+          processing_status: persistence.record.processing_status,
+          received_at: persistence.record.received_at,
+          created_at: persistence.record.created_at,
+        },
+      },
+      200,
+    );
   }
 
   // Creación del incidente (S5). Si el evento es de completado y se inyectó el
@@ -311,49 +406,13 @@ export async function handleWebhookEvent(
           }
         : {}),
       // Resumen del borrador de Need generado por el mapeo (S3).
-      ...(mapping.draft
-        ? {
-            mapping: {
-              result: mapping.status,
-              message_type: mapping.draft.messageType,
-              workflow_step: mapping.draft.workflowStep,
-              contribution: mapping.draft.contribution,
-              builds_incident: mapping.draft.buildsIncident,
-              incident_ready: mapping.draft.incidentReady,
-              priority: mapping.draft.priority,
-              status: mapping.draft.status,
-              verification_status: mapping.draft.verificationStatus,
-              source: mapping.draft.source,
-              contact_whatsapp: mapping.draft.contactWhatsapp ?? null,
-              location_pending_geocoding: mapping.draft.locationPendingGeocoding,
-            },
-          }
-        : {}),
+      ...(mapping.draft ? { mapping: serializeMapping(mapping) } : {}),
       // Resultado de la creación del incidente (S5). Presente solo cuando el
       // evento es de completado y se inyectó el servicio de incidentes.
       // `outcome` indica si se creó o si ya existía (idempotencia por event.id).
-      ...(incident && (incident.status === "created" || incident.status === "duplicate")
-        ? {
-            incident: {
-              outcome: incident.status,
-              id: incident.incident.id,
-              conversation_id: incident.incident.conversation_id,
-              source_event_id: incident.incident.source_event_id,
-              title: incident.incident.title,
-              description: incident.incident.description,
-              source: incident.incident.source,
-              contact_whatsapp: incident.incident.contact_whatsapp,
-              address: incident.incident.address,
-              neighborhood: incident.incident.neighborhood,
-              priority: incident.incident.priority,
-              status: incident.incident.status,
-              verification_status: incident.incident.verification_status,
-              latitude: incident.incident.latitude,
-              longitude: incident.incident.longitude,
-              city_id: incident.incident.city_id,
-              location_enrichment_status: incident.incident.location_enrichment_status,
-            },
-          }
+      ...(incident &&
+      (incident.status === "created" || incident.status === "duplicate")
+        ? { incident: serializeIncident(incident.status, incident.incident) }
         : {}),
     },
     200,
