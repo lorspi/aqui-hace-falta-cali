@@ -162,7 +162,11 @@ function MainApp() {
 
   // Mobile view
   const [mobileView, setMobileView] = useState<"LIST" | "MAP">("MAP");
-  const [isLegendExpandedMobile, setIsLegendExpandedMobile] = useState(false);
+
+  // Map Legend state (expanded by default on desktop, collapsed by default on mobile)
+  const [isLegendExpanded, setIsLegendExpanded] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth >= 768
+  );
 
   // Cross-highlight between map pins and cards
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -515,8 +519,8 @@ function MainApp() {
   const hasDemoData = needs.some((n) => n.isDemoData);
 
   return (
-    <div className={`min-h-screen bg-brand-surface flex flex-col text-brand-text antialiased ${
-      mobileView === 'MAP' ? 'h-[100dvh] max-h-[100dvh] overflow-hidden md:h-auto md:max-h-none md:overflow-visible md:min-h-screen' : ''
+    <div className={`min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-brand-surface flex flex-col text-brand-text antialiased ${
+      mobileView === 'MAP' ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''
     }`}>
       {/* Platform Header */}
       <Header
@@ -589,7 +593,7 @@ function MainApp() {
         {/* MAP PANEL — 60% width on desktop, full width toggle on mobile */}
         <div
           id="mobile-map-anchor"
-          className={`w-full md:w-[60%] lg:w-[65%] md:h-[calc(100vh-180px)] relative ${
+          className={`w-full md:w-[60%] lg:w-[65%] md:h-full relative ${
             mobileView === "MAP" ? "flex-1 min-h-0 h-full block" : "hidden md:block"
           } ${isGridExpanded ? "md:hidden" : ""}`}
         >
@@ -611,11 +615,11 @@ function MainApp() {
 
           {/* Priority Legend — bottom-left over map */}
           <div className="absolute bottom-3 left-3 z-20">
-            {/* Minimized button on mobile */}
-            {!isLegendExpandedMobile && (
+            {/* Minimized button */}
+            {!isLegendExpanded && (
               <button
-                onClick={() => setIsLegendExpandedMobile(true)}
-                className="md:hidden flex items-center gap-1.5 bg-white/95 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-slate-300 shadow-md text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all"
+                onClick={() => setIsLegendExpanded(true)}
+                className="flex items-center gap-1.5 bg-white/95 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-slate-300 shadow-md text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all cursor-pointer"
               >
                 <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                 <span>{t('mapLegendTitle')}</span>
@@ -623,54 +627,54 @@ function MainApp() {
               </button>
             )}
 
-            {/* Expanded Legend box (Always visible on Desktop, collapsible on Mobile) */}
-            <div className={`bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-slate-300 shadow-md text-xs space-y-1 ${
-              isLegendExpandedMobile ? 'block animate-in fade-in duration-150' : 'hidden md:block'
-            }`}>
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                  {t('mapLegendTitle')}
+            {/* Expanded Legend box (collapsible on desktop & mobile) */}
+            {isLegendExpanded && (
+              <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-slate-300 shadow-md text-xs space-y-1 block animate-in fade-in duration-150">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                    {t('mapLegendTitle')}
+                  </div>
+                  <button
+                    onClick={() => setIsLegendExpanded(false)}
+                    className="p-0.5 text-slate-400 hover:text-slate-700 rounded-md transition-colors cursor-pointer"
+                    title="Minimizar leyenda"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsLegendExpandedMobile(false)}
-                  className="md:hidden p-0.5 text-slate-400 hover:text-slate-700 rounded-md transition-colors"
-                  title="Minimizar leyenda"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
+                  <span className="text-slate-700">{t('mapLegendCritical')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                  <span className="text-slate-700">{t('mapLegendHigh')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
+                  <span className="text-slate-700">{t('mapLegendMedium')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
+                  <span className="text-slate-700">{t('mapLegendLow')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
+                  <span className="text-slate-700">{t('mapLegendAcopio')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                  <span className="text-slate-700">{t('mapLegendOffer')}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
-                <span className="text-slate-700">{t('mapLegendCritical')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-                <span className="text-slate-700">{t('mapLegendHigh')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
-                <span className="text-slate-700">{t('mapLegendMedium')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-                <span className="text-slate-700">{t('mapLegendLow')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
-                <span className="text-slate-700">{t('mapLegendAcopio')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-                <span className="text-slate-700">{t('mapLegendOffer')}</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* LIST PANEL — 40% width on desktop (or full width when expanded), full width toggle on mobile */}
         <div
           id="mobile-list-anchor"
-          className={`w-full ${isGridExpanded ? "md:w-full" : "md:w-[40%] lg:w-[35%]"} md:h-[calc(100vh-180px)] md:border-l md:border-slate-200 bg-white md:bg-slate-50 ${
+          className={`w-full ${isGridExpanded ? "md:w-full" : "md:w-[40%] lg:w-[35%]"} md:h-full md:border-l md:border-slate-200 bg-white md:bg-slate-50 ${
             mobileView === "LIST" ? "flex flex-col" : "hidden md:flex md:flex-col"
           } ${isGridExpanded ? "md:border-l-0" : ""}`}
         >
