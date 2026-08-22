@@ -201,7 +201,7 @@ describe("S5 — Geocoding no disponible no bloquea la creación del incidente",
 });
 
 describe("S5 — Un reenvío del mismo evento de completado no crea un incidente duplicado", () => {
-  it("idempotencia por event.id: devuelve el incidente existente", async () => {
+  it("el reenvío se descarta en la capa de ingestión y NO re-ejecuta la creación del incidente (S6)", async () => {
     const ingest = createInMemoryIngestResponsesStore();
     const needs = createInMemoryNeedsStore();
     const messages = [buildMessage()];
@@ -212,14 +212,20 @@ describe("S5 — Un reenvío del mismo evento de completado no crea un incidente
     const firstBody = await first.json();
     expect(firstBody.incident.outcome).toBe("created");
 
-    // Reenvío del mismo evento de completado (el store de ingest devuelve la
-    // fila existente para el event.id; no se inserta de nuevo).
+    // Reenvío del mismo evento de completado: la unicidad por event.id (S6)
+    // lo resuelve como duplicate en la capa de ingestión ANTES de llegar al
+    // servicio de incidentes. No se crea ni se consulta un incidente nuevo.
     const resend = await postWith(ingest, needs, completion);
     expect(resend.status).toBe(200);
     const resendBody = await resend.json();
 
-    expect(resendBody.incident.outcome).toBe("duplicate");
-    expect(resendBody.incident.id).toBe(firstBody.incident.id);
+    // El ACK señala el reenvío a nivel de ingestión (fila existente).
+    expect(resendBody.duplicate).toBe(true);
+    expect(resendBody.persisted).toBe(false);
+    expect(resendBody.record.event_id).toBe("evt_999");
+    // No se re-ejecuta el procesamiento aguas abajo (S6 #8): no hay bloque
+    // `incident` y el registro en needs no se duplica.
+    expect(resendBody.incident).toBeUndefined();
     expect(needs.size()).toBe(1);
   });
 });
