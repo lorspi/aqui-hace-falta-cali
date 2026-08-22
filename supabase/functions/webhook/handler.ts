@@ -1,6 +1,6 @@
 // =============================================================================
-// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2)
-// Ticket: DEV-32
+// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2+S3)
+// Tickets: DEV-32 (S2), DEV-33 (S3)
 //
 // Handler puro sobre Web Standard (Request/Response): sin dependencias de
 // Deno, por lo que es testeable con vitest en Node y ejecutable en la Edge
@@ -18,9 +18,19 @@
 //   - Reenvíos con el mismo event_id → 200 (la deduplicación es S4/S6).
 //   - Sin autenticación (deuda de seguridad, ver S8).
 //   - Sin coordenadas → 200 (el geocoding es S5).
+//
+// Mapeo (escenarios Gherkin S3):
+//   - El ACK 200 incluye `mapping`: resumen del borrador de Need generado
+//     (message_type/workflow.step normalizados, defaults priority/status/
+//     verification_status/source, contact_whatsapp, location_pending_geocoding).
+//   - Los eventos de type distinto a `message.received` se mapean con
+//     `builds_incident=false` (no arman incidente; insumo de S5).
+//   - La persistencia (S4), la creación del incidente (S5) y la idempotencia
+//     durable (S6) se delegan a capas posteriores; aquí no se persiste.
 // =============================================================================
 
 import { validateWebhookEvent } from "../_shared/webhook-event.ts";
+import { mapEventToNeedDraft } from "../_shared/need-mapper.ts";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -109,8 +119,11 @@ export async function handleWebhookEvent(req: Request): Promise<Response> {
     );
   }
 
-  // ACK: evento aceptado. La persistencia (S4), el mapeo (S3/S5) y la
-  // idempotencia (S6) se delegan a capas posteriores; aquí no se persiste.
+  // Mapeo del evento a borrador de Need (S3). La persistencia (S4), la
+  // creación del incidente (S5) y la idempotencia durable (S6) se delegan a
+  // capas posteriores; aquí solo se incluye el resumen del mapeo en el ACK.
+  const mapping = mapEventToNeedDraft(payload);
+
   return jsonResponse(
     {
       ok: true,
@@ -118,6 +131,25 @@ export async function handleWebhookEvent(req: Request): Promise<Response> {
       event_id: result.event.id,
       type: result.event.type,
       message: "Evento aceptado.",
+      // Resumen del borrador de Need generado por el mapeo (S3).
+      ...(mapping.draft
+        ? {
+            mapping: {
+              result: mapping.status,
+              message_type: mapping.draft.messageType,
+              workflow_step: mapping.draft.workflowStep,
+              contribution: mapping.draft.contribution,
+              builds_incident: mapping.draft.buildsIncident,
+              incident_ready: mapping.draft.incidentReady,
+              priority: mapping.draft.priority,
+              status: mapping.draft.status,
+              verification_status: mapping.draft.verificationStatus,
+              source: mapping.draft.source,
+              contact_whatsapp: mapping.draft.contactWhatsapp ?? null,
+              location_pending_geocoding: mapping.draft.locationPendingGeocoding,
+            },
+          }
+        : {}),
     },
     200,
   );
