@@ -1,27 +1,27 @@
 # 🆘 Aquí Hace Falta
 
-**Plataforma ciudadana de código abierto para coordinar ayuda en emergencias.**
+**Plataforma ciudadana de código abierto para coordinar ayuda en emergencias en Colombia.**
 
-Un mapa interactivo en tiempo real donde comunidades pueden registrar y encontrar necesidades activas: alimentos, agua, medicamentos, voluntarios, transporte, escombros, sangre, alojamiento y más. Diseñada para activarse rápidamente ante desastres naturales y emergencias humanitarias.
+Un mapa interactivo en tiempo real donde comunidades y organizaciones pueden registrar y encontrar necesidades activas y ofertas de ayuda: alimentos, agua, medicamentos, voluntarios, transporte, alojamiento, acopio y más. Diseñada para responder rápidamente ante desastres naturales y situaciones de emergencia.
 
-> 🤖 **Nota:** Este proyecto fue construido con apoyo significativo de inteligencia artificial (Claude/Kiro). El diseño, la arquitectura y gran parte del código fueron generados y refinados con asistencia de IA como herramienta de desarrollo acelerado en contexto de emergencia.
+> 🤖 **Nota:** Este proyecto ha sido desarrollado aceleradamente con asistencia de Inteligencia Artificial (Antigravity) aplicando tipado estricto, modificaciones quirúrgicas y mejores prácticas de arquitectura en un contexto de emergencia.
 
 ---
 
-## ✨ Características
+## ✨ Características Principales
 
-- 📍 **Mapa interactivo** con puntos de necesidad geolocalizados (Leaflet)
-- 🔍 **Filtros avanzados** por categoría, prioridad, barrio, distancia y estado
-- 📝 **Registro ciudadano** — cualquier persona puede reportar una necesidad
-- ✅ **Sistema de verificación** — moderadores confirman la información
-- 🚨 **Prioridades claras** — Crítica, Alta, Media, Baja
-- 📱 **Responsive** — funciona en móvil, tablet y escritorio
-- 🔗 **URLs compartibles** por necesidad para difusión en redes
-- 🛡️ **Protección anti-bot** con Cloudflare Turnstile
-- 👥 **Panel de administración** para moderadores
-- 🏙️ **Multi-ciudad** — soporta múltiples municipios/ciudades
-- ✏️ **Edición ciudadana** — la comunidad puede actualizar información
-- 📊 **Métricas** de necesidades activas, verificadas y cubiertas
+- 🗺️ **Mapa Interactivo con Clustering:** Vista panorámica inicial de Colombia (`~4.57, -74.29`) con agrupación inteligente de marcadores (`supercluster`).
+- 📍 **Multi-Municipio:** Cobertura para Cali y los principales municipios de Colombia.
+- 🔍 **Filtros Avanzados:** Filtrado por tipo (necesidades / ofertas), categoría de ayuda, prioridad, barrio, distancia y estado de verificación.
+- ✅ **Distintivos de Verificación Unificados:** Badge oficial `✓ VERIFICADO` en tarjetas y detalles.
+- 📝 **Edición Ciudadana y Sección `¿QUIÉN ACTUALIZA?`:** Permite actualización de información registrando el motivo y los campos modificados.
+- 🛡️ **Check de Verificación de Moderador:** Las ediciones realizadas por moderadores/staff quedan registradas con un distintivo oficial `✓` y su nombre fijado en el historial de cambios (`update_logs` / `offer_update_logs`).
+- 📁 **Políticas de Archivado:** La moderación archiva (`ARCHIVED`) publicaciones en lugar de eliminarlas físicamente de la base de datos, excluyéndolas automáticamente de las vistas públicas.
+- 🚨 **Banner de Emergencia Oficial:** Disclaimer con botones directos de llamada a líneas de socorro (`📞 123`, `Cruz Roja 132`, `Bomberos 119`).
+- 🌐 **Soporte Multi-Idioma:** Disponible en Español (`ES`), Inglés (`EN`), Francés (`FR`) y Portugués (`PT`).
+- 🛡️ **Protección Anti-Bot:** Verificación con Cloudflare Turnstile en formularios públicos.
+- 👑 **Panel de Moderación:** Filtros completos por tipo, prioridad y verificación para la gestión por el equipo de administración.
+- 📱 **Diseño 100% Responsivo:** Interfaz adaptable a dispositivos móviles, tablets y escritorio.
 
 ---
 
@@ -29,14 +29,13 @@ Un mapa interactivo en tiempo real donde comunidades pueden registrar y encontra
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React 19, TypeScript, Tailwind CSS v4, Vite |
-| Backend | [Convex](https://convex.dev) (base de datos reactiva + funciones serverless) |
-| Mapa | [Leaflet](https://leafletjs.com) con OpenStreetMap |
-| Animaciones | Motion (Framer Motion) |
-| Iconos | Lucide React |
-| Anti-bot | Cloudflare Turnstile |
-| Hosting Frontend | Firebase Hosting (o cualquier hosting estático) |
-| Hosting Backend | Convex Cloud |
+| **Frontend** | React 19, TypeScript, Tailwind CSS v4, Vite 6 |
+| **Backend & Base de Datos** | [Supabase](https://supabase.com) (PostgreSQL + Realtime + Auth) |
+| **Mapas & Clustering** | [Leaflet](https://leafletjs.com) con OpenStreetMap y `supercluster` |
+| **Iconos & UI** | Lucide React, Framer Motion |
+| **Anti-bot** | Cloudflare Turnstile |
+| **Túnel de Pruebas** | Cloudflare Tunnels (`cloudflared`) |
+| **Hosting Producción** | Firebase Hosting |
 
 ---
 
@@ -44,19 +43,17 @@ Un mapa interactivo en tiempo real donde comunidades pueden registrar y encontra
 
 - [Node.js](https://nodejs.org) v18 o superior
 - [npm](https://www.npmjs.com/) v9 o superior
-- Cuenta gratuita en [Convex](https://convex.dev)
-- (Opcional) Cuenta en [Cloudflare](https://dash.cloudflare.com) para Turnstile
-- (Opcional) Proyecto en [Firebase](https://firebase.google.com) para hosting
+- Proyecto configurado en [Supabase](https://supabase.com)
 
 ---
 
-## 🚀 Instalación y Desarrollo
+## 🚀 Instalación y Desarrollo Local
 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/aqui-hace-falta.git
-cd aqui-hace-falta
+git clone https://github.com/lorspi/aqui-hace-falta-cali.git
+cd aqui-hace-falta-cali
 ```
 
 ### 2. Instalar dependencias
@@ -65,212 +62,104 @@ cd aqui-hace-falta
 npm install
 ```
 
-### 3. Configurar Convex
+### 3. Configurar variables de entorno
 
-Crea una cuenta gratuita en [convex.dev](https://convex.dev) y ejecuta:
-
-```bash
-npx convex dev
-```
-
-Esto creará automáticamente un archivo `.env.local` con las variables de tu deployment de desarrollo. Sigue las instrucciones en la terminal para vincular tu proyecto.
-
-### 4. Configurar variables de entorno
-
-Copia el archivo de ejemplo:
+Copia el archivo `.env.example` o genera tu `.env.development`:
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env.development
 ```
 
-Las variables necesarias son:
+Define las siguientes variables en `.env.development`:
 
 ```env
-# Se configuran automáticamente al ejecutar `npx convex dev`
-CONVEX_DEPLOYMENT=dev:tu-deployment
-VITE_CONVEX_URL=https://tu-deployment.convex.cloud
+# Supabase Configuration
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key-de-supabase
 
-# Cloudflare Turnstile (opcional en desarrollo)
-# Test key que siempre aprueba:
+# Cloudflare Turnstile (Test Key para desarrollo)
 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
 
-# Microsoft Clarity - analytics (opcional)
+# Microsoft Clarity (Opcional)
 VITE_CLARITY_ID=tu-clarity-id
-
-# Hosts permitidos en el dev server de Vite (opcional, separados por coma)
-VITE_ALLOWED_HOSTS=tu-dominio.com
 ```
 
-### 5. Ejecutar en modo desarrollo
+### 4. Iniciar el servidor local de desarrollo
 
 ```bash
 npm run dev
 ```
 
-Esto ejecuta simultáneamente:
-- **Frontend** (Vite) en `http://localhost:8080`
-- **Backend** (Convex dev) sincronizando funciones y esquema
+La aplicación estará accesible localmente en **`http://localhost:8080`**.
+
+### 5. (Opcional) Exponer Localhost mediante Cloudflare Tunnel
+
+Para compartir tu entorno local con personas fuera de tu red local:
+
+```bash
+npx -y cloudflared tunnel --url http://localhost:8080
+```
 
 ---
 
-## 👤 Crear el Primer Administrador
+## 🌿 Flujo de Trabajo en Git
 
-Después de que Convex esté corriendo, crea el primer usuario administrador:
+Para mantener la estabilidad en equipos de desarrollo asistidos por IA, se sigue el protocolo definido en [`GIT_WORKFLOW.md`](GIT_WORKFLOW.md):
 
-```bash
-npx convex run seed:createFirstAdmin '{"email":"admin@tudominio.com","name":"Tu Nombre","password":"TuPasswordSeguro123"}'
-```
+1. **`main` es la rama sagrada:** No se realizan commits directos en `main`.
+2. **Ramas por tarea:** Crea ramas descriptivas (`feature/nombre-tarea`, `fix/solucion-bug`).
+3. **Pull Requests:** Todo código se integra a `main` mediante PR revisado.
 
-> ⚠️ **Importante:** Usa una contraseña segura. Este comando solo funciona si no existe ningún administrador. Usuarios adicionales se crean desde el panel de administración.
-
-Para producción, usa el flag `--prod`:
-
-```bash
-npx convex run --prod seed:createFirstAdmin '{"email":"admin@tudominio.com","name":"Tu Nombre","password":"TuPasswordSeguro123"}'
-```
-
-Una vez creado, puedes acceder al panel de administración haciendo clic en "Acceso Moderación" en el footer de la app.
-
----
-
-## 🌐 Despliegue a Producción
-
-### Backend (Convex)
-
-1. Despliega las funciones y esquema a producción:
-
-```bash
-npx convex deploy
-```
-
-2. Configura las variables de entorno de producción en el dashboard de Convex:
-   - `TURNSTILE_SECRET_KEY` — tu secret key de Cloudflare Turnstile
-
-### Frontend (Firebase Hosting)
-
-1. Crea un archivo `.env.production`:
-
-```env
-VITE_CONVEX_URL=https://tu-prod-deployment.convex.cloud
-VITE_TURNSTILE_SITE_KEY=tu-turnstile-site-key
-VITE_CLARITY_ID=tu-clarity-id
-```
-
-2. Compila el frontend:
-
-```bash
-npm run build:prod
-```
-
-3. Despliega a Firebase:
-
-```bash
-firebase deploy
-```
-
-### Despliegue Completo (un solo comando)
-
-```bash
-npx convex deploy && npm run build:prod && firebase deploy
-```
-
-### Hosting Alternativo
-
-El frontend compila a archivos estáticos en `dist/`. Puedes usar cualquier hosting:
-
-- **Vercel**: `npx vercel --prod`
-- **Netlify**: Apunta al directorio `dist/` con `npm run build:prod`
-- **Cloudflare Pages**: Conecta el repo y configura `npm run build:prod` como build command
-- **Cualquier servidor estático**: Sirve `dist/` con un fallback SPA a `index.html`
-
----
-
-## 🔐 Configurar Cloudflare Turnstile (Anti-bot)
-
-Turnstile protege la edición ciudadana de bots:
-
-1. Ve a [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)
-2. Crea un widget para tu dominio
-3. Copia el **Site Key** a tu `.env.production` como `VITE_TURNSTILE_SITE_KEY`
-4. Copia el **Secret Key** y configúralo como variable de entorno en Convex:
-   - Dashboard de Convex → Settings → Environment Variables → `TURNSTILE_SECRET_KEY`
-
-Para desarrollo, usa el test key `1x00000000000000000000AA` que siempre aprueba.
-
----
-
-## 📊 Analytics (Microsoft Clarity)
-
-La plataforma soporta [Microsoft Clarity](https://clarity.microsoft.com) para analytics de uso. Es completamente opcional y se configura por variable de entorno (no queda hardcodeado en el código).
-
-1. Crea un proyecto en [clarity.microsoft.com](https://clarity.microsoft.com)
-2. Copia tu **Clarity ID** (ej: `abc123xyz`)
-3. Agrégalo a tu `.env.production`:
-
-```env
-VITE_CLARITY_ID=tu-clarity-id
-```
-
-Si la variable no está definida, el script de Clarity simplemente no se ejecuta. No afecta el funcionamiento de la app.
-
----
-
-## 🔧 Configuración del Dev Server
-
-El archivo `vite.config.ts` lee la variable `VITE_ALLOWED_HOSTS` para restringir qué dominios pueden acceder al servidor de desarrollo. Esto es útil si expones tu dev server a través de un proxy o tunnel:
-
-```env
-# En .env.local
-VITE_ALLOWED_HOSTS=mi-dominio.com,otro-dominio.com
-```
-
-Si no la defines, Vite no aplica restricción (comportamiento por defecto).
+Para consultar el manual completo de Git del equipo, revisa [`GIT_WORKFLOW.md`](GIT_WORKFLOW.md).
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```
-├── convex/                 # Backend (Convex functions + schema)
-│   ├── schema.ts           # Esquema de base de datos
-│   ├── needs.ts            # CRUD de necesidades
-│   ├── admin.ts            # Funciones de administración
-│   ├── auth.ts             # Autenticación y sesiones
-│   ├── seed.ts             # Scripts de seed (primer admin)
-│   ├── publicEdit.ts       # Edición ciudadana
-│   └── publicEditAction.ts # Action con validación Turnstile
 ├── src/
-│   ├── App.tsx             # Componente principal
-│   ├── main.tsx            # Entry point con ConvexProvider
-│   ├── types.ts            # Tipos TypeScript
-│   ├── components/         # Componentes React
-│   │   ├── Header.tsx
-│   │   ├── MapView.tsx
-│   │   ├── NeedCard.tsx
-│   │   ├── FilterBar.tsx
-│   │   ├── CreateNeedModal.tsx
-│   │   ├── AdminDashboardModal.tsx
+│   ├── App.tsx                   # Componente principal y enrutado
+│   ├── main.tsx                  # Punto de entrada de la aplicación
+│   ├── types.ts                  # Definiciones de tipos TypeScript
+│   ├── components/               # Componentes de la interfaz
+│   │   ├── MapView.tsx           # Mapa Leaflet con panorámica de Colombia y clustering
+│   │   ├── NeedCard.tsx          # Tarjetas de necesidades
+│   │   ├── OfferCard.tsx         # Tarjetas de ofertas
+│   │   ├── NeedDetailModal.tsx   # Modal de detalle e historial de cambios
+│   │   ├── AdminPanelPage.tsx    # Panel de administración y moderación
+│   │   ├── PublicEditModal.tsx   # Edición pública de necesidades (Sección 5)
+│   │   ├── BannerDisclaimer.tsx  # Banner oficial de líneas de emergencia
 │   │   └── ...
-│   ├── data/               # Datos estáticos (ciudades)
-│   └── utils/              # Utilidades (geocoding, formatters)
-├── public/                 # Assets estáticos
-├── .env.example            # Template de variables de entorno
-├── firebase.json           # Config de Firebase Hosting
-├── vite.config.ts          # Config de Vite
+│   ├── hooks/                    # Hooks personalizados (useMapClustering, etc.)
+│   ├── lib/
+│   │   ├── supabaseClient.ts     # Cliente oficial de Supabase
+│   │   └── supabaseService.ts    # Capa de datos, queries y mutations
+│   ├── i18n/                     # Traducciones (ES, EN, FR, PT)
+│   └── utils/                    # Geocodificación y formateadores
+├── GIT_WORKFLOW.md               # Guía oficial del flujo de Git en equipo
+├── GEMINI.md                     # Reglas del proyecto para asistentes de IA
+├── firebase.json                 # Configuración de despliegue en Firebase Hosting
+├── vite.config.ts                # Configuración de Vite dev server y allowedHosts
 └── package.json
 ```
 
 ---
 
-## 🏙️ Personalización para tu Ciudad/Emergencia
+## 🌐 Despliegue a Producción
 
-Este proyecto fue creado para el Valle del Cauca, Colombia, pero puede adaptarse a cualquier ubicación:
+> ⚠️ **Nota:** El despliegue a producción en Firebase Hosting se realiza **únicamente bajo demanda explícita** según el protocolo del proyecto.
 
-1. **Ciudades**: Edita `src/data/valleCities.ts` con los municipios de tu zona
-2. **Categorías**: Modifica los tipos en `src/types.ts` según las necesidades de tu emergencia
-3. **ID de emergencia**: Cambia `"terremoto-cali-2026"` en `convex/needs.ts` por tu evento
-4. **Textos**: Los textos de la UI están en español colombiano dentro de los componentes
-5. **Coordenadas iniciales**: Ajusta el centro del mapa en `src/components/MapView.tsx`
+### Compilar y Desplegar:
+
+```bash
+# 1. Compilar bundle de producción
+npm run build
+
+# 2. Desplegar a Firebase Hosting
+npx -y firebase-tools deploy --only hosting
+```
+
+La versión en producción se actualizará en **[https://aqui-hace-falta.web.app](https://aqui-hace-falta.web.app)**.
 
 ---
 
@@ -278,60 +167,15 @@ Este proyecto fue creado para el Valle del Cauca, Colombia, pero puede adaptarse
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run dev` | Inicia frontend + backend en desarrollo |
-| `npm run dev:frontend` | Solo el frontend (Vite) |
-| `npm run dev:backend` | Solo el backend (Convex dev) |
-| `npm run build` | Compila el frontend |
-| `npm run build:prod` | Compila para producción |
-| `npm run deploy` | Despliega backend + compila frontend |
-| `npm run lint` | Verifica tipos TypeScript |
-| `npm run seed:admin` | Crea el primer administrador |
-
----
-
-## 🤝 Contribuir
-
-¡Las contribuciones son bienvenidas! Este es un proyecto de impacto social y toda ayuda cuenta.
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/mi-mejora`)
-3. Haz commit de tus cambios (`git commit -m 'Agrega mi mejora'`)
-4. Push a la rama (`git push origin feature/mi-mejora`)
-5. Abre un Pull Request
-
-### Ideas para contribuir
-
-- 🌍 Traducciones a otros idiomas
-- ♿ Mejoras de accesibilidad
-- 📊 Dashboard de métricas públicas
-- 🔔 Notificaciones (push, email, WhatsApp)
-- 📱 PWA / App nativa
-- 🗺️ Mejor geocoding y autocompletado de direcciones
-- 🧪 Tests automatizados
-- 📖 Documentación adicional
-
----
-
-## ⚠️ Notas de Seguridad
-
-- La autenticación de admin usa un encoding XOR simple (no bcrypt). Para producción de alto riesgo, se recomienda migrar a un hash seguro usando una Convex Action con Node.js runtime.
-- Las variables de entorno con secretos (`TURNSTILE_SECRET_KEY`) deben configurarse en el dashboard de Convex, nunca en archivos del repositorio.
-- Los archivos `.env.local` y `.env.production` están en `.gitignore` y no deben commitearse.
+| `npm run dev` | Inicia el servidor de desarrollo Vite en `http://localhost:8080` |
+| `npm run build` | Compila la aplicación para producción |
+| `npm run preview` | Previsualiza localmente el build de producción |
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto está licenciado bajo la [Apache License 2.0](LICENSE).
-
----
-
-## 🙏 Créditos
-
-- Construido con apoyo de **inteligencia artificial** (Claude/Kiro) como herramienta de desarrollo acelerado
-- Mapas por [OpenStreetMap](https://www.openstreetmap.org) contribuidores
-- Backend reactivo por [Convex](https://convex.dev)
-- Iconos por [Lucide](https://lucide.dev)
+Este proyecto está licenciado bajo la licencia [Apache 2.0](LICENSE).
 
 ---
 

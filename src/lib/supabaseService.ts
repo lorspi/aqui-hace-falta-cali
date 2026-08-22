@@ -233,9 +233,14 @@ export async function getOfferById(id: string): Promise<Offer | null> {
 }
 
 export async function createNeed(data: Partial<Need>): Promise<Need> {
+  const cityCoords = getCityCoordinates(data.cityId || 'cali');
+  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
+  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
+
   const dbData = needToDbNeed({
     ...data,
-    emergencyId: data.emergencyId || 'general',
+    latitude: lat,
+    longitude: lng,
     status: data.status || 'NEED_HELP_NOW',
     verificationStatus: data.verificationStatus || 'PENDING_VERIFICATION',
     createdAt: new Date().toISOString(),
@@ -248,8 +253,14 @@ export async function createNeed(data: Partial<Need>): Promise<Need> {
 }
 
 export async function createOffer(data: Partial<Offer>): Promise<Offer> {
+  const cityCoords = getCityCoordinates(data.cityId || 'cali');
+  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
+  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
+
   const dbData = offerToDbOffer({
     ...data,
+    latitude: lat,
+    longitude: lng,
     offerStatus: data.offerStatus || 'AVAILABLE',
     verificationStatus: data.verificationStatus || 'PENDING_VERIFICATION',
     createdAt: new Date().toISOString(),

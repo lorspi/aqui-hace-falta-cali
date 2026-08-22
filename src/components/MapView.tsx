@@ -607,7 +607,7 @@ export const MapView: React.FC<MapViewProps> = ({
     displaceOverlappingMarkers();
   }, [offers, isPickerMode, viewMode, mapInitialized, loadOffersIndex, renderOffersClusters, displaceOverlappingMarkers]);
 
-  // Cross-highlight: when hoveredItemId changes, pan map and highlight the pin
+  // Cross-highlight: when hoveredItemId changes, highlight the pin visually without panning or moving the map
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -628,71 +628,17 @@ export const MapView: React.FC<MapViewProps> = ({
 
     if (!hoveredItemId) return;
 
-    // Find the item's coordinates
-    const need = needs.find((n) => n.id === hoveredItemId);
-    const offer = (offers || []).find((o) => o.id === hoveredItemId);
-    const item = need || offer;
-    if (!item || !item.latitude || !item.longitude) return;
-
-    const markerExists = !!markerByIdRef.current[hoveredItemId];
-
-    if (markerExists) {
-      // Marker is visible — pan to it and highlight
-      map.panTo([item.latitude, item.longitude], { animate: true, duration: 0.4 });
-
-      // Highlight after pan completes
-      setTimeout(() => {
-        const marker = markerByIdRef.current[hoveredItemId];
-        if (marker) {
-          const el = marker.getElement();
-          if (el) {
-            el.style.transform += ' scale(1.4)';
-            el.style.zIndex = '10000';
-            el.style.filter = 'drop-shadow(0 0 6px rgba(0,0,0,0.4))';
-            el.style.transition = 'transform 0.15s ease, filter 0.15s ease';
-          }
-        }
-      }, 100);
-    } else {
-      // Marker is inside a cluster — zoom in to reveal it
-      const currentZoom = map.getZoom();
-      const targetZoom = Math.min(currentZoom + 3, 16);
-      map.flyTo([item.latitude, item.longitude], targetZoom, { animate: true, duration: 0.6 });
-
-      // After zoom, re-render clusters and highlight the now-visible marker
-      setTimeout(() => {
-        renderNeedsClusters();
-        renderOffersClusters();
-        setTimeout(() => {
-          const marker = markerByIdRef.current[hoveredItemId];
-          if (marker) {
-            const el = marker.getElement();
-            if (el) {
-              el.style.transform += ' scale(1.4)';
-              el.style.zIndex = '10000';
-              el.style.filter = 'drop-shadow(0 0 6px rgba(0,0,0,0.4))';
-              el.style.transition = 'transform 0.15s ease, filter 0.15s ease';
-            }
-          }
-        }, 100);
-      }, 650);
+    const marker = markerByIdRef.current[hoveredItemId];
+    if (marker) {
+      const el = marker.getElement();
+      if (el) {
+        el.style.transform += ' scale(1.4)';
+        el.style.zIndex = '10000';
+        el.style.filter = 'drop-shadow(0 0 6px rgba(0,0,0,0.4))';
+        el.style.transition = 'transform 0.15s ease, filter 0.15s ease';
+      }
     }
   }, [hoveredItemId]);
-
-  // Center on Selected Need
-  useEffect(() => {
-    if (!selectedNeedId || !mapInstanceRef.current) return;
-    const need = needs.find((n) => n.id === selectedNeedId);
-    if (need && need.latitude && need.longitude) {
-      mapInstanceRef.current.setView([need.latitude, need.longitude], 15, { animate: true });
-      // After setting view, re-render clusters so the individual marker appears
-      // and we can open its popup
-      setTimeout(() => {
-        renderNeedsClusters();
-        renderOffersClusters();
-      }, 300);
-    }
-  }, [selectedNeedId, needs]);
 
   // User Location Marker
   const userMarkerRef = useRef<L.Marker | null>(null);

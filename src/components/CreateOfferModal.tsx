@@ -168,6 +168,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
           status: 'AVAILABLE' as const,
         }));
 
+      const cityCoords = getCityCoordinates(cityId || 'cali');
+      const finalLat = latitude != null && !isNaN(latitude) ? latitude : cityCoords.lat;
+      const finalLng = longitude != null && !isNaN(longitude) ? longitude : cityCoords.lng;
+
       await createOffer({
         title: title.trim(),
         description: description.trim(),
@@ -176,8 +180,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
         cityId,
         address: address.trim(),
         neighborhood: neighborhood.trim(),
-        latitude: latitude!,
-        longitude: longitude!,
+        latitude: finalLat,
+        longitude: finalLng,
         contactName: contactName.trim(),
         contactPhone: contactPhone.trim() || undefined,
         contactWhatsapp: contactWhatsapp.trim() || undefined,
