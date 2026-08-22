@@ -13,6 +13,8 @@ interface MapViewProps {
   userLat?: number | null;
   userLng?: number | null;
   selectedCityId?: string;
+  /** Indicates whether the city change came from the selector (user intent) or from map panning */
+  cityChangeSource?: 'selector' | 'map' | 'init';
   onMapCenterChanged?: (lat: number, lng: number) => void;
   // Location picker mode
   isPickerMode?: boolean;
@@ -34,6 +36,7 @@ export const MapView: React.FC<MapViewProps> = ({
   userLat,
   userLng,
   selectedCityId,
+  cityChangeSource = 'init',
   onMapCenterChanged,
   isPickerMode = false,
   pickerPosition,
@@ -52,6 +55,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const markerByIdRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
   const isFlyingRef = useRef(false);
+  const userPannedRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,8 +222,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
         const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
 
-        const popupHtml = `
-          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
+        const tooltipHtml = `
+          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
             <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
               <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
                 ${priorityLabel}
@@ -229,43 +233,16 @@ export const MapView: React.FC<MapViewProps> = ({
             <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
               ${need.title}
             </h4>
-            <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
+            <p style="font-size: 11px; color: #334155; margin: 0;">
               ${catIcons} ${need.categories.map((c) => CATEGORY_LABELS[c]?.label).join(', ')}
             </p>
-            <div style="margin-top: 6px;">
-              <button id="btn-popup-${need.id}" style="
-                width: 100%;
-                background-color: #0f172a;
-                color: white;
-                border: none;
-                padding: 6px;
-                border-radius: 6px;
-                font-size: 11px;
-                font-weight: bold;
-                cursor: pointer;
-              ">
-                Ver detalles y ayudar →
-              </button>
-            </div>
           </div>
         `;
 
-        marker.bindPopup(popupHtml);
+        marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
 
-        marker.on('popupopen', () => {
-          const btn = document.getElementById(`btn-popup-${need.id}`);
-          if (btn) {
-            btn.onclick = () => onSelectNeed(need);
-          }
-        });
-
-        let lastTap = 0;
         marker.on('click', () => {
-          const now = Date.now();
-          if (now - lastTap < 400) {
-            onSelectNeed(need);
-          }
-          lastTap = now;
+          onSelectNeed(need);
         });
 
         // Cross-highlight: hover on pin → notify parent
@@ -352,8 +329,8 @@ export const MapView: React.FC<MapViewProps> = ({
           .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
           .join(' ');
 
-        const popupHtml = `
-          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 200px; padding: 2px;">
+        const tooltipHtml = `
+          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
             <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
               <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
                 OFERTA
@@ -363,43 +340,16 @@ export const MapView: React.FC<MapViewProps> = ({
             <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
               ${offer.title}
             </h4>
-            <p style="font-size: 11px; color: #334155; margin: 0 0 6px 0;">
+            <p style="font-size: 11px; color: #334155; margin: 0;">
               ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
             </p>
-            <div style="margin-top: 6px;">
-              <button id="btn-popup-offer-${offer.id}" style="
-                width: 100%;
-                background-color: #2563eb;
-                color: white;
-                border: none;
-                padding: 6px;
-                border-radius: 6px;
-                font-size: 11px;
-                font-weight: bold;
-                cursor: pointer;
-              ">
-                Ver detalles →
-              </button>
-            </div>
           </div>
         `;
 
-        marker.bindPopup(popupHtml);
+        marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
 
-        marker.on('popupopen', () => {
-          const btn = document.getElementById(`btn-popup-offer-${offer.id}`);
-          if (btn) {
-            btn.onclick = () => { if (onSelectOffer) onSelectOffer(offer); };
-          }
-        });
-
-        let lastTap = 0;
         marker.on('click', () => {
-          const now = Date.now();
-          if (now - lastTap < 400) {
-            if (onSelectOffer) onSelectOffer(offer);
-          }
-          lastTap = now;
+          if (onSelectOffer) onSelectOffer(offer);
         });
 
         // Cross-highlight: hover on pin → notify parent
@@ -553,6 +503,7 @@ export const MapView: React.FC<MapViewProps> = ({
     // Fire onMapCenterChanged when user pans/zooms (not during programmatic flyTo)
     map.on('moveend', () => {
       if (isFlyingRef.current) return;
+      userPannedRef.current = true;
       if (onMapCenterChanged) {
         const center = map.getCenter();
         onMapCenterChanged(center.lat, center.lng);
@@ -588,6 +539,15 @@ export const MapView: React.FC<MapViewProps> = ({
     const map = mapInstanceRef.current;
     if (!map || !selectedCityId) return;
 
+    // If the city change came from the selector, reset the manual pan flag and fly
+    if (cityChangeSource === 'selector') {
+      userPannedRef.current = false;
+    }
+
+    // Skip centering if the user has manually panned the map
+    // (only center for selector picks or initial load)
+    if (userPannedRef.current) return;
+
     isFlyingRef.current = true;
 
     const onFlyEnd = () => {
@@ -604,7 +564,7 @@ export const MapView: React.FC<MapViewProps> = ({
       const coords = getCityCoordinates(selectedCityId);
       map.flyTo([coords.lat, coords.lng], 13, { animate: true, duration: 1.2 });
     }
-  }, [selectedCityId]);
+  }, [selectedCityId, cityChangeSource]);
 
   // Load needs into Supercluster index and render
   useEffect(() => {

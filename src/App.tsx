@@ -113,11 +113,15 @@ function MainApp() {
     return match ? match.id : ALL_COLOMBIA_ID;
   });
 
+  // Track whether the city change came from the selector or from map panning
+  const [cityChangeSource, setCityChangeSource] = useState<'selector' | 'map' | 'init'>('init');
+
   // Build current URL base for the city
   const getCityPath = (cityId: string) => cityId === ALL_COLOMBIA_ID ? '/' : `/${cityId}`;
 
   // Sync URL when city changes
   const handleCityChange = (cityId: string) => {
+    setCityChangeSource('selector');
     setSelectedCityId(cityId);
     if (!selectedNeedRef.current) {
       window.history.replaceState(null, '', getCityPath(cityId));
@@ -349,6 +353,7 @@ function MainApp() {
   const handleMapCenterChanged = (lat: number, lng: number) => {
     const detectedCity = detectCityFromCoords(lat, lng);
     if (detectedCity && detectedCity.id !== selectedCityId) {
+      setCityChangeSource('map');
       setSelectedCityId(detectedCity.id);
       document.title = `Aquí Hace Falta — ${detectedCity.name}`;
       if (!selectedNeedRef.current) {
@@ -591,6 +596,7 @@ function MainApp() {
             userLat={filters.userLat}
             userLng={filters.userLng}
             selectedCityId={selectedCityId}
+            cityChangeSource={cityChangeSource}
             onMapCenterChanged={handleMapCenterChanged}
             offers={offers}
             viewMode={filters.viewMode}

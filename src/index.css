@@ -331,3 +331,10 @@ body.modal-open {
 .user-location-pin div {
   animation: pulse-ring 2s ease-out infinite;
 }
+
+/* Leaflet tooltip overrides — allow text wrapping */
+.leaflet-tooltip {
+  white-space: normal !important;
+  max-width: 260px !important;
+  word-wrap: break-word;
+}
