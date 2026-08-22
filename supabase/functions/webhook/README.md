@@ -1,4 +1,4 @@
-# Edge Function `webhook` — Endpoint receptor de eventos (S2+S3 / DEV-32, DEV-33)
+# Edge Function `webhook` — Endpoint receptor de eventos (S2+S3+S4 / DEV-32, DEV-33, DEV-34)
 
 Endpoint HTTP que recibe los **eventos crudos** del webhook del equipo de
 conversación (agente WhatsApp de "Aquí hace falta").
@@ -7,8 +7,8 @@ conversación (agente WhatsApp de "Aquí hace falta").
 
 | Método | Ruta (local) | Descripción |
 |--------|--------------|-------------|
-| `POST` | `http://127.0.0.1:54321/functions/v1/webhook` | Recibe un evento crudo |
-| `POST` | `http://127.0.0.1:54321/functions/v1/webhook/events` | Alias del contrato |
+| `POST` | `http://127.0.0.1:54341/functions/v1/webhook` | Recibe un evento crudo |
+| `POST` | `http://127.0.0.1:54341/functions/v1/webhook/events` | Alias del contrato |
 
 En producción la base es `https://<project-ref>.supabase.co/functions/v1/webhook`.
 
@@ -39,11 +39,57 @@ En producción la base es `https://<project-ref>.supabase.co/functions/v1/webhoo
 
 | Caso | HTTP | Body |
 |------|------|------|
-| Evento válido (ACK) | `200` | `{ "ok": true, "status": "accepted", "event_id": "...", "type": "...", "mapping": { ... } }` |
+| Evento válido (ACK) | `200` | `{ "ok": true, "status": "accepted", "event_id": "...", "type": "...", "persisted": true, "record": {...}, "mapping": { ... } }` |
+| Reenvío del mismo `event.id` | `200` | igual, con `persisted: false`, `duplicate: true` y `record` = fila existente |
 | Body no es JSON válido | `400` | `{ "error": "invalid_json", ... }` |
 | Campos mínimos faltantes / formato inválido | `400` | `{ "error": "validation_failed", "details": { "issues": [...] } }` |
+| Error de persistencia | `500` | `{ "error": "persistence_failed", ... }` |
 | Content-Type no es JSON | `415` | `{ "error": "invalid_content_type", ... }` |
 | Método distinto de POST | `405` | `{ "error": "method_not_allowed", ... }` |
+
+## Persistencia del evento crudo (S4)
+
+Cada evento válido se persiste en `ingest_responses` (auditoría). La fila
+guarda:
+
+- `raw_event` (y `raw_payload`, alias S1): el **JSON completo del evento sin
+  modificar**.
+- `body`: el contenido del mensaje (`data.body` o `body` plano).
+- Metadatos: `event_id`, `type`, `conversation_id`, `from`, `message_type`
+  (canónico), `workflow_step` (canónico).
+- `processing_status = 'RECEIVED'`, `received_at` y `created_at`.
+
+**Idempotencia por `event.id`:** la tabla tiene `UNIQUE (event_id)` (S1). El
+endpoint hace `INSERT ... ON CONFLICT (event_id) DO NOTHING`; en un reenvío se
+devuelve la fila existente y **no se crea ni se modifica nada** (el `raw_event`
+y los timestamps originales quedan intactos). La idempotencia aplica por
+`event.id`, no por `conversation_id`: eventos distintos de la misma conversación
+generan filas separadas.
+
+Un evento sin campos obligatorios (`id`, `type`, `conversation_id`, `body`)
+devuelve `400` y **no se persiste ninguna fila**. Un evento sin coordenadas se
+persiste tal cual (el geocoding queda pendiente para S5).
+
+El ACK `200` incluye el resultado de la persistencia:
+
+```json
+{
+  "ok": true,
+  "status": "accepted",
+  "event_id": "evt_001",
+  "type": "message.received",
+  "persisted": true,
+  "duplicate": false,
+  "record": {
+    "id": "…uuid…",
+    "event_id": "evt_001",
+    "processing_status": "RECEIVED",
+    "received_at": "…",
+    "created_at": "…"
+  },
+  "mapping": { … }
+}
+```
 
 ## Mapeo a borrador de Need (S3)
 
@@ -97,13 +143,19 @@ El ACK `200` incluye una sección `mapping` con el resumen del borrador de
 ```bash
 supabase start          # (opcional) levanta el stack local
 supabase functions serve webhook
-# POST http://127.0.0.1:54321/functions/v1/webhook
+# POST http://127.0.0.1:54341/functions/v1/webhook
 ```
+
+El bootstrap (`index.ts`) crea el store de `ingest_responses` contra PostgREST
+usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (las inyecta la plataforma o
+el CLI local). Con el rol `service_role` se escribe en `ingest_responses`
+(BYPASSRLS; el anon está bloqueado por RLS, ver S1).
 
 ## Notas
 
-- Esta historia NO persiste el evento (es S4), NO crea el incidente (S5) ni
-  confirma la idempotencia de forma durable (S6): recibe, valida estructura
-  mínima, mapea el borrador de Need (S3) y responde ACK 200 con el resumen.
-- La deduplicación por `event_id` se delega a la capa de idempotencia (S4/S6);
-  el endpoint es stateless y acepta reenvíos.
+- Esta historia NO crea el incidente (S5) ni confirma la idempotencia como
+  respuesta de negocio distinta (S6): la idempotencia durable ya queda
+  garantizada por el `UNIQUE (event_id)` + `ON CONFLICT DO NOTHING` al persistir
+  (S4).
+- La deduplicación por `event_id` se delega a la capa de persistencia (S4/S6);
+  el endpoint acepta reenvíos y responde `200` devolviendo la fila existente.
