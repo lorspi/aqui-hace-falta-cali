@@ -1,6 +1,7 @@
 // =============================================================================
-// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2-S6)
-// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4), DEV-35 (S5), DEV-36 (S6)
+// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2-S7)
+// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4), DEV-35 (S5), DEV-36 (S6),
+//          DEV-37 (S7)
 //
 // Handler puro sobre Web Standard (Request/Response): sin dependencias de
 // Deno, por lo que es testeable con vitest en Node y ejecutable en la Edge
@@ -15,7 +16,6 @@
 //   - Acepta eventos de cualquier `type` (incluido el de completado).
 //   - Body vacío o no parseable como JSON → 400 con detalle.
 //   - Campos mínimos faltantes o con formato inválido → 400 con detalle.
-//   - Reenvíos con el mismo event_id → 200 (la deduplicación es S4/S6).
 //   - Sin autenticación (deuda de seguridad, ver S8).
 //   - Sin coordenadas → 200 (el geocoding es S5).
 //
@@ -31,21 +31,25 @@
 //     en `ingest_responses` con `raw_event` intacto, metadatos y
 //     `processing_status=RECEIVED`.
 //   - Idempotencia por `event.id`: un reenvío no duplica ni modifica la fila
-//     original; el ACK 200 devuelve la fila existente con `duplicate=true`.
+//     original.
 //   - Evento sin campos obligatorios → 400 y NO se persiste ninguna fila.
 //   - Evento sin coordenadas → se persiste tal cual (geocoding pendiente, S5).
 //   - Eventos distintos de la misma conversación → filas separadas.
-//   - Un error de persistencia → 500 estructurado (`persistence_failed`).
+//   - Un error de persistencia → 500 estructurado y genérico
+//     (`persistence_failed`, sin exponer detalles internos).
 //
-// Deduplicación (escenarios Gherkin S6):
+// Deduplicación (escenarios Gherkin S6 + S7):
 //   - Clave de idempotencia: `event.id`. La UNIQUE(event_id) de
 //     ingest_responses (S1 + migración S6) resuelve los reenvíos y la
 //     condición de carrera de POSTs concurrentes con el mismo event.id.
 //   - Un reenvío (mismo event.id, incluso con body distinto) NO crea una fila
 //     nueva NI sobrescribe la original: el store devuelve la fila existente.
-//   - El reenvío se DESCARTA en la capa de ingestión: el handler responde 200
-//     con `duplicate=true` y NO re-ejecuta el mapeo (S3) ni el procesamiento
-//     aguas abajo (S5 no re-crea el incidente).
+//   - Confirmación al remitente (S7): un reenvío del mismo event.id ya
+//     procesado con éxito responde **409 Conflict** (`duplicate_event`) con el
+//     error estructurado (code + message) indicando que el evento ya fue
+//     recibido, e incluye la fila existente en `details.record`. NO se crea un
+//     duplicado en `ingest_responses` ni se re-ejecuta el procesamiento aguas
+//     abajo (S3 mapeo / S5 incidente).
 //   - Un evento SIN id (o con id vacío) → 400 `validation_failed` detallando
 //     el campo faltante; NO se persiste y NO se invoca la deduplicación.
 //   - Eventos distintos (event.id distinto, aunque compartan conversation_id o
@@ -64,10 +68,23 @@
 //   - `data.from` inválido → 400 `invalid_from` (el evento crudo ya quedó en
 //     ingest_responses para auditoría; sin incidente).
 //   - Sin mensajes acumulados previos → 409 `no_messages` (sin incidente).
-//   - Reenvío del mismo event.id de completado → 200 `duplicate` con el
-//     incidente existente (idempotencia por event.id).
+//   - Reenvío del mismo event.id de completado → 409 `duplicate_event` en la
+//     capa de ingestión (S7): no se re-ejecuta la creación del incidente.
 //   - Sin coordenadas → geocoding (inyectable); si no hay geocoding, el
-//     incidente se crea igual con lat/lng NULL y PENDING (no se rechaza).
+//     incidente se crea igual con lat/lng NULL y PENDING (no se rechaza; el
+//     ACK 200 confirma la recepción aunque falten coordenadas, S7).
+//
+// Confirmación al remitente — ACK (escenarios Gherkin S7):
+//   - Respuesta 200 por evento recibido; el ACK devuelve el `event.id` y el
+//     `type` del evento.
+//   - Errores → códigos y mensajes estructurados (400/409/500):
+//       - `code` + `message` en todos los errores (400 validación, 409
+//         reenvío, 500 interno).
+//       - El 500 es genérico: NO expone detalles internos (el `cause` real se
+//         registra vía `deps.logError` si está inyectado).
+//   - Evento de completado sin coordenadas → 200 OK: la confirmación no
+//     depende del geocoding; el enriquecimiento queda como paso posterior
+//     (`location_enrichment_status=PENDING`, S5).
 // =============================================================================
 
 import {
@@ -163,6 +180,13 @@ export interface WebhookDeps {
   incidentService?: CompletionServiceDeps;
   /** Geocoder para enriquecer la ubicación del incidente (S5). */
   geocoder?: Geocoder;
+  /**
+   * Logger opcional de errores internos (S7). Se invoca en los fallos
+   * internos (500) para permitir trazabilidad SERVER-SIDE sin exponer los
+   * detalles en la respuesta al remitente. En la Edge Function real se enlaza
+   * a `console.error`; en tests se puede espiar.
+   */
+  logError?: (code: string, err: unknown) => void;
 }
 
 /** Endpoint receptor de eventos crudos del webhook del equipo de conversación. */
@@ -180,7 +204,7 @@ export async function handleWebhookEvent(
   if (req.method !== "POST") {
     return jsonResponse(
       {
-        error: "method_not_allowed",
+        code: "method_not_allowed",
         message: "Método no permitido. Usa POST /webhook/events.",
       },
       405,
@@ -193,7 +217,7 @@ export async function handleWebhookEvent(
   if (!contentType.toLowerCase().includes("application/json")) {
     return jsonResponse(
       {
-        error: "invalid_content_type",
+        code: "invalid_content_type",
         message: "Content-Type debe ser application/json.",
       },
       415,
@@ -207,7 +231,7 @@ export async function handleWebhookEvent(
   } catch {
     return jsonResponse(
       {
-        error: "invalid_json",
+        code: "invalid_json",
         message: "El body debe ser un JSON válido.",
         details: {
           issues: [
@@ -224,7 +248,7 @@ export async function handleWebhookEvent(
   if (!result.valid) {
     return jsonResponse(
       {
-        error: "validation_failed",
+        code: "validation_failed",
         message:
           "Estructura mínima inválida. Campos faltantes o con formato inválido.",
         details: { issues: result.issues },
@@ -249,13 +273,14 @@ export async function handleWebhookEvent(
         payload as RawWebhookEvent,
       );
     } catch (err) {
+      // S7: el 500 es estructurado y GENÉRICO (no expone detalles internos).
+      // La causa real se registra server-side vía `deps.logError` cuando está
+      // inyectado (bootstrap → console.error).
+      deps.logError?.("persistence_failed", err);
       return jsonResponse(
         {
-          error: "persistence_failed",
-          message: "No se pudo persistir el evento en ingest_responses.",
-          details: {
-            cause: err instanceof Error ? err.message : String(err),
-          },
+          code: "persistence_failed",
+          message: "Error interno al persistir el evento. Inténtalo de nuevo.",
         },
         500,
       );
@@ -263,32 +288,33 @@ export async function handleWebhookEvent(
   }
 
   // ===========================================================================
-  // Descarte del reenvío en la capa de ingestión (S6).
+  // Confirmación al remitente de un reenvío (S6 + S7).
   // La unicidad durable de event_id (UNIQUE en ingest_responses, S1/S6) ya
-  // resolvió el reenvío como `duplicate` SIN insertar una fila nueva. Aquí se
-  // corta el pipeline: el reenvío NO vuelve a mapear (S3) ni re-ejecuta la
-  // creación del incidente aguas abajo (S5). El ACK devuelve la fila existente
-  // con el mismo cuerpo de respuesta de un primer evento (persisted=false,
-  // duplicate=true).
+  // resolvió el reenvío como `duplicate` SIN insertar una fila nueva. El ACK
+  // del contrato S7 exige que un reenvío del mismo event.id (ya procesado con
+  // éxito) responda **409 Conflict** con error estructurado (`code` +
+  // `message`) indicando que el evento ya fue recibido, e incluye la fila
+  // existente en `details.record`. NO se re-ejecuta el mapeo (S3) ni el
+  // procesamiento aguas abajo (S5 no re-crea el incidente), y NO se crea un
+  // duplicado en `ingest_responses`.
   if (persistence?.duplicate) {
     return jsonResponse(
       {
-        ok: true,
-        status: "accepted",
-        event_id: result.event.id,
-        type: result.event.type,
-        message: "Evento ya registrado (reenvío). Se devuelve la fila existente.",
-        persisted: false,
-        duplicate: true,
-        record: {
-          id: persistence.record.id ?? null,
-          event_id: persistence.record.event_id,
-          processing_status: persistence.record.processing_status,
-          received_at: persistence.record.received_at,
-          created_at: persistence.record.created_at,
+        code: "duplicate_event",
+        message: `El evento con event.id '${result.event.id}' ya fue recibido. No se creó un duplicado.`,
+        details: {
+          event_id: result.event.id,
+          type: result.event.type,
+          record: {
+            id: persistence.record.id ?? null,
+            event_id: persistence.record.event_id,
+            processing_status: persistence.record.processing_status,
+            received_at: persistence.record.received_at,
+            created_at: persistence.record.created_at,
+          },
         },
       },
-      200,
+      409,
     );
   }
 
@@ -307,7 +333,7 @@ export async function handleWebhookEvent(
     ) {
       return jsonResponse(
         {
-          error: "missing_conversation_id",
+          code: "missing_conversation_id",
           message:
             "El evento de completado requiere data.conversation_id (o conversation_id) no vacío para crear el incidente.",
           details: {
@@ -346,13 +372,13 @@ export async function handleWebhookEvent(
         accumulated,
       );
     } catch (err) {
+      // S7: el 500 es estructurado y GENÉRICO (sin detalles internos). La
+      // causa real se registra server-side vía `deps.logError`.
+      deps.logError?.("incident_creation_failed", err);
       return jsonResponse(
         {
-          error: "incident_creation_failed",
-          message: "No se pudo crear el incidente en needs.",
-          details: {
-            cause: err instanceof Error ? err.message : String(err),
-          },
+          code: "incident_creation_failed",
+          message: "Error interno al crear el incidente. Inténtalo de nuevo.",
         },
         500,
       );
@@ -362,7 +388,7 @@ export async function handleWebhookEvent(
     if (incident.status === "invalid_from") {
       return jsonResponse(
         {
-          error: "invalid_from",
+          code: "invalid_from",
           message:
             "El evento de completado quedó registrado en ingest_responses para auditoría, pero no se creó el incidente.",
           details: { issue: incident.issue },
@@ -373,7 +399,7 @@ export async function handleWebhookEvent(
     if (incident.status === "no_messages") {
       return jsonResponse(
         {
-          error: "no_messages",
+          code: "no_messages",
           message:
             "No hay mensajes acumulados previos para la conversación; no se crea el incidente.",
           details: { conversation_id: incident.conversationId },
