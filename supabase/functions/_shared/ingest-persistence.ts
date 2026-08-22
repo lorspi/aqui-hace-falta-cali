@@ -86,6 +86,12 @@ export interface PersistResult {
 export interface IngestResponsesStore {
   /** Inserta la fila si no existe; si ya existe, devuelve la fila original. */
   insertIfAbsent(record: IngestResponseRecord): Promise<PersistResult>;
+  /**
+   * Lista las filas de una conversación (para acumular los mensajes del
+   * incidente en S5). Opcional: la creación del incidente no requiere un
+   * store con este método si el orquestador inyecta los mensajes acumulados.
+   */
+  listByConversationId?(conversationId: string): Promise<IngestResponseRecord[]>;
 }
 
 // -----------------------------------------------------------------------------
@@ -246,6 +252,11 @@ export function createInMemoryIngestResponsesStore(
     get(eventId: string) {
       return rows.get(eventId);
     },
+    async listByConversationId(conversationId: string) {
+      return [...rows.values()].filter(
+        (row) => row.conversation_id === conversationId,
+      );
+    },
   };
 }
 
@@ -324,6 +335,18 @@ export function createPostgrestIngestResponsesStore(
         );
       }
       return { record: existing, inserted: false, duplicate: true };
+    },
+
+    async listByConversationId(conversationId: string): Promise<IngestResponseRecord[]> {
+      const listRes = await f(
+        `${base}?conversation_id=eq.${encodeURIComponent(conversationId)}&select=*&order=received_at.asc`,
+        { method: "GET", headers: authHeaders },
+      );
+      if (!listRes.ok) {
+        throw parsePostgrestError(listRes.status, await listRes.text());
+      }
+      const rows = (await listRes.json()) as IngestResponseRecord[];
+      return Array.isArray(rows) ? rows : [];
     },
   };
 }

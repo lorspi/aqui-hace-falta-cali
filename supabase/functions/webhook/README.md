@@ -1,4 +1,4 @@
-# Edge Function `webhook` — Endpoint receptor de eventos (S2+S3+S4 / DEV-32, DEV-33, DEV-34)
+# Edge Function `webhook` — Endpoint receptor de eventos (S2+S3+S4+S5 / DEV-32, DEV-33, DEV-34, DEV-35)
 
 Endpoint HTTP que recibe los **eventos crudos** del webhook del equipo de
 conversación (agente WhatsApp de "Aquí hace falta").
@@ -91,6 +91,93 @@ El ACK `200` incluye el resultado de la persistencia:
 }
 ```
 
+## Creación del incidente al completar la conversación (S5)
+
+Cuando llega el **evento de completado** (otro `type` distinto de
+`message.received`, p. ej. `conversation_completed`), el receptor crea el
+registro del incidente en `needs` con los **mensajes acumulados** de la
+conversación:
+
+```bash
+# 1) Los message.received se acumulan (S4 ya los persiste en ingest_responses)
+POST {SUPABASE_URL}/functions/v1/webhook
+{ "id": "evt_msg_1", "type": "message.received", "conversation_id": "conv_001",
+  "data": { "body": "Necesito agua potable", "from": "573001234567" } }
+
+# 2) El evento de completado dispara la creación del incidente
+POST {SUPABASE_URL}/functions/v1/webhook
+{ "id": "evt_c1", "type": "conversation_completed", "conversation_id": "conv_001",
+  "data": { "body": "Conversación finalizada", "from": "573001234567" } }
+```
+
+El ACK `200` incluye la sección `incident`:
+
+```json
+{
+  "ok": true,
+  "status": "accepted",
+  "event_id": "evt_c1",
+  "type": "conversation_completed",
+  "incident": {
+    "outcome": "created",
+    "id": "…uuid…",
+    "conversation_id": "conv_001",
+    "source_event_id": "evt_c1",
+    "title": "Necesito agua potable",
+    "description": "Necesito agua potable",
+    "source": "WhatsApp",
+    "contact_whatsapp": "573001234567",
+    "priority": "MEDIUM",
+    "status": "NEED_HELP_NOW",
+    "verification_status": "PENDING_VERIFICATION",
+    "latitude": null,
+    "longitude": null,
+    "city_id": "cali",
+    "location_enrichment_status": "PENDING"
+  }
+}
+```
+
+- **Defaults del contrato**: `priority=MEDIUM`, `status=NEED_HELP_NOW`,
+  `verification_status=PENDING_VERIFICATION`, `source=WhatsApp`,
+  `emergency_id=terremoto-cali-2026`, `city_id=cali`.
+- **`contact_whatsapp`** se toma de `data.from` del completado (o del primer
+  mensaje acumulado que lo traiga).
+- **Acumulación**: la descripción y la ubicación se arman con los mensajes
+  `message.received` de la misma `conversation_id` (no se mezclan conversaciones).
+- **Ubicación**:
+  - Si los mensajes traen coordenadas → el incidente queda con
+    `location_enrichment_status=RESOLVED` y `city_id` resuelto por las
+    coordenadas (**no** se invoca geocoding).
+  - Si faltan coordenadas pero hay `address`/`neighborhood` → se invoca el
+    geocoder (Nominatim); si resuelve, actualiza lat/lng y `city_id`.
+  - Si no hay geocoding disponible o no resuelve → el incidente se crea **igual**
+    con lat/lng NULL y `location_enrichment_status=PENDING` (el flujo no rechaza
+    el evento de completado).
+
+### Códigos de error S5
+
+| Caso | HTTP | Body |
+|------|------|------|
+| `conversation_id` vacío/faltante en el completado | `400` | `{ "error": "validation_failed" | "missing_conversation_id", ... }` |
+| `data.from` inválido (no E.164) | `400` | `{ "error": "invalid_from", ... }` — el evento queda en `ingest_responses` (auditoría) |
+| Sin mensajes acumulados previos | `409` | `{ "error": "no_messages", ... }` |
+| Reenvío del mismo `event.id` de completado | `200` | `incident.outcome: "duplicate"` con la fila existente |
+| Error al crear el incidente | `500` | `{ "error": "incident_creation_failed", ... }` |
+
+### Idempotencia
+
+- `needs.source_event_id` (event.id del completado) tiene un **índice único
+  parcial** → un reenvío del mismo completado no crea un segundo incidente.
+- `needs.conversation_id` tiene un **índice único parcial** → una conversación
+  genera un solo incidente (no se mezclan conversaciones).
+
+> **Dependencia**: el schema exacto del evento de completado está pendiente de
+> confirmación por el equipo de conversación. Se soportan los `type`
+> `conversation_completed` y `conversation.completed`, y la señal
+> `workflow.step=COMPLETED`. Ajustar `COMPLETION_EVENT_TYPES` en
+> `_shared/incident-builder.ts` cuando se confirme el nombre.
+
 ## Mapeo a borrador de Need (S3)
 
 El ACK `200` incluye una sección `mapping` con el resumen del borrador de
@@ -153,9 +240,9 @@ el CLI local). Con el rol `service_role` se escribe en `ingest_responses`
 
 ## Notas
 
-- Esta historia NO crea el incidente (S5) ni confirma la idempotencia como
-  respuesta de negocio distinta (S6): la idempotencia durable ya queda
-  garantizada por el `UNIQUE (event_id)` + `ON CONFLICT DO NOTHING` al persistir
-  (S4).
+- S5 (creación del incidente al completar la conversación) está implementada: el
+  evento de completado crea el registro en `needs` con los mensajes acumulados de
+  la conversación, geocoding cuando faltan coordenadas e idempotencia por
+  `event.id`. Ver sección "Creación del incidente al completar la conversación (S5)".
 - La deduplicación por `event_id` se delega a la capa de persistencia (S4/S6);
   el endpoint acepta reenvíos y responde `200` devolviendo la fila existente.

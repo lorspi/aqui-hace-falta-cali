@@ -1,6 +1,6 @@
 // =============================================================================
-// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2+S3+S4)
-// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4)
+// webhook/handler.ts — Lógica HTTP del endpoint receptor de eventos (S2-S5)
+// Tickets: DEV-32 (S2), DEV-33 (S3), DEV-34 (S4), DEV-35 (S5)
 //
 // Handler puro sobre Web Standard (Request/Response): sin dependencias de
 // Deno, por lo que es testeable con vitest en Node y ejecutable en la Edge
@@ -36,6 +36,20 @@
 //   - Evento sin coordenadas → se persiste tal cual (geocoding pendiente, S5).
 //   - Eventos distintos de la misma conversación → filas separadas.
 //   - Un error de persistencia → 500 estructurado (`persistence_failed`).
+//
+// Creación del incidente (escenarios Gherkin S5):
+//   - Cuando se inyecta un `incidentService` (deps), el evento de completado
+//     dispara la creación del incidente en `needs` con los mensajes acumulados
+//     de la conversación (source=WhatsApp, contact_whatsapp desde `from`,
+//     PENDING_VERIFICATION, defaults del contrato).
+//   - `conversation_id` vacío → 400 `missing_conversation_id` (sin incidente).
+//   - `data.from` inválido → 400 `invalid_from` (el evento crudo ya quedó en
+//     ingest_responses para auditoría; sin incidente).
+//   - Sin mensajes acumulados previos → 409 `no_messages` (sin incidente).
+//   - Reenvío del mismo event.id de completado → 200 `duplicate` con el
+//     incidente existente (idempotencia por event.id).
+//   - Sin coordenadas → geocoding (inyectable); si no hay geocoding, el
+//     incidente se crea igual con lat/lng NULL y PENDING (no se rechaza).
 // =============================================================================
 
 import {
@@ -47,6 +61,12 @@ import {
   type IngestResponsesStore,
   persistIngestResponse,
 } from "../_shared/ingest-persistence.ts";
+import {
+  type CompletionServiceDeps,
+  processCompletionEvent,
+} from "../_shared/completion-service.ts";
+import { type Geocoder } from "../_shared/geocoding.ts";
+import { isCompletionEvent } from "../_shared/incident-builder.ts";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -74,6 +94,10 @@ function jsonResponse(
 export interface WebhookDeps {
   /** Store de `ingest_responses` para persistir el evento crudo (S4). */
   ingestStore?: IngestResponsesStore;
+  /** Servicio de creación del incidente al completar la conversación (S5). */
+  incidentService?: CompletionServiceDeps;
+  /** Geocoder para enriquecer la ubicación del incidente (S5). */
+  geocoder?: Geocoder;
 }
 
 /** Endpoint receptor de eventos crudos del webhook del equipo de conversación. */
@@ -173,6 +197,97 @@ export async function handleWebhookEvent(
     }
   }
 
+  // Creación del incidente (S5). Si el evento es de completado y se inyectó el
+  // servicio de incidentes, se crea el registro en `needs` con los mensajes
+  // acumulados de la conversación (source=WhatsApp, PENDING_VERIFICATION).
+  let incident;
+  if (deps.incidentService && isCompletionEvent(payload as RawWebhookEvent)) {
+    const conversationId = (payload as RawWebhookEvent).conversation_id;
+
+    // Un evento de completado sin conversation_id no puede agrupar la
+    // conversación: la validación devuelve 400 detallando el campo faltante.
+    if (
+      typeof conversationId !== "string" ||
+      conversationId.trim().length === 0
+    ) {
+      return jsonResponse(
+        {
+          error: "missing_conversation_id",
+          message:
+            "El evento de completado requiere data.conversation_id (o conversation_id) no vacío para crear el incidente.",
+          details: {
+            issues: [
+              {
+                path: ["conversation_id"],
+                message:
+                  "conversation_id: campo requerido (string no vacío) en el evento de completado.",
+              },
+            ],
+          },
+        },
+        400,
+      );
+    }
+
+    // Mensajes acumulados de la conversación: los eventos `message.received`
+    // ya persistidos en ingest_responses (mismo conversation_id, distinto
+    // event.id que el completado).
+    let accumulated: RawWebhookEvent[] = [];
+    if (deps.ingestStore?.listByConversationId) {
+      const rows = await deps.ingestStore.listByConversationId(conversationId);
+      accumulated = rows
+        .map((r) => r.raw_event as RawWebhookEvent)
+        .filter((e) => String(e?.id) !== String((payload as RawWebhookEvent).id));
+    }
+
+    try {
+      incident = await processCompletionEvent(
+        {
+          needsStore: deps.incidentService.needsStore,
+          geocoder: deps.geocoder ?? deps.incidentService.geocoder,
+          cityResolver: deps.incidentService.cityResolver,
+        },
+        payload as RawWebhookEvent,
+        accumulated,
+      );
+    } catch (err) {
+      return jsonResponse(
+        {
+          error: "incident_creation_failed",
+          message: "No se pudo crear el incidente en needs.",
+          details: {
+            cause: err instanceof Error ? err.message : String(err),
+          },
+        },
+        500,
+      );
+    }
+
+    // Respuestas de negocio del flujo de completado (S5).
+    if (incident.status === "invalid_from") {
+      return jsonResponse(
+        {
+          error: "invalid_from",
+          message:
+            "El evento de completado quedó registrado en ingest_responses para auditoría, pero no se creó el incidente.",
+          details: { issue: incident.issue },
+        },
+        400,
+      );
+    }
+    if (incident.status === "no_messages") {
+      return jsonResponse(
+        {
+          error: "no_messages",
+          message:
+            "No hay mensajes acumulados previos para la conversación; no se crea el incidente.",
+          details: { conversation_id: incident.conversationId },
+        },
+        409,
+      );
+    }
+  }
+
   return jsonResponse(
     {
       ok: true,
@@ -211,6 +326,32 @@ export async function handleWebhookEvent(
               source: mapping.draft.source,
               contact_whatsapp: mapping.draft.contactWhatsapp ?? null,
               location_pending_geocoding: mapping.draft.locationPendingGeocoding,
+            },
+          }
+        : {}),
+      // Resultado de la creación del incidente (S5). Presente solo cuando el
+      // evento es de completado y se inyectó el servicio de incidentes.
+      // `outcome` indica si se creó o si ya existía (idempotencia por event.id).
+      ...(incident && (incident.status === "created" || incident.status === "duplicate")
+        ? {
+            incident: {
+              outcome: incident.status,
+              id: incident.incident.id,
+              conversation_id: incident.incident.conversation_id,
+              source_event_id: incident.incident.source_event_id,
+              title: incident.incident.title,
+              description: incident.incident.description,
+              source: incident.incident.source,
+              contact_whatsapp: incident.incident.contact_whatsapp,
+              address: incident.incident.address,
+              neighborhood: incident.incident.neighborhood,
+              priority: incident.incident.priority,
+              status: incident.incident.status,
+              verification_status: incident.incident.verification_status,
+              latitude: incident.incident.latitude,
+              longitude: incident.incident.longitude,
+              city_id: incident.incident.city_id,
+              location_enrichment_status: incident.incident.location_enrichment_status,
             },
           }
         : {}),
