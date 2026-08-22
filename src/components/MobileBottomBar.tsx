@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { List, Map, Plus, PlusCircle, X, MapPin, Heart, User, LogOut, LayoutDashboard, UserPlus, Lock } from 'lucide-react';
+import { List, Map, PlusCircle, X, Heart, HeartHandshake } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface MobileBottomBarProps {
@@ -7,10 +7,10 @@ interface MobileBottomBarProps {
   onSetMobileView: (view: 'LIST' | 'MAP') => void;
   onOpenCreateModal: () => void;
   onOpenCreateOfferModal: () => void;
-  onOpenAdminModal: () => void;
-  onScrollToMap: () => void;
-  listCount: number;
-  // Auth
+  onOpenAdminModal?: () => void;
+  onScrollToMap?: () => void;
+  listCount?: number;
+  // Auth (kept optional for backwards compatibility)
   isLoggedIn?: boolean;
   userName?: string;
   onOpenRegisterModal?: () => void;
@@ -22,13 +22,6 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
   onSetMobileView,
   onOpenCreateModal,
   onOpenCreateOfferModal,
-  onOpenAdminModal,
-  onScrollToMap,
-  listCount,
-  isLoggedIn = false,
-  userName,
-  onOpenRegisterModal,
-  onLogout,
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -46,10 +39,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
           {/* Menu items */}
           <div className="relative z-10 flex flex-col items-stretch gap-3 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-200 w-64">
-            {/* Necesito Ayuda */}
+            {/* Publicar necesidad */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateModal(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                 <PlusCircle className="w-5 h-5 text-emerald-600" />
@@ -60,24 +53,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
               </div>
             </button>
 
-            {/* Ver necesidades */}
-            <button
-              onClick={() => { setIsMenuOpen(false); onScrollToMap(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                <MapPin className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-slate-800 block text-left">{t('viewNeeds')}</span>
-                <span className="text-[11px] text-slate-500 block text-left">{t('mapView')}</span>
-              </div>
-            </button>
-
-            {/* Publicar ayuda */}
+            {/* Ofrecer ayuda */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateOfferModal(); }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
                 <Heart className="w-5 h-5 text-indigo-600" />
@@ -87,64 +66,6 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
                 <span className="text-[11px] text-slate-500 block text-left">{t('createOfferSubtitle')}</span>
               </div>
             </button>
-
-            {/* Auth options */}
-            {isLoggedIn ? (
-              <>
-                <button
-                  onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
-                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                    <LayoutDashboard className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-slate-800 block text-left">Panel</span>
-                    <span className="text-[11px] text-slate-500 block text-left">{userName || 'Usuario'}</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => { setIsMenuOpen(false); if (onLogout) onLogout(); }}
-                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-                    <LogOut className="w-5 h-5 text-rose-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-slate-800 block text-left">Cerrar sesión</span>
-                  </div>
-                </button>
-              </>
-            ) : (
-              <>
-                {onOpenRegisterModal && (
-                  <button
-                    onClick={() => { setIsMenuOpen(false); onOpenRegisterModal(); }}
-                    className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                      <UserPlus className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold text-slate-800 block text-left">Registrarme</span>
-                    </div>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
-                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-slate-800 block text-left">Iniciar sesión</span>
-                  </div>
-                </button>
-              </>
-            )}
           </div>
         </div>
       )}
@@ -168,12 +89,12 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
           {/* Action button — protrudes above the bar */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-12.5 h-12.5 bg-brand-blue hover:bg-brand-blue/90 rounded-2xl flex items-center justify-center shadow-lg -mt-6 transition-colors shrink-0"
+            className="w-12.5 h-12.5 bg-brand-blue hover:bg-brand-blue/90 rounded-2xl flex items-center justify-center shadow-lg -mt-6 transition-colors shrink-0 cursor-pointer"
           >
             {isMenuOpen ? (
               <X className="w-6 h-6 text-white" />
             ) : (
-              <Plus className="w-6 h-6 text-white" />
+              <HeartHandshake className="w-6 h-6 text-white" />
             )}
           </button>
 

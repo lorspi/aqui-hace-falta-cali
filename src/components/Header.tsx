@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake, Globe, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, Lock, ChevronDown, MapPin, Heart, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -19,16 +19,125 @@ interface HeaderProps {
   onLogout?: () => void;
 }
 
+interface UserMenuProps {
+  isLoggedIn?: boolean;
+  userName?: string;
+  onOpenRegisterModal?: () => void;
+  onLogout?: () => void;
+}
+
+const UserMenu: React.FC<UserMenuProps> = ({
+  isLoggedIn = false,
+  userName,
+  onOpenRegisterModal,
+  onLogout,
+}) => {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold px-2.5 py-2 rounded-xl transition-all h-[38px] cursor-pointer"
+        id="btn-user-menu"
+      >
+        <User className="w-4 h-4 text-slate-600 shrink-0" />
+        <span className="truncate max-w-[85px] sm:max-w-[120px]">
+          {isLoggedIn ? (userName || 'Usuario') : 'Ingresar'}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-52 sm:w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+          {isLoggedIn ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); window.location.href = '/panel'; }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <LayoutDashboard className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="font-semibold">Panel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); window.location.href = '/moderador'; }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="font-semibold">{t('moderatorView')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); if (onLogout) onLogout(); }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-semibold">Cerrar sesión</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {onOpenRegisterModal && (
+                <button
+                  type="button"
+                  onClick={() => { setIsOpen(false); onOpenRegisterModal(); }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold">Registrarme</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); window.location.href = '/panel'; }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="font-semibold">Iniciar sesión</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); window.location.href = '/moderador'; }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span className="font-semibold">{t('moderatorView')}</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Header: React.FC<HeaderProps> = ({
   onOpenCreateModal,
   onOpenCreateOfferModal,
-  onOpenAdminModal,
+  onOpenAdminModal: _onOpenAdminModal,
   onOpenRegisterModal,
   onScrollToMap,
-  lastUpdated,
-  isOffline,
-  activeCount,
-  criticalCount,
+  lastUpdated: _lastUpdated,
+  isOffline: _isOffline,
+  activeCount: _activeCount,
+  criticalCount: _criticalCount,
   isLoggedIn = false,
   userName,
   onLogout,
@@ -36,9 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { t } = useTranslation();
   const [visible, setVisible] = useState(true);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const helpMenuRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
 
   // Close help menu when clicking outside
@@ -47,15 +154,12 @@ export const Header: React.FC<HeaderProps> = ({
       if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
         setShowHelpMenu(false);
       }
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
     };
-    if (showHelpMenu || showUserMenu) {
+    if (showHelpMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHelpMenu, showUserMenu]);
+  }, [showHelpMenu]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,9 +187,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between w-full md:w-auto">
           <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-10 md:h-10 w-auto" />
 
-          {/* Language selector for mobile */}
-          <div className="flex md:hidden">
+          {/* Language selector & User auth for mobile */}
+          <div className="flex items-center gap-2 md:hidden">
             <LanguageSelector />
+            <UserMenu
+              isLoggedIn={isLoggedIn}
+              userName={userName}
+              onOpenRegisterModal={onOpenRegisterModal}
+              onLogout={onLogout}
+            />
           </div>
         </div>
 
@@ -121,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-60 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     onClick={() => { setShowHelpMenu(false); onScrollToMap(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
                     <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
@@ -131,7 +241,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                   <button
                     onClick={() => { setShowHelpMenu(false); onOpenCreateOfferModal(); }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
                     <Heart className="w-4 h-4 text-blue-600 shrink-0" />
                     <div>
@@ -144,59 +254,12 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* User / Auth Dropdown */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="btn-secondary text-xs"
-                id="btn-user-menu"
-              >
-                <User className="w-4 h-4 text-slate-600" />
-                <span>{isLoggedIn ? (userName || 'Usuario') : 'Ingresar'}</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showUserMenu && (
-                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-52 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  {isLoggedIn ? (
-                    <>
-                      <button
-                        onClick={() => { setShowUserMenu(false); window.location.href = '/panel'; }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                      >
-                        <LayoutDashboard className="w-4 h-4 text-indigo-600 shrink-0" />
-                        <span className="font-semibold">Panel</span>
-                      </button>
-                      <button
-                        onClick={() => { setShowUserMenu(false); if (onLogout) onLogout(); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
-                        <span className="font-semibold">Cerrar sesión</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {onOpenRegisterModal && (
-                        <button
-                          onClick={() => { setShowUserMenu(false); onOpenRegisterModal(); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                        >
-                          <PlusCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="font-semibold">Registrarme</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => { setShowUserMenu(false); window.location.href = '/panel'; }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                      >
-                        <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
-                        <span className="font-semibold">Iniciar sesión</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <UserMenu
+              isLoggedIn={isLoggedIn}
+              userName={userName}
+              onOpenRegisterModal={onOpenRegisterModal}
+              onLogout={onLogout}
+            />
           </div>
         </div>
       </div>
