@@ -15,6 +15,9 @@ import {
   MapPin,
   Maximize2,
   Minimize2,
+  Info,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { FilterState, Need, NeedStatus, Offer } from "./types";
 import { Header } from "./components/Header";
@@ -159,6 +162,7 @@ function MainApp() {
 
   // Mobile view
   const [mobileView, setMobileView] = useState<"LIST" | "MAP">("MAP");
+  const [isLegendExpandedMobile, setIsLegendExpandedMobile] = useState(false);
 
   // Cross-highlight between map pins and cards
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -511,7 +515,9 @@ function MainApp() {
   const hasDemoData = needs.some((n) => n.isDemoData);
 
   return (
-    <div className="min-h-screen bg-brand-surface flex flex-col text-brand-text antialiased">
+    <div className={`min-h-screen bg-brand-surface flex flex-col text-brand-text antialiased ${
+      mobileView === 'MAP' ? 'h-[100dvh] max-h-[100dvh] overflow-hidden md:h-auto md:max-h-none md:overflow-visible md:min-h-screen' : ''
+    }`}>
       {/* Platform Header */}
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -521,10 +527,7 @@ function MainApp() {
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
           setMobileView("MAP");
-          // Scroll to main content area (past header + filters)
-          setTimeout(() => {
-            mainContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
+          window.scrollTo({ top: 0, behavior: 'instant' });
         }}
         lastUpdated={lastUpdated}
         isOffline={isOffline}
@@ -539,7 +542,7 @@ function MainApp() {
         }}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[56px] md:h-[72px]" />
+      <div className="h-[68px] md:h-[72px] shrink-0" />
 
       {/* Emergency Disclaimer & Demo Notice */}
       <BannerDisclaimer
@@ -577,16 +580,17 @@ function MainApp() {
         selectedCityId={selectedCityId}
         onCityChange={handleCityChange}
         needCounts={combinedCounts}
+        mobileView={mobileView}
       />
 
 
       {/* Main Content Layout — Split panel on desktop, toggle on mobile */}
-      <main className="flex-1 flex flex-col md:flex-row" ref={mainContentRef}>
+      <main className="flex-1 flex flex-col md:flex-row min-h-0 pb-16 md:pb-0" ref={mainContentRef}>
         {/* MAP PANEL — 60% width on desktop, full width toggle on mobile */}
         <div
           id="mobile-map-anchor"
-          className={`w-full md:w-[60%] lg:w-[65%] h-[calc(100vh-200px)] md:h-[calc(100vh-180px)] relative ${
-            mobileView === "MAP" ? "block" : "hidden md:block"
+          className={`w-full md:w-[60%] lg:w-[65%] md:h-[calc(100vh-180px)] relative ${
+            mobileView === "MAP" ? "flex-1 min-h-0 h-full block" : "hidden md:block"
           } ${isGridExpanded ? "md:hidden" : ""}`}
         >
           <MapView
@@ -606,10 +610,34 @@ function MainApp() {
           />
 
           {/* Priority Legend — bottom-left over map */}
-          <div className="hidden md:block absolute bottom-3 left-3 z-20">
-            <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-lg border border-slate-300 shadow-md text-xs space-y-1">
-              <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">
-                {t('mapLegendTitle')}
+          <div className="absolute bottom-3 left-3 z-20">
+            {/* Minimized button on mobile */}
+            {!isLegendExpandedMobile && (
+              <button
+                onClick={() => setIsLegendExpandedMobile(true)}
+                className="md:hidden flex items-center gap-1.5 bg-white/95 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-slate-300 shadow-md text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all"
+              >
+                <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span>{t('mapLegendTitle')}</span>
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
+              </button>
+            )}
+
+            {/* Expanded Legend box (Always visible on Desktop, collapsible on Mobile) */}
+            <div className={`bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-slate-300 shadow-md text-xs space-y-1 ${
+              isLegendExpandedMobile ? 'block animate-in fade-in duration-150' : 'hidden md:block'
+            }`}>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                  {t('mapLegendTitle')}
+                </div>
+                <button
+                  onClick={() => setIsLegendExpandedMobile(false)}
+                  className="md:hidden p-0.5 text-slate-400 hover:text-slate-700 rounded-md transition-colors"
+                  title="Minimizar leyenda"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
@@ -885,9 +913,7 @@ function MainApp() {
           onScrollToMap={() => {
             setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
             setMobileView("MAP");
-            setTimeout(() => {
-              mainContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+            window.scrollTo({ top: 0, behavior: 'instant' });
           }}
           listCount={needs.length + offers.length}
           isLoggedIn={isModeratorLoggedIn}

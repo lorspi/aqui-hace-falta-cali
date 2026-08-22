@@ -79,9 +79,9 @@ export const Header: React.FC<HeaderProps> = ({
       }`}
     >
       {/* Main Header navigation bar */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 md:py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
         <div className="flex items-center justify-between w-full md:w-auto">
-          <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 md:h-10 w-auto" />
+          <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-10 md:h-10 w-auto" />
 
           {/* Language selector for mobile */}
           <div className="flex md:hidden">

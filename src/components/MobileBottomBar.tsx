@@ -37,7 +37,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
     <>
       {/* Popup menu */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-end pb-24 pointer-events-none">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-end pb-28 pointer-events-none">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/30 pointer-events-auto"
@@ -151,43 +151,43 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
       {/* Bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-lg rounded-t-2xl">
-        <div className="flex items-center justify-around px-4 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-around px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           {/* Mapa tab */}
           <button
-            onClick={() => { onSetMobileView('MAP'); setTimeout(() => document.getElementById('mobile-map-anchor')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all ${
+            onClick={() => { onSetMobileView('MAP'); window.scrollTo({ top: 0, behavior: 'instant' }); }}
+            className={`flex items-center gap-2 px-4.5 py-2 rounded-xl transition-all ${
               mobileView === 'MAP'
                 ? 'bg-indigo-50 text-indigo-600'
                 : 'text-slate-500'
             }`}
           >
-            <Map className="w-4 h-4" />
-            <span className="text-[11px] font-bold">{t('mapView')}</span>
+            <Map className="w-5 h-5" />
+            <span className="text-xs font-bold">{t('mapView')}</span>
           </button>
 
           {/* Action button — protrudes above the bar */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-11 h-11 bg-brand-blue hover:bg-brand-blue/90 rounded-xl flex items-center justify-center shadow-lg -mt-5 transition-colors"
+            className="w-12.5 h-12.5 bg-brand-blue hover:bg-brand-blue/90 rounded-2xl flex items-center justify-center shadow-lg -mt-6 transition-colors shrink-0"
           >
             {isMenuOpen ? (
-              <X className="w-5 h-5 text-white" />
+              <X className="w-6 h-6 text-white" />
             ) : (
-              <Plus className="w-5 h-5 text-white" />
+              <Plus className="w-6 h-6 text-white" />
             )}
           </button>
 
           {/* Lista tab */}
           <button
-            onClick={() => { onSetMobileView('LIST'); setTimeout(() => document.getElementById('mobile-list-anchor')?.scrollIntoView({ behavior: 'smooth' }), 50); }}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all ${
+            onClick={() => { onSetMobileView('LIST'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            className={`flex items-center gap-2 px-4.5 py-2 rounded-xl transition-all ${
               mobileView === 'LIST'
                 ? 'bg-indigo-50 text-indigo-600'
                 : 'text-slate-500'
             }`}
           >
-            <List className="w-4 h-4" />
-            <span className="text-[11px] font-bold">{t('listView')}</span>
+            <List className="w-5 h-5" />
+            <span className="text-xs font-bold">{t('listView')}</span>
           </button>
         </div>
       </div>

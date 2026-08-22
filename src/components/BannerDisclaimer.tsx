@@ -14,10 +14,12 @@ export const BannerDisclaimer: React.FC<BannerDisclaimerProps> = ({
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
+  const showDemoNotice = hasDemoData && !dismissed;
+
   return (
-    <div className="bg-[#f1f5f9] border-b border-slate-200">
+    <div className={`bg-[#f1f5f9] border-b border-slate-200 ${!showDemoNotice ? 'hidden md:block' : ''}`}>
       {/* Official emergency notice */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-start md:items-center justify-between text-xs sm:text-sm text-slate-700 gap-2.5">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-2.5 hidden md:flex flex-col md:flex-row items-start md:items-center justify-between text-xs sm:text-sm text-slate-700 gap-2.5">
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-md bg-amber-100/80 text-amber-800 shrink-0">
             <ShieldAlert className="w-4 h-4 text-[#b45309]" />
