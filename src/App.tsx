@@ -80,7 +80,15 @@ export default function App() {
 
 function MainApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const sessionUser = typeof window !== 'undefined' && localStorage.getItem('ahf_admin_token') ? { name: 'Moderador' } : null;
+  const sessionUser = typeof window !== 'undefined' && localStorage.getItem('ahf_admin_token')
+    ? (() => {
+        const saved = localStorage.getItem('ahf_admin_user');
+        if (saved) {
+          try { return JSON.parse(saved); } catch { return { name: 'Moderador' }; }
+        }
+        return { name: 'Moderador' };
+      })()
+    : null;
 
   // Parse URL: /:cityId or /:cityId/:needId or /:cityId/offer/:offerId
   const [initialNeedId] = useState<string | null>(() => {
@@ -517,6 +525,13 @@ function MainApp() {
         isOffline={isOffline}
         activeCount={activeCount}
         criticalCount={criticalCount}
+        isLoggedIn={isModeratorLoggedIn}
+        userName={(sessionUser as any)?.name}
+        onLogout={() => {
+          localStorage.removeItem('ahf_admin_token');
+          localStorage.removeItem('ahf_admin_user');
+          window.location.reload();
+        }}
       />
       {/* Spacer for fixed header */}
       <div className="h-[56px] md:h-[72px]" />
@@ -869,6 +884,14 @@ function MainApp() {
             }, 100);
           }}
           listCount={needs.length + offers.length}
+          isLoggedIn={isModeratorLoggedIn}
+          userName={(sessionUser as any)?.name}
+          onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+          onLogout={() => {
+            localStorage.removeItem('ahf_admin_token');
+            localStorage.removeItem('ahf_admin_user');
+            window.location.reload();
+          }}
         />
       </div>
       <RegisterWizard

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake, Globe } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, PlusCircle, Lock, RefreshCw, Radio, HandHeart, ChevronDown, MapPin, Heart, HeartHandshake, Globe, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -13,6 +13,10 @@ interface HeaderProps {
   isOffline: boolean;
   activeCount: number;
   criticalCount: number;
+  // Auth
+  isLoggedIn?: boolean;
+  userName?: string;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,11 +29,16 @@ export const Header: React.FC<HeaderProps> = ({
   isOffline,
   activeCount,
   criticalCount,
+  isLoggedIn = false,
+  userName,
+  onLogout,
 }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(true);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const helpMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
 
   // Close help menu when clicking outside
@@ -38,12 +47,15 @@ export const Header: React.FC<HeaderProps> = ({
       if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
         setShowHelpMenu(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
     };
-    if (showHelpMenu) {
+    if (showHelpMenu || showUserMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showHelpMenu]);
+  }, [showHelpMenu, showUserMenu]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -80,24 +92,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Quick action controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
           {/* Action buttons — hidden on mobile, shown on desktop */}
-          <div className="hidden md:flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-2">
             {/* Language Switcher Dropdown with Flags */}
             <LanguageSelector />
 
-            {/* Registrarse Button */}
-            {onOpenRegisterModal && (
-              <button
-                onClick={onOpenRegisterModal}
-                className="w-full sm:w-auto px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs md:text-sm font-bold transition-colors flex items-center justify-center gap-1.5"
-                id="btn-register"
-              >
-                <span>Registrarse</span>
-              </button>
-            )}
-
             <button
               onClick={onOpenCreateModal}
-              className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+              className="btn-secondary text-xs"
               id="btn-create-need"
             >
               <PlusCircle className="w-4 h-4 text-slate-600" />
@@ -108,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative w-full sm:w-auto" ref={helpMenuRef}>
               <button
                 onClick={() => setShowHelpMenu(!showHelpMenu)}
-                className="w-full sm:w-auto px-4 py-2 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                className="btn-primary-blue text-xs"
                 id="btn-quiero-ayudar"
               >
                 <HeartHandshake className="w-4 h-4" />
@@ -138,28 +139,64 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="text-[11px] text-slate-500">{t('createOfferSubtitle')}</span>
                     </div>
                   </button>
-                  <button
-                    onClick={() => { setShowHelpMenu(false); window.location.href = '/moderador'; }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <div>
-                      <span className="font-semibold block">{t('moderatorView')}</span>
-                    </div>
-                  </button>
                 </div>
               )}
             </div>
 
-            <button
-              onClick={() => { window.location.href = '/panel'; }}
-              className="w-full sm:w-auto px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs md:text-sm font-semibold border border-slate-200 transition-colors flex items-center justify-center gap-1.5"
-              title="Panel de moderación y verificación"
-              id="btn-admin-panel"
-            >
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>{t('moderatorView')}</span>
-            </button>
+            {/* User / Auth Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="btn-secondary text-xs"
+                id="btn-user-menu"
+              >
+                <User className="w-4 h-4 text-slate-600" />
+                <span>{isLoggedIn ? (userName || 'Usuario') : 'Ingresar'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 w-52 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {isLoggedIn ? (
+                    <>
+                      <button
+                        onClick={() => { setShowUserMenu(false); window.location.href = '/panel'; }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span className="font-semibold">Panel</span>
+                      </button>
+                      <button
+                        onClick={() => { setShowUserMenu(false); if (onLogout) onLogout(); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span className="font-semibold">Cerrar sesión</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {onOpenRegisterModal && (
+                        <button
+                          onClick={() => { setShowUserMenu(false); onOpenRegisterModal(); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                        >
+                          <PlusCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-semibold">Registrarme</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setShowUserMenu(false); window.location.href = '/panel'; }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                      >
+                        <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span className="font-semibold">Iniciar sesión</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

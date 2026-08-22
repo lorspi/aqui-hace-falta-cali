@@ -59,18 +59,18 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
               <p className="text-xs text-slate-500 truncate max-w-[240px]">{need.title}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-800 rounded-full">
+          <button onClick={onClose} className="btn-icon">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs text-slate-800">
           <div>
-            <label className="block font-bold text-slate-700 mb-1">{t('coverageStatusLabel')} *</label>
+            <label className="form-label">{t('coverageStatusLabel')} *</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as NeedStatus)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900"
+              className="select-base"
             >
               <option value="NEED_HELP_NOW">🔴 {t('statusNeedHelpNow')}</option>
               <option value="RECEIVING_HELP">🔵 {t('statusReceivingHelp')}</option>
@@ -88,7 +88,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                <label className="form-label">
                   {moderatorName ? 'Moderador' : 'Tu nombre (opcional)'}
                 </label>
                 <input
@@ -97,16 +97,14 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                   onChange={(e) => !moderatorName && setUpdatedBy(e.target.value)}
                   placeholder="Para el registro de cambios"
                   readOnly={!!moderatorName}
-                  className={`w-full p-2 border border-slate-300 rounded-lg text-xs ${
-                    moderatorName
-                      ? 'bg-slate-100 text-slate-700 font-semibold cursor-not-allowed'
-                      : 'bg-slate-50 text-slate-900'
+                  className={`input-base ${
+                    moderatorName ? 'bg-slate-100 cursor-not-allowed' : ''
                   }`}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-xs">
+                <label className="form-label">
                   Motivo del cambio (opcional)
                 </label>
                 <input
@@ -114,7 +112,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Ej: Cambió el horario, ya llegó ayuda..."
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                  className="input-base"
                 />
               </div>
             </div>
@@ -139,14 +137,14 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 text-slate-600 font-semibold hover:bg-slate-100 rounded-lg"
+              className="btn-ghost"
             >
               {t('cancelButton')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5"
+              className="btn-primary"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               <span>{t('saveStatusButton')}</span>

@@ -49,18 +49,18 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
               <p className="text-xs text-slate-500 truncate max-w-[240px]">{need.title}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-800 rounded-full">
+          <button onClick={onClose} className="btn-icon">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs text-slate-800">
           <div>
-            <label className="block font-bold text-slate-700 mb-1">{t('reportReason')}</label>
+            <label className="form-label">{t('reportReason')}</label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-medium"
+              className="select-base"
             >
               <option value="NOT_NEEDED_ANYMORE">{t('reportReasonNotNeeded')}</option>
               <option value="WRONG_LOCATION">{t('reportReasonWrongLocation')}</option>
@@ -72,25 +72,25 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">{t('reportDescription')}</label>
+            <label className="form-label">{t('reportDescription')}</label>
             <textarea
               required
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('reportDescriptionPlaceholder')}
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+              className="textarea-base"
             />
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">{t('reportContact')}</label>
+            <label className="form-label">{t('reportContact')}</label>
             <input
               type="text"
               value={reporterContact}
               onChange={(e) => setReporterContact(e.target.value)}
               placeholder="Teléfono o correo"
-              className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+              className="input-base"
             />
           </div>
 
@@ -103,14 +103,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 text-slate-600 font-semibold hover:bg-slate-100 rounded-lg"
+              className="btn-ghost"
             >
               {t('cancelButton')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-rose-700 hover:bg-rose-800 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm flex items-center gap-1.5"
+              className="btn-danger"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{t('submitReportButton')}</span>

@@ -177,7 +177,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100"
+            className="btn-icon"
             id="btn-close-create-need-modal"
           >
             <X className="w-5 h-5" />
@@ -188,12 +188,12 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-5 text-xs text-slate-800">
           {/* Section 1: Basic Info */}
           <div className="space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionWhatYouNeed')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="form-label">
                 {t('needTitleLabel')}
               </label>
               <input
@@ -202,18 +202,18 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t('needTitlePlaceholder')}
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-sm"
+                className="input-base"
                 id="input-need-title"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('placeTypeFormLabel')}</label>
+                <label className="form-label">{t('placeTypeFormLabel')}</label>
                 <select
                   value={placeType}
                   onChange={(e) => setPlaceType(e.target.value as PlaceType)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
+                  className="select-base"
                 >
                   {placeTypesList.map((pt) => (
                     <option key={pt} value={pt}>
@@ -224,11 +224,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('requesterTypeLabel')}</label>
+                <label className="form-label">{t('requesterTypeLabel')}</label>
                 <select
                   value={requesterType}
                   onChange={(e) => setRequesterType(e.target.value as any)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                  className="select-base"
                 >
                   <option value="PERSONA">{language === 'en' ? 'Individual person' : 'Persona individual'}</option>
                   <option value="COMUNIDAD">{language === 'en' ? 'Community board / Neighbors' : 'Comité comunitario / Vecinos'}</option>
@@ -242,7 +242,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
             {/* Priority selector */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">{t('urgencyLevelLabel')}</label>
+              <label className="form-label">{t('urgencyLevelLabel')}</label>
               {placeType === 'CENTRO_ACOPIO' ? (
                 <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 font-semibold">
                   🟣 {language === 'en' ? 'Collection centers do not require a priority level.' : 'Los centros de acopio no requieren nivel de prioridad.'}
@@ -276,12 +276,12 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
           {/* Section 2: Location */}
           <div className="space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionNeedLocation')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">{t('cityLabel')}</label>
+              <label className="form-label">{t('cityLabel')}</label>
               <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
@@ -290,26 +290,26 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('neighborhoodLabel')}</label>
+                <label className="form-label">{t('neighborhoodLabel')}</label>
                 <input
                   type="text"
                   required
                   value={neighborhood}
                   onChange={(e) => setNeighborhood(e.target.value)}
                   placeholder={t('neighborhoodPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('addressLabel')}</label>
+                <label className="form-label">{t('addressLabel')}</label>
                 <input
                   type="text"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder={t('addressPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
@@ -348,12 +348,12 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
           {/* Section 3: Categories & Resources */}
           <div className="space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionCategories')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
+              <label className="form-label">
                 {t('selectOneCategory')}
               </label>
               <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
@@ -365,10 +365,10 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       type="button"
                       key={cat}
                       onClick={() => handleCategoryToggle(cat)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                      className={`toggle-chip ${
                         isSel
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'toggle-chip-active'
+                          : 'toggle-chip-inactive'
                       }`}
                     >
                       {item?.icon} {item?.label}
@@ -400,7 +400,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       updated[idx].type = e.target.value as HelpCategory;
                       setResources(updated);
                     }}
-                    className="p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
+                    className="select-inline shrink-0"
                   >
                     {categoriesList.map((c) => {
                       const item = getCategoryLabel(c, language);
@@ -421,7 +421,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       setResources(updated);
                     }}
                     placeholder={t('resourceDescPlaceholder')}
-                    className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs min-w-[140px]"
+                    className="input-inline flex-1 min-w-[140px]"
                   />
 
                   <input
@@ -434,7 +434,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       setResources(updated);
                     }}
                     placeholder={t('resourceQty')}
-                    className="w-16 p-1.5 bg-white border border-slate-300 rounded text-xs"
+                    className="input-inline w-16"
                   />
 
                   <input
@@ -446,7 +446,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                       setResources(updated);
                     }}
                     placeholder={t('resourceUnitPlaceholder')}
-                    className="w-20 p-1.5 bg-white border border-slate-300 rounded text-xs"
+                    className="input-inline w-20"
                   />
 
                   {resources.length > 0 && (
@@ -463,7 +463,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="form-label">
                 {t('needDescLabel')}
               </label>
               <textarea
@@ -472,70 +472,70 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={t('needDescPlaceholder')}
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                className="textarea-base"
               />
             </div>
           </div>
 
           {/* Section 4: Contact & Verification */}
           <div className="space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionContact')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactNameLabel')}</label>
+                <label className="form-label">{t('contactNameLabel')}</label>
                 <input
                   type="text"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder={t('contactNamePlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactWhatsappLabel')}</label>
+                <label className="form-label">{t('contactWhatsappLabel')}</label>
                 <input
                   type="text"
                   value={contactWhatsapp}
                   onChange={(e) => setContactWhatsapp(e.target.value)}
                   placeholder="Ej: 3155550192"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactPhoneLabel')}</label>
+                <label className="form-label">{t('contactPhoneLabel')}</label>
                 <input
                   type="text"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   placeholder="Ej: 3124448821"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('organizationLabel')}</label>
+                <label className="form-label">{t('organizationLabel')}</label>
                 <input
                   type="text"
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder={t('organizationPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('operatingHoursLabel')}</label>
+                <label className="form-label">{t('operatingHoursLabel')}</label>
                 <input
                   type="text"
                   value={operatingHours}
                   onChange={(e) => setOperatingHours(e.target.value)}
                   placeholder={t('operatingHoursPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
             </div>
@@ -559,14 +559,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
+              className="btn-ghost"
             >
               {t('cancelButton')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2"
+              className="btn-primary-success btn-lg disabled:opacity-60"
               id="btn-submit-create-need"
             >
               {isSubmitting ? (

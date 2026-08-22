@@ -117,7 +117,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   🟣 {language === 'en' ? 'Collection Center' : 'Centro de Acopio'}
                 </span>
               ) : (
-                <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase text-[11px] ${priorityInfo.badgeClass}`}>
+                <span className={`badge-pill uppercase ${priorityInfo.badgeClass}`}>
                   {priorityInfo.dot} {language === 'en' ? 'Priority ' + need.priority : 'Prioridad ' + priorityInfo.label}
                 </span>
               )}
@@ -126,7 +126,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   {placeTypeLabel}
                 </span>
               )}
-              <span className={`px-2 py-0.5 rounded font-semibold text-[11px] border ${verificationInfo.badgeClass}`}>
+              <span className={`badge-pill ${verificationInfo.badgeClass}`}>
                 {verificationInfo.icon} {need.verificationStatus === 'VERIFIED' ? t('cardVerifiedBy') : need.verificationStatus === 'PENDING_VERIFICATION' ? t('cardPendingVerification') : need.verificationStatus === 'REPORTED' ? t('cardReported') : t('cardArchived')}
               </span>
             </div>
@@ -136,7 +136,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-all shrink-0"
+            className="btn-icon"
             id="btn-close-detail-modal"
           >
             <X className="w-5 h-5" />
@@ -218,7 +218,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 return (
                   <span
                     key={c}
-                    className="bg-slate-50 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 flex items-center gap-1"
+                    className="category-pill"
                   >
                     <span>{item?.icon || '🔹'}</span>
                     <span>{item?.label || c}</span>
@@ -378,7 +378,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold px-4 py-2.5 rounded-xl text-sm flex items-center gap-1.5 border border-slate-300 transition-all"
+              className="btn-secondary btn-lg"
             >
               <Share2 className="w-4 h-4" />
               <span>{copied ? (language === 'en' ? 'Copied!' : '¡Copiado!') : t('detailShare')}</span>
@@ -390,7 +390,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 onClose();
                 onOpenQuieroAyudar(need);
               }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-md transition-all flex items-center gap-2"
+              className="btn-primary-success btn-lg"
               id="btn-help-modal-primary"
             >
               <HeartHandshake className="w-4 h-4 text-amber-300" />

@@ -278,7 +278,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100 transition-all shrink-0"
+            className="btn-icon shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -354,7 +354,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
           {offer.categories && offer.categories.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               {offer.categories.map((c) => (
-                <span key={c} className="bg-slate-50 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 flex items-center gap-1">
+                <span key={c} className="category-pill">
                   <span>{CATEGORY_LABELS[c]?.icon || '🔹'}</span>
                   <span>{CATEGORY_LABELS[c]?.label || c}</span>
                 </span>
@@ -463,7 +463,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                     <select
                       value={selectedStatus || offer.offerStatus}
                       onChange={(e) => setSelectedStatus(e.target.value as OfferStatus)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-medium text-xs"
+                      className="select-base"
                     >
                       {OFFER_STATUS_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -484,7 +484,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                           <select
                             value={resourceStatuses[res.id] || 'PENDING'}
                             onChange={(e) => setResourceStatuses((prev) => ({ ...prev, [res.id]: e.target.value as ResourceItemStatus }))}
-                            className="p-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium shrink-0"
+                            className="select-inline shrink-0"
                           >
                             {RESOURCE_STATUS_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -516,7 +516,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 <button
                   onClick={handleSubmitStatusUpdate}
                   disabled={isSubmittingStatus}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
+                  className="btn-primary-blue btn-lg w-full"
                 >
                   <Save className="w-4 h-4" />
                   <span>{isSubmittingStatus ? 'Guardando...' : 'Guardar cambios'}</span>
@@ -542,21 +542,21 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">¿Cuál es el problema?</label>
-                  <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-medium text-xs">
+                  <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="select-base">
                     {REPORT_REASONS.map((r) => (<option key={r.value} value={r.value}>{r.label}</option>))}
                   </select>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Detalle del reporte *</label>
-                  <textarea required rows={3} value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder="Ej: Fuimos al lugar y nos indicaron que ya no están ofreciendo este recurso..." className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs" />
+                  <textarea required rows={3} value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder="Ej: Fuimos al lugar y nos indicaron que ya no están ofreciendo este recurso..." className="textarea-base" />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Tu contacto (opcional)</label>
-                  <input type="text" value={reporterContact} onChange={(e) => setReporterContact(e.target.value)} placeholder="Teléfono o correo" className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs" />
+                  <input type="text" value={reporterContact} onChange={(e) => setReporterContact(e.target.value)} placeholder="Teléfono o correo" className="input-base" />
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-1">
-                  <button type="button" onClick={() => setShowReportForm(false)} className="px-3 py-2 text-slate-600 font-semibold hover:bg-slate-100 rounded-lg text-xs">Cancelar</button>
-                  <button type="submit" disabled={isSubmittingReport || !reportDescription.trim()} className="bg-rose-700 hover:bg-rose-800 disabled:bg-slate-300 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs flex items-center gap-1.5 transition-all">
+                  <button type="button" onClick={() => setShowReportForm(false)} className="btn-ghost">Cancelar</button>
+                  <button type="submit" disabled={isSubmittingReport || !reportDescription.trim()} className="btn-danger flex items-center gap-1.5">
                     <Send className="w-3.5 h-3.5" /><span>Enviar reporte</span>
                   </button>
                 </div>
@@ -651,7 +651,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold px-4 py-2.5 rounded-xl text-sm flex items-center gap-1.5 border border-slate-300 transition-all"
+              className="btn-secondary btn-lg"
             >
               <Share2 className="w-4 h-4" />
               <span>{copied ? '¡Copiado!' : 'Compartir'}</span>

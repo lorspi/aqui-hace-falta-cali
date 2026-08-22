@@ -82,7 +82,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </div>
           <button
             onClick={onCancel}
-            className="p-1 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 shrink-0 -mt-1 -mr-1"
+            className="btn-icon shrink-0 -mt-1 -mr-1"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
@@ -94,7 +94,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {!isAlert && (
             <button
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              className="btn-ghost"
             >
               {cancelLabel}
             </button>
@@ -102,13 +102,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <button
             onClick={() => { if (onConfirm) onConfirm(); else onCancel(); }}
             autoFocus
-            className={`px-4 py-2 text-sm font-bold rounded-xl transition-colors shadow-xs ${
-              variant === 'error' || variant === 'confirm'
-                ? 'bg-slate-900 hover:bg-slate-800 text-white'
-                : variant === 'success'
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                : 'bg-slate-900 hover:bg-slate-800 text-white'
-            }`}
+            className={`${variant === 'success' ? 'btn-primary-success' : 'btn-primary'}`}
           >
             {confirmLabel || defaultConfirmLabel}
           </button>

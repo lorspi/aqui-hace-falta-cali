@@ -3,6 +3,7 @@ import { Search, Filter, X, ArrowUpDown } from 'lucide-react';
 import { FilterState, HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus, ViewMode } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { CityCombobox } from './CityCombobox';
+import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface FilterBarProps {
@@ -76,12 +77,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {/* ViewMode + City + Search — left side */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 flex-1">
           {/* ViewMode Segmented Control */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 shrink-0 h-[38px]" role="group">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 shrink-0 h-[38px]" role="group">
             {viewModeOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onFilterChange({ viewMode: option.value })}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   currentViewMode === option.value
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
@@ -114,19 +115,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={filters.search}
               onChange={(e) => onFilterChange({ search: e.target.value })}
               placeholder={t('searchPlaceholder')}
-              className="w-full pl-9 pr-8 py-2 text-sm bg-slate-100 border-none rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 h-[38px]"
+              className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-all placeholder:text-slate-400 h-[38px]"
               id="filter-search-input"
             />
             {filters.search && (
               <button
                 onClick={() => onFilterChange({ search: '' })}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -137,30 +138,29 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         {/* Sort + Filters */}
         <div className="flex items-center gap-2">
           {/* Sort By */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 text-xs h-[38px]">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <select
-              value={filters.sortBy}
-              onChange={(e) => onFilterChange({ sortBy: e.target.value as any })}
-              className="bg-transparent border-none text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
-            >
-              <option value="PRIORITY">{t('sortUrgency')}</option>
-              <option value="RECENT">{t('sortRecent')}</option>
-              <option value="DISTANCE">{t('sortDistance')}</option>
-            </select>
-          </div>
+          <CustomSelect
+            value={filters.sortBy}
+            onChange={(val) => onFilterChange({ sortBy: val as any })}
+            options={[
+              { value: 'PRIORITY', label: t('sortUrgency') },
+              { value: 'RECENT', label: t('sortRecent') },
+              { value: 'DISTANCE', label: t('sortDistance') },
+            ]}
+            icon={<ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />}
+            className="w-auto min-w-[140px] shrink-0"
+          />
 
           {/* More Filters Toggle */}
           <button
             onClick={() => setShowMoreFilters(!showMoreFilters)}
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all h-[38px] flex-1 md:flex-none shrink-0 ${
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all h-[38px] flex-1 md:flex-none shrink-0 ${
               showMoreFilters || hasActiveFilters
                 ? 'bg-slate-900 text-white border-slate-900'
                 : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>{t('filterPriority')}</span>
+            <span>{t('filtersButton')}</span>
             {hasActiveFilters && (
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             )}
@@ -175,54 +175,52 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             {/* Priority */}
             {currentViewMode !== 'OFFERS' && (
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="form-label">
                   {t('filterPriority')}
                 </label>
-                <select
+                <CustomSelect
                   value={filters.priority}
-                  onChange={(e) => onFilterChange({ priority: e.target.value as any })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
-                >
-                  <option value="ALL">{t('priorityAll')}</option>
-                  {prioritiesList.map((p) => (
-                    <option key={p} value={p}>
-                      {PRIORITY_CONFIG[p].dot} {language === 'en' ? (p === 'CRITICAL' ? t('priorityCritical') : p === 'HIGH' ? t('priorityHigh') : p === 'MEDIUM' ? t('priorityMedium') : t('priorityLow')) : PRIORITY_CONFIG[p].label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => onFilterChange({ priority: val as any })}
+                  options={[
+                    { value: 'ALL', label: t('priorityAll') },
+                    ...prioritiesList.map((p) => ({
+                      value: p,
+                      label: `${PRIORITY_CONFIG[p].dot} ${language === 'en' ? (p === 'CRITICAL' ? t('priorityCritical') : p === 'HIGH' ? t('priorityHigh') : p === 'MEDIUM' ? t('priorityMedium') : t('priorityLow')) : PRIORITY_CONFIG[p].label}`,
+                    })),
+                  ]}
+                />
               </div>
             )}
 
             {/* Place Type */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">{t('filterPlaceType')}</label>
-              <select
+              <label className="form-label">{t('filterPlaceType')}</label>
+              <CustomSelect
                 value={filters.placeType}
-                onChange={(e) => onFilterChange({ placeType: e.target.value as any })}
-                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
-              >
-                <option value="ALL">{t('viewAll')}</option>
-                {placeTypesList.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {getPlaceTypeLabel(pt, language)}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => onFilterChange({ placeType: val as any })}
+                options={[
+                  { value: 'ALL', label: t('viewAll') },
+                  ...placeTypesList.map((pt) => ({
+                    value: pt,
+                    label: getPlaceTypeLabel(pt, language),
+                  })),
+                ]}
+              />
             </div>
 
             {/* Verification Status */}
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">{t('filterVerification')}</label>
-              <select
+              <label className="form-label">{t('filterVerification')}</label>
+              <CustomSelect
                 value={filters.verificationStatus}
-                onChange={(e) => onFilterChange({ verificationStatus: e.target.value as any })}
-                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800"
-              >
-                <option value="ALL">{t('viewAll')}</option>
-                <option value="VERIFIED">✓ {t('cardVerifiedBy')}</option>
-                <option value="PENDING_VERIFICATION">◷ {t('cardPendingVerification')}</option>
-                <option value="REPORTED">⚠️ {t('cardReported')}</option>
-              </select>
+                onChange={(val) => onFilterChange({ verificationStatus: val as any })}
+                options={[
+                  { value: 'ALL', label: t('viewAll') },
+                  { value: 'VERIFIED', label: `✓ ${t('cardVerifiedBy')}` },
+                  { value: 'PENDING_VERIFICATION', label: `◷ ${t('cardPendingVerification')}` },
+                  { value: 'REPORTED', label: `⚠️ ${t('cardReported')}` },
+                ]}
+              />
             </div>
           </div>
 

@@ -166,7 +166,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
             return (
               <span
                 key={c}
-                className="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-slate-200 flex items-center gap-1"
+                className="category-pill"
               >
                 <span>{item?.icon || '🔹'}</span>
                 <span>{item?.label || c}</span>
@@ -201,7 +201,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
               e.stopPropagation();
               onHelp(need);
             }}
-            className="bg-brand-blue hover:bg-brand-blue/90 active:bg-brand-blue/80 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1"
+            className="btn-primary-blue btn-sm"
             id={`btn-help-${need.id}`}
           >
             <HeartHandshake className="w-3.5 h-3.5 text-indigo-200" />

@@ -41,7 +41,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100"
+            className="btn-icon"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,7 +93,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
                 href={buildWhatsappLink(need.contactWhatsapp, need.title, need.categories, language)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+                className="btn-primary-success btn-lg w-full"
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>{t('writeWhatsapp')}</span>
@@ -103,7 +103,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
             {need.contactPhone && (
               <a
                 href={`tel:${need.contactPhone}`}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold p-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+                className="btn-primary btn-lg w-full"
               >
                 <Phone className="w-4 h-4" />
                 <span>{t('callPhone')} ({need.contactPhone})</span>
@@ -114,7 +114,7 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
               href={googleMapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold p-3 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-300 transition-all"
+              className="btn-secondary btn-lg w-full"
             >
               <ExternalLink className="w-4 h-4" />
               <span>{t('openGoogleMaps')}</span>

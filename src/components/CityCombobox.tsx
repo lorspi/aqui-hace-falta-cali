@@ -134,7 +134,7 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 text-slate-900 font-bold text-xs rounded-lg px-3 py-2 hover:bg-slate-100 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl px-3 py-2 h-[38px] hover:bg-slate-100 transition-colors text-left"
       >
         <span className="flex items-center gap-1.5 truncate">
           <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />

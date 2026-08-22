@@ -65,7 +65,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighligh
             return (
               <span
                 key={c}
-                className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-semibold border border-blue-200 flex items-center gap-1"
+                className="category-pill"
               >
                 <span>{item?.icon || '🔹'}</span>
                 <span>{item?.label || c}</span>

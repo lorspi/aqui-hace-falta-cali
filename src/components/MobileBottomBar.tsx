@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { List, Map, Plus, PlusCircle, ShieldCheck, X, MapPin, Heart } from 'lucide-react';
+import { List, Map, Plus, PlusCircle, X, MapPin, Heart, User, LogOut, LayoutDashboard, UserPlus, Lock } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface MobileBottomBarProps {
@@ -10,6 +10,11 @@ interface MobileBottomBarProps {
   onOpenAdminModal: () => void;
   onScrollToMap: () => void;
   listCount: number;
+  // Auth
+  isLoggedIn?: boolean;
+  userName?: string;
+  onOpenRegisterModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
@@ -20,6 +25,10 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
   onOpenAdminModal,
   onScrollToMap,
   listCount,
+  isLoggedIn = false,
+  userName,
+  onOpenRegisterModal,
+  onLogout,
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -79,18 +88,63 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
               </div>
             </button>
 
-            {/* Ser moderador */}
-            <button
-              onClick={() => { setIsMenuOpen(false); window.location.href = '/moderador'; }}
-              className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-slate-800 block text-left">{t('moderatorView')}</span>
-              </div>
-            </button>
+            {/* Auth options */}
+            {isLoggedIn ? (
+              <>
+                <button
+                  onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
+                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                    <LayoutDashboard className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800 block text-left">Panel</span>
+                    <span className="text-[11px] text-slate-500 block text-left">{userName || 'Usuario'}</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { setIsMenuOpen(false); if (onLogout) onLogout(); }}
+                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                    <LogOut className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800 block text-left">Cerrar sesión</span>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <>
+                {onOpenRegisterModal && (
+                  <button
+                    onClick={() => { setIsMenuOpen(false); onOpenRegisterModal(); }}
+                    className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                      <UserPlus className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-slate-800 block text-left">Registrarme</span>
+                    </div>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
+                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                    <Lock className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800 block text-left">Iniciar sesión</span>
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

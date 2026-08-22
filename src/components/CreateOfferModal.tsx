@@ -268,7 +268,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-100"
+            className="btn-icon"
             id="btn-close-create-offer-modal"
           >
             <X className="w-5 h-5" />
@@ -279,13 +279,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-5 text-xs text-slate-800">
           {/* Section 1: Title & Description */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionWhatYouOffer')}
             </h3>
 
             {/* Title */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="form-label">
                 {t('offerTitleLabel')}
               </label>
               <input
@@ -297,10 +297,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 }}
                 maxLength={120}
                 placeholder={t('offerTitlePlaceholder')}
-                className={`w-full p-2.5 bg-slate-50 border rounded-lg focus:bg-white text-sm ${errors.title ? 'border-red-400' : 'border-slate-300'}`}
+                className={`input-base ${errors.title ? 'input-error' : ''}`}
               />
               <div className="flex justify-between mt-0.5">
-                {errors.title && <p className="text-red-600 text-[11px]">{errors.title}</p>}
+                {errors.title && <p className="form-error">{errors.title}</p>}
                 <p className={`text-[10px] ml-auto ${title.length > 120 ? 'text-red-600' : 'text-slate-400'}`}>
                   {title.length}/120
                 </p>
@@ -309,7 +309,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
             {/* Description */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1">
+              <label className="form-label">
                 {t('offerDescLabel')}
               </label>
               <textarea
@@ -321,10 +321,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 }}
                 maxLength={1000}
                 placeholder={t('offerDescPlaceholder')}
-                className={`w-full p-2.5 bg-slate-50 border rounded-lg text-xs ${errors.description ? 'border-red-400' : 'border-slate-300'}`}
+                className={`textarea-base ${errors.description ? 'input-error' : ''}`}
               />
               <div className="flex justify-between mt-0.5">
-                {errors.description && <p className="text-red-600 text-[11px]">{errors.description}</p>}
+                {errors.description && <p className="form-error">{errors.description}</p>}
                 <p className={`text-[10px] ml-auto ${description.length > 1000 ? 'text-red-600' : 'text-slate-400'}`}>
                   {description.length}/1000
                 </p>
@@ -334,12 +334,12 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
           {/* Section 2: Categories */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionCategories')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
+              <label className="form-label">
                 {t('selectOneCategory')}
               </label>
               <div className={`flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 border rounded-xl ${errors.categories ? 'border-red-400' : 'border-slate-200'}`}>
@@ -351,10 +351,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                       type="button"
                       key={cat}
                       onClick={() => handleCategoryToggle(cat)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                      className={`toggle-chip ${
                         isSel
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'toggle-chip-active'
+                          : 'toggle-chip-inactive'
                       }`}
                     >
                       {item?.icon} {item?.label}
@@ -362,13 +362,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   );
                 })}
               </div>
-              {errors.categories && <p className="text-red-600 text-[11px] mt-1">{errors.categories}</p>}
+              {errors.categories && <p className="form-error">{errors.categories}</p>}
             </div>
           </div>
 
           {/* Section 3: Resources */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionResources')}
             </h3>
 
@@ -420,7 +420,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                       <select
                         value={resource.type}
                         onChange={(e) => updateResource(index, 'type', e.target.value as HelpCategory)}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        className="select-inline w-full"
                       >
                         <option value="">{t('selectType')}</option>
                         {categoriesList.map((cat) => {
@@ -444,7 +444,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                         onChange={(e) => updateResource(index, 'description', e.target.value)}
                         maxLength={200}
                         placeholder={t('resourceDescPlaceholder')}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        className="input-inline w-full"
                       />
                     </div>
 
@@ -462,7 +462,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                         min={1}
                         max={999999}
                         placeholder="Ej: 100"
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        className="input-inline w-full"
                       />
                     </div>
 
@@ -476,7 +476,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                         onChange={(e) => updateResource(index, 'unit', e.target.value)}
                         maxLength={30}
                         placeholder={t('resourceUnitPlaceholder')}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        className="input-inline w-full"
                       />
                     </div>
                   </div>
@@ -487,12 +487,12 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
           {/* Section 4: Location */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionLocation')}
             </h3>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">{t('cityLabel')}</label>
+              <label className="form-label">{t('cityLabel')}</label>
               <CityFormCombobox
                 value={cityId}
                 onChange={setCityId}
@@ -501,7 +501,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('neighborhoodLabel')}</label>
+                <label className="form-label">{t('neighborhoodLabel')}</label>
                 <input
                   type="text"
                   value={neighborhood}
@@ -510,13 +510,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     if (errors.neighborhood) setErrors((prev) => { const n = { ...prev }; delete n.neighborhood; return n; });
                   }}
                   placeholder={t('neighborhoodPlaceholder')}
-                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.neighborhood ? 'border-red-400' : 'border-slate-300'}`}
+                  className={`input-base ${errors.neighborhood ? 'input-error' : ''}`}
                 />
-                {errors.neighborhood && <p className="text-red-600 text-[11px] mt-0.5">{errors.neighborhood}</p>}
+                {errors.neighborhood && <p className="form-error">{errors.neighborhood}</p>}
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('addressLabel')}</label>
+                <label className="form-label">{t('addressLabel')}</label>
                 <input
                   type="text"
                   value={address}
@@ -525,9 +525,9 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     if (errors.address) setErrors((prev) => { const n = { ...prev }; delete n.address; return n; });
                   }}
                   placeholder={t('addressPlaceholder')}
-                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.address ? 'border-red-400' : 'border-slate-300'}`}
+                  className={`input-base ${errors.address ? 'input-error' : ''}`}
                 />
-                {errors.address && <p className="text-red-600 text-[11px] mt-0.5">{errors.address}</p>}
+                {errors.address && <p className="form-error">{errors.address}</p>}
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> {t('geocodingSearching')}
@@ -562,13 +562,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
           {/* Section 5: Contact */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
+            <h3 className="form-section-title">
               {t('sectionContact')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactNameLabel')}</label>
+                <label className="form-label">{t('contactNameLabel')}</label>
                 <input
                   type="text"
                   value={contactName}
@@ -577,62 +577,62 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     if (errors.contactName) setErrors((prev) => { const n = { ...prev }; delete n.contactName; return n; });
                   }}
                   placeholder={t('contactNamePlaceholder')}
-                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.contactName ? 'border-red-400' : 'border-slate-300'}`}
+                  className={`input-base ${errors.contactName ? 'input-error' : ''}`}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactPhoneLabel')}</label>
+                <label className="form-label">{t('contactPhoneLabel')}</label>
                 <input
                   type="text"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   placeholder="Ej: 3124448821"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactWhatsappLabel')}</label>
+                <label className="form-label">{t('contactWhatsappLabel')}</label>
                 <input
                   type="text"
                   value={contactWhatsapp}
                   onChange={(e) => setContactWhatsapp(e.target.value)}
                   placeholder="Ej: 3155550192"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('contactEmailLabel')}</label>
+                <label className="form-label">{t('contactEmailLabel')}</label>
                 <input
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="Ej: contacto@organizacion.org"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('organizationLabel')}</label>
+                <label className="form-label">{t('organizationLabel')}</label>
                 <input
                   type="text"
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder={t('organizationPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">{t('operatingHoursLabel')}</label>
+                <label className="form-label">{t('operatingHoursLabel')}</label>
                 <input
                   type="text"
                   value={operatingHours}
                   onChange={(e) => setOperatingHours(e.target.value)}
                   placeholder={t('operatingHoursPlaceholder')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className="input-base"
                 />
               </div>
             </div>
@@ -674,14 +674,14 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg"
+              className="btn-ghost"
             >
               {t('cancelButton')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting || submitSuccess}
-              className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-primary-blue btn-lg disabled:opacity-60 disabled:cursor-not-allowed"
               id="btn-submit-create-offer"
             >
               {isSubmitting ? (
