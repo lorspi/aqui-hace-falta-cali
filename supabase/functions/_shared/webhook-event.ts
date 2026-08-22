@@ -18,7 +18,9 @@
 // =============================================================================
 
 /** Shape mínimo documentado del evento crudo. `body` puede estar en
- * `data.body` (shape del equipo de conversación) o en `body` (shape plano). */
+ * `data.body` (shape del equipo de conversación) o en `body` (shape plano).
+ * `conversation_id` puede estar en `data.conversation_id` (shape documentado)
+ * o en `conversation_id` (shape plano), igual que `body`. */
 export interface RawWebhookEvent {
   id: unknown;
   type: unknown;
@@ -28,6 +30,7 @@ export interface RawWebhookEvent {
     from?: unknown;
     message_type?: unknown;
     workflow?: { step?: unknown };
+    conversation_id?: unknown;
   };
   body?: unknown;
   // Se permiten campos adicionales (el evento crudo trae más metadatos).
@@ -61,12 +64,24 @@ function resolveBody(event: RawWebhookEvent): unknown {
   return event.body !== undefined ? event.body : event.data?.body;
 }
 
+/**
+ * Devuelve el `conversation_id` de la conversación: prefiere `conversation_id`
+ * plano y cae a `data.conversation_id` (shape documentado del contrato S8).
+ * Idéntico al criterio de `body` (plano o `data.body`).
+ */
+export function resolveConversationId(event: RawWebhookEvent): unknown {
+  if (event.conversation_id !== undefined) return event.conversation_id;
+  return event.data?.conversation_id;
+}
+
 export const MINIMAL_FIELDS = ["id", "type", "conversation_id", "body"] as const;
 
 /**
  * Valida la estructura mínima de un evento crudo del webhook.
  *
- * - `id`, `type`, `conversation_id`: strings no vacíos.
+ * - `id`, `type`: strings no vacíos.
+ * - `conversation_id`: string no vacío, en `conversation_id` (plano) o en
+ *   `data.conversation_id` (shape documentado del contrato S8).
  * - `body`: presente (en `body` o `data.body`), no vacío si es string, y con
  *   formato string u objeto.
  * - No enumera `type`: acepta eventos de cualquier tipo (incluido el de
@@ -92,10 +107,12 @@ export function validateWebhookEvent(input: unknown): ValidationResult {
   if (!isNonEmptyString(event.type)) {
     issues.push({ path: ["type"], message: "type: campo requerido (string no vacío)." });
   }
-  if (!isNonEmptyString(event.conversation_id)) {
+  const conversationIdValue = resolveConversationId(event);
+  if (!isNonEmptyString(conversationIdValue)) {
     issues.push({
       path: ["conversation_id"],
-      message: "conversation_id: campo requerido (string no vacío).",
+      message:
+        "conversation_id: campo requerido (string no vacío), en data.conversation_id o conversation_id.",
     });
   }
 
@@ -122,7 +139,7 @@ export function validateWebhookEvent(input: unknown): ValidationResult {
       ? {
           id: event.id as string,
           type: event.type as string,
-          conversationId: event.conversation_id as string,
+          conversationId: conversationIdValue as string,
           body: bodyValue,
         }
       : { id: "", type: "", conversationId: "", body: undefined },

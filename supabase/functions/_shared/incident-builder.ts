@@ -31,6 +31,7 @@
 
 import {
   type RawWebhookEvent,
+  resolveConversationId,
 } from "./webhook-event.ts";
 import {
   mapEventToNeedDraft,
@@ -281,7 +282,7 @@ export function buildIncidentFromConversation(
     resources: [],
     requester_type: "PERSONA",
     source_event_id: String(completionEvent.id),
-    conversation_id: String(completionEvent.conversation_id),
+    conversation_id: String(resolveConversationId(completionEvent)),
     location_enrichment_status: hasCoords ? "RESOLVED" : "PENDING",
   };
 }

@@ -24,7 +24,10 @@
 //      rechaza el evento de completado).
 // =============================================================================
 
-import { type RawWebhookEvent } from "./webhook-event.ts";
+import {
+  type RawWebhookEvent,
+  resolveConversationId,
+} from "./webhook-event.ts";
 import {
   buildIncidentFromConversation,
   isValidWhatsAppNumber,
@@ -80,7 +83,7 @@ export async function processCompletionEvent(
     };
   }
 
-  const conversationId = String(completionEvent.conversation_id);
+  const conversationId = String(resolveConversationId(completionEvent));
   const eventId = String(completionEvent.id);
 
   // 2. Idempotencia por event.id del completado (S5/S6).
