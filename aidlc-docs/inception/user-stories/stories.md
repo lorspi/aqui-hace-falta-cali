@@ -387,6 +387,77 @@ Como operador, quiero que reenvíos del mismo evento no generen duplicados.
 - Clave de idempotencia: `event.id`.
 - Reenvío con el mismo `event.id` no crea duplicados; se ignora o devuelve el existente.
 
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: El primer evento con un event.id nuevo se persiste una sola vez
+  Given un evento crudo del webhook con id 'evt_001' y type 'message.received'
+  When el receptor procesa el evento 'evt_001'
+  Then se crea una fila en ingest_responses con event_id = 'evt_001'
+  And el evento queda disponible para el procesamiento aguas abajo
+```
+
+```gherkin
+Scenario: El reenvío con el mismo event.id no crea duplicados
+  Given ya existe una fila en ingest_responses con event_id = 'evt_001'
+  When llega un reenvío del mismo evento con id 'evt_001'
+  Then no se crea una segunda fila en ingest_responses
+  And el reenvío se ignora o se devuelve el registro existente
+```
+
+```gherkin
+Scenario: El reenvío con el mismo event.id pero body diferente no duplica ni sobreescribe
+  Given ya existe una fila en ingest_responses con event_id = 'evt_002' y un body original registrado
+  When llega un reenvío con el mismo id 'evt_002' pero con un body distinto
+  Then no se crea una nueva fila en ingest_responses
+  And no se sobreescribe el body original registrado
+  And la clave de idempotencia event.id tiene prioridad sobre el contenido
+```
+
+```gherkin
+Scenario: Reenvíos concurrentes del mismo event.id generan una sola fila
+  Given el receptor recibe dos POST simultáneos con el mismo id 'evt_003'
+  When ambos se procesan en paralelo
+  Then solo se crea una fila en ingest_responses con event_id = 'evt_003'
+  And la unicidad de event_id (constraint/índice único) resuelve la condición de carrera
+```
+
+```gherkin
+Scenario: Un evento sin id se rechaza (no hay clave de idempotencia)
+  Given un evento crudo del webhook sin campo id o con id vacío
+  When el receptor procesa el evento
+  Then la validación devuelve un error 400 detallando el campo faltante
+  And no se persiste ninguna fila en ingest_responses
+  And no se invoca la lógica de deduplicación
+```
+
+```gherkin
+Scenario: Eventos distintos con event.id diferente se persisten por separado
+  Given dos eventos crudos con id 'evt_004' y 'evt_005' aunque compartan conversation_id o contenido similar
+  When el receptor los procesa en orden
+  Then se crean dos filas en ingest_responses, una por cada event.id
+  And la deduplicación no usa el contenido ni conversation_id como clave
+```
+
+```gherkin
+Scenario: Un reenvío tras un intento fallido de validación se procesa como nuevo
+  Given un primer intento del evento 'evt_006' que falló la validación y no se persistió
+  When llega un reenvío corregido con el mismo id 'evt_006'
+  Then se procesa como un evento nuevo
+  And se crea una fila en ingest_responses con event_id = 'evt_006'
+  And el intento fallido previo no bloquea el reenvío
+```
+
+```gherkin
+Scenario: La deduplicación por event.id protege el pipeline aguas abajo
+  Given ya existe una fila en ingest_responses con event_id = 'evt_007' y ese evento ya fue procesado
+  When llega un reenvío del mismo evento 'evt_007'
+  Then el reenvío se descarta en la capa de ingestión
+  And no se vuelve a ejecutar el procesamiento aguas abajo (p. ej. no se re-crea el incidente)
+```
+
+> ℹ️ **Alcance**: la idempotencia por `event.id` protege la persistencia del evento crudo en `ingest_responses`. La deduplicación del incidente que se crea al completar la conversación se cubre en S5. No incluye autenticación del webhook (ver S8, deuda de seguridad).
+
 ## S7 — Confirmación al remitente (ACK)
 Como equipo de conversación, quiero recibir confirmación de recepción de cada evento.
 
