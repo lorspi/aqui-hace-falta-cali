@@ -10,6 +10,7 @@
 - [🗄️ Base de Datos](Base-de-Datos)
 - [🔌 Backend y API](Backend-y-API)
 - [🔐 Autenticación y Roles](Autenticacion-y-Roles)
+- [🔌 Contrato de Integración (webhook WhatsApp)](Contrato-de-Integracion)
 
 ### Frontend
 - [🧩 Componentes Frontend](Componentes-Frontend)

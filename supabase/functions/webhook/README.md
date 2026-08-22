@@ -28,7 +28,27 @@ En producción la base es `https://<project-ref>.supabase.co/functions/v1/webhoo
 }
 ```
 
-- `id`, `type` y `conversation_id`: strings no vacíos (obligatorios).
+También se acepta el `conversation_id` en `data.conversation_id` (shape
+documentado del contrato S8), idéntico al criterio de `body`:
+
+```json
+{
+  "id": "evt_001",
+  "type": "message.received",
+  "data": {
+    "conversation_id": "conv_001",
+    "body": "Necesito agua potable en mi barrio",
+    "from": "573001234567",
+    "message_type": "text",
+    "workflow": { "step": "awaiting_location" }
+  }
+}
+```
+
+- `id`, `type` y `conversation_id`: strings no vacíos (obligatorios). El
+  `conversation_id` se acepta en `conversation_id` (plano) o en
+  `data.conversation_id` (shape documentado); cuando vienen ambos, se prefiere
+  el plano.
 - `body`: contenido del mensaje; se acepta en `data.body` (shape documentado)
   o en `body` (shape plano).
 - `type` no condiciona la aceptación: cualquier string no vacío.
@@ -179,11 +199,11 @@ El ACK `200` incluye la sección `incident`:
 
 | Caso | HTTP | Body |
 |------|------|------|
-| `conversation_id` vacío/faltante en el completado | `400` | `{ "error": "validation_failed" | "missing_conversation_id", ... }` |
-| `data.from` inválido (no E.164) | `400` | `{ "error": "invalid_from", ... }` — el evento queda en `ingest_responses` (auditoría) |
-| Sin mensajes acumulados previos | `409` | `{ "error": "no_messages", ... }` |
-| Reenvío del mismo `event.id` de completado | `200` | `incident.outcome: "duplicate"` con la fila existente |
-| Error al crear el incidente | `500` | `{ "error": "incident_creation_failed", ... }` |
+| `conversation_id` vacío/faltante en el completado | `400` | `{ "code": "validation_failed" \| "missing_conversation_id", ... }` |
+| `data.from` inválido (no E.164) | `400` | `{ "code": "invalid_from", ... }` — el evento queda en `ingest_responses` (auditoría) |
+| Sin mensajes acumulados previos | `409` | `{ "code": "no_messages", ... }` |
+| Reenvío del mismo `event.id` de completado | `409` | `{ "code": "duplicate_event", ... }` — la idempotencia durable (UNIQUE `source_event_id` / `conversation_id`) evita el duplicado |
+| Error al crear el incidente | `500` | `{ "code": "incident_creation_failed", ... }` (genérico, sin detalles internos) |
 
 ### Idempotencia
 
@@ -260,9 +280,13 @@ el CLI local). Con el rol `service_role` se escribe en `ingest_responses`
 
 ## Notas
 
+- **Contrato de integración**: el documento canónico para ambos equipos está en
+  `documentacion/Contrato-de-Integracion.md` (S8 / DEV-38). Este README es la
+  referencia operativa del endpoint; el contrato es la fuente de verdad.
 - S5 (creación del incidente al completar la conversación) está implementada: el
   evento de completado crea el registro en `needs` con los mensajes acumulados de
   la conversación, geocoding cuando faltan coordenadas e idempotencia por
   `event.id`. Ver sección "Creación del incidente al completar la conversación (S5)".
-- La deduplicación por `event_id` se delega a la capa de persistencia (S4/S6);
-  el endpoint acepta reenvíos y responde `200` devolviendo la fila existente.
+- La deduplicación por `event_id` se delega a la capa de persistencia (S4/S6):
+  un reenvío del mismo `event.id` responde **`409`** `duplicate_event` (S7) sin
+  crear duplicado ni modificar la fila original.

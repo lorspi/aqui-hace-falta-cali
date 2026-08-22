@@ -292,6 +292,44 @@ describe("S2 — Validación de estructura mínima (validateWebhookEvent)", () =
     }
   });
 
+  it("acepta data.conversation_id (shape documentado del contrato S8) sin conversation_id plano", () => {
+    // El shape documentado en S8 ubica el conversation_id en data. El receptor
+    // lo tolera igual que tolera data.body: prefiere el plano y cae a data.
+    const event = buildValidEvent({
+      conversation_id: undefined,
+      data: { conversation_id: "conv_001", body: "Necesito ayuda", from: "573001234567" },
+    });
+    const result = validateWebhookEvent(event);
+    expect(result.valid).toBe(true);
+    expect(result.event.conversationId).toBe("conv_001");
+  });
+
+  it("prefiere conversation_id plano sobre data.conversation_id cuando ambos vienen", () => {
+    const result = validateWebhookEvent(
+      buildValidEvent({
+        conversation_id: "conv_flat",
+        data: { conversation_id: "conv_data", body: "Necesito ayuda", from: "573001234567" },
+      }),
+    );
+    expect(result.valid).toBe(true);
+    expect(result.event.conversationId).toBe("conv_flat");
+  });
+
+  it("rechaza data.conversation_id inválido cuando no hay conversation_id plano", () => {
+    for (const value of ["", "   ", 42, null]) {
+      const result = validateWebhookEvent(
+        buildValidEvent({
+          conversation_id: undefined,
+          data: { conversation_id: value, body: "Necesito ayuda", from: "573001234567" },
+        }),
+      );
+      expect(result.valid).toBe(false);
+      expect(
+        result.issues.some((i) => i.path.join(".") === "conversation_id"),
+      ).toBe(true);
+    }
+  });
+
   it("rechaza body faltante (ni data.body ni body)", () => {
     const result = validateWebhookEvent(
       buildValidEvent({ data: { from: "573001234567" }, body: undefined }),
@@ -452,6 +490,24 @@ describe("S4 — Persistencia del evento crudo vía HTTP", () => {
       "evt_conv_a",
       "evt_conv_b",
     ]);
+  });
+
+  it("persiste data.conversation_id (shape documentado del contrato S8) y persiste el conversation_id", async () => {
+    const store = createInMemoryIngestResponsesStore();
+    const event = buildValidEvent({
+      conversation_id: undefined,
+      data: { conversation_id: "conv_001", body: "Necesito agua potable en mi barrio", from: "573001234567" },
+    });
+
+    const res = await postWithStore(store, event);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.persisted).toBe(true);
+
+    // La fila queda agrupada bajo el conversation_id del shape documentado.
+    const row = store.get("evt_001")!;
+    expect(row.conversation_id).toBe("conv_001");
+    expect(row.raw_event).toEqual(event);
   });
 
   it("un error de persistencia devuelve 500 estructurado y genérico (S7)", async () => {

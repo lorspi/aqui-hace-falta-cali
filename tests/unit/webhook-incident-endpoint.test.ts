@@ -288,6 +288,68 @@ describe("S5 — Un evento de completado con from inválido se rechaza", () => {
   });
 });
 
+describe("S5 — El completado acepta data.conversation_id (shape documentado del contrato S8)", () => {
+  it("acumula por data.conversation_id y crea el incidente con el conversation_id resuelto", async () => {
+    const ingest = createInMemoryIngestResponsesStore();
+    const needs = createInMemoryNeedsStore();
+
+    // Mensajes con conversation_id en data (shape documentado).
+    const messages = [
+      buildMessage({
+        id: "evt_s8_m1",
+        conversation_id: undefined,
+        data: { conversation_id: "conv_s8", body: "Necesito agua", from: "573001234567" },
+      }),
+      buildMessage({
+        id: "evt_s8_m2",
+        conversation_id: undefined,
+        data: { conversation_id: "conv_s8", body: "Quedo en San Fernando", from: "573001234567" },
+      }),
+    ];
+
+    // Completado con conversation_id en data (shape documentado).
+    const completion = buildCompletion({
+      id: "evt_s8_c1",
+      conversation_id: undefined,
+      data: { conversation_id: "conv_s8", body: "Conversación finalizada", from: "573001234567", workflow: { step: "completed" } },
+    });
+
+    const res = await seedConversation(ingest, needs, messages, completion);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.incident).toBeDefined();
+    expect(body.incident.outcome).toBe("created");
+    expect(body.incident.conversation_id).toBe("conv_s8");
+    expect(body.incident.source_event_id).toBe("evt_s8_c1");
+    expect(body.incident.description).toContain("Necesito agua");
+    expect(body.incident.description).toContain("Quedo en San Fernando");
+    expect(needs.size()).toBe(1);
+
+    // La agrupación en ingest_responses también usó data.conversation_id.
+    const rows = ingest.all().filter((r) => r.conversation_id === "conv_s8");
+    expect(rows).toHaveLength(3); // 2 mensajes + 1 completado
+  });
+
+  it("prefiere conversation_id plano sobre data.conversation_id en el completado", async () => {
+    const ingest = createInMemoryIngestResponsesStore();
+    const needs = createInMemoryNeedsStore();
+
+    // Los mensajes acumulados viven bajo la conversación plana conv_flat.
+    const messages = [buildMessage({ id: "evt_s8b_m1", conversation_id: "conv_flat", data: { body: "Ayuda", from: "573001234567" } })];
+    const completion = buildCompletion({
+      id: "evt_s8b_c1",
+      conversation_id: "conv_flat",
+      data: { conversation_id: "conv_data", body: "fin", from: "573001234567", workflow: { step: "completed" } },
+    });
+
+    const res = await seedConversation(ingest, needs, messages, completion);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.incident.conversation_id).toBe("conv_flat");
+  });
+});
+
 describe("S5 — Conversaciones distintas no mezclan sus mensajes acumulados", () => {
   it("arma el incidente solo con los mensajes de su conversación y deja la otra sin incidente", async () => {
     const ingest = createInMemoryIngestResponsesStore();

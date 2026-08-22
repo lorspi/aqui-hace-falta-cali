@@ -28,6 +28,7 @@
 
 import {
   type RawWebhookEvent,
+  resolveConversationId,
 } from "./webhook-event.ts";
 import {
   normalizeMessageType,
@@ -126,7 +127,7 @@ export function extractIngestMetadata(event: RawWebhookEvent): IngestMetadata {
   return {
     eventId: String(event.id),
     type: String(event.type),
-    conversationId: String(event.conversation_id),
+    conversationId: String(resolveConversationId(event)),
     from,
     body,
     messageType: normalizeMessageType(event.data?.message_type),

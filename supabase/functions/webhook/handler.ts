@@ -90,6 +90,7 @@
 import {
   type RawWebhookEvent,
   validateWebhookEvent,
+  resolveConversationId,
 } from "../_shared/webhook-event.ts";
 import {
   mapEventToNeedDraft,
@@ -323,7 +324,9 @@ export async function handleWebhookEvent(
   // acumulados de la conversación (source=WhatsApp, PENDING_VERIFICATION).
   let incident;
   if (deps.incidentService && isCompletionEvent(payload as RawWebhookEvent)) {
-    const conversationId = (payload as RawWebhookEvent).conversation_id;
+    // El conversation_id puede viajar en `conversation_id` (plano) o en
+    // `data.conversation_id` (shape documentado del contrato S8).
+    const conversationId = resolveConversationId(payload as RawWebhookEvent);
 
     // Un evento de completado sin conversation_id no puede agrupar la
     // conversación: la validación devuelve 400 detallando el campo faltante.
