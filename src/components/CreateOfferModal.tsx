@@ -680,10 +680,12 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
               <div>
                 <label className="form-label">{t('contactPhoneLabel')}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={15}
                   required
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                   placeholder="Ej: 3124448821"
                   className={`input-base ${errors.contactPhone ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                 />
@@ -693,9 +695,11 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
               <div>
                 <label className="form-label">{t('contactWhatsappLabel')}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={15}
                   value={contactWhatsapp}
-                  onChange={(e) => setContactWhatsapp(e.target.value)}
+                  onChange={(e) => setContactWhatsapp(e.target.value.replace(/[^0-9+]/g, ''))}
                   placeholder="Ej: 3155550192"
                   className="input-base"
                 />

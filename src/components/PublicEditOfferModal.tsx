@@ -539,9 +539,11 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               <div>
                 <label className="block font-bold text-slate-700 mb-1">WhatsApp de contacto</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={15}
                   value={contactWhatsapp}
-                  onChange={(e) => setContactWhatsapp(e.target.value)}
+                  onChange={(e) => setContactWhatsapp(e.target.value.replace(/[^0-9+]/g, ''))}
                   placeholder="Ej: 3155550192"
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
@@ -550,10 +552,12 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Teléfono de contacto *</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={15}
                   required
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                   placeholder="Ej: 3124448821"
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
