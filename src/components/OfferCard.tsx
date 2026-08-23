@@ -38,7 +38,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighligh
       <div className={`p-5 space-y-2.5 ${isInactive ? 'line-through decoration-slate-400' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
           <span
-            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+            className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold uppercase tracking-wider border ${
               isInactive ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-green-50 text-green-700 border-green-200'
             }`}
           >
@@ -47,7 +47,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighligh
 
           <div className="flex items-center gap-1.5">
             {offer.verificationStatus === 'VERIFIED' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border text-indigo-600 bg-indigo-50/80 border-indigo-200">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold uppercase tracking-wider border text-indigo-600 bg-indigo-50/80 border-indigo-200">
                 <span>✓ {t('cardVerifiedBy')}</span>
               </span>
             )}

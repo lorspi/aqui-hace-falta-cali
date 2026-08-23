@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, MapPin, HeartHandshake, HelpCircle, PlusCircle } from 'lucide-react';
+import { X, MapPin, HelpCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface WelcomeOnboardingModalProps {
@@ -74,7 +74,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
         if (e.target === e.currentTarget) handleGoToMap();
       }}
     >
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative overflow-hidden text-left animate-in zoom-in-95 duration-200 my-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-y-auto p-6 sm:p-7 shadow-2xl border border-slate-200 relative text-left animate-in zoom-in-95 duration-200 my-auto">
         {/* Decorative Top Glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#1B3A93]/05 rounded-full blur-2xl pointer-events-none" />
 
@@ -86,9 +86,6 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
               alt="RaDAR de Ayuda"
               className="h-8 w-auto object-contain"
             />
-            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#1B3A93]/10 text-[#1B3A93] border border-[#1B3A93]/20">
-              Red Ciudadana
-            </span>
           </div>
           <button
             onClick={handleGoToMap}
@@ -100,7 +97,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
         </div>
 
         {/* Crisis Copy Headline */}
-        <div className="mt-5 space-y-2 relative z-10">
+        <div className="mt-5 space-y-2 relative z-10 text-center">
           <h2 className="text-xl sm:text-2xl font-black text-[#1F1C1A] tracking-tight leading-snug">
             ¿Necesitas ayuda o puedes ofrecerla?
           </h2>
@@ -124,10 +121,6 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
                   Si necesitas ayuda (Pedir)
                 </h3>
               </div>
-              <span className="text-[11px] font-bold text-[#CE3B3B] bg-[#CE3B3B]/10 group-hover:bg-[#CE3B3B] group-hover:text-white px-2.5 py-1 rounded-xl border border-[#CE3B3B]/20 transition-all shrink-0 flex items-center gap-1">
-                <span>Pedir</span>
-                <PlusCircle className="w-3.5 h-3.5" />
-              </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed pl-4.5 group-hover:text-slate-900 transition-colors">
               Publica el punto exacto en el mapa, indica qué hace falta (alimentos, salud, refugio) y deja un contacto directo.
@@ -147,10 +140,6 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
                   Si puedes ayudar (Ofrecer)
                 </h3>
               </div>
-              <span className="text-[11px] font-bold text-[#1B3A93] bg-[#1B3A93]/10 group-hover:bg-[#1B3A93] group-hover:text-white px-2.5 py-1 rounded-xl border border-[#1B3A93]/20 transition-all shrink-0 flex items-center gap-1">
-                <span>Ofrecer</span>
-                <HeartHandshake className="w-3.5 h-3.5" />
-              </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed pl-4.5 group-hover:text-slate-900 transition-colors">
               Explora las necesidades en tu zona o publica donaciones e insumos disponibles. Conéctate en 1 clic por WhatsApp o llamada.

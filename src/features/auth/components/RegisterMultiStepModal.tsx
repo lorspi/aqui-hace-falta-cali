@@ -112,12 +112,12 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0b1329]/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-[#0b1329]/85 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
       {/* Tarjeta Modal Blanca */}
-      <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col justify-between animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92dvh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col justify-between animate-in zoom-in-95 duration-200">
         
         {/* Header con indicador de paso y botón cerrar */}
-        <div className="px-6 sm:px-8 pt-6 pb-2 flex items-center justify-between">
+        <div className="px-6 sm:px-8 pt-5 pb-3 flex items-center justify-between sticky top-0 bg-white z-20 border-b border-slate-100 shadow-2xs">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
               Paso {currentStep} de 4

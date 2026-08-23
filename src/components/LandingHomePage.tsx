@@ -379,7 +379,7 @@ export const LandingHomePage: React.FC = () => {
           <div className="flex items-center gap-3">
             <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-8 w-auto brightness-0 invert opacity-90" />
             <div className="border-l border-slate-700 pl-3">
-              <p className="text-xs font-bold text-white">RaDAR de Ayuda — Aquí Hace Falta</p>
+              <p className="text-xs font-bold text-white">RaDAR de Ayuda</p>
               <p className="text-[11px] text-slate-400">Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
             </div>
           </div>

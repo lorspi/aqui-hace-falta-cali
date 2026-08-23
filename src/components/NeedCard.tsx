@@ -64,12 +64,12 @@ export const NeedCard: React.FC<NeedCardProps> = ({
       <div className="p-5 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
           {isCollectionCenter ? (
-            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+            <span className="px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
               {language === 'en' ? 'Collection Center' : 'Centro de Acopio'}
             </span>
           ) : (
             <span
-              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
+              className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
             >
               {language === 'en'
                 ? need.priority === 'CRITICAL'
@@ -84,11 +84,11 @@ export const NeedCard: React.FC<NeedCardProps> = ({
           )}
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider">
               {need.neighborhood}
             </span>
             <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${verificationInfo.badgeClass}`}
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold uppercase tracking-wider border ${verificationInfo.badgeClass}`}
             >
               <span>
                 {need.verificationStatus === 'VERIFIED'

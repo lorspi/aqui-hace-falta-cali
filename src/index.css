@@ -41,7 +41,7 @@
   /* Primary: fondo oscuro marca, texto blanco. Para CTAs principales. */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            bg-slate-900 hover:bg-slate-800 active:bg-slate-700
            text-white text-xs font-bold
            shadow-xs transition-all
@@ -51,7 +51,7 @@
   /* Primary variante: brand-blue */
   .btn-primary-blue {
     @apply inline-flex items-center justify-center gap-2
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            bg-brand-blue hover:bg-brand-blue/90 active:bg-brand-blue/80
            text-white text-xs font-bold
            shadow-xs transition-all
@@ -61,7 +61,7 @@
   /* Primary variante: emerald (éxito, ayudar) */
   .btn-primary-success {
     @apply inline-flex items-center justify-center gap-2
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700
            text-white text-xs font-bold
            shadow-xs transition-all
@@ -71,7 +71,7 @@
   /* Secondary: fondo claro con borde, para acciones alternativas */
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-1.5
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            bg-slate-100 hover:bg-slate-200
            text-slate-800 text-xs font-semibold
            border border-slate-300
@@ -82,7 +82,7 @@
   /* Ghost: sin fondo, para cancelar / cerrar */
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            text-slate-700 text-xs font-semibold
            hover:bg-slate-100
            transition-colors
@@ -92,7 +92,7 @@
   /* Danger: acciones destructivas (reportar, eliminar) */
   .btn-danger {
     @apply inline-flex items-center justify-center gap-1.5
-           px-4 py-2 rounded-xl
+           px-4 py-2.5 sm:py-2 rounded-xl
            bg-rose-700 hover:bg-rose-800 active:bg-rose-900
            text-white text-xs font-bold
            shadow-xs transition-all
@@ -101,26 +101,26 @@
 
   /* Icon button (close X, small actions) */
   .btn-icon {
-    @apply p-1.5 rounded-full
+    @apply p-2 sm:p-1.5 rounded-full
            text-slate-400 hover:text-slate-800 hover:bg-slate-100
            transition-colors;
   }
 
   /* Small button variant (para dentro de cards, inline) */
   .btn-sm {
-    @apply px-3 py-1.5 text-xs gap-1;
+    @apply px-3.5 sm:px-3 py-2 sm:py-1.5 text-xs gap-1;
   }
 
   /* Large button variant (modal CTAs prominentes) */
   .btn-lg {
-    @apply px-5 py-2.5 text-sm gap-2;
+    @apply px-5 py-3 sm:py-2.5 text-sm gap-2;
   }
 
   /* --- INPUTS --- */
 
   /* Input base: campos de texto, email, number */
   .input-base {
-    @apply w-full px-3 py-2 text-sm
+    @apply w-full px-3.5 py-2.5 sm:py-2 text-sm
            bg-slate-50 border border-slate-300 rounded-xl
            placeholder:text-slate-400
            focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
@@ -135,7 +135,7 @@
 
   /* Textarea base */
   .textarea-base {
-    @apply w-full px-3 py-2.5 text-sm
+    @apply w-full px-3.5 py-2.5 text-sm
            bg-slate-50 border border-slate-300 rounded-xl
            placeholder:text-slate-400
            focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
@@ -145,7 +145,7 @@
 
   /* Input inline (dentro de tablas, grids de recursos) */
   .input-inline {
-    @apply px-2 py-1.5 text-xs
+    @apply px-2.5 py-1.5 text-xs
            bg-white border border-slate-300 rounded-lg
            focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
            transition-all;
@@ -155,7 +155,7 @@
 
   /* Select base: desplegables full-width */
   .select-base {
-    @apply w-full px-3 py-2 text-sm font-medium
+    @apply w-full px-3.5 py-2.5 sm:py-2 text-sm font-medium
            bg-slate-50 border border-slate-300 rounded-xl
            text-slate-800 cursor-pointer
            focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
@@ -165,7 +165,7 @@
 
   /* Select inline (dentro de grids de recursos) */
   .select-inline {
-    @apply px-2 py-1.5 text-xs font-medium
+    @apply px-2.5 py-1.5 text-xs font-medium
            bg-white border border-slate-300 rounded-lg
            text-slate-800 cursor-pointer
            focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue
@@ -178,7 +178,7 @@
   .badge {
     @apply inline-flex items-center gap-1
            px-2 py-0.5 rounded-md
-           text-[10px] font-bold uppercase tracking-wider
+           text-[11px] sm:text-[10px] font-bold uppercase tracking-wider
            border;
   }
 
@@ -186,7 +186,7 @@
   .badge-pill {
     @apply inline-flex items-center gap-1
            px-2.5 py-0.5 rounded-full
-           text-[11px] font-bold
+           text-xs sm:text-[11px] font-bold
            border;
   }
 
@@ -194,7 +194,7 @@
   .category-pill {
     @apply inline-flex items-center gap-1
            px-2.5 py-1 rounded-full
-           text-[11px] font-semibold
+           text-xs sm:text-[11px] font-semibold
            bg-slate-50 text-slate-700 border border-slate-200;
   }
 
@@ -202,8 +202,8 @@
 
   /* Chip togglable: selección de categorías, filtros */
   .toggle-chip {
-    @apply px-2.5 py-1 rounded-full
-           text-[11px] font-semibold border
+    @apply px-3 py-1.5 sm:py-1 rounded-full
+           text-xs sm:text-[11px] font-semibold border
            transition-all cursor-pointer;
   }
 
@@ -218,7 +218,7 @@
   /* --- LABELS --- */
 
   .form-label {
-    @apply block text-xs font-bold text-slate-700 mb-1;
+    @apply block text-xs font-bold text-slate-700 mb-1.5 sm:mb-1;
   }
 
   .form-error {

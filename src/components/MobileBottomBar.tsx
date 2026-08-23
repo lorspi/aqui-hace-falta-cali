@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { List, Map, PlusCircle, X, Heart, HeartHandshake } from 'lucide-react';
+import { List, Map, PlusCircle, X, Heart, HeartHandshake, Info } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface MobileBottomBarProps {
@@ -8,6 +8,7 @@ interface MobileBottomBarProps {
   onOpenCreateModal: () => void;
   onOpenCreateOfferModal: () => void;
   onOpenAdminModal?: () => void;
+  onOpenWelcomeModal?: () => void;
   onScrollToMap?: () => void;
   listCount?: number;
   // Auth (kept optional for backwards compatibility)
@@ -22,6 +23,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
   onSetMobileView,
   onOpenCreateModal,
   onOpenCreateOfferModal,
+  onOpenWelcomeModal,
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -39,6 +41,22 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
           {/* Menu items */}
           <div className="relative z-10 flex flex-col items-stretch gap-3 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-200 w-64">
+            {/* ¿Cómo funciona? */}
+            {onOpenWelcomeModal && (
+              <button
+                onClick={() => { setIsMenuOpen(false); onOpenWelcomeModal(); }}
+                className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                  <Info className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <span className="text-sm font-semibold text-slate-800 block text-left">¿Cómo funciona?</span>
+                  <span className="text-[11px] text-slate-500 block text-left">Guía de uso y funcionamiento</span>
+                </div>
+              </button>
+            )}
+
             {/* Pedir ayuda */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateModal(); }}

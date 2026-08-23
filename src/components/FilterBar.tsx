@@ -71,18 +71,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.verificationStatus !== 'ALL';
 
   const renderViewModeControl = () => (
-    <div className="flex items-center justify-between gap-1 bg-slate-100 rounded-xl p-1 shrink-0 h-[38px] w-full md:w-auto" role="group">
+    <div className="flex items-center justify-between gap-1 bg-slate-100 rounded-xl p-1 shrink-0 h-auto min-h-[44px] md:h-[38px] w-full md:w-auto" role="group">
       {viewModeOptions.map((option) => (
         <button
           key={option.value}
           onClick={() => onFilterChange({ viewMode: option.value })}
-          className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 md:flex-initial px-2 md:px-3.5 py-1.5 md:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5 text-center ${
             currentViewMode === option.value
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
           }`}
         >
-          <span>{option.label}</span>
+          <span className="leading-tight">{option.label}</span>
           {option.count != null && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
               currentViewMode === option.value
@@ -117,7 +117,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         value={filters.search}
         onChange={(e) => onFilterChange({ search: e.target.value })}
         placeholder={t('searchPlaceholder')}
-        className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-all placeholder:text-slate-400 h-[38px]"
+        className="w-full pl-9 pr-8 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-all placeholder:text-slate-400 h-[42px] md:h-[38px]"
         id="filter-search-input"
       />
       {filters.search && (
@@ -134,7 +134,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const renderFiltersButton = () => (
     <button
       onClick={() => setShowMoreFilters(!showMoreFilters)}
-      className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all h-[38px] shrink-0 ${
+      className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all h-[42px] md:h-[38px] shrink-0 ${
         showMoreFilters || hasActiveFilters
           ? 'bg-slate-900 text-white border-slate-900'
           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'

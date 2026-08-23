@@ -291,8 +291,9 @@ function MainApp() {
 
   // --- SUPABASE DATA HOOKS ---
   const { needCounts, offerCounts } = useCityCounts();
-  const { needs, loading: needsLoading, refetch: refetchNeeds } = useNeeds(filters, selectedCityId);
-  const { offers, loading: offersLoading, refetch: refetchOffers } = useOffers(filters, selectedCityId);
+  const fetchFilters = useMemo(() => ({ ...filters, viewMode: 'ALL' as const }), [filters]);
+  const { needs, loading: needsLoading, refetch: refetchNeeds } = useNeeds(fetchFilters, selectedCityId);
+  const { offers, loading: offersLoading, refetch: refetchOffers } = useOffers(fetchFilters, selectedCityId);
 
   // Combined counts (needs + offers) per city for the city selector
   const combinedCounts = useMemo(() => {
@@ -302,9 +303,6 @@ function MainApp() {
     }
     return combined;
   }, [needCounts, offerCounts]);
-
-  const totalNeedsCount = needs.length;
-  const totalOffersCount = offers.length;
 
   // Filtered needs for list view (cards list)
   const displayedNeeds = useMemo(() => {
@@ -331,6 +329,9 @@ function MainApp() {
       return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
     });
   }, [offers, selectedCityId]);
+
+  const totalNeedsCount = displayedNeeds.length;
+  const totalOffersCount = displayedOffers.length;
 
   // Nearest publications when current city has 0 results
   const closestItems = useMemo(() => {
@@ -459,7 +460,7 @@ function MainApp() {
   const reports = useMemo(() => [], []);
   const auditLogs = useMemo(() => [], []);
 
-  const isLoading = filters.viewMode === "OFFERS" ? offersLoading : needsLoading;
+  const isLoading = needsLoading || offersLoading;
   const lastUpdated = new Date().toLocaleTimeString("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
@@ -737,7 +738,7 @@ function MainApp() {
         }
         onRequestLocation={handleRequestLocation}
         isLoadingLocation={isLoadingLocation}
-        totalResults={needs.length + offers.length}
+        totalResults={filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "NEEDS" ? displayedNeeds.length : displayedNeeds.length + displayedOffers.length}
         selectedCityName={selectedCityId === ALL_COLOMBIA_ID ? 'la zona' : getCityDisplayName(selectedCityId)}
         needsCount={totalNeedsCount}
         offersCount={totalOffersCount}
@@ -1122,6 +1123,7 @@ function MainApp() {
           onSetMobileView={setMobileView}
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
+          onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
           onOpenAdminModal={() => { window.location.href = '/panel'; }}
           onScrollToMap={() => {
             setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
