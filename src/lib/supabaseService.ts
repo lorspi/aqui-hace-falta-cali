@@ -700,19 +700,6 @@ export async function fetchUserProfile(userId: string) {
     } catch (e) {}
   }
 
-  // 3. Fallback: Si el usuario inició sesión con Google OAuth y Google entregó su nombre, construir el perfil para evitar abrir el popup innecesariamente
-  if (currentUser) {
-    const metaName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name;
-    if (metaName) {
-      return {
-        id: currentUser.id,
-        email: currentUser.email,
-        full_name: metaName,
-        role: 'voluntario',
-      };
-    }
-  }
-
   return null;
 }
 
