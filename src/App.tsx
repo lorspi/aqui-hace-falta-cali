@@ -173,13 +173,6 @@ function MainApp() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    // Limpiar símbolo `#` de la URL si se regresa de Google OAuth
-    if (typeof window !== 'undefined' && window.location.hash) {
-      if (window.location.hash.includes('access_token') || window.location.hash === '#') {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    }
-
     const handleSessionUser = async (sessionUser: any) => {
       if (!sessionUser) return;
 
@@ -189,12 +182,12 @@ function MainApp() {
       setAuthUser(immediateUserObj);
       localStorage.setItem('ahf_auth_user', JSON.stringify(immediateUserObj));
 
-      // Limpiar hash si todavía existe
-      if (typeof window !== 'undefined' && (window.location.hash === '#' || window.location.hash.includes('access_token'))) {
+      // 2. Limpiar `#` o `#access_token` de la URL una vez procesada la sesión por Supabase
+      if (typeof window !== 'undefined' && window.location.hash) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
 
-      // 2. Consultar perfil en DB en segundo plano
+      // 3. Consultar perfil en DB en segundo plano
       try {
         const profile = await fetchUserProfile(sessionUser.id);
         if (profile?.full_name || profile?.name) {
@@ -222,7 +215,7 @@ function MainApp() {
       }
     });
 
-    // 2. Escuchar cambios de estado en tiempo real
+    // 2. Escuchar cambios de estado en tiempo real (ej. cuando la hash de Google OAuth es procesada por Supabase)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         handleSessionUser(session.user);
