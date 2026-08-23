@@ -114,7 +114,8 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 </svg>
                 <span>Continuar con Google</span>
               </button>
-              {onOpenRegisterModal && (
+              {/* Opción de Registrarme deshabilitada temporalmente */}
+              {/* {onOpenRegisterModal && (
                 <button
                   type="button"
                   onClick={() => { setIsOpen(false); onOpenRegisterModal(); }}
@@ -123,7 +124,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
                   <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="font-semibold">Registrarme</span>
                 </button>
-              )}
+              )} */}
               <button
                 type="button"
                 onClick={() => {

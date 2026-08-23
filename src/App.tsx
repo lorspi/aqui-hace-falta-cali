@@ -197,12 +197,8 @@ function MainApp() {
           localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
         }
 
-        if (!profile) {
-          setRegisterInitialStep(2);
-          setIsRegisterModalOpen(true);
-        } else {
-          setIsRegisterModalOpen(false);
-        }
+        // Modal de registro automático deshabilitado temporalmente por solicitud
+        setIsRegisterModalOpen(false);
       } catch (err) {
         console.warn('[App] Profile check background note:', err);
       }

@@ -234,8 +234,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </form>
         </div>
 
-        {/* Pie de Modal: ¿No tienes cuenta? Regístrate aquí */}
-        <div className="px-6 sm:px-8 py-4 bg-slate-50/70 border-t border-slate-100 text-center">
+        {/* Pie de Modal deshabilitado temporalmente */}
+        {/* <div className="px-6 sm:px-8 py-4 bg-slate-50/70 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-600">
             ¿No tienes cuenta todavía?{' '}
             <button
@@ -249,7 +249,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               Regístrate aquí
             </button>
           </p>
-        </div>
+        </div> */}
 
       </div>
     </div>
