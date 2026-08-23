@@ -631,3 +631,140 @@ export async function deleteAdminUser(userId: string): Promise<void> {
   const { error } = await supabase.from('users').delete().eq('id', userId);
   if (error) throw error;
 }
+
+// ==========================================
+// MATCHING FUNCTIONS (NEEDS <-> OFFERS)
+// ==========================================
+
+export interface MatchingOfferResult {
+  offer: Offer;
+  score: number;
+  matchingCategories: HelpCategory[];
+  distanceKm?: number;
+}
+
+export interface MatchingNeedResult {
+  need: Need;
+  score: number;
+  matchingCategories: HelpCategory[];
+  distanceKm?: number;
+}
+
+export async function fetchMatchingOffersForNeed(needId: string, limit: number = 5): Promise<MatchingOfferResult[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_matching_offers_for_need', {
+      p_need_id: needId,
+      p_limit: limit,
+    });
+
+    if (error) {
+      console.warn('RPC get_matching_offers_for_need error:', error.message);
+      return [];
+    }
+
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+
+    const offerIds = data.map((item: any) => item.offer_id || item.id).filter(Boolean);
+    if (offerIds.length === 0) return [];
+
+    const { data: rawOffers, error: offersError } = await supabase
+      .from('offers')
+      .select('*')
+      .in('id', offerIds);
+
+    if (offersError || !rawOffers) return [];
+
+    const offersMap = new Map<string, Offer>();
+    for (const raw of rawOffers) {
+      const offer = dbOfferToOffer(raw);
+      offersMap.set(offer.id, offer);
+    }
+
+    const results: MatchingOfferResult[] = [];
+    for (const item of data) {
+      const id = item.offer_id || item.id;
+      const offer = offersMap.get(id);
+      if (offer) {
+        results.push({
+          offer,
+          score: item.score || 85,
+          matchingCategories: item.matching_categories || item.matchingCategories || [],
+          distanceKm: typeof item.distance_km === 'number' ? item.distance_km : undefined,
+        });
+      }
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error in fetchMatchingOffersForNeed:', err);
+    return [];
+  }
+}
+
+export async function fetchMatchingNeedsForOffer(offerId: string, limit: number = 5): Promise<MatchingNeedResult[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_matching_needs_for_offer', {
+      p_offer_id: offerId,
+      p_limit: limit,
+    });
+
+    if (!error && data && Array.isArray(data) && data.length > 0) {
+      const needIds = data.map((item: any) => item.need_id || item.id).filter(Boolean);
+      const { data: rawNeeds } = await supabase.from('needs').select('*').in('id', needIds);
+      if (rawNeeds) {
+        const needsMap = new Map<string, Need>();
+        for (const raw of rawNeeds) {
+          const need = dbNeedToNeed(raw);
+          needsMap.set(need.id, need);
+        }
+        const results: MatchingNeedResult[] = [];
+        for (const item of data) {
+          const id = item.need_id || item.id;
+          const need = needsMap.get(id);
+          if (need) {
+            results.push({
+              need,
+              score: item.score || 85,
+              matchingCategories: item.matching_categories || item.matchingCategories || [],
+              distanceKm: typeof item.distance_km === 'number' ? item.distance_km : undefined,
+            });
+          }
+        }
+        return results;
+      }
+    }
+
+    // Fallback: Query needs in same city by category
+    const { data: currentOfferRow } = await supabase.from('offers').select('*').eq('id', offerId).single();
+    if (!currentOfferRow) return [];
+    const offer = dbOfferToOffer(currentOfferRow);
+
+    const { data: rawNeeds } = await supabase
+      .from('needs')
+      .select('*')
+      .eq('city_id', offer.cityId)
+      .not('status', 'in', '("COVERED","CLOSED")')
+      .limit(10);
+
+    if (!rawNeeds) return [];
+
+    const matches: MatchingNeedResult[] = [];
+    for (const raw of rawNeeds) {
+      const need = dbNeedToNeed(raw);
+      const common = need.categories.filter((cat) => offer.categories.includes(cat));
+      if (common.length > 0) {
+        matches.push({
+          need,
+          score: 80 + common.length * 5,
+          matchingCategories: common,
+        });
+      }
+    }
+    return matches.slice(0, limit);
+  } catch (err) {
+    console.error('Error in fetchMatchingNeedsForOffer:', err);
+    return [];
+  }
+}

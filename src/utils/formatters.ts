@@ -281,20 +281,38 @@ export function formatTimeAgo(isoString: string, lang: Language = 'es'): string 
   }
 }
 
-export function buildWhatsappLink(phone: string, title: string, categories: HelpCategory[], lang: Language = 'es'): string {
+export function buildWhatsappLink(
+  phone: string,
+  title: string,
+  categories: HelpCategory[] = [],
+  lang: Language = 'es'
+): string {
+  if (!phone) return '#';
   let cleanPhone = phone.replace(/[^0-9]/g, '');
   if (cleanPhone.length === 10 && cleanPhone.startsWith('3')) {
     cleanPhone = '57' + cleanPhone;
   }
-  const catNames = categories.map((c) => getCategoryLabel(c, lang)?.label || c).join(', ');
 
-  let message = `Hola, vi en la plataforma 'Aquí Hace Falta' la necesidad: "${title}" (${catNames}). Me gustaría ofrecer mi ayuda.`;
+  // If title is already a full custom message, use it directly!
+  if (typeof title === 'string' && title.toLowerCase().startsWith('hola')) {
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(title)}`;
+  }
+
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const catNames = safeCategories.map((c) => getCategoryLabel(c, lang)?.label || c).filter(Boolean).join(', ');
+
+  let message = catNames
+    ? `Hola, vi en la plataforma 'Aquí Hace Falta' la solicitud: "${title}" (${catNames}). Me gustaría comunicarme contigo.`
+    : `Hola, vi en la plataforma 'Aquí Hace Falta': "${title}". Me gustaría comunicarme contigo.`;
+
   if (lang === 'en') {
-    message = `Hello, I saw on the 'Aquí Hace Falta' platform the need: "${title}" (${catNames}). I would like to offer my help.`;
+    message = catNames
+      ? `Hello, I saw on 'Aquí Hace Falta': "${title}" (${catNames}). I would like to get in touch.`
+      : `Hello, I saw on 'Aquí Hace Falta': "${title}". I would like to get in touch.`;
   } else if (lang === 'pt') {
-    message = `Olá, vi na plataforma 'Aquí Hace Falta' a necessidade: "${title}" (${catNames}). Gostaria de oferecer minha ajuda.`;
+    message = `Olá, vi na plataforma 'Aquí Hace Falta': "${title}". Gostaria de entrar em contato.`;
   } else if (lang === 'fr') {
-    message = `Bonjour, j'ai vu sur la plateforme 'Aquí Hace Falta' le besoin: "${title}" (${catNames}). Je souhaite proposer mon aide.`;
+    message = `Bonjour, j'ai vu sur la plateforme 'Aquí Hace Falta': "${title}". Je souhaite prendre contact.`;
   }
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

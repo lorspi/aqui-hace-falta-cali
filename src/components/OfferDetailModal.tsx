@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { submitOfferReport, updateOffer, fetchOfferUpdateLogs } from '../lib/supabaseService';
+import { submitOfferReport, updateOffer, fetchOfferUpdateLogs, fetchMatchingNeedsForOffer, MatchingNeedResult } from '../lib/supabaseService';
 import {
   X,
   MapPin,
@@ -28,6 +28,7 @@ import {
   VERIFICATION_CONFIG,
   formatTimeAgo,
   getCategoryLabel,
+  buildWhatsappLink,
 } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
 import { computeOfferStatusFromResources } from '../utils/offerStatusLogic';
@@ -123,12 +124,15 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const [updateLogs, setUpdateLogs] = useState<any[]>([]);
+  const [matchingNeeds, setMatchingNeeds] = useState<MatchingNeedResult[]>([]);
 
   React.useEffect(() => {
     if (offer?.id && isOpen) {
       fetchOfferUpdateLogs(offer.id).then((logs) => setUpdateLogs(logs));
+      fetchMatchingNeedsForOffer(offer.id, 4).then((matches) => setMatchingNeeds(matches));
     } else {
       setUpdateLogs([]);
+      setMatchingNeeds([]);
     }
   }, [offer?.id, isOpen]);
 
@@ -402,6 +406,54 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                   <span>{CATEGORY_LABELS[c]?.label || c}</span>
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Matching Needs Section */}
+          {matchingNeeds.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-blue-200/60 bg-blue-50/40 p-3.5 rounded-2xl border">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                  <span className="text-base">📢</span>
+                  <span>Solicitudes de ayuda cercanas que podrías atender ({matchingNeeds.length})</span>
+                </h4>
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-full">
+                  Radar Match
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {matchingNeeds.map(({ need, score, distanceKm }) => (
+                  <div key={need.id} className="bg-white border border-blue-200 rounded-xl p-3 space-y-2 shadow-xs hover:border-blue-400 transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <h5 className="font-bold text-slate-900 text-xs line-clamp-1">{need.title}</h5>
+                      <span className="text-[10px] font-extrabold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-300 shrink-0">
+                        {score}% Match
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 line-clamp-2">{need.description}</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
+                        <span className="truncate max-w-[110px]">{need.neighborhood || need.cityId}</span>
+                        {typeof distanceKm === 'number' && (
+                          <span className="font-semibold text-blue-700 shrink-0">({distanceKm.toFixed(1)} km)</span>
+                        )}
+                      </span>
+                      {need.contactPhone && (
+                        <a
+                          href={buildWhatsappLink(need.contactPhone, `Hola, vi tu solicitud "${need.title}" en Radar de Ayuda`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-700 font-bold hover:underline flex items-center gap-1 shrink-0 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200"
+                        >
+                          <MessageSquare className="w-3 h-3 text-blue-600" /> Contactar
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

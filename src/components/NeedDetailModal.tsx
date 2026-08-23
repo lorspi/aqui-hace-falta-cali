@@ -28,7 +28,7 @@ import {
   getCategoryLabel,
   getPlaceTypeLabel,
 } from '../utils/formatters';
-import { fetchNeedUpdateLogs } from '../lib/supabaseService';
+import { fetchNeedUpdateLogs, fetchMatchingOffersForNeed, MatchingOfferResult } from '../lib/supabaseService';
 import { useTranslation } from '../i18n/LanguageContext';
 import { trackClarityEvent } from '../utils/analytics';
 
@@ -62,12 +62,15 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   const { language, t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [updateLogs, setUpdateLogs] = useState<any[]>([]);
+  const [matchingOffers, setMatchingOffers] = useState<MatchingOfferResult[]>([]);
 
   React.useEffect(() => {
     if (need?.id) {
       fetchNeedUpdateLogs(need.id).then((logs) => setUpdateLogs(logs));
+      fetchMatchingOffersForNeed(need.id, 4).then((matches) => setMatchingOffers(matches));
     } else {
       setUpdateLogs([]);
+      setMatchingOffers([]);
     }
   }, [need?.id]);
 
@@ -268,6 +271,54 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                   </span>
                 );
               })}
+            </div>
+          )}
+
+          {/* Matching Offers Section */}
+          {matchingOffers.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-emerald-200/60 bg-emerald-50/40 p-3.5 rounded-2xl border">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                  <span className="text-base">🤝</span>
+                  <span>Ofertas de ayuda sugeridas cerca ({matchingOffers.length})</span>
+                </h4>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+                  Radar Match
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {matchingOffers.map(({ offer, score, distanceKm }) => (
+                  <div key={offer.id} className="bg-white border border-emerald-200 rounded-xl p-3 space-y-2 shadow-xs hover:border-emerald-400 transition-all">
+                    <div className="flex items-start justify-between gap-2">
+                      <h5 className="font-bold text-slate-900 text-xs line-clamp-1">{offer.title}</h5>
+                      <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300 shrink-0">
+                        {score}% Match
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 line-clamp-2">{offer.description}</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[110px]">{offer.neighborhood || offer.cityId}</span>
+                        {typeof distanceKm === 'number' && (
+                          <span className="font-semibold text-emerald-700 shrink-0">({distanceKm.toFixed(1)} km)</span>
+                        )}
+                      </span>
+                      {offer.contactPhone && (
+                        <a
+                          href={buildWhatsappLink(offer.contactPhone, `Hola, vi tu oferta "${offer.title}" en Radar de Ayuda`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 font-bold hover:underline flex items-center gap-1 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+                        >
+                          <MessageSquare className="w-3 h-3 text-emerald-600" /> Contactar
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
