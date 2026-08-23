@@ -833,7 +833,7 @@ export async function fetchMatchingOffersForNeed(needId: string, limit: number =
     const { data: rawOffers } = await supabase
       .from('offers')
       .select('*')
-      .eq('status', 'ACTIVE')
+      .eq('offer_status', 'ACTIVE')
       .limit(20);
 
     if (!rawOffers) return [];
