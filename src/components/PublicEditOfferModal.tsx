@@ -96,6 +96,21 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   if (!offer) return null;
 
+  // Compute whether any field actually changed (normalize undefined/null to '')
+  const norm = (v: any) => v ?? '';
+  const hasChanges =
+    title !== norm(offer.title) ||
+    description !== norm(offer.description) ||
+    address !== norm(offer.address) ||
+    neighborhood !== norm(offer.neighborhood) ||
+    contactName !== norm(offer.contactName) ||
+    contactPhone !== norm(offer.contactPhone) ||
+    contactWhatsapp !== norm(offer.contactWhatsapp) ||
+    contactEmail !== norm(offer.contactEmail) ||
+    organizationName !== norm(offer.organizationName) ||
+    operatingHours !== norm(offer.operatingHours) ||
+    JSON.stringify(selectedCategories) !== JSON.stringify(offer.categories || []);
+
   const handleCategoryToggle = (cat: HelpCategory) => {
     if (selectedCategories.includes(cat)) {
       if (selectedCategories.length > 1) {
@@ -152,12 +167,18 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       if (!offer) return;
       
       const changedFields: string[] = [];
-      if (title !== offer.title) changedFields.push('título');
-      if (description !== offer.description) changedFields.push('descripción');
-      if (address !== offer.address) changedFields.push('dirección');
-      if (neighborhood !== offer.neighborhood) changedFields.push('barrio');
-      if (contactName !== offer.contactName) changedFields.push('contacto');
-      if (JSON.stringify(selectedCategories) !== JSON.stringify(offer.categories)) changedFields.push('categorías');
+      const n = (v: any) => v ?? '';
+      if (title !== n(offer.title)) changedFields.push('título');
+      if (description !== n(offer.description)) changedFields.push('descripción');
+      if (address !== n(offer.address)) changedFields.push('dirección');
+      if (neighborhood !== n(offer.neighborhood)) changedFields.push('barrio');
+      if (contactName !== n(offer.contactName)) changedFields.push('contacto');
+      if (contactPhone !== n(offer.contactPhone)) changedFields.push('teléfono');
+      if (contactWhatsapp !== n(offer.contactWhatsapp)) changedFields.push('WhatsApp');
+      if (contactEmail !== n(offer.contactEmail)) changedFields.push('email');
+      if (organizationName !== n(offer.organizationName)) changedFields.push('organización');
+      if (operatingHours !== n(offer.operatingHours)) changedFields.push('horario');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(offer.categories || [])) changedFields.push('categorías');
 
       const changesSummary = changedFields.length > 0 ? `Cambios: ${changedFields.join(', ')}` : 'Edición de información';
       const logReason = editReason.trim() ? `${editReason.trim()}. ${changesSummary}` : changesSummary;
@@ -653,7 +674,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasChanges}
               className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (

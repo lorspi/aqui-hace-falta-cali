@@ -57,6 +57,7 @@ import {
   updateNeed,
   updateOffer,
   logAudit,
+  addNeedUpdateNote,
   AdminReport,
   AdminAuditLog,
   AdminUser,

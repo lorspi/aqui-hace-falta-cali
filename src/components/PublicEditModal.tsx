@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { updateNeed } from '../lib/supabaseService';
+import { updateNeed, addNeedUpdateNote } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
@@ -109,6 +109,22 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
   if (!need) return null;
 
+  // Compute whether any field actually changed (normalize undefined/null to '')
+  const norm = (v: any) => v ?? '';
+  const hasChanges =
+    title !== norm(need.title) ||
+    description !== norm(need.description) ||
+    placeType !== (need.placeType || 'OTRO') ||
+    address !== norm(need.address) ||
+    neighborhood !== norm(need.neighborhood) ||
+    priority !== (need.priority || 'MEDIUM') ||
+    contactName !== norm(need.contactName) ||
+    contactWhatsapp !== norm(need.contactWhatsapp) ||
+    contactPhone !== norm(need.contactPhone) ||
+    organizationName !== norm(need.organizationName) ||
+    operatingHours !== norm(need.operatingHours) ||
+    JSON.stringify(selectedCategories) !== JSON.stringify(need.categories || []);
+
   const handleCategoryToggle = (cat: HelpCategory) => {
     if (selectedCategories.includes(cat)) {
       if (selectedCategories.length > 1) {
@@ -173,18 +189,19 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       if (!need) return;
 
       const changedFields: string[] = [];
-      if (title !== need.title) changedFields.push('título');
-      if (description !== need.description) changedFields.push('descripción');
-      if (placeType !== need.placeType) changedFields.push('tipo de lugar');
-      if (address !== need.address) changedFields.push('dirección');
-      if (neighborhood !== need.neighborhood) changedFields.push('barrio');
-      if (priority !== need.priority) changedFields.push('prioridad');
-      if (contactName !== need.contactName) changedFields.push('contacto');
-      if (contactWhatsapp !== need.contactWhatsapp) changedFields.push('WhatsApp');
-      if (contactPhone !== need.contactPhone) changedFields.push('teléfono');
-      if (organizationName !== need.organizationName) changedFields.push('organización');
-      if (operatingHours !== need.operatingHours) changedFields.push('horario');
-      if (JSON.stringify(selectedCategories) !== JSON.stringify(need.categories)) changedFields.push('categorías');
+      const n = (v: any) => v ?? '';
+      if (title !== n(need.title)) changedFields.push('título');
+      if (description !== n(need.description)) changedFields.push('descripción');
+      if (placeType !== (need.placeType || 'OTRO')) changedFields.push('tipo de lugar');
+      if (address !== n(need.address)) changedFields.push('dirección');
+      if (neighborhood !== n(need.neighborhood)) changedFields.push('barrio');
+      if (priority !== (need.priority || 'MEDIUM')) changedFields.push('prioridad');
+      if (contactName !== n(need.contactName)) changedFields.push('contacto');
+      if (contactWhatsapp !== n(need.contactWhatsapp)) changedFields.push('WhatsApp');
+      if (contactPhone !== n(need.contactPhone)) changedFields.push('teléfono');
+      if (organizationName !== n(need.organizationName)) changedFields.push('organización');
+      if (operatingHours !== n(need.operatingHours)) changedFields.push('horario');
+      if (JSON.stringify(selectedCategories) !== JSON.stringify(need.categories || [])) changedFields.push('categorías');
 
       const changesSummary = changedFields.length > 0
         ? `Cambios: ${changedFields.join(', ')}`
@@ -733,7 +750,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
             <button
               type="submit"
-              disabled={isSubmitting || (!isModerator && !turnstileToken)}
+              disabled={isSubmitting || !hasChanges || (!isModerator && !turnstileToken)}
               className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
