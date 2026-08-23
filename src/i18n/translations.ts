@@ -9,7 +9,7 @@ export const translations = {
     activeNeeds: 'necesidades activas',
     criticalNeeds: 'urgentes',
     lastUpdate: 'Última actualización',
-    publishNeed: 'Publicar necesidad',
+    publishNeed: 'Pedir ayuda',
     offerHelp: 'Ofrecer ayuda',
     moderatorView: 'Moderador',
     helpMenu: '¿Cómo funciona?',
@@ -166,17 +166,17 @@ export const translations = {
     requesterTypeLabel: 'Tipo de solicitante *',
     verificationNoticeTitle: 'Proceso de verificación:',
     verificationNoticeDesc: 'Tu reporte se guardará como "Pendiente de verificación". Un moderador confirmará la información antes de mostrarla como verificada en el mapa.',
-    publishOfferButton: 'Publicar Oferta',
-    publishNeedButton: 'Publicar Necesidad',
-    publishedSuccessTitle: '¡Publicado exitosamente! 🎉',
+    publishOfferButton: 'Publicar Ayuda',
+    publishNeedButton: 'Pedir Ayuda',
+    publishedSuccessTitle: '¡Solicitud enviada exitosamente! 🎉',
     publishedSuccessDesc: 'Se mostrará en el mapa tras ser verificado por un moderador.',
     savingButton: 'Guardando...',
     publishedBtn: '¡Publicado!',
 
     // Create Need Modal
-    createNeedTitle: 'Publicar una Necesidad de Ayuda',
-    createNeedSubtitle: 'Reporta de forma clara y precisa lo que la comunidad requiere.',
-    submitNeedButton: 'Guardar y publicar necesidad',
+    createNeedTitle: 'Pedir Ayuda a la Comunidad',
+    createNeedSubtitle: 'Reporta de forma clara y precisa lo que tú o tu comunidad requieren.',
+    submitNeedButton: 'Guardar y pedir ayuda',
     cancelButton: 'Cancelar',
 
     // Create Offer Modal
@@ -260,7 +260,7 @@ export const translations = {
     activeNeeds: 'active needs',
     criticalNeeds: 'urgent',
     lastUpdate: 'Last update',
-    publishNeed: 'Post a need',
+    publishNeed: 'Ask for help',
     offerHelp: 'Offer help',
     moderatorView: 'Moderator',
     helpMenu: 'How it works',
@@ -418,16 +418,16 @@ export const translations = {
     verificationNoticeTitle: 'Verification process:',
     verificationNoticeDesc: 'Your report will be saved as "Pending verification". A moderator will verify the information before showing it as verified on the map.',
     publishOfferButton: 'Post Offer',
-    publishNeedButton: 'Post Need',
-    publishedSuccessTitle: 'Posted successfully! 🎉',
+    publishNeedButton: 'Ask for Help',
+    publishedSuccessTitle: 'Request submitted successfully! 🎉',
     publishedSuccessDesc: 'It will appear on the map after moderator verification.',
     savingButton: 'Saving...',
     publishedBtn: 'Posted!',
 
     // Create Need Modal
-    createNeedTitle: 'Post a Help Need',
-    createNeedSubtitle: 'Report clearly and accurately what your community requires.',
-    submitNeedButton: 'Save and post need',
+    createNeedTitle: 'Ask for Community Help',
+    createNeedSubtitle: 'Report clearly and accurately what you or your community requires.',
+    submitNeedButton: 'Save and ask for help',
     cancelButton: 'Cancel',
 
     // Create Offer Modal

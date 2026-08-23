@@ -39,7 +39,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
           {/* Menu items */}
           <div className="relative z-10 flex flex-col items-stretch gap-3 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-200 w-64">
-            {/* Publicar necesidad */}
+            {/* Pedir ayuda */}
             <button
               onClick={() => { setIsMenuOpen(false); onOpenCreateModal(); }}
               className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"

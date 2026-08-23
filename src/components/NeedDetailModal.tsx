@@ -88,6 +88,26 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${need.latitude},${need.longitude}`;
   const needShareUrl = shareUrl || window.location.href;
 
+  const handleCopyLink = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(needShareUrl);
+      } else {
+        const input = document.createElement('input');
+        input.value = needShareUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -96,9 +116,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
         url: needShareUrl,
       });
     } else {
-      navigator.clipboard.writeText(needShareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      handleCopyLink();
     }
   };
 
@@ -134,13 +152,38 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
             <h2 className="text-xl font-black text-slate-900 leading-snug pt-1">{need.title}</h2>
           </div>
 
-          <button
-            onClick={onClose}
-            className="btn-icon"
-            id="btn-close-detail-modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              title="Copiar enlace al portapapeles"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                copied
+                  ? 'bg-emerald-600 text-white border border-emerald-700'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <CheckCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span>¡Enlace copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>Copiar Link</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="btn-icon"
+              id="btn-close-detail-modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
