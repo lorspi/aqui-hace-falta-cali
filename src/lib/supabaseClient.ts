@@ -22,6 +22,7 @@ export function dbNeedToNeed(row: any): Need {
   return {
     id: row.id,
     cityId: row.city_id,
+    departmentId: row.department_id,
     emergencyId: row.emergency_id,
     title: row.title,
     description: row.description,
@@ -59,6 +60,7 @@ export function dbNeedToNeed(row: any): Need {
 export function needToDbNeed(need: Partial<Need>): Record<string, any> {
   const data: Record<string, any> = {};
   if (need.cityId !== undefined) data.city_id = need.cityId;
+  if (need.departmentId !== undefined) data.department_id = need.departmentId;
   if (need.emergencyId !== undefined) data.emergency_id = need.emergencyId;
   if (need.title !== undefined) data.title = need.title;
   if (need.description !== undefined) data.description = need.description;
@@ -97,6 +99,7 @@ export function dbOfferToOffer(row: any): Offer {
   return {
     id: row.id,
     cityId: row.city_id,
+    departmentId: row.department_id,
     title: row.title,
     description: row.description,
     categories: row.categories || [],
@@ -123,6 +126,7 @@ export function dbOfferToOffer(row: any): Offer {
 export function offerToDbOffer(offer: Partial<Offer>): Record<string, any> {
   const data: Record<string, any> = {};
   if (offer.cityId !== undefined) data.city_id = offer.cityId;
+  if (offer.departmentId !== undefined) data.department_id = offer.departmentId;
   if (offer.title !== undefined) data.title = offer.title;
   if (offer.description !== undefined) data.description = offer.description;
   if (offer.categories !== undefined) data.categories = offer.categories;

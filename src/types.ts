@@ -56,6 +56,7 @@ export interface ResourceItem {
 export interface Need {
   id: string;
   cityId: string;
+  departmentId?: string;
   emergencyId: string;
   title: string;
   description: string;
@@ -159,6 +160,7 @@ export interface OfferResourceItem {
 export interface Offer {
   id: string;
   cityId: string;
+  departmentId?: string;
   title: string;
   description: string;
   categories: HelpCategory[];

@@ -27,8 +27,11 @@ export const MiniMapPicker: React.FC<MiniMapPickerProps> = ({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const safeLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : 3.4516;
+    const safeLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : -76.5320;
+
     const map = L.map(containerRef.current, {
-      center: [latitude, longitude],
+      center: [safeLat, safeLng],
       zoom: 15,
       zoomControl: true,
     });
@@ -53,7 +56,7 @@ export const MiniMapPicker: React.FC<MiniMapPickerProps> = ({
       iconAnchor: [12, 12],
     });
 
-    const marker = L.marker([latitude, longitude], {
+    const marker = L.marker([safeLat, safeLng], {
       icon: markerIcon,
       draggable: true,
     }).addTo(map);
@@ -81,7 +84,15 @@ export const MiniMapPicker: React.FC<MiniMapPickerProps> = ({
 
   // Update marker position when lat/lng change externally (geocoding)
   useEffect(() => {
-    if (mapRef.current && markerRef.current) {
+    if (
+      mapRef.current &&
+      markerRef.current &&
+      typeof latitude === 'number' &&
+      typeof longitude === 'number' &&
+      !isNaN(latitude) &&
+      !isNaN(longitude)
+    ) {
+      mapRef.current.invalidateSize();
       markerRef.current.setLatLng([latitude, longitude]);
       mapRef.current.setView([latitude, longitude], 16, { animate: true });
     }

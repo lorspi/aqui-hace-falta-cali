@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "aqui-hace-falta"
+    "default": "aqui-hace-falta",
+    "production": "aqui-hace-falta",
+    "development": "radardeayuda-dev",
+    "staging": "radardeayuda-dev"
   }
 }

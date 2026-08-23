@@ -9,9 +9,10 @@ interface OfferCardProps {
   onClick: () => void;
   isHighlighted?: boolean;
   onHover?: (id: string | null) => void;
+  distanceKm?: number;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighlighted = false, onHover }) => {
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighlighted = false, onHover, distanceKm }) => {
   const { language, t } = useTranslation();
 
   const offerStatusLabels: Record<OfferStatus, string> = {
@@ -81,6 +82,11 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighligh
           <div className="flex items-center gap-1 font-semibold text-slate-900">
             <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <span>{offer.address || offer.neighborhood}</span>
+            {distanceKm != null && (
+              <span className="text-indigo-600 font-normal text-xs">
+                ({distanceKm < 1 ? `a ${Math.round(distanceKm * 1000)} m` : `a ${distanceKm.toFixed(1)} km`})
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />

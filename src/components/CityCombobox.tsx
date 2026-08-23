@@ -37,7 +37,8 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
 
   const selectedCity = findCityById(value);
   const selectedDept = findDepartmentByCityId(value);
-  const selectedCount = needCounts?.[value] ?? 0;
+  const selectedKey = selectedCity ? `${selectedCity.departmentId}:${selectedCity.id}` : value;
+  const selectedCount = needCounts?.[selectedKey] ?? needCounts?.[value] ?? 0;
   const displayLabel = value === ALL_COLOMBIA_ID
     ? t('allCities')
     : selectedCity
@@ -49,22 +50,30 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
     : 0;
 
   const groupedCities = useMemo(() => {
-    const searchLower = search.toLowerCase();
-    const hasCountData = needCounts && Object.keys(needCounts).length > 0;
+    const searchLower = search.toLowerCase().trim();
     const groups: { department: string; departmentId: string; cities: { id: string; name: string; count: number }[] }[] = [];
 
     for (const dept of DEPARTMENTS) {
       const citiesWithData = dept.cities
         .filter((city) => {
-          if (hasCountData && !(needCounts![city.id] > 0)) return false;
-          if (search && !city.name.toLowerCase().includes(searchLower) && !dept.name.toLowerCase().includes(searchLower)) return false;
-          return true;
+          const deptKey = `${city.departmentId}:${city.id}`;
+          const count = needCounts?.[deptKey] ?? needCounts?.[city.id] ?? 0;
+          // If searching, show any city matching search
+          if (searchLower) {
+            return city.name.toLowerCase().includes(searchLower) || dept.name.toLowerCase().includes(searchLower);
+          }
+          // Otherwise, ONLY show cities that have active items (count > 0)
+          return count > 0;
         })
-        .map((city) => ({
-          id: city.id,
-          name: city.name,
-          count: needCounts?.[city.id] || 0,
-        }));
+        .map((city) => {
+          const deptKey = `${city.departmentId}:${city.id}`;
+          const count = needCounts?.[deptKey] ?? needCounts?.[city.id] ?? 0;
+          return {
+            id: city.id,
+            name: city.name,
+            count,
+          };
+        });
 
       if (citiesWithData.length > 0) {
         groups.push({
@@ -223,8 +232,10 @@ export const CityCombobox: React.FC<CityComboboxProps> = ({
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${city.count > 0 ? 'bg-indigo-500' : 'bg-slate-300'}`} />
                         <span>{city.name}</span>
                       </span>
-                      {city.count > 0 && (
-                        <span className="text-[10px] font-bold text-indigo-600">({city.count})</span>
+                      {needCounts && (
+                        <span className={`text-[10px] font-bold ${city.count > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                          ({city.count})
+                        </span>
                       )}
                     </button>
                   ))}

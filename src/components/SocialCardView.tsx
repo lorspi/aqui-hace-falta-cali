@@ -51,7 +51,7 @@ export const SocialCardView: React.FC<SocialCardViewProps> = ({ needId, format }
   }
 
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
-  const cityName = getCityDisplayName(need.cityId) || 'Colombia';
+  const cityName = getCityDisplayName(need.cityId, need.departmentId) || 'Colombia';
   const isStory = format === 'story';
 
   return (

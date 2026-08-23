@@ -9,10 +9,12 @@ import {
   ALL_CITIES,
 } from '../data/colombiaCities';
 import { showAlert } from './ConfirmDialog';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface CityFormComboboxProps {
   value: string;
-  onChange: (cityId: string) => void;
+  departmentId?: string;
+  onChange: (cityId: string, departmentId?: string) => void;
   className?: string;
 }
 
@@ -23,20 +25,22 @@ interface CityFormComboboxProps {
  */
 export const CityFormCombobox: React.FC<CityFormComboboxProps> = ({
   value,
+  departmentId,
   onChange,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [activeDepartment, setActiveDepartment] = useState<Department | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedCity = findCityById(value);
-  const selectedDept = findDepartmentByCityId(value);
+  const selectedCity = findCityById(value, departmentId);
+  const selectedDept = findDepartmentByCityId(value, departmentId);
   const displayLabel = selectedCity
     ? `${selectedCity.name}, ${selectedDept?.name || ''}`
-    : 'Seleccionar ciudad';
+    : t('selectDepartmentPlaceholder');
 
   // Search results: flat list of matching cities across all departments
   const searchResults = useMemo(() => {
@@ -71,8 +75,8 @@ export const CityFormCombobox: React.FC<CityFormComboboxProps> = ({
     }
   }, [isOpen]);
 
-  const handleSelect = (cityId: string) => {
-    onChange(cityId);
+  const handleSelect = (cityId: string, deptId?: string) => {
+    onChange(cityId, deptId);
     setIsOpen(false);
     setSearch('');
     setActiveDepartment(null);
@@ -173,9 +177,9 @@ export const CityFormCombobox: React.FC<CityFormComboboxProps> = ({
                     <button
                       key={`${city.departmentId}-${city.id}`}
                       type="button"
-                      onClick={() => handleSelect(city.id)}
+                      onClick={() => handleSelect(city.id, city.departmentId)}
                       className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                        value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
+                        value === city.id && departmentId === city.departmentId ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -206,12 +210,12 @@ export const CityFormCombobox: React.FC<CityFormComboboxProps> = ({
                   <button
                     key={city.id}
                     type="button"
-                    onClick={() => handleSelect(city.id)}
+                    onClick={() => handleSelect(city.id, city.departmentId)}
                     className={`w-full text-left px-3 pl-6 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center gap-2 ${
-                      value === city.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
+                      value === city.id && departmentId === city.departmentId ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700'
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${value === city.id ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${value === city.id && departmentId === city.departmentId ? 'bg-indigo-500' : 'bg-slate-300'}`} />
                     <span>{city.name}</span>
                   </button>
                 ))}

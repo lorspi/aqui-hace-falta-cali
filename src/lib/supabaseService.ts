@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, dbNeedToNeed, dbOfferToOffer, needToDbNeed, offerToDbOffer } from './supabaseClient';
 import { FilterState, Need, NeedStatus, Offer, OfferStatus, Priority } from '../types';
-import { ALL_COLOMBIA_ID } from '../data/colombiaCities';
+import { ALL_COLOMBIA_ID, getCityCoordinates, findDepartmentByCityId } from '../data/colombiaCities';
 
 export interface AdminReport {
   id: string;
@@ -190,20 +190,30 @@ export function useCityCounts() {
   const [offerCounts, setOfferCounts] = useState<Record<string, number>>({});
 
   const fetchCounts = async () => {
-    const { data: needsData } = await supabase.from('needs').select('city_id');
+    const { data: needsData } = await supabase.from('needs').select('city_id, department_id');
     if (needsData) {
       const counts: Record<string, number> = {};
       needsData.forEach((row) => {
-        if (row.city_id) counts[row.city_id] = (counts[row.city_id] || 0) + 1;
+        if (row.city_id) {
+          const rawDept = (row.department_id || '').toLowerCase().trim();
+          const deptId = rawDept || findDepartmentByCityId(row.city_id)?.id || 'valle-del-cauca';
+          const key = `${deptId}:${row.city_id.toLowerCase().trim()}`;
+          counts[key] = (counts[key] || 0) + 1;
+        }
       });
       setNeedCounts(counts);
     }
 
-    const { data: offersData } = await supabase.from('offers').select('city_id');
+    const { data: offersData } = await supabase.from('offers').select('city_id, department_id');
     if (offersData) {
       const counts: Record<string, number> = {};
       offersData.forEach((row) => {
-        if (row.city_id) counts[row.city_id] = (counts[row.city_id] || 0) + 1;
+        if (row.city_id) {
+          const rawDept = (row.department_id || '').toLowerCase().trim();
+          const deptId = rawDept || findDepartmentByCityId(row.city_id)?.id || 'valle-del-cauca';
+          const key = `${deptId}:${row.city_id.toLowerCase().trim()}`;
+          counts[key] = (counts[key] || 0) + 1;
+        }
       });
       setOfferCounts(counts);
     }
@@ -233,12 +243,15 @@ export async function getOfferById(id: string): Promise<Offer | null> {
 }
 
 export async function createNeed(data: Partial<Need>): Promise<Need> {
-  const cityCoords = getCityCoordinates(data.cityId || 'cali');
+  const activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId : 'cali';
+  const cityCoords = getCityCoordinates(activeCityId);
   const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
   const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
 
   const dbData = needToDbNeed({
     ...data,
+    emergencyId: data.emergencyId || 'general',
+    cityId: activeCityId,
     latitude: lat,
     longitude: lng,
     status: data.status || 'NEED_HELP_NOW',
@@ -247,18 +260,24 @@ export async function createNeed(data: Partial<Need>): Promise<Need> {
     updatedAt: new Date().toISOString(),
   });
 
+  console.log('📤 Intentando guardar en Supabase (needs):', dbData);
   const { data: inserted, error } = await supabase.from('needs').insert([dbData]).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Error Supabase al crear necesidad:', error);
+    throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
+  }
   return dbNeedToNeed(inserted);
 }
 
 export async function createOffer(data: Partial<Offer>): Promise<Offer> {
-  const cityCoords = getCityCoordinates(data.cityId || 'cali');
+  const activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId : 'cali';
+  const cityCoords = getCityCoordinates(activeCityId);
   const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
   const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
 
   const dbData = offerToDbOffer({
     ...data,
+    cityId: activeCityId,
     latitude: lat,
     longitude: lng,
     offerStatus: data.offerStatus || 'AVAILABLE',
@@ -267,8 +286,12 @@ export async function createOffer(data: Partial<Offer>): Promise<Offer> {
     updatedAt: new Date().toISOString(),
   });
 
+  console.log('📤 Intentando guardar en Supabase (offers):', dbData);
   const { data: inserted, error } = await supabase.from('offers').insert([dbData]).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Error Supabase al crear oferta:', error);
+    throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
+  }
   return dbOfferToOffer(inserted);
 }
 

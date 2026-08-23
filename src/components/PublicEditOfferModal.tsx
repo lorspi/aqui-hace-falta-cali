@@ -123,8 +123,8 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim()) {
-      showAlert('Por favor completa todos los campos requeridos (*).', { title: 'Campos incompletos', variant: 'error' });
+    if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim() || !contactPhone.trim()) {
+      showAlert('Por favor completa todos los campos requeridos (*), incluyendo el teléfono de contacto.', { title: 'Campos incompletos', variant: 'error' });
       return;
     }
 
@@ -218,9 +218,11 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   return (
     <div
       className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
+      <div
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
@@ -506,9 +508,10 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Teléfono móvil / fijo</label>
+                <label className="block font-bold text-slate-700 mb-1">Teléfono de contacto *</label>
                 <input
                   type="text"
+                  required
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   placeholder="Ej: 3124448821"

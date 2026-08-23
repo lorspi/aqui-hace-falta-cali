@@ -295,14 +295,38 @@ export const ALL_COLOMBIA_ID = "todo-colombia";
 /** Flat list of all cities across all departments */
 export const ALL_CITIES: ColombiaCity[] = DEPARTMENTS.flatMap((d) => d.cities);
 
-/** Find a city by its slug id */
-export function findCityById(cityId: string): ColombiaCity | undefined {
-  return ALL_CITIES.find((c) => c.id === cityId);
+// Capital city overrides for homonymous city IDs when department is omitted
+const CAPITAL_HOMONYMS: Record<string, string> = {
+  'armenia': 'quindio',
+  'barbosa': 'santander',
+  'granada': 'meta',
+  'san-carlos': 'antioquia',
+  'la-union': 'valle-del-cauca',
+};
+
+/** Find a city by its slug id and optional department id */
+export function findCityById(cityId: string, departmentId?: string): ColombiaCity | undefined {
+  if (!cityId) return undefined;
+  const cleanCity = cityId.toLowerCase().trim();
+  const cleanDept = (departmentId || CAPITAL_HOMONYMS[cleanCity])?.toLowerCase().trim();
+
+  if (cleanDept) {
+    const found = ALL_CITIES.find((c) => c.id === cleanCity && c.departmentId === cleanDept);
+    if (found) return found;
+  }
+
+  return ALL_CITIES.find((c) => c.id === cleanCity);
 }
 
 /** Find the department a city belongs to */
-export function findDepartmentByCityId(cityId: string): Department | undefined {
-  return DEPARTMENTS.find((d) => d.cities.some((c) => c.id === cityId));
+export function findDepartmentByCityId(cityId: string, departmentId?: string): Department | undefined {
+  if (departmentId) {
+    const d = DEPARTMENTS.find((dept) => dept.id === departmentId.toLowerCase().trim());
+    if (d) return d;
+  }
+  const city = findCityById(cityId, departmentId);
+  if (!city) return undefined;
+  return DEPARTMENTS.find((d) => d.id === city.departmentId);
 }
 
 /** Find a department by its slug id */
@@ -311,8 +335,8 @@ export function findDepartmentById(deptId: string): Department | undefined {
 }
 
 /** Get a display name for a city id (includes department disambiguation if needed) */
-export function getCityDisplayName(cityId: string): string {
-  const city = findCityById(cityId);
+export function getCityDisplayName(cityId: string, departmentId?: string): string {
+  const city = findCityById(cityId, departmentId);
   return city?.name || cityId;
 }
 
@@ -461,13 +485,54 @@ export const KNOWN_CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "virtual": { lat: 4.5709, lng: -74.2973 },
 };
 
-export function getCityCoordinates(cityId: string): { lat: number; lng: number } {
+const DEPARTMENT_CAPITALS: Record<string, { lat: number; lng: number }> = {
+  "amazonas": { lat: -4.2153, lng: -69.9406 },
+  "antioquia": { lat: 6.2442, lng: -75.5812 },
+  "arauca": { lat: 7.0847, lng: -70.7592 },
+  "atlantico": { lat: 10.9639, lng: -74.7964 },
+  "bolivar": { lat: 10.3910, lng: -75.5144 },
+  "boyaca": { lat: 5.5353, lng: -73.3678 },
+  "caldas": { lat: 5.0689, lng: -75.5174 },
+  "caqueta": { lat: 1.6144, lng: -75.6062 },
+  "casanare": { lat: 5.3378, lng: -72.3959 },
+  "cauca": { lat: 2.4419, lng: -76.6061 },
+  "cesar": { lat: 10.4631, lng: -73.2532 },
+  "choco": { lat: 5.6947, lng: -76.6611 },
+  "cordoba": { lat: 8.7479, lng: -75.8814 },
+  "cundinamarca": { lat: 4.7110, lng: -74.0721 },
+  "guainia": { lat: 3.8653, lng: -67.9239 },
+  "guaviare": { lat: 2.5648, lng: -72.6459 },
+  "huila": { lat: 2.9273, lng: -75.2819 },
+  "la-guajira": { lat: 11.5444, lng: -72.9072 },
+  "magdalena": { lat: 11.2408, lng: -74.1990 },
+  "meta": { lat: 4.1420, lng: -73.6266 },
+  "narino": { lat: 1.2136, lng: -77.2811 },
+  "norte-de-santander": { lat: 7.8939, lng: -72.5078 },
+  "putumayo": { lat: 1.1496, lng: -76.6464 },
+  "quindio": { lat: 4.5339, lng: -75.6811 },
+  "risaralda": { lat: 4.8133, lng: -75.6961 },
+  "san-andres-y-providencia": { lat: 12.5847, lng: -81.7006 },
+  "santander": { lat: 7.1254, lng: -73.1198 },
+  "sucre": { lat: 9.3047, lng: -75.3978 },
+  "tolima": { lat: 4.4389, lng: -75.2322 },
+  "valle-del-cauca": { lat: 3.4516, lng: -76.5320 },
+  "vaupes": { lat: 1.1983, lng: -70.1733 },
+  "vichada": { lat: 6.1838, lng: -67.4858 },
+  "bogota-d-c": { lat: 4.7110, lng: -74.0721 },
+};
+
+export function getCityCoordinates(cityId: string, departmentId?: string): { lat: number; lng: number } {
   if (!cityId) return { lat: 3.4516, lng: -76.5320 };
   const clean = cityId.toLowerCase().trim();
   if (KNOWN_CITY_COORDS[clean]) return KNOWN_CITY_COORDS[clean];
 
-  const foundKey = Object.keys(KNOWN_CITY_COORDS).find((k) => clean.includes(k) || k.includes(clean));
-  if (foundKey) return KNOWN_CITY_COORDS[foundKey];
+  const citySlug = clean.includes('-') ? clean.split('-').pop()! : clean;
+  if (KNOWN_CITY_COORDS[citySlug]) return KNOWN_CITY_COORDS[citySlug];
+
+  const dept = findDepartmentByCityId(cityId, departmentId);
+  if (dept && DEPARTMENT_CAPITALS[dept.id]) {
+    return DEPARTMENT_CAPITALS[dept.id];
+  }
 
   return { lat: 3.4516, lng: -76.5320 };
 }

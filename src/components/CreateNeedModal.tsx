@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Plus, Trash2, AlertTriangle, ShieldCheck, CheckCircle2, Upload, Search, Loader2 } from 'lucide-react';
+import { X, MapPin, Plus, Trash2, AlertTriangle, AlertCircle, ShieldCheck, CheckCircle2, Upload, Search, Loader2 } from 'lucide-react';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { showAlert } from './ConfirmDialog';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
-import { findCityById, getCityDisplayName } from '../data/colombiaCities';
+import { findCityById, findDepartmentByCityId, getCityDisplayName, getCityCoordinates, detectCityFromCoords, ALL_COLOMBIA_ID } from '../data/colombiaCities';
 import { useTranslation } from '../i18n/LanguageContext';
 import { trackClarityEvent } from '../utils/analytics';
 
@@ -23,7 +23,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   onClose,
   onSubmit,
   isSubmitting,
-  initialCityId = 'cali',
+  initialCityId = '',
 }) => {
   const { language, t } = useTranslation();
   const [title, setTitle] = useState('');
@@ -32,16 +32,66 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>(['ESCOMBROS']);
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [cityId, setCityId] = useState(initialCityId);
+  const [cityId, setCityId] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [latitude, setLatitude] = useState(3.4516);
+  const [longitude, setLongitude] = useState(-76.5320);
+  const [isManualPosition, setIsManualPosition] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState<'IDLE' | 'SEARCHING' | 'FOUND' | 'NOT_FOUND'>('IDLE');
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    setIsManualPosition(false);
+    setGeocodeStatus('IDLE');
+
+    // 1. If a specific city is selected (e.g. Armenia)
+    if (initialCityId && initialCityId !== ALL_COLOMBIA_ID) {
       setCityId(initialCityId);
+      const dept = findDepartmentByCityId(initialCityId);
+      setDepartmentId(dept ? dept.id : '');
+      const coords = getCityCoordinates(initialCityId, dept?.id);
+      setLatitude(coords.lat);
+      setLongitude(coords.lng);
+      return;
+    }
+
+    // 2. Otherwise, check device GPS location
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setLatitude(lat);
+          setLongitude(lng);
+          const detected = detectCityFromCoords(lat, lng);
+          if (detected) {
+            setCityId(detected.id);
+            setDepartmentId(detected.departmentId);
+          }
+        },
+        () => {
+          // Default if GPS denied or unavailable
+          setCityId('');
+          setDepartmentId('');
+        },
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    } else {
+      setCityId('');
+      setDepartmentId('');
     }
   }, [isOpen, initialCityId]);
 
-  const [latitude, setLatitude] = useState(3.4325);
-  const [longitude, setLongitude] = useState(-76.5412);
+  // Update coordinates when cityId changes manually in form
+  useEffect(() => {
+    if (cityId && !isManualPosition) {
+      const coords = getCityCoordinates(cityId, departmentId);
+      setLatitude(coords.lat);
+      setLongitude(coords.lng);
+    }
+  }, [cityId, departmentId, isManualPosition]);
+
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactWhatsapp, setContactWhatsapp] = useState('');
@@ -56,31 +106,36 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     Array<{ type: HelpCategory; description: string; requestedQuantity: number; unit: string }>
   >([]);
 
-  const [showPickerMap, setShowPickerMap] = useState(false);
-  const [isGeocoding, setIsGeocoding] = useState(false);
-  const [geocodeError, setGeocodeError] = useState('');
-
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
   useEffect(() => {
-    if (address.length < 5) return;
-    setGeocodeError('');
-    const cityName = getCityDisplayName(cityId);
+    if (address.trim().length < 4) {
+      setGeocodeStatus('IDLE');
+      return;
+    }
+    const cityName = getCityDisplayName(cityId, departmentId);
     const timer = setTimeout(async () => {
-      setIsGeocoding(true);
+      setGeocodeStatus('SEARCHING');
       const result = await geocodeAddress(address, neighborhood, cityName);
-      setIsGeocoding(false);
-      if (result) {
+      if (
+        result &&
+        typeof result.lat === 'number' &&
+        typeof result.lng === 'number' &&
+        !isNaN(result.lat) &&
+        !isNaN(result.lng)
+      ) {
         setLatitude(result.lat);
         setLongitude(result.lng);
+        setIsManualPosition(false);
+        setGeocodeStatus('FOUND');
       } else {
-        setGeocodeError(language === 'en' ? 'Exact address not found. Click map to select.' : 'No pudimos encontrar la dirección exacta. Haz clic en el mapa para ubicar el punto.');
+        setGeocodeStatus('NOT_FOUND');
       }
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [address, neighborhood, cityId, language]);
+  }, [address, neighborhood, cityId, departmentId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -114,8 +169,8 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !address || !neighborhood) {
-      await showAlert(language === 'en' ? 'Please fill in all required fields.' : 'Por favor completa todos los campos obligatorios.');
+    if (!title || !description || !address || !neighborhood || !contactPhone.trim() || !cityId) {
+      await showAlert(language === 'en' ? 'Please fill in all required fields (including department/municipality and contact phone).' : 'Por favor completa todos los campos obligatorios (incluyendo seleccionar un departamento/municipio y teléfono de contacto).');
       return;
     }
 
@@ -136,6 +191,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       categories: selectedCategories,
       resources: formattedResources.length > 0 ? formattedResources : undefined,
       cityId,
+      departmentId: departmentId || undefined,
       address,
       neighborhood,
       latitude,
@@ -164,9 +220,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
+      <div
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div>
@@ -284,7 +342,11 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               <label className="form-label">{t('cityLabel')}</label>
               <CityFormCombobox
                 value={cityId}
-                onChange={setCityId}
+                departmentId={departmentId}
+                onChange={(cId, dId) => {
+                  setCityId(cId);
+                  setDepartmentId(dId || '');
+                }}
               />
             </div>
 
@@ -311,39 +373,62 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   placeholder={t('addressPlaceholder')}
                   className="input-base"
                 />
-                {isGeocoding && (
-                  <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> {t('geocodingSearching')}
-                  </p>
-                )}
-                {geocodeError && (
-                  <p className="text-xs text-amber-600 mt-1">{geocodeError}</p>
-                )}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => setShowPickerMap(!showPickerMap)}
-                className="text-xs text-slate-900 font-bold hover:underline flex items-center gap-1"
-              >
-                <MapPin className="w-3.5 h-3.5 text-red-600" />
-                <span>{showPickerMap ? t('hideLocationMap') : t('adjustPointOnMap')}</span>
-              </button>
+            {/* MiniMapPicker — only appears after writing an address */}
+            {address.trim().length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="form-label text-xs flex items-center gap-1.5 mb-0">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span>Ubicación en el mapa</span>
+                  </label>
+                  {isManualPosition && typeof latitude === 'number' && typeof longitude === 'number' && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      Punto personalizado ({latitude.toFixed(4)}, {longitude.toFixed(4)})
+                    </span>
+                  )}
+                </div>
 
-              {showPickerMap && (
+                {geocodeStatus === 'SEARCHING' && (
+                  <p className="text-xs text-indigo-600 flex items-center gap-1 font-medium">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación exacta de la dirección...
+                  </p>
+                )}
+
+                {geocodeStatus === 'FOUND' && typeof latitude === 'number' && typeof longitude === 'number' && !isManualPosition && (
+                  <p className="text-xs text-emerald-700 font-semibold flex items-start gap-1.5 bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-xl">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>
+                      Ubicación encontrada en el mapa ({latitude.toFixed(4)}, {longitude.toFixed(4)}). Haz clic o arrastra el marcador si deseas reajustar.
+                    </span>
+                  </p>
+                )}
+
+                {geocodeStatus === 'NOT_FOUND' && !isManualPosition && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl font-semibold flex items-start gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      No pudimos encontrar la dirección exacta. Por favor haz clic o arrastra el marcador en el mapa para ubicar tu punto.
+                    </span>
+                  </p>
+                )}
+
                 <MiniMapPicker
                   latitude={latitude}
                   longitude={longitude}
                   onPositionChange={(lat, lng) => {
                     setLatitude(lat);
                     setLongitude(lng);
+                    setIsManualPosition(true);
+                    setGeocodeStatus('IDLE');
                   }}
-                  height="200px"
+                  height="220px"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Section 3: Categories & Resources */}
@@ -510,6 +595,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 <label className="form-label">{t('contactPhoneLabel')}</label>
                 <input
                   type="text"
+                  required
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   placeholder="Ej: 3124448821"

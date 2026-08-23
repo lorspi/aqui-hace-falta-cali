@@ -83,7 +83,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           }`}
         >
           <span>{option.label}</span>
-          {option.count != null && option.count > 0 && (
+          {option.count != null && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
               currentViewMode === option.value
                 ? 'bg-slate-800 text-white'

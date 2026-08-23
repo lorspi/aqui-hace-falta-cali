@@ -8,6 +8,8 @@
     "build": "vite build --mode production",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "deploy:dev": "firebase use development && npm run build:dev && firebase deploy --only hosting",
+    "deploy:prod": "firebase use production && npm run build && firebase deploy --only hosting",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

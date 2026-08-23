@@ -18,6 +18,7 @@ import {
   Info,
   ChevronUp,
   ChevronDown,
+  Navigation,
 } from "lucide-react";
 import { FilterState, Need, NeedStatus, Offer } from "./types";
 import { Header } from "./components/Header";
@@ -40,12 +41,60 @@ import { MobileBottomBar } from "./components/MobileBottomBar";
 import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
-import { ALL_COLOMBIA_ID, findCityById, getCityDisplayName, detectCityFromCoords } from "./data/colombiaCities";
+import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 
 
 
 import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
+
+interface ParsedRoute {
+  cityId: string;
+  departmentId?: string;
+  needId?: string;
+  offerId?: string;
+}
+
+function parseUrlPath(pathname: string): ParsedRoute {
+  const parts = pathname.replace(/^\//, '').replace(/\/$/, '').split('/').filter(Boolean);
+  if (parts.length === 0) {
+    return { cityId: ALL_COLOMBIA_ID };
+  }
+
+  // 1. Check if first segment is a department slug (e.g. /quindio/armenia...)
+  const deptMatch = findDepartmentById(parts[0]);
+  if (deptMatch && parts.length >= 2) {
+    const departmentId = deptMatch.id;
+    const citySlug = parts[1];
+    const cityMatch = findCityById(citySlug, departmentId);
+    const cityId = cityMatch ? cityMatch.id : citySlug;
+
+    // Format: /dept/city/offer/:offerId OR /dept/city/:needId
+    if (parts.length >= 4 && parts[2] === 'offer') {
+      return { departmentId, cityId, offerId: parts[3] };
+    }
+    if (parts.length >= 3 && parts[2] !== 'offer') {
+      return { departmentId, cityId, needId: parts[2] };
+    }
+    return { departmentId, cityId };
+  }
+
+  // 2. Otherwise, first segment is city slug (e.g. /medellin/offer/:offerId or /armenia/:needId)
+  const citySlug = parts[0];
+  if (!citySlug || citySlug === ALL_COLOMBIA_ID) return { cityId: ALL_COLOMBIA_ID };
+  const cityMatch = findCityById(citySlug);
+  const cityId = cityMatch ? cityMatch.id : citySlug;
+
+  // Format: /city/offer/:offerId OR /city/:needId
+  if (parts.length >= 3 && parts[1] === 'offer') {
+    return { cityId, offerId: parts[2] };
+  }
+  if (parts.length >= 2 && parts[1] !== 'offer') {
+    return { cityId, needId: parts[1] };
+  }
+
+  return { cityId };
+}
 
 // Check if current path is a static page or special view
 function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
@@ -53,10 +102,10 @@ function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
 
-  // Check for /:cityId/:needId/post or /:cityId/:needId/story
-  const parts = path.split('/');
-  if (parts.length === 3 && (parts[2] === 'post' || parts[2] === 'story')) {
-    return { type: 'social', needId: parts[1], format: parts[2] };
+  // Check for /.../:needId/post or /.../:needId/story
+  const parts = path.split('/').filter(Boolean);
+  if (parts.length >= 3 && (parts[parts.length - 1] === 'post' || parts[parts.length - 1] === 'story')) {
+    return { type: 'social', needId: parts[parts.length - 2], format: parts[parts.length - 1] as 'post' | 'story' };
   }
   return null;
 }
@@ -93,34 +142,26 @@ function MainApp() {
       })()
     : null;
 
-  // Parse URL: /:cityId or /:cityId/:needId or /:cityId/offer/:offerId
-  const [initialNeedId] = useState<string | null>(() => {
-    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-    // Skip if this is an offer URL (/:cityId/offer/:offerId)
-    if (parts.length >= 3 && parts[1] === 'offer') return null;
-    return parts.length >= 2 && parts[1] !== 'offer' ? parts[1] : null;
-  });
+  // Parse current URL path
+  const [routeInfo] = useState<ParsedRoute>(() => parseUrlPath(window.location.pathname));
+  const [initialNeedId] = useState<string | null>(routeInfo.needId || null);
+  const [initialOfferId] = useState<string | null>(routeInfo.offerId || null);
 
-  const [initialOfferId] = useState<string | null>(() => {
-    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (parts.length >= 3 && parts[1] === 'offer') return parts[2];
-    return null;
-  });
-
-  // Selected city/municipality — read initial value from URL path
-  const [selectedCityId, setSelectedCityId] = useState<string>(() => {
-    const parts = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-    const citySlug = parts[0];
-    if (!citySlug || citySlug === ALL_COLOMBIA_ID) return ALL_COLOMBIA_ID;
-    const match = findCityById(citySlug);
-    return match ? match.id : ALL_COLOMBIA_ID;
-  });
+  // Selected city/municipality — read initial value from parsed route
+  const [selectedCityId, setSelectedCityId] = useState<string>(routeInfo.cityId);
 
   // Track whether the city change came from the selector or from map panning
   const [cityChangeSource, setCityChangeSource] = useState<'selector' | 'map' | 'init'>('init');
 
-  // Build current URL base for the city
-  const getCityPath = (cityId: string) => cityId === ALL_COLOMBIA_ID ? '/' : `/${cityId}`;
+  // Build current URL base for the city (includes department context for homonymous/non-default cities)
+  const getCityPath = (cityId: string) => {
+    if (cityId === ALL_COLOMBIA_ID) return '/';
+    const city = findCityById(cityId);
+    if (city && city.departmentId && (city.departmentId === 'quindio' || city.departmentId === 'antioquia')) {
+      return `/${city.departmentId}/${city.id}`;
+    }
+    return `/${cityId}`;
+  };
 
   // Sync URL when city changes
   const handleCityChange = (cityId: string) => {
@@ -133,13 +174,6 @@ function MainApp() {
     document.title = cityId === ALL_COLOMBIA_ID
       ? 'Aquí Hace Falta — Colombia'
       : `Aquí Hace Falta — ${cityName}`;
-  };
-
-  // Build shareable URL for a need
-  const getNeedUrl = (need: Need) => {
-    const cityId = need.cityId || selectedCityId;
-    const base = window.location.origin;
-    return `${base}/${cityId}/${need.id}`;
   };
 
   // Translation
@@ -241,8 +275,8 @@ function MainApp() {
 
   // --- SUPABASE DATA HOOKS ---
   const { needCounts, offerCounts } = useCityCounts();
-  const { needs, loading: needsLoading } = useNeeds(filters, selectedCityId);
-  const { offers, loading: offersLoading } = useOffers(filters, selectedCityId);
+  const { needs, loading: needsLoading, refetch: refetchNeeds } = useNeeds(filters, selectedCityId);
+  const { offers, loading: offersLoading, refetch: refetchOffers } = useOffers(filters, selectedCityId);
 
   // Combined counts (needs + offers) per city for the city selector
   const combinedCounts = useMemo(() => {
@@ -282,6 +316,64 @@ function MainApp() {
     });
   }, [offers, selectedCityId]);
 
+  // Nearest publications when current city has 0 results
+  const closestItems = useMemo(() => {
+    const isNoResults =
+      (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
+      (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
+      (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0);
+
+    if (!isNoResults || !selectedCityId || selectedCityId === ALL_COLOMBIA_ID) return [];
+
+    const cityCoords = getCityCoordinates(selectedCityId, routeInfo.departmentId);
+
+    const calculateDistance = (lat: number, lng: number) => {
+      const R = 6371; // Earth radius in km
+      const dLat = ((lat - cityCoords.lat) * Math.PI) / 180;
+      const dLon = ((lng - cityCoords.lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((cityCoords.lat * Math.PI) / 180) *
+          Math.cos((lat * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const combined: Array<
+      | { type: 'need'; item: Need; distanceKm: number }
+      | { type: 'offer'; item: Offer; distanceKm: number }
+    > = [];
+
+    if (filters.viewMode !== "OFFERS") {
+      needs.forEach((n) => {
+        if (n.latitude && n.longitude) {
+          combined.push({
+            type: 'need',
+            item: n,
+            distanceKm: calculateDistance(n.latitude, n.longitude),
+          });
+        }
+      });
+    }
+
+    if (filters.viewMode !== "NEEDS") {
+      offers.forEach((o) => {
+        if (o.latitude && o.longitude) {
+          combined.push({
+            type: 'offer',
+            item: o,
+            distanceKm: calculateDistance(o.latitude, o.longitude),
+          });
+        }
+      });
+    }
+
+    combined.sort((a, b) => a.distanceKm - b.distanceKm);
+    return combined.slice(0, 10); // Show top 10 closest
+  }, [needs, offers, displayedNeeds.length, displayedOffers.length, filters.viewMode, selectedCityId, routeInfo.departmentId]);
+
   // Open need from URL on initial load
   useEffect(() => {
     if (initialNeedId && !selectedNeed) {
@@ -300,6 +392,22 @@ function MainApp() {
     }
   }, [initialOfferId]);
 
+  // Helper to build URL prefix for a city/department
+  const getItemUrlPrefix = (cityId: string, departmentId?: string) => {
+    const city = findCityById(cityId, departmentId);
+    if (city && city.departmentId && (city.departmentId === 'quindio' || city.departmentId === 'antioquia')) {
+      return `${city.departmentId}/${city.id}`;
+    }
+    return cityId || selectedCityId;
+  };
+
+  // Build shareable URL for a need
+  const getNeedUrl = (need: Need) => {
+    const prefix = getItemUrlPrefix(need.cityId, need.departmentId);
+    const base = window.location.origin;
+    return `${base}/${prefix}/${need.id}`;
+  };
+
   // Update URL when opening/closing need detail
   const selectedNeedRef = useRef<Need | null>(null);
   const mainContentRef = useRef<HTMLElement>(null);
@@ -307,8 +415,8 @@ function MainApp() {
     selectedNeedRef.current = need;
     setSelectedNeed(need);
     if (need) {
-      const cityId = need.cityId || selectedCityId;
-      window.history.replaceState(null, '', `/${cityId}/${need.id}`);
+      const prefix = getItemUrlPrefix(need.cityId, need.departmentId);
+      window.history.replaceState(null, '', `/${prefix}/${need.id}`);
     } else {
       window.history.replaceState(null, '', getCityPath(selectedCityId));
     }
@@ -316,17 +424,17 @@ function MainApp() {
 
   // Build shareable URL for an offer
   const getOfferUrl = (offer: Offer) => {
-    const cityId = offer.cityId || selectedCityId;
+    const prefix = getItemUrlPrefix(offer.cityId, offer.departmentId);
     const base = window.location.origin;
-    return `${base}/${cityId}/offer/${offer.id}`;
+    return `${base}/${prefix}/offer/${offer.id}`;
   };
 
   // Update URL when opening/closing offer detail
   const handleSelectOffer = (offer: Offer | null) => {
     setSelectedOffer(offer);
     if (offer) {
-      const cityId = offer.cityId || selectedCityId;
-      window.history.replaceState(null, '', `/${cityId}/offer/${offer.id}`);
+      const prefix = getItemUrlPrefix(offer.cityId, offer.departmentId);
+      window.history.replaceState(null, '', `/${prefix}/offer/${offer.id}`);
     } else {
       window.history.replaceState(null, '', getCityPath(selectedCityId));
     }
@@ -374,7 +482,7 @@ function MainApp() {
   const handleCreateNeed = async (data: Partial<Need>) => {
     setIsSubmittingCreate(true);
     try {
-      await createNeed({
+      const createdNeed = await createNeed({
         title: data.title || "",
         description: data.description || "",
         placeType: data.placeType,
@@ -404,12 +512,45 @@ function MainApp() {
         priority: data.priority,
         cityId: data.cityId || selectedCityId,
       });
+
       setIsCreateModalOpen(false);
-      showAlert('¡Solicitud guardada! Tu reporte aparecerá como pendiente de verificación hasta ser confirmado.', { title: 'Solicitud guardada', variant: 'success' });
-    } catch (err) {
-      showAlert("Error al enviar el reporte.", { title: "Error", variant: "error" });
+
+      if (refetchNeeds) await refetchNeeds();
+
+      const targetCity = createdNeed?.cityId || data.cityId;
+      if (targetCity && targetCity !== selectedCityId) {
+        handleCityChange(targetCity);
+      }
+
+      setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
+
+      if (createdNeed?.id) {
+        setHoveredItemId(createdNeed.id);
+      }
+
+      showAlert('¡Solicitud guardada! Tu reporte aparecerá ahora visible en el mapa.', { title: 'Solicitud guardada', variant: 'success' });
+    } catch (err: any) {
+      console.error("❌ Error al crear necesidad:", err);
+      const msg = err?.message || err?.details || String(err);
+      showAlert(`Error al guardar la necesidad:\n${msg}`, { title: "Error al guardar", variant: "error" });
     } finally {
       setIsSubmittingCreate(false);
+    }
+  };
+
+  // Create Offer Success Callback
+  const handleOfferCreated = async (createdOffer: Offer) => {
+    if (refetchOffers) await refetchOffers();
+
+    const targetCity = createdOffer.cityId;
+    if (targetCity && targetCity !== selectedCityId) {
+      handleCityChange(targetCity);
+    }
+
+    setFilters((prev) => ({ ...prev, viewMode: 'OFFERS' }));
+
+    if (createdOffer?.id) {
+      setHoveredItemId(createdOffer.id);
     }
   };
 
@@ -428,8 +569,10 @@ function MainApp() {
         reporterContact: contact,
       });
       showAlert("Reporte enviado a moderación. Gracias por ayudar a mantener limpia la información.", { title: "Reporte enviado", variant: "success" });
-    } catch (e) {
-      showAlert("Error al enviar el reporte.", { title: "Error", variant: "error" });
+    } catch (e: any) {
+      console.error("❌ Error al enviar reporte:", e);
+      const msg = e?.message || e?.details || String(e);
+      showAlert(`Error al enviar el reporte:\n${msg}`, { title: "Error", variant: "error" });
     }
   };
 
@@ -729,35 +872,76 @@ function MainApp() {
             ) : (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
                 (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
                 (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0) ? (
-              <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
-                <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-                <h4 className="font-bold text-slate-900 text-base">
-                  {filters.viewMode === "OFFERS" ? "No se encontraron ofertas" : "No se encontraron resultados"}
-                </h4>
-                <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                  No hay puntos coincidentes con los filtros seleccionados. Intenta
-                  ampliar el radio de distancia o limpiar la búsqueda.
-                </p>
-                <button
-                  onClick={() =>
-                    setFilters({
-                      search: "",
-                      categories: [],
-                      priority: "ALL",
-                      placeType: "ALL",
-                      status: "ALL",
-                      verificationStatus: "ALL",
-                      distanceKm: null,
-                      userLat: null,
-                      userLng: null,
-                      sortBy: "PRIORITY",
-                      viewMode: "ALL",
-                    })
-                  }
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
-                >
-                  Limpiar todos los filtros
-                </button>
+              <div className="space-y-4">
+                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
+                  <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+                  <h4 className="font-bold text-slate-900 text-base">
+                    {filters.viewMode === "OFFERS" ? "No se encontraron ofertas" : "No se encontraron resultados"}
+                  </h4>
+                  <p className="text-xs text-slate-600 max-w-sm mx-auto">
+                    No hay puntos coincidentes con los filtros seleccionados. Intenta
+                    ampliar el radio de distancia o limpiar la búsqueda.
+                  </p>
+                  <button
+                    onClick={() =>
+                      setFilters({
+                        search: "",
+                        categories: [],
+                        priority: "ALL",
+                        placeType: "ALL",
+                        status: "ALL",
+                        verificationStatus: "ALL",
+                        distanceKm: null,
+                        userLat: null,
+                        userLng: null,
+                        sortBy: "PRIORITY",
+                        viewMode: "ALL",
+                      })
+                    }
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                  >
+                    Limpiar todos los filtros
+                  </button>
+                </div>
+
+                {closestItems.length > 0 && (
+                  <div className="pt-2 space-y-3">
+                    <div className="flex items-center gap-2 px-1 pt-2">
+                      <Navigation className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <h4 className="font-bold text-slate-800 text-xs">
+                        Publicaciones más cercanas a {getCityDisplayName(selectedCityId, routeInfo.departmentId)}
+                      </h4>
+                    </div>
+
+                    <div className="space-y-3">
+                      {closestItems.map(({ type, item, distanceKm }) => {
+                        const cityCoords = getCityCoordinates(selectedCityId, routeInfo.departmentId);
+                        return type === 'need' ? (
+                          <NeedCard
+                            key={item.id}
+                            need={item as Need}
+                            onSelect={(n) => handleSelectNeed(n)}
+                            onHelp={(n) => setSelectedForHelp(n)}
+                            userLat={cityCoords.lat}
+                            userLng={cityCoords.lng}
+                            isSelected={selectedNeed?.id === item.id}
+                            isHighlighted={!isGridExpanded && hoveredItemId === item.id}
+                            onHover={isGridExpanded ? undefined : setHoveredItemId}
+                          />
+                        ) : (
+                          <OfferCard
+                            key={item.id}
+                            offer={item as Offer}
+                            onClick={() => handleSelectOffer(item as Offer)}
+                            isHighlighted={!isGridExpanded && hoveredItemId === item.id}
+                            onHover={isGridExpanded ? undefined : setHoveredItemId}
+                            distanceKm={distanceKm}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -859,7 +1043,7 @@ function MainApp() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateNeed}
         isSubmitting={isSubmittingCreate}
-        initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : 'cali'}
+        initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
       />
 
       <ReportModal
@@ -890,7 +1074,8 @@ function MainApp() {
       <CreateOfferModal
         isOpen={showCreateOffer}
         onClose={() => setShowCreateOffer(false)}
-        selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : 'cali'}
+        onSuccess={handleOfferCreated}
+        selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
       />
 
       <OfferDetailModal
