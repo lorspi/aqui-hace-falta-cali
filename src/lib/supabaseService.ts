@@ -659,26 +659,58 @@ export async function fetchUserProfile(userId: string) {
   if (!userId) return null;
 
   // 1. Intentar buscar por ID en la tabla `profiles`
-  const { data: profileById } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (profileById) return profileById;
-
-  // 2. Si no lo encuentra por ID (ej. Google OAuth ID vs UUID local), buscar por correo en la sesión
-  const { data: sessionData } = await supabase.auth.getSession();
-  const sessionEmail = sessionData?.session?.user?.email;
-
-  if (sessionEmail) {
-    const { data: profileByEmail } = await supabase
+  try {
+    const { data: profileById } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', sessionEmail.trim().toLowerCase())
+      .eq('id', userId)
       .maybeSingle();
 
-    if (profileByEmail) return profileByEmail;
+    if (profileById) return profileById;
+  } catch (e) {}
+
+  // 2. Buscar por correo de la sesión en `profiles` y en `users`
+  const { data: sessionData } = await supabase.auth.getSession();
+  const currentUser = sessionData?.session?.user;
+  const sessionEmail = currentUser?.email;
+
+  if (sessionEmail) {
+    const cleanEmail = sessionEmail.trim().toLowerCase();
+
+    // Buscar en `profiles` por correo
+    try {
+      const { data: profileByEmail } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+
+      if (profileByEmail) return profileByEmail;
+    } catch (e) {}
+
+    // Buscar en `users` por correo
+    try {
+      const { data: userByEmail } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+
+      if (userByEmail) return userByEmail;
+    } catch (e) {}
+  }
+
+  // 3. Fallback: Si el usuario inició sesión con Google OAuth y Google entregó su nombre, construir el perfil para evitar abrir el popup innecesariamente
+  if (currentUser) {
+    const metaName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name;
+    if (metaName) {
+      return {
+        id: currentUser.id,
+        email: currentUser.email,
+        full_name: metaName,
+        role: 'voluntario',
+      };
+    }
   }
 
   return null;
