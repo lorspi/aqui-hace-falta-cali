@@ -42,6 +42,7 @@ import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { LandingHomePage } from "./components/LandingHomePage";
+import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 
@@ -235,10 +236,23 @@ function MainApp() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+
+  // Auto-open welcome onboarding modal on first-time visit
+  useEffect(() => {
+    try {
+      const hasSeen = localStorage.getItem('radar_has_seen_onboarding');
+      if (!hasSeen) {
+        setIsWelcomeModalOpen(true);
+      }
+    } catch (e) {
+      console.warn('LocalStorage not available', e);
+    }
+  }, []);
 
   // Check if a moderator is logged in
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
@@ -673,6 +687,7 @@ function MainApp() {
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => { window.location.href = '/panel'; }}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+        onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
           setMobileView("MAP");
@@ -1089,6 +1104,13 @@ function MainApp() {
         isAdmin={isAdminUser}
         onOpenPublicEdit={(offer) => setSelectedOfferForEdit(offer)}
         onAdminEditOffer={(offer) => setSelectedOfferForEdit(offer)}
+      />
+
+      <WelcomeOnboardingModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => setIsWelcomeModalOpen(false)}
+        onOpenCreateNeed={() => setIsCreateModalOpen(true)}
+        onOpenCreateOffer={() => setShowCreateOffer(true)}
       />
 
       {/* Footer — temporarily removed (file preserved for future use) */}

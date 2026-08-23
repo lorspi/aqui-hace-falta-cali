@@ -21,7 +21,12 @@ import {
   X,
   FileText,
   Map,
-  List,
+  Clock,
+  Target,
+  Info,
+  AlertTriangle,
+  Radio,
+  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -34,45 +39,34 @@ export const LandingHomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white overflow-x-hidden">
-      {/* Dynamic Background Glow Elements */}
+    <div className="min-h-screen bg-[#F5F6F9] text-[#1F1C1A] font-sans selection:bg-[#1B3A93] selection:text-white overflow-x-hidden">
+      {/* Background Micro-glow accents */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#F2C33D]/15 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-[#1B3A93]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-[#CE3B3B]/05 rounded-full blur-3xl" />
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-all">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <HeartHandshake className="w-5 h-5 text-emerald-400" />
-              </div>
-            </div>
-            <div>
-              <h1 className="font-black text-lg tracking-tight text-white flex items-center gap-1.5">
-                RADAR DE AYUDA
-                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Colombia
-                </span>
-              </h1>
-              <p className="text-[10px] text-slate-400 -mt-1 font-medium">Aquí Hace Falta</p>
+          <a href="/" className="flex items-center gap-3 group">
+            <img
+              src="/logo-radar.svg"
+              alt="RaDAR de Ayuda Logo"
+              className="h-9 sm:h-10 w-auto group-hover:scale-105 transition-transform"
+            />
+            <div className="hidden sm:block border-l border-slate-200 pl-3">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#1B3A93]/10 text-[#1B3A93] border border-[#1B3A93]/20">
+                Colombia
+              </span>
             </div>
           </a>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <a
               href="/"
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-900 border border-slate-800 transition-all"
-            >
-              <Map className="w-4 h-4 text-indigo-400" />
-              <span>Ver Mapa en Vivo</span>
-            </a>
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-indigo-500 to-emerald-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:scale-[1.02] transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-[#1B3A93] hover:bg-[#1B3A93]/90 text-white shadow-md shadow-[#1B3A93]/20 hover:scale-[1.02] transition-all"
             >
               <span>Ir a la App</span>
               <ArrowRight className="w-4 h-4" />
@@ -82,206 +76,245 @@ export const LandingHomePage: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-16 pb-20 md:pt-24 md:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-slate-300 text-xs font-semibold mb-8 shadow-inner animate-bounce">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Plataforma Ciudadana Abierta & Geolocalizada</span>
-        </div>
-
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] max-w-5xl mx-auto">
-          Conectando a quienes <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">necesitan</span> con quienes pueden <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">ayudar</span>.
+      <section className="relative z-10 pt-12 pb-16 md:pt-16 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.15] text-[#1F1C1A] max-w-4xl mx-auto">
+          Conectando a quienes{' '}
+          <span className="text-[#1B3A93] underline decoration-[#F2C33D] decoration-4 underline-offset-4">
+            necesitan
+          </span>{' '}
+          con quienes pueden{' '}
+          <span className="text-[#CE3B3B]">
+            ayudar
+          </span>.
         </h1>
 
-        <p className="mt-6 text-base sm:text-lg md:text-xl text-slate-400 max-w-3xl mx-auto font-normal leading-relaxed">
-          <strong className="text-slate-200">Radar de Ayuda (Aquí Hace Falta)</strong> es una herramienta digital en tiempo real diseñada para mapear, coordinar y visibilizar necesidades de auxilio y ofertas de solidaridad en emergencias comunitarias.
+        <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-3xl mx-auto font-normal leading-relaxed">
+          <strong className="text-[#1F1C1A] font-bold">RaDAR de Ayuda</strong> es una plataforma abierta que permite a ciudadanos, voluntarios y organizaciones encontrar, reportar y coordinar necesidades y recursos de forma rápida, geolocalizada y organizada en un solo lugar.
         </p>
 
-        {/* CTA Button Group */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-          <a
-            href="/"
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 text-white font-black text-sm shadow-xl shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-105 transition-all flex items-center justify-center gap-2 group"
-          >
-            <MapPin className="w-5 h-5 group-hover:animate-bounce" />
-            <span>Explorar Mapa Interactivo</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+        {/* Step by Step Section (¿Cómo funciona la plataforma?) */}
+        <div id="como-funciona" className="mt-12 pt-10 border-t border-slate-200/80 text-center">
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F1C1A] tracking-tight">
+            ¿Cómo funciona la plataforma?
+          </h2>
+          <p className="text-slate-600 text-xs sm:text-sm mt-2">
+            Tres sencillos pasos para solicitar auxilio o brindar donaciones y voluntariado.
+          </p>
 
-          <a
-            href="#como-funciona"
-            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 text-slate-300 font-bold text-sm hover:text-white transition-all flex items-center justify-center gap-2"
-          >
-            <HelpCircle className="w-4 h-4 text-indigo-400" />
-            <span>¿Cómo funciona?</span>
-          </a>
-        </div>
-
-        {/* Hero Features Bar */}
-        <div className="mt-16 pt-10 border-t border-slate-800/80 grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
-          <div className="bg-slate-900/50 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-xs">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
-              <Zap className="w-4 h-4 text-indigo-400" />
-            </div>
-            <h3 className="font-bold text-white text-sm">Tiempo Real</h3>
-            <p className="text-xs text-slate-400 mt-1">Actualización inmediata sin intermediarios ni burocracia.</p>
-          </div>
-
-          <div className="bg-slate-900/50 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-xs">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
-              <Navigation className="w-4 h-4 text-emerald-400" />
-            </div>
-            <h3 className="font-bold text-white text-sm">GPS & Mapa</h3>
-            <p className="text-xs text-slate-400 mt-1">Detección automática de municipio y coordenadas exactas.</p>
-          </div>
-
-          <div className="bg-slate-900/50 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-xs">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
-              <Sparkles className="w-4 h-4 text-purple-400" />
-            </div>
-            <h3 className="font-bold text-white text-sm">Radar Match</h3>
-            <p className="text-xs text-slate-400 mt-1">Algoritmo inteligente de coincidencia por distancia y recurso.</p>
-          </div>
-
-          <div className="bg-slate-900/50 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-xs">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-            </div>
-            <h3 className="font-bold text-white text-sm">Verificación</h3>
-            <p className="text-xs text-slate-400 mt-1">Moderación transparente por líderes comunitarios y voluntarios.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works Section */}
-      <section id="como-funciona" className="relative z-10 py-20 bg-slate-900/40 border-y border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-              Paso a Paso
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-4">
-              ¿Cómo funciona la plataforma?
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base mt-3">
-              Tres sencillos pasos para solicitar ayuda o brindar auxilio a quienes lo necesitan.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 text-left">
             {/* Step 1 */}
-            <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 relative hover:border-slate-700 transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black text-lg mb-6 group-hover:scale-110 transition-transform">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
+              <div className="w-10 h-10 rounded-xl bg-[#F2C33D]/20 border border-[#F2C33D]/40 flex items-center justify-center text-slate-900 font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 1
               </div>
-              <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
                 <span>Ubica en el Mapa</span>
-                <MapPin className="w-5 h-5 text-indigo-400" />
+                <MapPin className="w-4 h-4 text-[#1B3A93]" />
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                Ingresa tu municipio o permite que el GPS de tu dispositivo detecte tu ubicación real. Explora las necesidades reportadas a tu alrededor en el mapa interactivo.
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Selecciona tu municipio o permite que el GPS de tu celular detecte tu posición. Explora los puntos de necesidad e insumos en el mapa interactivo.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 relative hover:border-slate-700 transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-lg mb-6 group-hover:scale-110 transition-transform">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
+              <div className="w-10 h-10 rounded-xl bg-[#1B3A93]/15 border border-[#1B3A93]/30 flex items-center justify-center text-[#1B3A93] font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 2
               </div>
-              <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                <span>Pedir u Ofrecer Ayuda</span>
-                <HeartHandshake className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
+                <span>Publica Necesidad u Oferta</span>
+                <HeartHandshake className="w-4 h-4 text-[#1B3A93]" />
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                Completa el formulario interactivo indicando la dirección y los recursos específicos (Alimentos, Medicamentos, Refugio, Maquinaria, etc.). El mapa selector desplegable ubica las coordenadas exactas.
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                Dinos qué hace falta (alimentos, medicina, refugio, herramientas) o qué puedes ofrecer. El selector ubica el punto exacto con dirección y contacto.
               </p>
             </div>
 
             {/* Step 3 */}
-            <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 relative hover:border-slate-700 transition-all group">
-              <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-black text-lg mb-6 group-hover:scale-110 transition-transform">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
+              <div className="w-10 h-10 rounded-xl bg-[#CE3B3B]/15 border border-[#CE3B3B]/30 flex items-center justify-center text-[#CE3B3B] font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 3
               </div>
-              <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
                 <span>Conecta & Coordina</span>
-                <MessageSquare className="w-5 h-5 text-purple-400" />
+                <MessageSquare className="w-4 h-4 text-[#CE3B3B]" />
               </h3>
-              <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                El motor de coincidencias **Radar Match** vincula necesidades con ofertas cercanas. Contacta directamente por WhatsApp o comparte el enlace único (`Copiar Link`) para difundir la solicitud.
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                El motor Radar Match encuentra coincidencias cercanas. Comunícate en 1-clic por WhatsApp o comparte el enlace directo para movilizar ayuda.
               </p>
+            </div>
+          </div>
+
+          {/* Radar Match Section */}
+          <div className="mt-14 bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-md relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#1B3A93]/05 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+              <div className="lg:col-span-7 space-y-4">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+                  Motor de Coincidencias Radar Match
+                </h2>
+                <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
+                  Mediante cálculo espacial en tiempo real, el sistema compara automáticamente el tipo de ayuda requerida con las ofertas de donaciones o voluntariado disponibles en el mismo municipio o sector.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1B3A93]">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>Score % Match</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">Por coincidencia de categoría y cercanía.</p>
+                  </div>
+
+                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1B3A93]">
+                      <MapPin className="w-4 h-4 shrink-0 text-[#F2C33D]" />
+                      <span>Distancia en km</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">Proximidad Haversine precisa en tiempo real.</p>
+                  </div>
+
+                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#CE3B3B]">
+                      <PhoneCall className="w-4 h-4 shrink-0" />
+                      <span>Contacto 1-Clic</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">WhatsApp directo y enlaces compartibles.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Match Demo Card */}
+              <div className="lg:col-span-5 bg-[#F5F6F9] border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#CE3B3B] animate-ping" />
+                    <span className="text-xs font-bold text-[#1F1C1A]">Coincidencia Detectada</span>
+                  </div>
+                  <span className="text-[10px] font-black bg-[#1B3A93] text-white px-2 py-0.5 rounded-md">
+                    95% Match
+                  </span>
+                </div>
+
+                {/* Need item */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase text-[#CE3B3B]">Necesidad Activa</span>
+                  <p className="text-xs font-bold text-[#1F1C1A]">Agua Potable y Cobijas</p>
+                  <p className="text-[11px] text-slate-500">Se requieren botellones de agua para familias afectadas.</p>
+                </div>
+
+                {/* Offer item */}
+                <div className="bg-white p-3 rounded-xl border border-emerald-300 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase text-emerald-700">Oferta Cercana (a 1.2 km)</span>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">Disponible</span>
+                  </div>
+                  <p className="text-xs font-bold text-[#1F1C1A]">Donación de 50 botellones de agua</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Voice & Tone Section (Guía Oficial de Marca) */}
+          <div className="mt-14 pt-10 border-t border-slate-200/80 text-center max-w-4xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+              Comunicación clara y humana
+            </h2>
+            <p className="text-slate-600 text-xs sm:text-sm mt-1 mb-8">
+              "Si una frase no ayuda a alguien a moverse, sobra."
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              {/* Asi si */}
+              <div className="bg-white border-2 border-emerald-500/40 rounded-3xl p-6 shadow-xs relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm font-black text-emerald-800 uppercase tracking-wider">Así sí</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic bg-[#F5F6F9] p-4 rounded-2xl border border-slate-200">
+                  “Albergue abierto en la Escuela Simón Bolívar. Reciben cobijas y agua hasta las 8 p. m. Contacto: 300 123 4567. Actualizado hace 20 minutos.”
+                </p>
+                <p className="text-[11px] text-slate-500 mt-3">
+                  ✓ Clara, humana y directa. Verbos al frente, cifras concretas y hora de actualización siempre visible.
+                </p>
+              </div>
+
+              {/* Asi no */}
+              <div className="bg-white border-2 border-[#CE3B3B]/40 rounded-3xl p-6 shadow-xs relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <X className="w-5 h-5 text-[#CE3B3B]" />
+                  <span className="text-sm font-black text-[#CE3B3B] uppercase tracking-wider">Así no</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic bg-[#F5F6F9] p-4 rounded-2xl border border-slate-200">
+                  “Ante la grave situación de emergencia, se informa a la ciudadanía que se han dispuesto puntos de atención para la recepción de donaciones en distintos lugares del territorio.”
+                </p>
+                <p className="text-[11px] text-slate-500 mt-3">
+                  ✕ Lenguaje gubernamental o frío. Evita dramatizar sin dar datos concretos de lugar y hora.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Radar Match Section */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-emerald-950/80 border border-indigo-500/30 rounded-3xl p-8 sm:p-12 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                Tecnología de Impacto
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mt-4">
-                Motor de Coincidencias "Radar Match"
-              </h2>
-              <p className="text-slate-300 text-sm sm:text-base mt-4 leading-relaxed">
-                Gracias a las funciones de cálculo espacial de Supabase en PostgreSQL, la plataforma compara automáticamente el tipo de ayuda solicitada contra los recursos disponibles en el mismo sector o departamento.
-              </p>
-
-              <ul className="mt-6 space-y-3">
-                <li className="flex items-center gap-3 text-xs sm:text-sm text-slate-200">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span><strong>Score de Relevancia (0 - 100%):</strong> Ponderación por categoría y cercanía.</span>
-                </li>
-                <li className="flex items-center gap-3 text-xs sm:text-sm text-slate-200">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span><strong>Cálculo de Distancia en km:</strong> Mapeo dinámico de proximidad Haversine.</span>
-                </li>
-                <li className="flex items-center gap-3 text-xs sm:text-sm text-slate-200">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span><strong>Conexión 1-Clic:</strong> Botones de WhatsApp directos y enlaces compartibles.</span>
-                </li>
-              </ul>
-
-              <div className="mt-8">
-                <a
-                  href="/"
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  <span>Probar Radar Match en la App</span>
-                  <ArrowRight className="w-4 h-4" />
-                </a>
+      {/* Brand Identity & Symbol Section */}
+      <section className="relative z-10 py-16 bg-white border-y border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Visual Symbol Illustration */}
+            <div className="lg:col-span-5 flex justify-center">
+              <div className="relative p-8 bg-[#F5F6F9] rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center max-w-sm w-full">
+                <img
+                  src="/simbolo-radar.svg"
+                  alt="El Símbolo de RaDAR"
+                  className="w-48 h-48 object-contain drop-shadow-md"
+                />
+                <div className="mt-4 text-center">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-800">El Símbolo de RaDAR</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">La señal que se propaga y el abrazo que acoge</p>
+                </div>
               </div>
             </div>
 
-            {/* Visual Card Preview Mock */}
-            <div className="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Demostración Radar Match</span>
-                </div>
-                <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                  95% Match
-                </span>
+            {/* Manual Color & Meaning Explanation */}
+            <div className="lg:col-span-7 space-y-5">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+                  ¿Por qué el símbolo y los tres colores?
+                </h2>
+                <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
+                  Dos arcos abiertos alrededor de un punto. Se lee como una señal que se propaga desde un punto detectado, y como un abrazo que rodea a quien está en el centro. Los tres colores provienen de la bandera de Colombia y cuentan cómo funciona la red:
+                </p>
               </div>
 
-              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white">Necesidad: Agua Potable y Alimentos</span>
-                  <span className="text-[10px] text-slate-400">Armenia, Quindío</span>
+              <div className="space-y-3">
+                {/* Red */}
+                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#CE3B3B] border border-slate-200/80 flex items-start gap-3">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#CE3B3B] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Rojo — El centro y la emergencia</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">Es el punto exacto donde algo está pasando y alguien necesita ayuda. Es lo primero que se detecta y lo primero que se ve.</p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400">Se requieren 50 botellones de agua potable para familias afectadas.</p>
-              </div>
 
-              <div className="bg-emerald-950/30 border border-emerald-500/30 p-3.5 rounded-xl space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-emerald-400">
-                  <span>🤝 Oferta Sugerida Cercana (a 1.2 km)</span>
-                  <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 border border-emerald-500/30">Disponible</span>
+                {/* Blue */}
+                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#1B3A93] border border-slate-200/80 flex items-start gap-3">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#1B3A93] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Azul — El arco interior y el apoyo cercano</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">El vecino, la cuadra, el voluntario que ya está ahí. Rodea la emergencia de primero porque es el que llega de primero.</p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-300">Donación de 100 botellones de agua y alimentos secos en punto logístico.</p>
+
+                {/* Yellow */}
+                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#F2C33D] border border-slate-200/80 flex items-start gap-3">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#F2C33D] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Amarillo — El arco exterior y la solidaridad amplia</h4>
+                    <p className="text-xs text-slate-600 mt-0.5">El apoyo que abraza desde más lejos: las organizaciones, las donaciones, la ciudad entera. La chispa de luz alrededor de lo que está pasando.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -289,79 +322,72 @@ export const LandingHomePage: React.FC = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="relative z-10 py-20 bg-slate-900/30 border-t border-slate-800/80">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-              Preguntas Frecuentes
-            </span>
-            <h2 className="text-3xl font-black text-white tracking-tight mt-4">
-              Resuelve tus dudas
-            </h2>
-          </div>
+      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+            Resuelve tus dudas sobre la plataforma
+          </h2>
+        </div>
 
-          <div className="space-y-4">
-            {[
-              {
-                q: '¿Tiene algún costo utilizar la plataforma Radar de Ayuda?',
-                a: 'No. Es una iniciativa 100% gratuita, abierta y ciudadana diseñada para coordinar esfuerzos durante situaciones de emergencia o ayuda comunitaria.',
-              },
-              {
-                q: '¿Cómo se verifica la autenticidad de un reporte?',
-                a: 'Los reportes publicados entran en estado "Pendiente de verificación". Un equipo de moderadores y líderes locales confirman la información directamente antes de marcarla como verificada con la insignia de confianza.',
-              },
-              {
-                q: '¿Puedo usar la aplicación desde mi teléfono móvil?',
-                a: 'Sí, la interfaz está optimizada para navegadores móviles y de escritorio, permitiendo acceder al mapa, publicar reportes y usar el GPS de tu celular.',
-              },
-              {
-                q: '¿Cómo comparto una necesidad u oferta en redes sociales?',
-                a: 'Cada ventana de detalle incluye un botón superior que dice "Copiar Link". Al presionarlo se guarda el enlace exacto en tu portapapeles para pegarlo en WhatsApp, Facebook o Twitter.',
-              },
-            ].map((faq, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden transition-all"
+        <div className="space-y-3">
+          {[
+            {
+              q: '¿Tiene algún costo utilizar la plataforma RaDAR de Ayuda?',
+              a: 'No. Es una iniciativa 100% gratuita, abierta y ciudadana para coordinar auxilio y ayuda comunitaria en momentos de necesidad.',
+            },
+            {
+              q: '¿Cómo se verifica la información de una solicitud?',
+              a: 'Cada solicitud u oferta cuenta con estados de verificación transparentes. Voluntarios y líderes locales confirman directamente la veracidad de los datos antes de marcar la tarjeta como verificada.',
+            },
+            {
+              q: '¿Puedo usar la aplicación desde mi teléfono inteligente?',
+              a: 'Sí. Toda la plataforma está optimizada para navegadores móviles y de escritorio, permitiendo usar la geolocalización GPS del teléfono.',
+            },
+            {
+              q: '¿Cómo comparto una necesidad en WhatsApp o redes sociales?',
+              a: 'Dentro de cada tarjeta o modal de detalle encontrarás el botón "Copiar Link". Al presionar este botón, se copia la dirección web exacta para pegarla directamente en cualquier chat o red social.',
+            },
+          ].map((faq, idx) => (
+            <div
+              key={idx}
+              className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs transition-all"
+            >
+              <button
+                onClick={() => toggleFaq(idx)}
+                className="w-full p-4 text-left font-bold text-[#1F1C1A] text-xs sm:text-sm flex items-center justify-between gap-3 hover:text-[#1B3A93] transition-colors cursor-pointer"
               >
-                <button
-                  onClick={() => toggleFaq(idx)}
-                  className="w-full p-5 text-left font-bold text-white text-sm sm:text-base flex items-center justify-between gap-4 hover:text-indigo-400 transition-colors cursor-pointer"
-                >
-                  <span>{faq.q}</span>
-                  <ChevronRight
-                    className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${
-                      activeFaq === idx ? 'rotate-90 text-indigo-400' : ''
-                    }`}
-                  />
-                </button>
-                {activeFaq === idx && (
-                  <div className="p-5 pt-0 text-slate-400 text-xs sm:text-sm leading-relaxed border-t border-slate-800/50 mt-1">
-                    {faq.a}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                <span>{faq.q}</span>
+                <ChevronRight
+                  className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                    activeFaq === idx ? 'rotate-90 text-[#1B3A93]' : ''
+                  }`}
+                />
+              </button>
+              {activeFaq === idx && (
+                <div className="p-4 pt-0 text-slate-600 text-xs leading-relaxed border-t border-slate-100 mt-1">
+                  {faq.a}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 bg-slate-950 border-t border-slate-800/80 py-12 px-4 sm:px-6 lg:px-8">
+      <footer className="relative z-10 bg-[#1F1C1A] text-slate-300 py-10 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs">
-              AHF
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Radar de Ayuda — Aquí Hace Falta</p>
-              <p className="text-[11px] text-slate-500">Plataforma Ciudadana Abierta de Coordinación de Ayuda</p>
+            <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-8 w-auto brightness-0 invert opacity-90" />
+            <div className="border-l border-slate-700 pl-3">
+              <p className="text-xs font-bold text-white">RaDAR de Ayuda — Aquí Hace Falta</p>
+              <p className="text-[11px] text-slate-400">Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-400">
             <a href="/" className="hover:text-white transition-colors">Mapa Principal</a>
             <span>•</span>
-            <a href="/home" className="hover:text-white transition-colors">Acerca del Proyecto</a>
+            <a href="/home" className="hover:text-white transition-colors">¿Cómo Funciona?</a>
             <span>•</span>
             <a href="/moderador" className="hover:text-white transition-colors">Acceso Moderadores</a>
           </div>
@@ -370,3 +396,4 @@ export const LandingHomePage: React.FC = () => {
     </div>
   );
 };
+

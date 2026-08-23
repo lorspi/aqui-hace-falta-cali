@@ -338,3 +338,9 @@ body.modal-open {
   max-width: 260px !important;
   word-wrap: break-word;
 }
+
+/* Smooth Leaflet marker rendering */
+.custom-cluster-icon,
+.custom-map-pin {
+  will-change: transform;
+}

@@ -8,6 +8,7 @@ interface HeaderProps {
   onOpenCreateOfferModal: () => void;
   onOpenAdminModal: () => void;
   onOpenRegisterModal?: () => void;
+  onOpenWelcomeModal?: () => void;
   onScrollToMap: () => void;
   lastUpdated: string;
   isOffline: boolean;
@@ -133,6 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreateOfferModal,
   onOpenAdminModal: _onOpenAdminModal,
   onOpenRegisterModal,
+  onOpenWelcomeModal,
   onScrollToMap: _onScrollToMap,
   lastUpdated: _lastUpdated,
   isOffline: _isOffline,
@@ -195,13 +197,20 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Language Switcher Dropdown with Flags */}
             <LanguageSelector />
 
-            <a
-              href="/home"
-              className="text-xs font-bold text-slate-700 hover:text-indigo-600 px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all flex items-center gap-1.5"
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenWelcomeModal) {
+                  onOpenWelcomeModal();
+                } else {
+                  window.location.href = '/home';
+                }
+              }}
+              className="text-xs font-bold text-slate-700 hover:text-indigo-600 px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Info className="w-3.5 h-3.5 text-indigo-600" />
               <span>¿Cómo funciona?</span>
-            </a>
+            </button>
 
             <button
               onClick={onOpenCreateModal}

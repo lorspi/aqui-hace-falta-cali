@@ -51,44 +51,57 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const offerMarkersRef = useRef<L.Marker[]>([]);
+  const clusterMarkersRef = useRef<L.Marker[]>([]);
   // Map from item ID to its marker for cross-highlight
   const markerByIdRef = useRef<Record<string, L.Marker>>({});
   const pickerMarkerRef = useRef<L.Marker | null>(null);
   const isFlyingRef = useRef(false);
   const userPannedRef = useRef(false);
+  const isZoomingRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Connector lines for displaced overlapping markers
   const displacementLinesRef = useRef<L.Polyline[]>([]);
 
-  // Clustering hook
-  const { loadNeedsIndex, loadOffersIndex, getClusters, getClusterExpansionZoom } =
-    useMapClustering({ radius: 60, maxZoom: 16 });
+  // Clustering hook (radius 75px)
+  const { loadClusterIndex, getClusters, getClusterExpansionZoom, getClusterLeaves } =
+    useMapClustering({ radius: 75, maxZoom: 16 });
 
   // Default Colombia Center (Panorámica Nacional ~4.57, -74.29)
   const colombiaCenter: [number, number] = [4.5709, -74.2973];
 
   // --- Cluster rendering helpers ---
 
-  const createNeedClusterIcon = (count: number): L.DivIcon => {
-    // Size scales with cluster count
-    const size = count < 10 ? 40 : count < 50 ? 48 : 56;
+  const createClusterIcon = (count: number, needCount: number, offerCount: number): L.DivIcon => {
+    // Balanced visual scale
+    const size = count < 10 ? 36 : count < 50 ? 42 : 48;
+    const fontSize = size < 42 ? 12 : size < 48 ? 13 : 14;
+
+    let bgStyle = '';
+    if (needCount > 0 && offerCount > 0) {
+      bgStyle = 'background: linear-gradient(135deg, #1e293b 50%, #2563eb 50%);';
+    } else if (offerCount > 0) {
+      bgStyle = 'background-color: #2563eb;';
+    } else {
+      bgStyle = 'background-color: #1e293b;';
+    }
+
     return L.divIcon({
       className: 'custom-cluster-icon',
       html: `
         <div style="
-          background-color: #1e293b;
+          ${bgStyle}
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          border: 3px solid white;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+          border: 2.5px solid white;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.35);
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          font-size: ${size < 48 ? 13 : 14}px;
+          font-size: ${fontSize}px;
           font-weight: bold;
           cursor: pointer;
         ">
@@ -100,38 +113,49 @@ export const MapView: React.FC<MapViewProps> = ({
     });
   };
 
-  const createOfferClusterIcon = (count: number): L.DivIcon => {
-    const size = count < 10 ? 40 : count < 50 ? 48 : 56;
-    return L.divIcon({
-      className: 'custom-cluster-icon',
-      html: `
-        <div style="
-          background-color: #2563eb;
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 50%;
-          border: 3px solid white;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: ${size < 48 ? 13 : 14}px;
-          font-weight: bold;
-          cursor: pointer;
-        ">
-          ${count}
-        </div>
-      `,
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-    });
-  };
+  // Handle cluster click: zoom/fly to fit all points inside the cluster
+  const handleClusterClick = useCallback(
+    (clusterId: number, clusterLat: number, clusterLng: number) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
 
-  // Render clusters for needs on the map
-  const renderNeedsClusters = useCallback(() => {
+      const leaves = getClusterLeaves(clusterId, Infinity);
+      const expansionZoom = getClusterExpansionZoom(clusterId);
+      const currentZoom = map.getZoom();
+
+      if (leaves && leaves.length > 0) {
+        const coords = leaves.map((leaf) => [
+          leaf.geometry.coordinates[1],
+          leaf.geometry.coordinates[0],
+        ] as [number, number]);
+
+        const bounds = L.latLngBounds(coords);
+
+        // If all items in cluster share identical coordinates
+        if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+          const targetZoom = Math.max(currentZoom + 3, expansionZoom, 16);
+          map.flyTo([clusterLat, clusterLng], targetZoom, { animate: true, duration: 0.5 });
+        } else {
+          // Zoom and pan to frame all points in cluster with padding
+          map.flyToBounds(bounds, {
+            padding: [50, 50],
+            maxZoom: 17,
+            animate: true,
+            duration: 0.6,
+          });
+        }
+      } else {
+        const targetZoom = Math.max(currentZoom + 3, expansionZoom);
+        map.flyTo([clusterLat, clusterLng], targetZoom, { animate: true, duration: 0.5 });
+      }
+    },
+    [getClusterLeaves, getClusterExpansionZoom]
+  );
+
+  // Render unified clusters and single point markers on the map
+  const renderMapClusters = useCallback(() => {
     const map = mapInstanceRef.current;
-    if (!map || isPickerMode || viewMode === 'OFFERS') return;
+    if (!map || isPickerMode) return;
 
     // Clear displacement lines
     displacementLinesRef.current.forEach((line) => line.remove());
@@ -140,141 +164,13 @@ export const MapView: React.FC<MapViewProps> = ({
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-    // Clear need entries from markerById (keep offer entries)
-    Object.keys(markerByIdRef.current).forEach((key) => {
-      if (!offerMarkersRef.current.includes(markerByIdRef.current[key])) {
-        delete markerByIdRef.current[key];
-      }
-    });
-
-    const clusters = getClusters(map, 'needs');
-
-    clusters.forEach((feature) => {
-      const [lng, lat] = feature.geometry.coordinates;
-
-      if (isCluster(feature)) {
-        // It's a cluster
-        const count = feature.properties.point_count;
-        const clusterId = feature.properties.cluster_id;
-        const icon = createNeedClusterIcon(count);
-        const marker = L.marker([lat, lng], { icon }).addTo(map);
-
-        marker.on('click', () => {
-          const expansionZoom = getClusterExpansionZoom(clusterId, 'needs');
-          map.flyTo([lat, lng], expansionZoom, { animate: true, duration: 0.5 });
-        });
-
-        markersRef.current.push(marker);
-      } else {
-        // It's a single point
-        const props = feature.properties as { kind: 'need'; item: Need };
-        const need = props.item;
-
-        const priority = need.priority || 'MEDIUM';
-        const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
-        const colorHex = isCollectionCenter
-          ? '#7c3aed'
-          : priority === 'CRITICAL'
-          ? '#CE3B3B'
-          : priority === 'HIGH'
-          ? '#ea580c'
-          : priority === 'MEDIUM'
-          ? '#F2C33D'
-          : '#059669';
-
-        const collectionCenterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36"/></svg>`;
-
-        const innerContent = isCollectionCenter
-          ? collectionCenterSvg
-          : priority === 'CRITICAL' ? '!' : String(need.categories.length);
-
-        const customIcon = L.divIcon({
-          className: 'custom-map-pin',
-          html: `
-            <div style="
-              background-color: ${colorHex};
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 14px;
-              font-weight: bold;
-              cursor: pointer;
-            ">
-              ${innerContent}
-            </div>
-          `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
-
-        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
-
-        const catIcons = need.categories
-          .slice(0, 3)
-          .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
-          .join(' ');
-
-        const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
-
-        const tooltipHtml = `
-          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
-            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
-              <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
-                ${priorityLabel}
-              </span>
-              <span style="font-size: 11px; color: #64748b; font-weight: 600;">${need.neighborhood}</span>
-            </div>
-            <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
-              ${need.title}
-            </h4>
-            <p style="font-size: 11px; color: #334155; margin: 0;">
-              ${catIcons} ${need.categories.map((c) => CATEGORY_LABELS[c]?.label).join(', ')}
-            </p>
-          </div>
-        `;
-
-        marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
-
-        marker.on('click', () => {
-          onSelectNeed(need);
-        });
-
-        // Cross-highlight: hover on pin → notify parent
-        marker.on('mouseover', () => {
-          if (onHoverMarker) onHoverMarker(need.id);
-        });
-        marker.on('mouseout', () => {
-          if (onHoverMarker) onHoverMarker(null);
-        });
-
-        markerByIdRef.current[need.id] = marker;
-        markersRef.current.push(marker);
-      }
-    });
-  }, [getClusters, getClusterExpansionZoom, isPickerMode, viewMode, onSelectNeed, onHoverMarker]);
-
-  // Render clusters for offers on the map
-  const renderOffersClusters = useCallback(() => {
-    const map = mapInstanceRef.current;
-    if (!map || isPickerMode || viewMode === 'NEEDS') return;
-
-    // Clear existing offer markers
     offerMarkersRef.current.forEach((m) => m.remove());
     offerMarkersRef.current = [];
-    // Clear offer entries from markerById (keep need entries)
-    Object.keys(markerByIdRef.current).forEach((key) => {
-      if (!markersRef.current.includes(markerByIdRef.current[key])) {
-        delete markerByIdRef.current[key];
-      }
-    });
+    clusterMarkersRef.current.forEach((m) => m.remove());
+    clusterMarkersRef.current = [];
+    markerByIdRef.current = {};
 
-    const clusters = getClusters(map, 'offers');
+    const clusters = getClusters(map);
 
     clusters.forEach((feature) => {
       const [lng, lat] = feature.geometry.coordinates;
@@ -282,89 +178,189 @@ export const MapView: React.FC<MapViewProps> = ({
       if (isCluster(feature)) {
         const count = feature.properties.point_count;
         const clusterId = feature.properties.cluster_id;
-        const icon = createOfferClusterIcon(count);
+        const needCount = feature.properties.needCount || 0;
+        const offerCount = feature.properties.offerCount || 0;
+
+        const icon = createClusterIcon(count, needCount, offerCount);
         const marker = L.marker([lat, lng], { icon }).addTo(map);
 
+        const tooltipText =
+          needCount > 0 && offerCount > 0
+            ? `${needCount} necesidades, ${offerCount} ofertas`
+            : needCount > 0
+            ? `${needCount} necesidades`
+            : `${offerCount} ofertas`;
+
+        marker.bindTooltip(
+          `<div style="font-family: 'Hanken Grotesk', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 4px;">${tooltipText}</div>`,
+          { direction: 'top', offset: [0, -15], opacity: 0.95 }
+        );
+
         marker.on('click', () => {
-          const expansionZoom = getClusterExpansionZoom(clusterId, 'offers');
-          map.flyTo([lat, lng], expansionZoom, { animate: true, duration: 0.5 });
+          handleClusterClick(clusterId, lat, lng);
         });
 
-        offerMarkersRef.current.push(marker);
+        clusterMarkersRef.current.push(marker);
       } else {
-        const props = feature.properties as { kind: 'offer'; item: Offer };
-        const offer = props.item;
+        const props = feature.properties;
+        if (props.kind === 'need') {
+          const need = props.item;
+          const priority = need.priority || 'MEDIUM';
+          const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
+          const colorHex = isCollectionCenter
+            ? '#7c3aed'
+            : priority === 'CRITICAL'
+            ? '#CE3B3B'
+            : priority === 'HIGH'
+            ? '#ea580c'
+            : priority === 'MEDIUM'
+            ? '#F2C33D'
+            : '#059669';
 
-        const heartHandshakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/></svg>`;
+          const collectionCenterSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9"/><path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z"/><path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13"/><path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36"/></svg>`;
 
-        const customIcon = L.divIcon({
-          className: 'custom-map-pin',
-          html: `
-            <div style="
-              background-color: #2563eb;
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              border: 3px solid white;
-              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 14px;
-              font-weight: bold;
-              cursor: pointer;
-            ">
-              ${heartHandshakeSvg}
+          const innerContent = isCollectionCenter
+            ? collectionCenterSvg
+            : priority === 'CRITICAL' ? '!' : String(need.categories.length);
+
+          const customIcon = L.divIcon({
+            className: 'custom-map-pin',
+            html: `
+              <div style="
+                background-color: ${colorHex};
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                ${innerContent}
+              </div>
+            `,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+          });
+
+          const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+
+          const catIcons = need.categories
+            .slice(0, 3)
+            .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
+            .join(' ');
+
+          const priorityLabel = isCollectionCenter ? 'CENTRO DE ACOPIO' : PRIORITY_CONFIG[priority].label.toUpperCase();
+
+          const tooltipHtml = `
+            <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
+              <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+                <span style="background-color: ${colorHex}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
+                  ${priorityLabel}
+                </span>
+                <span style="font-size: 11px; color: #64748b; font-weight: 600;">${need.neighborhood}</span>
+              </div>
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
+                ${need.title}
+              </h4>
+              <p style="font-size: 11px; color: #334155; margin: 0;">
+                ${catIcons} ${need.categories.map((c) => CATEGORY_LABELS[c]?.label).join(', ')}
+              </p>
             </div>
-          `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
+          `;
 
-        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+          marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
 
-        const catIcons = offer.categories
-          .slice(0, 3)
-          .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
-          .join(' ');
+          marker.on('click', () => {
+            onSelectNeed(need);
+          });
 
-        const tooltipHtml = `
-          <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
-            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
-              <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
-                OFERTA
-              </span>
-              <span style="font-size: 11px; color: #64748b; font-weight: 600;">${offer.neighborhood}</span>
+          marker.on('mouseover', () => {
+            if (onHoverMarker) onHoverMarker(need.id);
+          });
+          marker.on('mouseout', () => {
+            if (onHoverMarker) onHoverMarker(null);
+          });
+
+          markerByIdRef.current[need.id] = marker;
+          markersRef.current.push(marker);
+        } else if (props.kind === 'offer') {
+          const offer = props.item;
+          const heartHandshakeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/></svg>`;
+
+          const customIcon = L.divIcon({
+            className: 'custom-map-pin',
+            html: `
+              <div style="
+                background-color: #2563eb;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                ${heartHandshakeSvg}
+              </div>
+            `,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+          });
+
+          const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+
+          const catIcons = offer.categories
+            .slice(0, 3)
+            .map((c) => CATEGORY_LABELS[c]?.icon || '🔹')
+            .join(' ');
+
+          const tooltipHtml = `
+            <div style="font-family: 'Hanken Grotesk', sans-serif; min-width: 180px; max-width: 240px; padding: 4px;">
+              <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+                <span style="background-color: #2563eb; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">
+                  OFERTA
+                </span>
+                <span style="font-size: 11px; color: #64748b; font-weight: 600;">${offer.neighborhood}</span>
+              </div>
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
+                ${offer.title}
+              </h4>
+              <p style="font-size: 11px; color: #334155; margin: 0;">
+                ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
+              </p>
             </div>
-            <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3;">
-              ${offer.title}
-            </h4>
-            <p style="font-size: 11px; color: #334155; margin: 0;">
-              ${catIcons} ${offer.categories.map((c) => CATEGORY_LABELS[c]?.label || c).join(', ')}
-            </p>
-          </div>
-        `;
+          `;
 
-        marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
+          marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 0.95 });
 
-        marker.on('click', () => {
-          if (onSelectOffer) onSelectOffer(offer);
-        });
+          marker.on('click', () => {
+            if (onSelectOffer) onSelectOffer(offer);
+          });
 
-        // Cross-highlight: hover on pin → notify parent
-        marker.on('mouseover', () => {
-          if (onHoverMarker) onHoverMarker(offer.id);
-        });
-        marker.on('mouseout', () => {
-          if (onHoverMarker) onHoverMarker(null);
-        });
+          marker.on('mouseover', () => {
+            if (onHoverMarker) onHoverMarker(offer.id);
+          });
+          marker.on('mouseout', () => {
+            if (onHoverMarker) onHoverMarker(null);
+          });
 
-        markerByIdRef.current[offer.id] = marker;
-        offerMarkersRef.current.push(marker);
+          markerByIdRef.current[offer.id] = marker;
+          offerMarkersRef.current.push(marker);
+        }
       }
     });
-  }, [getClusters, getClusterExpansionZoom, isPickerMode, viewMode, onSelectOffer, onHoverMarker]);
+  }, [getClusters, handleClusterClick, isPickerMode, onSelectNeed, onSelectOffer, onHoverMarker]);
 
   // Auto-displace overlapping markers so all are accessible
   const displaceOverlappingMarkers = useCallback(() => {
@@ -375,27 +371,31 @@ export const MapView: React.FC<MapViewProps> = ({
     displacementLinesRef.current.forEach((line) => line.remove());
     displacementLinesRef.current = [];
 
-    const allMarkers = [...markersRef.current, ...offerMarkersRef.current];
+    const allMarkers = [...markersRef.current, ...offerMarkersRef.current, ...clusterMarkersRef.current];
     if (allMarkers.length < 2) return;
 
-    const nearbyDistance = 24; // pixels
-    const spreadRadius = 22; // pixels offset from center
+    const nearbyDistance = 32; // pixels
+    const spreadRadius = 24; // pixels offset from center
     const processed = new Set<L.Marker>();
+
+    // Pre-calculate container points once for all markers
+    const points = allMarkers.map((m) => map.latLngToContainerPoint(m.getLatLng()));
 
     for (let i = 0; i < allMarkers.length; i++) {
       const marker = allMarkers[i];
       if (processed.has(marker)) continue;
 
-      const markerPoint = map.latLngToContainerPoint(marker.getLatLng());
+      const markerPoint = points[i];
       const group: L.Marker[] = [marker];
+      const groupPoints: L.Point[] = [markerPoint];
 
       // Find all markers near this one
       for (let j = i + 1; j < allMarkers.length; j++) {
         const other = allMarkers[j];
         if (processed.has(other)) continue;
-        const otherPoint = map.latLngToContainerPoint(other.getLatLng());
-        if (markerPoint.distanceTo(otherPoint) < nearbyDistance) {
+        if (markerPoint.distanceTo(points[j]) < nearbyDistance) {
           group.push(other);
+          groupPoints.push(points[j]);
         }
       }
 
@@ -405,11 +405,8 @@ export const MapView: React.FC<MapViewProps> = ({
       group.forEach((m) => processed.add(m));
 
       // Calculate center of the group
-      const centerPoint = group.reduce(
-        (acc, m) => {
-          const p = map.latLngToContainerPoint(m.getLatLng());
-          return L.point(acc.x + p.x / group.length, acc.y + p.y / group.length);
-        },
+      const centerPoint = groupPoints.reduce(
+        (acc, p) => L.point(acc.x + p.x / group.length, acc.y + p.y / group.length),
         L.point(0, 0)
       );
 
@@ -443,13 +440,16 @@ export const MapView: React.FC<MapViewProps> = ({
 
   // Debounced cluster update on map move/zoom
   const debouncedUpdateClusters = useCallback(() => {
+    if (isZoomingRef.current) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      renderNeedsClusters();
-      renderOffersClusters();
-      displaceOverlappingMarkers();
-    }, 150);
-  }, [renderNeedsClusters, renderOffersClusters, displaceOverlappingMarkers]);
+      if (isZoomingRef.current) return;
+      requestAnimationFrame(() => {
+        renderMapClusters();
+        displaceOverlappingMarkers();
+      });
+    }, 100);
+  }, [renderMapClusters, displaceOverlappingMarkers]);
 
   // Initialize Map
   useEffect(() => {
@@ -489,6 +489,9 @@ export const MapView: React.FC<MapViewProps> = ({
       zoom: initialZoom,
       zoomControl: true,
       scrollWheelZoom: true,
+      zoomAnimation: true,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
     } as any);
 
     // OpenStreetMap tiles
@@ -500,14 +503,28 @@ export const MapView: React.FC<MapViewProps> = ({
     mapInstanceRef.current = map;
     setMapInitialized(true);
 
-    // Fire onMapCenterChanged when user pans/zooms (not during programmatic flyTo)
+    map.on('zoomstart', () => {
+      isZoomingRef.current = true;
+    });
+
+    map.on('zoomend', () => {
+      isZoomingRef.current = false;
+      debouncedUpdateClusters();
+    });
+
+    map.on('movestart', () => {
+      isZoomingRef.current = true;
+    });
+
     map.on('moveend', () => {
+      isZoomingRef.current = false;
       if (isFlyingRef.current) return;
       userPannedRef.current = true;
       if (onMapCenterChanged) {
         const center = map.getCenter();
         onMapCenterChanged(center.lat, center.lng);
       }
+      debouncedUpdateClusters();
     });
 
     return () => {
@@ -566,46 +583,16 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [selectedCityId, cityChangeSource]);
 
-  // Load needs into Supercluster index and render
+  // Load points into Supercluster index and render
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !mapInitialized) return;
     if (isPickerMode) return;
-    if (viewMode === 'OFFERS') {
-      // Clear need markers when in OFFERS mode
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      return;
-    }
 
-    loadNeedsIndex(needs);
-    renderNeedsClusters();
+    loadClusterIndex(needs, offers || [], viewMode);
+    renderMapClusters();
     displaceOverlappingMarkers();
-  }, [needs, isPickerMode, viewMode, mapInitialized, loadNeedsIndex, renderNeedsClusters, displaceOverlappingMarkers]);
-
-  // Load offers into Supercluster index and render
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !mapInitialized) return;
-    if (isPickerMode) return;
-    if (viewMode === 'NEEDS') {
-      // Clear offer markers when in NEEDS mode
-      offerMarkersRef.current.forEach((m) => m.remove());
-      offerMarkersRef.current = [];
-      return;
-    }
-
-    // Only render offers that are VERIFIED or PENDING_VERIFICATION and AVAILABLE or PARTIALLY_AVAILABLE
-    const visibleOffers = (offers || []).filter((offer) => {
-      if (offer.verificationStatus !== 'VERIFIED' && offer.verificationStatus !== 'PENDING_VERIFICATION') return false;
-      if (offer.offerStatus !== 'AVAILABLE' && offer.offerStatus !== 'PARTIALLY_AVAILABLE') return false;
-      return true;
-    });
-
-    loadOffersIndex(visibleOffers);
-    renderOffersClusters();
-    displaceOverlappingMarkers();
-  }, [offers, isPickerMode, viewMode, mapInitialized, loadOffersIndex, renderOffersClusters, displaceOverlappingMarkers]);
+  }, [needs, offers, viewMode, isPickerMode, mapInitialized, loadClusterIndex, renderMapClusters, displaceOverlappingMarkers]);
 
   // Cross-highlight: when hoveredItemId changes, highlight the pin visually without panning or moving the map
   useEffect(() => {
