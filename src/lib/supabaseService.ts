@@ -658,7 +658,7 @@ export async function signOutUser(): Promise<void> {
 export async function fetchUserProfile(userId: string) {
   if (!userId) return null;
 
-  // 1. Intentar buscar por ID en la tabla `profiles`
+  // 1. Buscar por ID en la tabla `profiles`
   try {
     const { data: profileById } = await supabase
       .from('profiles')
@@ -669,7 +669,7 @@ export async function fetchUserProfile(userId: string) {
     if (profileById) return profileById;
   } catch (e) {}
 
-  // 2. Buscar por correo de la sesión en `profiles` y en `users`
+  // 2. Buscar por correo de la sesión exclusivamente en `profiles`
   const { data: sessionData } = await supabase.auth.getSession();
   const currentUser = sessionData?.session?.user;
   const sessionEmail = currentUser?.email;
@@ -677,7 +677,6 @@ export async function fetchUserProfile(userId: string) {
   if (sessionEmail) {
     const cleanEmail = sessionEmail.trim().toLowerCase();
 
-    // Buscar en `profiles` por correo
     try {
       const { data: profileByEmail } = await supabase
         .from('profiles')
@@ -686,17 +685,6 @@ export async function fetchUserProfile(userId: string) {
         .maybeSingle();
 
       if (profileByEmail) return profileByEmail;
-    } catch (e) {}
-
-    // Buscar en `users` por correo
-    try {
-      const { data: userByEmail } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', cleanEmail)
-        .maybeSingle();
-
-      if (userByEmail) return userByEmail;
     } catch (e) {}
   }
 
@@ -739,32 +727,6 @@ export async function upsertUserProfile(profileData: {
   if (error) {
     console.error('[Supabase] Error upserting profile:', error);
     throw error;
-  }
-
-  // Sincronizar también en la tabla `users` para mantener compatibilidad
-  if (profileData.email) {
-    try {
-      const email = profileData.email.trim().toLowerCase();
-      const { data: existingUser } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
-      if (existingUser) {
-        await supabase.from('users').update({
-          name: profileData.full_name,
-          role: profileData.role || existingUser.role,
-          last_login_at: new Date().toISOString(),
-        }).eq('id', existingUser.id);
-      } else {
-        await supabase.from('users').insert([{
-          email,
-          name: profileData.full_name,
-          role: profileData.role || 'voluntario',
-          active: true,
-          created_at: new Date().toISOString(),
-          last_login_at: new Date().toISOString(),
-        }]);
-      }
-    } catch (uErr) {
-      console.warn('[Supabase] Sync users table note:', uErr);
-    }
   }
 
   return data;
