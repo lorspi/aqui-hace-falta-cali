@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { ArrowLeft, ArrowRight, X, UserPlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import { upsertUserProfile, upsertOrganization } from '../../../lib/supabaseService';
 import {
   UserRole,
   OrganizationType,
   DocumentType,
 } from '../schemas/registerSchema';
+import { Step1AccountAuth } from './steps/Step1AccountAuth';
 import { Step1Role } from './steps/Step1Role';
 import { Step2Location } from './steps/Step2Location';
 import { Step3Identity } from './steps/Step3Identity';
@@ -20,7 +22,8 @@ interface RegisterWizardProps {
   isOpen?: boolean;
   onClose?: () => void;
   onNavigateToLogin?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (savedProfile?: any) => void;
+  initialStep?: number;
 }
 
 export const RegisterWizard: React.FC<RegisterWizardProps> = ({
@@ -28,11 +31,19 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   onClose,
   onNavigateToLogin,
   onSuccess,
+  initialStep = 1,
 }) => {
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(initialStep);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Synchronize currentStep whenever the modal opens or initialStep changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(initialStep);
+    }
+  }, [isOpen, initialStep]);
 
   // Inicialización de React Hook Form
   const {
@@ -91,7 +102,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const email: string = watch('email');
   const password: string = watch('password');
 
-  // Determinar si es flujo de organización o individual (Únicamente entidad_profesional usa 7 pasos)
+  // Determinar si es flujo de organización o individual
   const isOrgFlow = role === 'entidad_profesional';
   const totalSteps = isOrgFlow ? 7 : 4;
 
@@ -100,29 +111,31 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     setServerError(null);
     let isValidStep = false;
 
-    if (!isOrgFlow) {
-      // Flujo Individual (4 Pasos)
-      if (currentStep === 1) {
-        isValidStep = await trigger(['role']);
-      } else if (currentStep === 2) {
+    if (currentStep === 1) {
+      // Paso 1: Autenticación (Email/Password)
+      isValidStep = await trigger(['email', 'password']);
+    } else if (currentStep === 2) {
+      // Paso 2: Rol
+      isValidStep = await trigger(['role']);
+    } else if (!isOrgFlow) {
+      // Flujo Individual (4 Pasos): Paso 3 Identificación & Teléfono, Paso 4 Ubicación
+      if (currentStep === 3) {
+        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber', 'phoneNumber']);
+      } else if (currentStep === 4) {
         isValidStep = await trigger(['country', 'department', 'city']);
-      } else if (currentStep === 3) {
-        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
       }
     } else {
       // Flujo Organización (7 Pasos)
-      if (currentStep === 1) {
-        isValidStep = await trigger(['role']);
-      } else if (currentStep === 2) {
+      if (currentStep === 3) {
         isValidStep = await trigger(['organizationType']);
-      } else if (currentStep === 3) {
-        isValidStep = await trigger(['country', 'department', 'city']);
       } else if (currentStep === 4) {
-        isValidStep = await trigger(['searchAddress', 'latitude', 'longitude']);
-      } else if (currentStep === 5) {
         isValidStep = await trigger(['orgName']);
+      } else if (currentStep === 5) {
+        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber', 'phoneNumber']);
       } else if (currentStep === 6) {
-        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
+        isValidStep = await trigger(['country', 'department', 'city']);
+      } else if (currentStep === 7) {
+        isValidStep = await trigger(['searchAddress', 'latitude', 'longitude']);
       }
     }
 
@@ -131,9 +144,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     }
   };
 
+  const isGoogleProfileOnboarding = initialStep === 2;
+  const displayStep = isGoogleProfileOnboarding ? currentStep - 1 : currentStep;
+  const displayTotalSteps = isGoogleProfileOnboarding ? totalSteps - 1 : totalSteps;
+
   const handlePrevStep = () => {
     setServerError(null);
-    if (currentStep > 1) {
+    if (currentStep > initialStep) {
       setCurrentStep((prev) => prev - 1);
     }
   };
@@ -145,107 +162,102 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     setSuccessMessage(null);
 
     try {
-      const fullPhone = `${data.phoneCountryCode}${data.phoneNumber.trim()}`;
+      const fullPhone = `${data.phoneCountryCode || '+57'}${data.phoneNumber ? data.phoneNumber.trim() : ''}`;
       const isOrg = data.role === 'entidad_profesional';
 
-      // Construcción de la Metadata de Usuario para Supabase Auth
-      const userMetadata: Record<string, any> = {
-        full_name: data.fullName.trim(),
+      // 1. Obtener la sesión / usuario activo (por ejemplo, si inició con Google OAuth)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUser = sessionData?.session?.user;
+
+      let targetUserId = currentUser?.id;
+      let targetEmail = currentUser?.email || (data.email ? data.email.trim() : '');
+
+      // 2. Si NO hay usuario activo de Google, registrar la cuenta en Supabase Auth con Correo y Contraseña
+      if (!targetUserId) {
+        if (!data.email?.trim() || !data.password?.trim()) {
+          throw new Error('Por favor ingresa un correo electrónico y una contraseña válida.');
+        }
+
+        const userMetadata: Record<string, any> = {
+          full_name: data.fullName?.trim() || '',
+          phone: fullPhone,
+          document_type: data.documentType || 'cedula',
+          document_number: data.documentNumber?.trim() || '',
+          country: data.country || 'Colombia',
+          department: data.department || 'Quindío',
+          city: data.city || 'Armenia',
+          role: data.role || 'voluntario',
+          is_verified: false,
+        };
+
+        if (isOrg) {
+          userMetadata.organization_type = data.organizationType;
+          userMetadata.org_name = data.orgName?.trim();
+          userMetadata.org_description = data.orgDescription?.trim();
+          userMetadata.org_website = data.orgWebsiteOrSocial?.trim();
+          userMetadata.search_address = data.searchAddress?.trim();
+          userMetadata.latitude = data.latitude;
+          userMetadata.longitude = data.longitude;
+        }
+
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: data.email.trim(),
+          password: data.password,
+          options: {
+            data: userMetadata,
+          },
+        });
+
+        if (authError) throw authError;
+        targetUserId = authData.user?.id;
+        targetEmail = authData.user?.email || data.email.trim();
+      }
+
+      // 3. Sincronizar en la tabla `profiles` de Supabase
+      const savedProfile = await upsertUserProfile({
+        id: targetUserId,
+        email: targetEmail,
+        full_name: data.fullName?.trim() || currentUser?.user_metadata?.full_name || 'Usuario',
         phone: fullPhone,
         document_type: data.documentType,
-        document_number: data.documentNumber.trim(),
+        document_number: data.documentNumber,
         country: data.country,
         department: data.department,
         city: data.city,
-        role: data.role,
-        is_verified: false,
-      };
-
-      if (isOrg) {
-        userMetadata.organization_type = data.organizationType;
-        userMetadata.org_name = data.orgName?.trim();
-        userMetadata.org_description = data.orgDescription?.trim();
-        userMetadata.org_website = data.orgWebsiteOrSocial?.trim();
-        userMetadata.search_address = data.searchAddress?.trim();
-        userMetadata.latitude = data.latitude;
-        userMetadata.longitude = data.longitude;
-      }
-
-      // Registro en Supabase Auth
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email.trim(),
-        password: data.password,
-        options: {
-          data: userMetadata,
-        },
+        role: data.role || 'voluntario',
       });
 
-      if (error) {
-        throw error;
+      if (!savedProfile) {
+        throw new Error('No se pudo guardar la información del perfil en la base de datos.');
       }
 
-      console.log('[RegisterWizard] Registration Successful:', authData);
-
-      // Inserción / Sincronización en la base de datos de Supabase
-      if (authData.user) {
-        // Sincronización en tabla de Perfiles
-        try {
-          await supabase.from('profiles').insert([
-            {
-              id: authData.user.id,
-              full_name: data.fullName.trim(),
-              phone: fullPhone,
-              document_type: data.documentType,
-              document_number: data.documentNumber.trim(),
-              country: data.country,
-              department: data.department,
-              city: data.city,
-              role: data.role,
-              email: data.email.trim(),
-              is_verified: false,
-            },
-          ]);
-        } catch (dbErr) {
-          console.warn('[RegisterWizard] Profiles table insert note:', dbErr);
-        }
-
-        // Sincronización en la tabla de Organizaciones si aplica
-        if (isOrg) {
-          try {
-            await supabase.from('organizations').insert([
-              {
-                user_id: authData.user.id,
-                org_name: data.orgName?.trim(),
-                organization_type: data.organizationType,
-                description: data.orgDescription?.trim(),
-                website_or_social: data.orgWebsiteOrSocial?.trim(),
-                address: data.searchAddress?.trim(),
-                latitude: data.latitude,
-                longitude: data.longitude,
-                is_verified: false,
-              },
-            ]);
-          } catch (orgErr) {
-            console.warn('[RegisterWizard] Organizations table insert note:', orgErr);
-          }
-        }
+      // 4. Si es un registro de Entidad / Organización, guardar en la tabla `organizations`
+      if (isOrg) {
+        await upsertOrganization({
+          user_id: targetUserId,
+          org_name: data.orgName?.trim() || '',
+          organization_type: data.organizationType || 'bomberos_defensa_civil',
+          description: data.orgDescription?.trim() || '',
+          website_or_social: data.orgWebsiteOrSocial?.trim() || '',
+          address: data.searchAddress?.trim() || '',
+          latitude: data.latitude || 3.4516,
+          longitude: data.longitude || -76.532,
+        });
       }
 
       setSuccessMessage(
         isOrg
           ? '¡Solicitud de organización registrada! Verificaremos la información y activaremos tu insignia.'
-          : '¡Cuenta registrada exitosamente! Revisa tu correo si requieres confirmación.'
+          : '¡Perfil y cuenta guardados exitosamente!'
       );
 
       setTimeout(() => {
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(savedProfile);
         if (onClose) onClose();
-      }, 2500);
+      }, 2000);
     } catch (err: any) {
       console.error('[RegisterWizard] Error signing up:', err);
-      const msg =
-        err?.message ||
-        'Ocurrió un error al registrar la cuenta. Verifica tus datos e intenta nuevamente.';
+      const msg = err?.message || 'Ocurrió un error al registrar la cuenta. Verifica tus datos e intenta nuevamente.';
       setServerError(msg);
     } finally {
       setIsSubmitting(false);
@@ -261,7 +273,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         <div className="px-6 sm:px-8 pt-5 pb-3 flex items-center justify-between sticky top-0 bg-white z-20 border-b border-slate-100 shadow-2xs">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
-              Paso {currentStep} de {totalSteps}
+              {isGoogleProfileOnboarding ? 'Completar Perfil — ' : ''}Paso {displayStep} de {displayTotalSteps}
             </span>
             {isOrgFlow && (
               <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
@@ -280,10 +292,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           )}
         </div>
 
-        {/* Indicador Superior de Progreso (Segmentos Rectangulares Adaptables 4 o 7) */}
+        {/* Indicador Superior de Progreso (Segmentos Rectangulares Adaptables 3 o 4 u 6 o 7) */}
         <div className="px-6 sm:px-8 py-3">
-          <div className={`grid gap-1.5 ${isOrgFlow ? 'grid-cols-7' : 'grid-cols-4'}`}>
-            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((stepNum) => {
+          <div className={`grid gap-1.5 ${displayTotalSteps === 3 ? 'grid-cols-3' : displayTotalSteps === 6 ? 'grid-cols-6' : isOrgFlow ? 'grid-cols-7' : 'grid-cols-4'}`}>
+            {Array.from({ length: displayTotalSteps }, (_, i) => (isGoogleProfileOnboarding ? i + 2 : i + 1)).map((stepNum) => {
               const isActive = stepNum <= currentStep;
               return (
                 <div
@@ -320,14 +332,28 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         <form onSubmit={handleSubmit(onSubmitFinal)} className="flex flex-col justify-between flex-1">
           <div className="px-6 sm:px-8 py-4 flex-1">
             
-            {/* Paso 1: Selección de Rol (Común para ambos flujos) */}
+            {/* Paso 1: Autenticación (Google 1-clic o Correo/Contraseña) */}
             {currentStep === 1 && (
+              <Step1AccountAuth
+                email={email}
+                password={password}
+                isSubmitting={isSubmitting}
+                errors={{
+                  email: errStr(errors.email),
+                  password: errStr(errors.password),
+                }}
+                onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
+                onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
+                onNext={handleNextStep}
+              />
+            )}
+
+            {/* Paso 2: Selección de Rol */}
+            {currentStep === 2 && (
               <Step1Role
                 selectedRole={role}
                 onSelectRole={(r: UserRole) => {
                   setValue('role', r, { shouldValidate: true });
-                  // Si cambia el rol y pasa de individual a org o viceversa, resetear a paso 1
-                  setCurrentStep(1);
                 }}
               />
             )}
@@ -335,18 +361,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
             {/* Renderizado para Flujo Individual (4 Pasos) */}
             {!isOrgFlow && (
               <>
-                {currentStep === 2 && (
-                  <Step2Location
-                    country={country}
-                    department={department}
-                    city={city}
-                    isAutoDetected={isAutoDetected}
-                    onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
-                  />
-                )}
-
+                {/* Paso 3 Individual: Identificación y Teléfono */}
                 {currentStep === 3 && (
                   <Step3Identity
                     role={role}
@@ -363,43 +378,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
+                {/* Paso 4 Individual: Ubicación */}
                 {currentStep === 4 && (
-                  <Step4Account
-                    role={role}
-                    phoneCountryCode={phoneCountryCode}
-                    phoneNumber={phoneNumber}
-                    email={email}
-                    password={password}
-                    isSubmitting={isSubmitting}
-                    errors={{
-                      phoneCountryCode: errStr(errors.phoneCountryCode),
-                      phoneNumber: errStr(errors.phoneNumber),
-                      email: errStr(errors.email),
-                      password: errStr(errors.password),
-                    }}
-                    onChangePhoneCountryCode={(val) => setValue('phoneCountryCode', val, { shouldValidate: true })}
-                    onChangePhoneNumber={(val) => setValue('phoneNumber', val, { shouldValidate: true })}
-                    onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
-                    onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
-                    onSubmitForm={handleSubmit(onSubmitFinal)}
-                  />
-                )}
-              </>
-            )}
-
-            {/* Renderizado para Flujo de Organización (7 Pasos) */}
-            {isOrgFlow && (
-              <>
-                {/* Paso 2 Org: ¿Qué representas? */}
-                {currentStep === 2 && (
-                  <StepOrgCategory
-                    selectedType={organizationType}
-                    onSelectType={(t) => setValue('organizationType', t, { shouldValidate: true })}
-                  />
-                )}
-
-                {/* Paso 3 Org: ¿Dónde estás? (Territorio) */}
-                {currentStep === 3 && (
                   <Step2Location
                     country={country}
                     department={department}
@@ -410,27 +390,22 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
                   />
                 )}
+              </>
+            )}
 
-                {/* Paso 4 Org: ¿Dónde están ubicados? (Mapa y Pin) */}
-                {currentStep === 4 && (
-                  <StepOrgMapLocation
-                    searchAddress={searchAddress}
-                    latitude={latitude}
-                    longitude={longitude}
-                    cityName={city}
-                    errors={{
-                      searchAddress: errStr(errors.searchAddress),
-                    }}
-                    onChangeSearchAddress={(val) => setValue('searchAddress', val, { shouldValidate: true })}
-                    onChangeCoordinates={(lat, lng) => {
-                      setValue('latitude', lat, { shouldValidate: true });
-                      setValue('longitude', lng, { shouldValidate: true });
-                    }}
+            {/* Renderizado para Flujo de Organización (7 Pasos) */}
+            {isOrgFlow && (
+              <>
+                {/* Paso 3 Org: Tipo de Organización */}
+                {currentStep === 3 && (
+                  <StepOrgCategory
+                    selectedType={organizationType}
+                    onSelectType={(t) => setValue('organizationType', t, { shouldValidate: true })}
                   />
                 )}
 
-                {/* Paso 5 Org: Tu organización (Datos Entidad) */}
-                {currentStep === 5 && (
+                {/* Paso 4 Org: Tu organización (Datos Entidad) */}
+                {currentStep === 4 && (
                   <StepOrgDetails
                     orgName={orgName}
                     orgDescription={orgDescription}
@@ -444,8 +419,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 6 Org: ¿Quién eres? (Representante) */}
-                {currentStep === 6 && (
+                {/* Paso 5 Org: Identificación Representante */}
+                {currentStep === 5 && (
                   <Step3Identity
                     role={role}
                     fullName={fullName}
@@ -461,25 +436,34 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 7 Org: Tu cuenta (Variante Org con Banner Verificación) */}
+                {/* Paso 6 Org: Ubicación Territorio */}
+                {currentStep === 6 && (
+                  <Step2Location
+                    country={country}
+                    department={department}
+                    city={city}
+                    isAutoDetected={isAutoDetected}
+                    onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
+                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
+                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                  />
+                )}
+
+                {/* Paso 7 Org: Mapa y Dirección */}
                 {currentStep === 7 && (
-                  <StepOrgAccount
-                    phoneCountryCode={phoneCountryCode}
-                    phoneNumber={phoneNumber}
-                    email={email}
-                    password={password}
-                    isSubmitting={isSubmitting}
+                  <StepOrgMapLocation
+                    searchAddress={searchAddress}
+                    latitude={latitude}
+                    longitude={longitude}
+                    cityName={city}
                     errors={{
-                      phoneCountryCode: errStr(errors.phoneCountryCode),
-                      phoneNumber: errStr(errors.phoneNumber),
-                      email: errStr(errors.email),
-                      password: errStr(errors.password),
+                      searchAddress: errStr(errors.searchAddress),
                     }}
-                    onChangePhoneCountryCode={(val) => setValue('phoneCountryCode', val, { shouldValidate: true })}
-                    onChangePhoneNumber={(val) => setValue('phoneNumber', val, { shouldValidate: true })}
-                    onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
-                    onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
-                    onSubmitForm={handleSubmit(onSubmitFinal)}
+                    onChangeSearchAddress={(val) => setValue('searchAddress', val, { shouldValidate: true })}
+                    onChangeCoordinates={(lat, lng) => {
+                      setValue('latitude', lat, { shouldValidate: true });
+                      setValue('longitude', lng, { shouldValidate: true });
+                    }}
                   />
                 )}
               </>

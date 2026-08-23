@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { showAlert } from "./components/ConfirmDialog";
-import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed } from "./lib/supabaseService";
+import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed, fetchUserProfile } from "./lib/supabaseService";
 import {
   Map,
   List,
@@ -48,6 +48,7 @@ import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
 import { RadarMatchModal } from "./components/RadarMatchModal";
+import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 
@@ -104,7 +105,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 // Check if current path is a static page or special view
 function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-  if (path === 'guia') return { type: 'guia' };
+  if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
   if (path === 'terminos') return { type: 'terminos' };
@@ -157,6 +158,45 @@ function MainApp() {
         return { name: 'Moderador' };
       })()
     : null;
+
+  const [authUser, setAuthUser] = useState<{ name: string; email?: string } | null>(() => {
+    if (sessionUser) return sessionUser;
+    const local = typeof window !== 'undefined' ? localStorage.getItem('ahf_auth_user') : null;
+    if (local) {
+      try { return JSON.parse(local); } catch {}
+    }
+    return null;
+  });
+
+  const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        try {
+          const profile = await fetchUserProfile(session.user.id);
+          const name = profile?.full_name || profile?.name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
+          const userObj = { name, email: session.user.email };
+          setAuthUser(userObj);
+          localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+
+          if (!profile) {
+            setRegisterInitialStep(2);
+            setIsRegisterModalOpen(true);
+          } else {
+            setIsRegisterModalOpen(false);
+          }
+        } catch (profileErr) {
+          console.warn('[App] Profile check note:', profileErr);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setAuthUser(null);
+        localStorage.removeItem('ahf_auth_user');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Parse current URL path
   const [routeInfo] = useState<ParsedRoute>(() => parseUrlPath(window.location.pathname));
@@ -848,11 +888,14 @@ function MainApp() {
         isOffline={isOffline}
         activeCount={activeCount}
         criticalCount={criticalCount}
-        isLoggedIn={isModeratorLoggedIn}
-        userName={(sessionUser as any)?.name}
-        onLogout={() => {
+        isLoggedIn={isModeratorLoggedIn || !!authUser}
+        userName={authUser?.name || (sessionUser as any)?.name}
+        onLogout={async () => {
+          await supabase.auth.signOut();
           localStorage.removeItem('ahf_admin_token');
           localStorage.removeItem('ahf_admin_user');
+          localStorage.removeItem('ahf_auth_user');
+          setAuthUser(null);
           window.location.reload();
         }}
       />
@@ -1322,7 +1365,22 @@ function MainApp() {
       </div>
       <RegisterWizard
         isOpen={isRegisterModalOpen}
-        onClose={() => setIsRegisterModalOpen(false)}
+        initialStep={registerInitialStep}
+        onClose={() => {
+          setIsRegisterModalOpen(false);
+          setRegisterInitialStep(1);
+        }}
+        onSuccess={(savedProfile) => {
+          setIsRegisterModalOpen(false);
+          setRegisterInitialStep(1);
+          if (savedProfile?.full_name || savedProfile?.name) {
+            const name = savedProfile.full_name || savedProfile.name;
+            const email = savedProfile.email || authUser?.email;
+            const userObj = { name, email };
+            setAuthUser(userObj);
+            localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+          }
+        }}
       />
     </div>
   );

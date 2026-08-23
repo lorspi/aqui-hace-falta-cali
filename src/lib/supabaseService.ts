@@ -633,6 +633,160 @@ export async function deleteAdminUser(userId: string): Promise<void> {
 }
 
 // ==========================================
+// GOOGLE OAUTH AUTHENTICATION
+// ==========================================
+
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : undefined,
+    },
+  });
+  if (error) throw error;
+}
+
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function signOutUser(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+export async function fetchUserProfile(userId: string) {
+  if (!userId) return null;
+
+  // 1. Intentar buscar por ID en la tabla `profiles`
+  const { data: profileById } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileById) return profileById;
+
+  // 2. Si no lo encuentra por ID (ej. Google OAuth ID vs UUID local), buscar por correo en la sesión
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionEmail = sessionData?.session?.user?.email;
+
+  if (sessionEmail) {
+    const { data: profileByEmail } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', sessionEmail.trim().toLowerCase())
+      .maybeSingle();
+
+    if (profileByEmail) return profileByEmail;
+  }
+
+  return null;
+}
+
+export async function upsertUserProfile(profileData: {
+  id: string;
+  email?: string;
+  full_name: string;
+  phone?: string;
+  document_type?: string;
+  document_number?: string;
+  country?: string;
+  department?: string;
+  city?: string;
+  role?: string;
+}) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert([
+      {
+        id: profileData.id,
+        email: profileData.email?.trim().toLowerCase(),
+        full_name: profileData.full_name?.trim(),
+        phone: profileData.phone,
+        document_type: profileData.document_type,
+        document_number: profileData.document_number,
+        country: profileData.country || 'Colombia',
+        department: profileData.department || 'Quindío',
+        city: profileData.city || 'Armenia',
+        role: profileData.role || 'voluntario',
+        is_verified: false,
+        updated_at: new Date().toISOString(),
+      },
+    ])
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Supabase] Error upserting profile:', error);
+    throw error;
+  }
+
+  // Sincronizar también en la tabla `users` para mantener compatibilidad
+  if (profileData.email) {
+    try {
+      const email = profileData.email.trim().toLowerCase();
+      const { data: existingUser } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+      if (existingUser) {
+        await supabase.from('users').update({
+          name: profileData.full_name,
+          role: profileData.role || existingUser.role,
+          last_login_at: new Date().toISOString(),
+        }).eq('id', existingUser.id);
+      } else {
+        await supabase.from('users').insert([{
+          email,
+          name: profileData.full_name,
+          role: profileData.role || 'voluntario',
+          active: true,
+          created_at: new Date().toISOString(),
+          last_login_at: new Date().toISOString(),
+        }]);
+      }
+    } catch (uErr) {
+      console.warn('[Supabase] Sync users table note:', uErr);
+    }
+  }
+
+  return data;
+}
+
+export async function upsertOrganization(orgData: {
+  user_id: string;
+  org_name: string;
+  organization_type: string;
+  description?: string;
+  website_or_social?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}) {
+  const { data, error } = await supabase
+    .from('organizations')
+    .upsert([
+      {
+        user_id: orgData.user_id,
+        org_name: orgData.org_name?.trim(),
+        organization_type: orgData.organization_type,
+        description: orgData.description?.trim(),
+        website_or_social: orgData.website_or_social?.trim(),
+        address: orgData.address?.trim(),
+        latitude: orgData.latitude,
+        longitude: orgData.longitude,
+        is_verified: false,
+      },
+    ])
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Supabase] Error upserting organization:', error);
+    throw error;
+  }
+  return data;
+}
+
+// ==========================================
 // MATCHING FUNCTIONS (NEEDS <-> OFFERS)
 // ==========================================
 
