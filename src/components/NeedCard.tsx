@@ -8,6 +8,7 @@ interface NeedCardProps {
   need: Need;
   onSelect: (need: Need) => void;
   onHelp: (need: Need) => void;
+  onViewOnMap?: (need: Need) => void;
   userLat?: number | null;
   userLng?: number | null;
   isSelected?: boolean;
@@ -34,6 +35,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   need,
   onSelect,
   onHelp,
+  onViewOnMap,
   userLat,
   userLng,
   isSelected = false,
@@ -196,6 +198,21 @@ export const NeedCard: React.FC<NeedCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {onViewOnMap && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewOnMap(need);
+              }}
+              className="flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1.5 rounded-xl text-xs border border-indigo-200/80 transition-colors shrink-0 cursor-pointer"
+              id={`btn-view-map-${need.id}`}
+              title="Ver ubicación en el mapa"
+            >
+              <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Ver en mapa</span>
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

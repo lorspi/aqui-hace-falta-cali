@@ -20,7 +20,7 @@ import {
   ChevronDown,
   Navigation,
 } from "lucide-react";
-import { FilterState, Need, NeedStatus, Offer } from "./types";
+import { FilterState, Need, NeedStatus, Offer, Priority } from "./types";
 import { Header } from "./components/Header";
 import { BannerDisclaimer } from "./components/BannerDisclaimer";
 import { FilterBar } from "./components/FilterBar";
@@ -43,6 +43,7 @@ import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { LandingHomePage } from "./components/LandingHomePage";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
+import { RadarMatchModal } from "./components/RadarMatchModal";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 
@@ -200,10 +201,8 @@ function MainApp() {
   // Mobile view
   const [mobileView, setMobileView] = useState<"LIST" | "MAP">("MAP");
 
-  // Map Legend state (expanded by default on desktop, collapsed by default on mobile)
-  const [isLegendExpanded, setIsLegendExpanded] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 768
-  );
+  // Map Legend state (minimized by default)
+  const [isLegendExpanded, setIsLegendExpanded] = useState(false);
 
   // Cross-highlight between map pins and cards
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -241,6 +240,36 @@ function MainApp() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [radarMatchState, setRadarMatchState] = useState<{
+    isOpen: boolean;
+    type: 'NEED_PUBLISHED' | 'OFFER_PUBLISHED' | null;
+    item: Need | Offer | null;
+  }>({
+    isOpen: false,
+    type: null,
+    item: null,
+  });
+  const [targetFocusCoords, setTargetFocusCoords] = useState<{
+    lat: number;
+    lng: number;
+    id: string;
+    timestamp: number;
+  } | null>(null);
+
+  const handleViewOnMap = (item: Need | Offer) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobileView('MAP');
+    }
+    setHoveredItemId(item.id);
+    if (item.latitude && item.longitude) {
+      setTargetFocusCoords({
+        lat: item.latitude,
+        lng: item.longitude,
+        id: item.id,
+        timestamp: Date.now(),
+      });
+    }
+  };
 
   // Auto-open welcome onboarding modal on first-time visit
   useEffect(() => {
@@ -304,31 +333,133 @@ function MainApp() {
     return combined;
   }, [needCounts, offerCounts]);
 
-  // Filtered needs for list view (cards list)
-  const displayedNeeds = useMemo(() => {
-    if (!selectedCityId || selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
-      return needs;
-    }
-    const cleanSel = selectedCityId.toLowerCase().trim();
-    return needs.filter((n) => {
-      const cId = (n.cityId || '').toLowerCase();
-      const neigh = (n.neighborhood || '').toLowerCase();
-      return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
-    });
-  }, [needs, selectedCityId]);
+  // Priority rank helper
+  const PRIORITY_ORDER: Record<Priority, number> = {
+    CRITICAL: 4,
+    HIGH: 3,
+    MEDIUM: 2,
+    LOW: 1,
+  };
 
-  // Filtered offers for list view (cards list)
-  const displayedOffers = useMemo(() => {
-    if (!selectedCityId || selectedCityId === ALL_COLOMBIA_ID || selectedCityId === 'ALL_COLOMBIA' || selectedCityId === 'todo-colombia') {
-      return offers;
+  // Filtered and sorted needs for list view (cards list)
+  const displayedNeeds = useMemo(() => {
+    let filtered = needs;
+    if (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID && selectedCityId !== 'ALL_COLOMBIA' && selectedCityId !== 'todo-colombia') {
+      const cleanSel = selectedCityId.toLowerCase().trim();
+      filtered = needs.filter((n) => {
+        const cId = (n.cityId || '').toLowerCase();
+        const neigh = (n.neighborhood || '').toLowerCase();
+        return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
+      });
     }
-    const cleanSel = selectedCityId.toLowerCase().trim();
-    return offers.filter((o) => {
-      const cId = (o.cityId || '').toLowerCase();
-      const neigh = (o.neighborhood || '').toLowerCase();
-      return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
-    });
-  }, [offers, selectedCityId]);
+
+    const copy = [...filtered];
+
+    if (filters.sortBy === 'PRIORITY') {
+      copy.sort((a, b) => {
+        const pA = PRIORITY_ORDER[a.priority] || 0;
+        const pB = PRIORITY_ORDER[b.priority] || 0;
+        if (pB !== pA) return pB - pA;
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+      });
+    } else if (filters.sortBy === 'RECENT') {
+      copy.sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const validTA = isNaN(tA) ? 0 : tA;
+        const validTB = isNaN(tB) ? 0 : tB;
+        if (validTB !== validTA) return validTB - validTA;
+        const pA = PRIORITY_ORDER[a.priority] || 0;
+        const pB = PRIORITY_ORDER[b.priority] || 0;
+        return pB - pA;
+      });
+    } else if (filters.sortBy === 'DISTANCE') {
+      const refLat = filters.userLat ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lat : null);
+      const refLng = filters.userLng ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lng : null);
+
+      if (refLat != null && refLng != null) {
+        const calculateKm = (lat: number, lng: number) => {
+          const R = 6371;
+          const dLat = ((lat - refLat) * Math.PI) / 180;
+          const dLon = ((lng - refLng) * Math.PI) / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos((refLat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+
+        copy.sort((a, b) => {
+          const distA = typeof a.latitude === 'number' && typeof a.longitude === 'number' ? calculateKm(a.latitude, a.longitude) : Infinity;
+          const distB = typeof b.latitude === 'number' && typeof b.longitude === 'number' ? calculateKm(b.latitude, b.longitude) : Infinity;
+          if (distA !== distB) return distA - distB;
+          const pA = PRIORITY_ORDER[a.priority] || 0;
+          const pB = PRIORITY_ORDER[b.priority] || 0;
+          return pB - pA;
+        });
+      } else {
+        copy.sort((a, b) => (PRIORITY_ORDER[b.priority] || 0) - (PRIORITY_ORDER[a.priority] || 0));
+      }
+    }
+
+    return copy;
+  }, [needs, selectedCityId, filters.sortBy, filters.userLat, filters.userLng, routeInfo.departmentId]);
+
+  // Filtered and sorted offers for list view (cards list)
+  const displayedOffers = useMemo(() => {
+    let filtered = offers;
+    if (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID && selectedCityId !== 'ALL_COLOMBIA' && selectedCityId !== 'todo-colombia') {
+      const cleanSel = selectedCityId.toLowerCase().trim();
+      filtered = offers.filter((o) => {
+        const cId = (o.cityId || '').toLowerCase();
+        const neigh = (o.neighborhood || '').toLowerCase();
+        return cId === cleanSel || cId.includes(cleanSel) || neigh.includes(cleanSel);
+      });
+    }
+
+    const copy = [...filtered];
+
+    if (filters.sortBy === 'RECENT') {
+      copy.sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+      });
+    } else if (filters.sortBy === 'DISTANCE') {
+      const refLat = filters.userLat ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lat : null);
+      const refLng = filters.userLng ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lng : null);
+
+      if (refLat != null && refLng != null) {
+        const calculateKm = (lat: number, lng: number) => {
+          const R = 6371;
+          const dLat = ((lat - refLat) * Math.PI) / 180;
+          const dLon = ((lng - refLng) * Math.PI) / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos((refLat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+
+        copy.sort((a, b) => {
+          const distA = typeof a.latitude === 'number' && typeof a.longitude === 'number' ? calculateKm(a.latitude, a.longitude) : Infinity;
+          const distB = typeof b.latitude === 'number' && typeof b.longitude === 'number' ? calculateKm(b.latitude, b.longitude) : Infinity;
+          return distA - distB;
+        });
+      } else {
+        copy.sort((a, b) => {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+        });
+      }
+    } else {
+      // PRIORITY or default for offers: newest first
+      copy.sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+      });
+    }
+
+    return copy;
+  }, [offers, selectedCityId, filters.sortBy, filters.userLat, filters.userLng, routeInfo.departmentId]);
 
   const totalNeedsCount = displayedNeeds.length;
   const totalOffersCount = displayedOffers.length;
@@ -543,9 +674,12 @@ function MainApp() {
 
       if (createdNeed?.id) {
         setHoveredItemId(createdNeed.id);
+        setRadarMatchState({
+          isOpen: true,
+          type: 'NEED_PUBLISHED',
+          item: createdNeed,
+        });
       }
-
-      showAlert('¡Solicitud guardada! Tu reporte aparecerá ahora visible en el mapa.', { title: 'Solicitud guardada', variant: 'success' });
     } catch (err: any) {
       console.error("❌ Error al crear necesidad:", err);
       const msg = err?.message || err?.details || String(err);
@@ -568,6 +702,11 @@ function MainApp() {
 
     if (createdOffer?.id) {
       setHoveredItemId(createdOffer.id);
+      setRadarMatchState({
+        isOpen: true,
+        type: 'OFFER_PUBLISHED',
+        item: createdOffer,
+      });
     }
   };
 
@@ -707,13 +846,7 @@ function MainApp() {
         }}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[68px] md:h-[72px] shrink-0" />
-
-      {/* Emergency Disclaimer & Demo Notice */}
-      <BannerDisclaimer
-        hasDemoData={hasDemoData}
-        onResetDemoData={handleResetDemoData}
-      />
+      <div className="h-[56px] md:h-[64px] shrink-0" />
 
       {/* Filter Bar */}
       <FilterBar
@@ -772,6 +905,7 @@ function MainApp() {
             onSelectOffer={(offer) => handleSelectOffer(offer)}
             hoveredItemId={hoveredItemId}
             onHoverMarker={setHoveredItemId}
+            targetFocusCoords={targetFocusCoords}
           />
 
           {/* Priority Legend — bottom-left over map */}
@@ -891,15 +1025,20 @@ function MainApp() {
                 (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
                 (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0) ? (
               <div className="space-y-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3 shadow-sm">
-                  <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-                  <h4 className="font-bold text-slate-900 text-base">
-                    {filters.viewMode === "OFFERS" ? "No se encontraron ofertas" : "No se encontraron resultados"}
-                  </h4>
-                  <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    No hay puntos coincidentes con los filtros seleccionados. Intenta
-                    ampliar el radio de distancia o limpiar la búsqueda.
-                  </p>
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-amber-100/80 rounded-lg shrink-0">
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
+                        No se encontraron resultados
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        No hay coincidencias en los filtros seleccionados.
+                      </p>
+                    </div>
+                  </div>
                   <button
                     onClick={() =>
                       setFilters({
@@ -916,9 +1055,9 @@ function MainApp() {
                         viewMode: "ALL",
                       })
                     }
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                    className="bg-white hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200 shrink-0 transition-colors cursor-pointer w-full sm:w-auto text-center"
                   >
-                    Limpiar todos los filtros
+                    Limpiar filtros
                   </button>
                 </div>
 
@@ -940,6 +1079,7 @@ function MainApp() {
                             need={item as Need}
                             onSelect={(n) => handleSelectNeed(n)}
                             onHelp={(n) => setSelectedForHelp(n)}
+                            onViewOnMap={(n) => handleViewOnMap(n)}
                             userLat={cityCoords.lat}
                             userLng={cityCoords.lng}
                             isSelected={selectedNeed?.id === item.id}
@@ -951,6 +1091,7 @@ function MainApp() {
                             key={item.id}
                             offer={item as Offer}
                             onClick={() => handleSelectOffer(item as Offer)}
+                            onViewOnMap={(o) => handleViewOnMap(o)}
                             isHighlighted={!isGridExpanded && hoveredItemId === item.id}
                             onHover={isGridExpanded ? undefined : setHoveredItemId}
                             distanceKm={distanceKm}
@@ -970,6 +1111,7 @@ function MainApp() {
                     need={need}
                     onSelect={(item) => handleSelectNeed(item)}
                     onHelp={(item) => setSelectedForHelp(item)}
+                    onViewOnMap={(item) => handleViewOnMap(item)}
                     userLat={filters.userLat}
                     userLng={filters.userLng}
                     isSelected={selectedNeed?.id === need.id}
@@ -984,6 +1126,7 @@ function MainApp() {
                     key={offer.id}
                     offer={offer}
                     onClick={() => handleSelectOffer(offer)}
+                    onViewOnMap={(item) => handleViewOnMap(item)}
                     isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
                     onHover={isGridExpanded ? undefined : setHoveredItemId}
                   />
@@ -1000,6 +1143,7 @@ function MainApp() {
                             need={need}
                             onSelect={(item) => handleSelectNeed(item)}
                             onHelp={(item) => setSelectedForHelp(item)}
+                            onViewOnMap={(item) => handleViewOnMap(item)}
                             userLat={filters.userLat}
                             userLng={filters.userLng}
                             isSelected={selectedNeed?.id === need.id}
@@ -1016,6 +1160,7 @@ function MainApp() {
                             key={offer.id}
                             offer={offer}
                             onClick={() => handleSelectOffer(offer)}
+                            onViewOnMap={(item) => handleViewOnMap(item)}
                             isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
                             onHover={isGridExpanded ? undefined : setHoveredItemId}
                           />
@@ -1048,6 +1193,10 @@ function MainApp() {
         onAdminChangePriority={(need) => {
           handleSelectNeed(null);
           setSelectedForPublicEdit(need);
+        }}
+        onSelectOffer={(offer) => {
+          handleSelectNeed(null);
+          handleSelectOffer(offer);
         }}
       />
 
@@ -1105,6 +1254,10 @@ function MainApp() {
         isAdmin={isAdminUser}
         onOpenPublicEdit={(offer) => setSelectedOfferForEdit(offer)}
         onAdminEditOffer={(offer) => setSelectedOfferForEdit(offer)}
+        onSelectNeed={(need) => {
+          handleSelectOffer(null);
+          handleSelectNeed(need);
+        }}
       />
 
       <WelcomeOnboardingModal
@@ -1112,6 +1265,19 @@ function MainApp() {
         onClose={() => setIsWelcomeModalOpen(false)}
         onOpenCreateNeed={() => setIsCreateModalOpen(true)}
         onOpenCreateOffer={() => setShowCreateOffer(true)}
+      />
+
+      <RadarMatchModal
+        isOpen={radarMatchState.isOpen}
+        onClose={() => setRadarMatchState((prev) => ({ ...prev, isOpen: false }))}
+        type={radarMatchState.type}
+        item={radarMatchState.item}
+        onSelectNeed={(need) => {
+          setSelectedNeed(need);
+        }}
+        onSelectOffer={(offer) => {
+          setSelectedOffer(offer);
+        }}
       />
 
       {/* Footer — temporarily removed (file preserved for future use) */}

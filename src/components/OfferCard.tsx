@@ -7,12 +7,13 @@ import { useTranslation } from '../i18n/LanguageContext';
 interface OfferCardProps {
   offer: Offer;
   onClick: () => void;
+  onViewOnMap?: (offer: Offer) => void;
   isHighlighted?: boolean;
   onHover?: (id: string | null) => void;
   distanceKm?: number;
 }
 
-export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighlighted = false, onHover, distanceKm }) => {
+export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, onViewOnMap, isHighlighted = false, onHover, distanceKm }) => {
   const { language, t } = useTranslation();
 
   const offerStatusLabels: Record<OfferStatus, string> = {
@@ -97,7 +98,24 @@ export const OfferCard: React.FC<OfferCardProps> = ({ offer, onClick, isHighligh
           </div>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />
+        <div className="flex items-center gap-2 shrink-0">
+          {onViewOnMap && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewOnMap(offer);
+              }}
+              className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-lg text-xs border border-blue-200/80 transition-colors shrink-0 cursor-pointer"
+              id={`btn-view-offer-map-${offer.id}`}
+              title="Ver ubicación en el mapa"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Ver en mapa</span>
+            </button>
+          )}
+          <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />
+        </div>
       </div>
     </div>
   );

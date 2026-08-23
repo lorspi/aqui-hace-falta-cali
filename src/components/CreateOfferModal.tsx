@@ -258,17 +258,12 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
       });
 
       setIsSubmitting(false);
-      setSubmitSuccess(true);
+      resetForm();
+      onClose();
 
       if (onSuccess && createdOffer) {
         onSuccess(createdOffer);
       }
-
-      setTimeout(() => {
-        resetForm();
-        setSubmitSuccess(false);
-        onClose();
-      }, 1500);
     } catch (error: any) {
       setIsSubmitting(false);
       const message = error?.message || error?.data || (language === 'en' ? 'Error creating offer.' : 'Error al crear la oferta.');
@@ -284,8 +279,8 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     setCityId(selectedCityId);
     setAddress('');
     setNeighborhood('');
-    setLatitude(null);
-    setLongitude(null);
+    setLatitude(3.4516);
+    setLongitude(-76.5320);
     setContactName('');
     setContactPhone('');
     setContactWhatsapp('');
@@ -293,8 +288,6 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     setOrganizationName('');
     setOperatingHours('');
     setErrors({});
-    setGeocodeError('');
-    setShowPickerMap(false);
   };
 
   const addResource = () => {

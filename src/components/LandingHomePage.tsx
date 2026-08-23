@@ -4,6 +4,7 @@ import {
   HeartHandshake,
   Zap,
   ShieldCheck,
+  ShieldAlert,
   Share2,
   Search,
   CheckCircle2,
@@ -74,6 +75,50 @@ export const LandingHomePage: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Official Emergency Disclaimer Notice */}
+      <div className="bg-[#f1f5f9] border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between text-xs sm:text-sm text-slate-700 gap-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1 rounded-md bg-amber-100/80 text-amber-800 shrink-0">
+              <ShieldAlert className="w-4 h-4 text-[#b45309]" />
+            </div>
+            <span className="text-xs sm:text-sm text-slate-800 leading-snug">
+              <strong className="font-bold text-slate-900">Aviso importante:</strong> Esta plataforma es una capa ciudadana de ayuda y <strong className="font-bold text-[#b45309]">no sustituye los canales oficiales de emergencia.</strong>
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0 text-xs text-slate-700">
+            <span className="text-slate-600 font-medium text-xs mr-0.5">
+              Líneas de emergencia:
+            </span>
+            
+            <a
+              href="tel:123"
+              className="inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 px-2.5 py-1 rounded-md text-slate-900 font-bold text-xs shadow-2xs transition-all"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>123</span>
+            </a>
+
+            <a
+              href="tel:132"
+              className="inline-flex items-center gap-1 bg-white border border-slate-300 hover:bg-slate-50 px-2.5 py-1 rounded-md text-slate-900 text-xs shadow-2xs transition-all"
+            >
+              <span>Cruz Roja</span>
+              <strong className="font-bold text-slate-950">132</strong>
+            </a>
+
+            <a
+              href="tel:119"
+              className="inline-flex items-center gap-1 bg-white border border-slate-300 hover:bg-slate-50 px-2.5 py-1 rounded-md text-slate-900 text-xs shadow-2xs transition-all"
+            >
+              <span>Bomberos</span>
+              <strong className="font-bold text-slate-950">119</strong>
+            </a>
+          </div>
+        </div>
+      </div>
 
       {/* Hero Section */}
       <section className="relative z-10 pt-12 pb-16 md:pt-16 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">

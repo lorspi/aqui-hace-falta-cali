@@ -21,8 +21,9 @@ import {
   Share2,
   Edit,
   Calendar,
+  ArrowRight,
 } from 'lucide-react';
-import { Offer, OfferStatus } from '../types';
+import { Need, Offer, OfferStatus } from '../types';
 import {
   CATEGORY_LABELS,
   VERIFICATION_CONFIG,
@@ -43,6 +44,7 @@ interface OfferDetailModalProps {
   onOpenReportModal?: (offer: Offer) => void;
   onAdminEditOffer?: (offer: Offer) => void;
   onOpenPublicEdit?: (offer: Offer) => void;
+  onSelectNeed?: (need: Need) => void;
 }
 
 const OFFER_STATUS_CONFIG: Record<OfferStatus, { label: string; badgeClass: string }> = {
@@ -104,6 +106,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
   onOpenReportModal,
   onAdminEditOffer,
   onOpenPublicEdit,
+  onSelectNeed,
 }) => {
   const { language, t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -435,21 +438,36 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                     <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
-                        <span className="truncate max-w-[110px]">{need.neighborhood || need.cityId}</span>
+                        <span className="truncate max-w-[90px]">{need.neighborhood || need.cityId}</span>
                         {typeof distanceKm === 'number' && (
                           <span className="font-semibold text-blue-700 shrink-0">({distanceKm.toFixed(1)} km)</span>
                         )}
                       </span>
-                      {need.contactPhone && (
-                        <a
-                          href={buildWhatsappLink(need.contactPhone, `Hola, vi tu solicitud "${need.title}" en Radar de Ayuda`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-700 font-bold hover:underline flex items-center gap-1 shrink-0 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200"
-                        >
-                          <MessageSquare className="w-3 h-3 text-blue-600" /> Contactar
-                        </a>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {need.contactPhone && (
+                          <a
+                            href={buildWhatsappLink(need.contactPhone, `Hola, vi tu solicitud "${need.title}" en Radar de Ayuda`)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-700 font-bold hover:underline flex items-center gap-1 shrink-0 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]"
+                          >
+                            <MessageSquare className="w-3 h-3 text-blue-600" /> Contactar
+                          </a>
+                        )}
+                        {onSelectNeed && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onSelectNeed(need);
+                            }}
+                            className="text-slate-700 hover:text-slate-900 font-bold flex items-center gap-1 shrink-0 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md border border-slate-200 text-[11px] transition-colors"
+                          >
+                            <span>Ver</span>
+                            <ArrowRight className="w-3 h-3 text-slate-600" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

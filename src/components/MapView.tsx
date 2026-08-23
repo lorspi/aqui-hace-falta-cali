@@ -27,6 +27,8 @@ interface MapViewProps {
   // Cross-highlight
   hoveredItemId?: string | null;
   onHoverMarker?: (id: string | null) => void;
+  // Direct marker focus from card CTA
+  targetFocusCoords?: { lat: number; lng: number; id: string; timestamp: number } | null;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -46,6 +48,7 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectOffer,
   hoveredItemId,
   onHoverMarker,
+  targetFocusCoords,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -582,6 +585,31 @@ export const MapView: React.FC<MapViewProps> = ({
       map.flyTo([coords.lat, coords.lng], 13, { animate: true, duration: 1.2 });
     }
   }, [selectedCityId, cityChangeSource]);
+
+  // Fly to target focus coordinates when requested from card CTA "Ver en mapa"
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !targetFocusCoords) return;
+
+    const { lat, lng, id } = targetFocusCoords;
+    if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+      userPannedRef.current = true;
+      map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+
+      setTimeout(() => {
+        const marker = markerByIdRef.current[id];
+        if (marker) {
+          marker.openPopup();
+          const el = marker.getElement();
+          if (el) {
+            el.style.transform += ' scale(1.4)';
+            el.style.zIndex = '10000';
+            el.style.filter = 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.7))';
+          }
+        }
+      }, 1250);
+    }
+  }, [targetFocusCoords]);
 
   // Load points into Supercluster index and render
   useEffect(() => {
