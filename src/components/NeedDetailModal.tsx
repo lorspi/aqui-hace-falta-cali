@@ -466,6 +466,18 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
         {/* Footer Actions */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 rounded-b-2xl">
           <div className="flex items-center gap-2 text-xs flex-wrap">
+            {isAdmin && onAdminEditNeed && (
+              <>
+                <button
+                  onClick={() => { onClose(); onAdminEditNeed(need); }}
+                  className="text-indigo-700 hover:text-indigo-900 font-semibold underline flex items-center gap-1"
+                >
+                  <Building className="w-3.5 h-3.5" />
+                  <span>Editar publicación</span>
+                </button>
+                <span className="text-slate-300">•</span>
+              </>
+            )}
             <button
               onClick={() => onOpenReportModal(need)}
               className="text-rose-700 hover:text-rose-900 font-semibold underline flex items-center gap-1"
@@ -473,7 +485,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
               <Flag className="w-3.5 h-3.5" />
               <span>{t('detailReportIssue')}</span>
             </button>
-            {onOpenPublicEdit && (
+            {(isModeratorLoggedIn || isAdmin) && onOpenPublicEdit && (
               <>
                 <span className="text-slate-300">•</span>
                 <button

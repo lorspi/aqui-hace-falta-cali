@@ -78,8 +78,8 @@ export const LandingHomePage: React.FC = () => {
 
       {/* Official Emergency Disclaimer Notice */}
       <div className="bg-[#f1f5f9] border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between text-xs sm:text-sm text-slate-700 gap-2.5">
-          <div className="flex items-center gap-2">
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center text-xs sm:text-sm text-slate-700 gap-2.5">
+          <div className="flex items-center gap-2 justify-center">
             <div className="p-1 rounded-md bg-amber-100/80 text-amber-800 shrink-0">
               <ShieldAlert className="w-4 h-4 text-[#b45309]" />
             </div>
@@ -88,10 +88,11 @@ export const LandingHomePage: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0 text-xs text-slate-700">
-            <span className="text-slate-600 font-medium text-xs mr-0.5">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 text-xs text-slate-700">
+            <span className="text-slate-600 font-medium text-xs">
               Líneas de emergencia:
             </span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
             
             <a
               href="tel:123"
@@ -116,6 +117,7 @@ export const LandingHomePage: React.FC = () => {
               <span>Bomberos</span>
               <strong className="font-bold text-slate-950">119</strong>
             </a>
+            </div>
           </div>
         </div>
       </div>
@@ -261,45 +263,7 @@ export const LandingHomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Voice & Tone Section (Guía Oficial de Marca) */}
-          <div className="mt-14 pt-10 border-t border-slate-200/80 text-center max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
-              Comunicación clara y humana
-            </h2>
-            <p className="text-slate-600 text-xs sm:text-sm mt-1 mb-8">
-              "Si una frase no ayuda a alguien a moverse, sobra."
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-              {/* Asi si */}
-              <div className="bg-white border-2 border-emerald-500/40 rounded-3xl p-6 shadow-xs relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span className="text-sm font-black text-emerald-800 uppercase tracking-wider">Así sí</span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic bg-[#F5F6F9] p-4 rounded-2xl border border-slate-200">
-                  “Albergue abierto en la Escuela Simón Bolívar. Reciben cobijas y agua hasta las 8 p. m. Contacto: 300 123 4567. Actualizado hace 20 minutos.”
-                </p>
-                <p className="text-[11px] text-slate-500 mt-3">
-                  ✓ Clara, humana y directa. Verbos al frente, cifras concretas y hora de actualización siempre visible.
-                </p>
-              </div>
-
-              {/* Asi no */}
-              <div className="bg-white border-2 border-[#CE3B3B]/40 rounded-3xl p-6 shadow-xs relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <X className="w-5 h-5 text-[#CE3B3B]" />
-                  <span className="text-sm font-black text-[#CE3B3B] uppercase tracking-wider">Así no</span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic bg-[#F5F6F9] p-4 rounded-2xl border border-slate-200">
-                  “Ante la grave situación de emergencia, se informa a la ciudadanía que se han dispuesto puntos de atención para la recepción de donaciones en distintos lugares del territorio.”
-                </p>
-                <p className="text-[11px] text-slate-500 mt-3">
-                  ✕ Lenguaje gubernamental o frío. Evita dramatizar sin dar datos concretos de lugar y hora.
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Voice & Tone Section (Comunicación clara y humana) — OCULTO */}
         </div>
       </section>
 
@@ -432,7 +396,7 @@ export const LandingHomePage: React.FC = () => {
           <div className="flex items-center gap-4 text-xs text-slate-400">
             <a href="/" className="hover:text-white transition-colors">Mapa Principal</a>
             <span>•</span>
-            <a href="/home" className="hover:text-white transition-colors">¿Cómo Funciona?</a>
+            <a href="/guia" className="hover:text-white transition-colors">¿Cómo Funciona?</a>
             <span>•</span>
             <a href="/moderador" className="hover:text-white transition-colors">Acceso Moderadores</a>
           </div>

@@ -381,9 +381,6 @@ export const AdminPanelPage: React.FC = () => {
               )}
             </button>
 
-            <p className="text-[11px] text-slate-400 text-center pt-2">
-              Clave de acceso rápido para pruebas: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">moderador123</code>
-            </p>
           </form>
 
           <div className="text-center pt-2 border-t border-slate-100">

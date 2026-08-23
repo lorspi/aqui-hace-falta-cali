@@ -47,7 +47,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
     if (onNavigateHome) {
       onNavigateHome();
     } else {
-      window.location.href = '/home';
+      window.location.href = '/guia';
     }
   };
 

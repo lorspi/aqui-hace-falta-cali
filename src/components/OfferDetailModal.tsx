@@ -743,22 +743,26 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
               <Flag className="w-3.5 h-3.5" />
               <span>Reportar problema</span>
             </button>
-            <span className="text-slate-300">•</span>
-            <button
-              onClick={() => {
-                if (onOpenPublicEdit) {
-                  onClose();
-                  onOpenPublicEdit(offer);
-                } else {
-                  setShowStatusUpdate(true);
-                  setShowReportForm(false);
-                }
-              }}
-              className="text-emerald-700 hover:text-emerald-900 font-semibold underline flex items-center gap-1"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Actualizar info</span>
-            </button>
+            {(isModeratorLoggedIn || isAdmin) && (
+              <>
+                <span className="text-slate-300">•</span>
+                <button
+                  onClick={() => {
+                    if (onOpenPublicEdit) {
+                      onClose();
+                      onOpenPublicEdit(offer);
+                    } else {
+                      setShowStatusUpdate(true);
+                      setShowReportForm(false);
+                    }
+                  }}
+                  className="text-emerald-700 hover:text-emerald-900 font-semibold underline flex items-center gap-1"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Actualizar info</span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

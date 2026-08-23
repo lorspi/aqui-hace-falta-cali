@@ -196,7 +196,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={() => {
                 if (onOpenWelcomeModal) onOpenWelcomeModal();
-                else window.location.href = '/home';
+                else window.location.href = '/guia';
               }}
               className="flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl transition-all w-[34px] h-[34px] cursor-pointer shrink-0"
               title="¿Cómo funciona?"
@@ -250,7 +250,7 @@ export const Header: React.FC<HeaderProps> = ({
                 if (onOpenWelcomeModal) {
                   onOpenWelcomeModal();
                 } else {
-                  window.location.href = '/home';
+                  window.location.href = '/guia';
                 }
               }}
               className="flex items-center gap-1 bg-slate-50/90 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl transition-all h-[34px] cursor-pointer shrink-0"

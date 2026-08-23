@@ -98,9 +98,9 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'home' } | { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-  if (path === 'home') return { type: 'home' };
+  if (path === 'guia') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
 
@@ -116,7 +116,7 @@ export default function App() {
   const specialRoute = getSpecialRoute();
 
   let content = <MainApp />;
-  if (specialRoute?.type === 'home') {
+  if (specialRoute?.type === 'guia') {
     content = <LandingHomePage />;
   } else if (specialRoute?.type === 'moderador') {
     content = <ModeradorPage />;
@@ -283,11 +283,10 @@ function MainApp() {
     }
   }, []);
 
-  // Check if a moderator is logged in
+  // Check if a moderator or admin is logged in
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
-  // Check if a moderator is logged in
   const isModeratorLoggedIn = !!localStorage.getItem("ahf_admin_token");
-  const isAdminUser = true;
+  const isAdminUser = (sessionUser as any)?.role === "ADMIN";
 
   // Online / Offline Listeners
   useEffect(() => {

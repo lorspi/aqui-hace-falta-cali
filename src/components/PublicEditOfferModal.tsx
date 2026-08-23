@@ -106,6 +106,25 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     }
   };
 
+  const handleAddResource = () => {
+    setResources([
+      ...resources,
+      {
+        id: `res-${Date.now()}`,
+        type: selectedCategories[0] || 'VOLUNTARIADO_GENERAL',
+        description: '',
+        quantity: 5,
+        fulfilledQuantity: 0,
+        unit: 'unidades',
+        status: 'PENDING',
+      },
+    ]);
+  };
+
+  const handleRemoveResource = (index: number) => {
+    setResources(resources.filter((_, i) => i !== index));
+  };
+
   const handleGeocode = async () => {
     if (!address) return;
     setIsGeocoding(true);
