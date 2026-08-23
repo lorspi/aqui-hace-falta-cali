@@ -879,6 +879,8 @@ function MainApp() {
         onCityChange={handleCityChange}
         needCounts={combinedCounts}
         mobileView={mobileView}
+        needs={needs}
+        offers={offers}
       />
 
 

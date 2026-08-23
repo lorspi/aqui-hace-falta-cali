@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Search, Filter, X, ArrowUpDown } from 'lucide-react';
-import { FilterState, HelpCategory, NeedStatus, PlaceType, Priority, VerificationStatus, ViewMode } from '../types';
+import { FilterState, HelpCategory, Need, NeedStatus, Offer, PlaceType, Priority, VerificationStatus, ViewMode } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { CityCombobox } from './CityCombobox';
 import { CustomSelect } from './CustomSelect';
+import { SearchAutocomplete } from './SearchAutocomplete';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface FilterBarProps {
@@ -20,6 +21,8 @@ interface FilterBarProps {
   onCityChange: (cityId: string) => void;
   needCounts?: Record<string, number>;
   mobileView?: 'LIST' | 'MAP';
+  needs?: Need[];
+  offers?: Offer[];
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -36,6 +39,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onCityChange,
   needCounts,
   mobileView = 'LIST',
+  needs = [],
+  offers = [],
 }) => {
   const { language, t } = useTranslation();
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -110,25 +115,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   );
 
   const renderSearchInput = () => (
-    <div className="relative flex-1 w-full">
-      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-      <input
-        type="text"
-        value={filters.search}
-        onChange={(e) => onFilterChange({ search: e.target.value })}
-        placeholder={t('searchPlaceholder')}
-        className="w-full pl-9 pr-8 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue transition-all placeholder:text-slate-400 h-[42px] md:h-[38px]"
-        id="filter-search-input"
-      />
-      {filters.search && (
-        <button
-          onClick={() => onFilterChange({ search: '' })}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-    </div>
+    <SearchAutocomplete
+      value={filters.search}
+      onChange={(val) => onFilterChange({ search: val })}
+      needs={needs}
+      offers={offers}
+      placeholder={t('searchPlaceholder')}
+    />
   );
 
   const renderFiltersButton = () => (

@@ -517,6 +517,10 @@ export const MapView: React.FC<MapViewProps> = ({
 
     map.on('movestart', () => {
       isZoomingRef.current = true;
+      // Dismiss mobile keyboard when user interacts with the map
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     });
 
     map.on('moveend', () => {
