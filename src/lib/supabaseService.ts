@@ -825,27 +825,32 @@ export async function fetchMatchingOffersForNeed(needId: string, limit: number =
       }
     }
 
-    // Fallback: Query active offers in same city by matching categories
-    const { data: currentNeedRow } = await supabase.from('needs').select('*').eq('id', needId).single();
+    // Fallback garantizado en JS
+    const { data: currentNeedRow } = await supabase.from('needs').select('*').eq('id', needId).maybeSingle();
     if (!currentNeedRow) return [];
     const need = dbNeedToNeed(currentNeedRow);
 
     const { data: rawOffers } = await supabase
       .from('offers')
       .select('*')
-      .eq('offer_status', 'ACTIVE')
-      .limit(20);
+      .not('offer_status', 'in', '("CLOSED","ARCHIVED")')
+      .limit(50);
 
-    if (!rawOffers) return [];
+    if (!rawOffers || rawOffers.length === 0) return [];
 
+    const needCats = Array.isArray(need.categories) ? need.categories : [];
     const matches: MatchingOfferResult[] = [];
+
     for (const raw of rawOffers) {
       const offer = dbOfferToOffer(raw);
-      // Filter by city if both have cityId specified, or match categories
+      if (offer.id === need.id) continue;
+
+      const offerCats = Array.isArray(offer.categories) ? offer.categories : [];
+      const common = offerCats.filter((cat) => needCats.includes(cat));
       const sameCity = !need.cityId || !offer.cityId || need.cityId === offer.cityId;
-      const common = offer.categories.filter((cat) => need.categories.includes(cat));
+
       if (common.length > 0 || sameCity) {
-        const score = Math.min(98, 75 + (sameCity ? 10 : 0) + (common.length * 5));
+        const score = Math.min(98, 70 + (sameCity ? 15 : 0) + (common.length * 8));
         matches.push({
           offer,
           score,
@@ -853,7 +858,7 @@ export async function fetchMatchingOffersForNeed(needId: string, limit: number =
         });
       }
     }
-    // Sort matches by highest score
+
     matches.sort((a, b) => b.score - a.score);
     return matches.slice(0, limit);
   } catch (err) {
@@ -891,36 +896,45 @@ export async function fetchMatchingNeedsForOffer(offerId: string, limit: number 
             });
           }
         }
-        return results;
+        if (results.length > 0) return results;
       }
     }
 
-    // Fallback: Query needs in same city by category
-    const { data: currentOfferRow } = await supabase.from('offers').select('*').eq('id', offerId).single();
+    // Fallback garantizado en JS
+    const { data: currentOfferRow } = await supabase.from('offers').select('*').eq('id', offerId).maybeSingle();
     if (!currentOfferRow) return [];
     const offer = dbOfferToOffer(currentOfferRow);
 
     const { data: rawNeeds } = await supabase
       .from('needs')
       .select('*')
-      .eq('city_id', offer.cityId)
-      .not('status', 'in', '("COVERED","CLOSED")')
-      .limit(10);
+      .not('status', 'in', '("COVERED","CLOSED","ARCHIVED")')
+      .limit(50);
 
-    if (!rawNeeds) return [];
+    if (!rawNeeds || rawNeeds.length === 0) return [];
 
+    const offerCats = Array.isArray(offer.categories) ? offer.categories : [];
     const matches: MatchingNeedResult[] = [];
+
     for (const raw of rawNeeds) {
       const need = dbNeedToNeed(raw);
-      const common = need.categories.filter((cat) => offer.categories.includes(cat));
-      if (common.length > 0) {
+      if (need.id === offer.id) continue;
+
+      const needCats = Array.isArray(need.categories) ? need.categories : [];
+      const common = needCats.filter((cat) => offerCats.includes(cat));
+      const sameCity = !offer.cityId || !need.cityId || offer.cityId === need.cityId;
+
+      if (common.length > 0 || sameCity) {
+        const score = Math.min(98, 70 + (sameCity ? 15 : 0) + (common.length * 8));
         matches.push({
           need,
-          score: 80 + common.length * 5,
-          matchingCategories: common,
+          score,
+          matchingCategories: common.length > 0 ? common : need.categories,
         });
       }
     }
+
+    matches.sort((a, b) => b.score - a.score);
     return matches.slice(0, limit);
   } catch (err) {
     console.error('Error in fetchMatchingNeedsForOffer:', err);
