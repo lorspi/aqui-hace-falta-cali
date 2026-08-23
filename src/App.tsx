@@ -173,47 +173,59 @@ function MainApp() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    // 1. Obtener la sesión inicial al cargar (útil al regresar de la redirección de Google OAuth)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          const profile = await fetchUserProfile(session.user.id);
-          const name = profile?.full_name || profile?.name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
-          const userObj = { name, email: session.user.email };
-          setAuthUser(userObj);
-          localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+    // Limpiar símbolo `#` de la URL si se regresa de Google OAuth
+    if (typeof window !== 'undefined' && window.location.hash) {
+      if (window.location.hash.includes('access_token') || window.location.hash === '#') {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    }
 
-          if (!profile) {
-            setRegisterInitialStep(2);
-            setIsRegisterModalOpen(true);
-          } else {
-            setIsRegisterModalOpen(false);
-          }
-        } catch (err) {
-          console.warn('[App] Initial getSession profile check:', err);
+    const handleSessionUser = async (sessionUser: any) => {
+      if (!sessionUser) return;
+
+      // 1. Establecer el usuario INMEDIATAMENTE con los metadatos de la sesión
+      const metaName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Usuario';
+      const immediateUserObj = { name: metaName, email: sessionUser.email };
+      setAuthUser(immediateUserObj);
+      localStorage.setItem('ahf_auth_user', JSON.stringify(immediateUserObj));
+
+      // Limpiar hash si todavía existe
+      if (typeof window !== 'undefined' && (window.location.hash === '#' || window.location.hash.includes('access_token'))) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
+      // 2. Consultar perfil en DB en segundo plano
+      try {
+        const profile = await fetchUserProfile(sessionUser.id);
+        if (profile?.full_name || profile?.name) {
+          const dbName = profile.full_name || profile.name;
+          const updatedUserObj = { name: dbName, email: sessionUser.email };
+          setAuthUser(updatedUserObj);
+          localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
         }
+
+        if (!profile) {
+          setRegisterInitialStep(2);
+          setIsRegisterModalOpen(true);
+        } else {
+          setIsRegisterModalOpen(false);
+        }
+      } catch (err) {
+        console.warn('[App] Profile check background note:', err);
+      }
+    };
+
+    // 1. Obtener la sesión inicial al cargar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleSessionUser(session.user);
       }
     });
 
     // 2. Escuchar cambios de estado en tiempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        try {
-          const profile = await fetchUserProfile(session.user.id);
-          const name = profile?.full_name || profile?.name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
-          const userObj = { name, email: session.user.email };
-          setAuthUser(userObj);
-          localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
-
-          if (!profile) {
-            setRegisterInitialStep(2);
-            setIsRegisterModalOpen(true);
-          } else {
-            setIsRegisterModalOpen(false);
-          }
-        } catch (profileErr) {
-          console.warn('[App] Profile check note:', profileErr);
-        }
+        handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
         localStorage.removeItem('ahf_auth_user');

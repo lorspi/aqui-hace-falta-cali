@@ -174,6 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreateOfferModal,
   onOpenAdminModal: _onOpenAdminModal,
   onOpenRegisterModal,
+  onOpenLoginModal,
   onOpenWelcomeModal,
   onScrollToMap: _onScrollToMap,
   lastUpdated: _lastUpdated,
