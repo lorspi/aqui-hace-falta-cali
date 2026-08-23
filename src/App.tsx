@@ -171,6 +171,29 @@ function MainApp() {
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
 
   useEffect(() => {
+    // 1. Obtener la sesión inicial al cargar (útil al regresar de la redirección de Google OAuth)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try {
+          const profile = await fetchUserProfile(session.user.id);
+          const name = profile?.full_name || profile?.name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
+          const userObj = { name, email: session.user.email };
+          setAuthUser(userObj);
+          localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+
+          if (!profile) {
+            setRegisterInitialStep(2);
+            setIsRegisterModalOpen(true);
+          } else {
+            setIsRegisterModalOpen(false);
+          }
+        } catch (err) {
+          console.warn('[App] Initial getSession profile check:', err);
+        }
+      }
+    });
+
+    // 2. Escuchar cambios de estado en tiempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         try {
