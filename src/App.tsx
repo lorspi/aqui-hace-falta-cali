@@ -41,10 +41,9 @@ import { MobileBottomBar } from "./components/MobileBottomBar";
 import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
+import { LandingHomePage } from "./components/LandingHomePage";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
-
-
 
 import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
 
@@ -97,8 +96,9 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'home' } | { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+  if (path === 'home') return { type: 'home' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
 
@@ -114,7 +114,9 @@ export default function App() {
   const specialRoute = getSpecialRoute();
 
   let content = <MainApp />;
-  if (specialRoute?.type === 'moderador') {
+  if (specialRoute?.type === 'home') {
+    content = <LandingHomePage />;
+  } else if (specialRoute?.type === 'moderador') {
     content = <ModeradorPage />;
   } else if (specialRoute?.type === 'panel') {
     content = <AdminPanelPage />;

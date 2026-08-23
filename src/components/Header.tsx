@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Lock, ChevronDown, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck } from 'lucide-react';
+import { PlusCircle, Lock, ChevronDown, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck, Info } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -194,6 +194,14 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center gap-2">
             {/* Language Switcher Dropdown with Flags */}
             <LanguageSelector />
+
+            <a
+              href="/home"
+              className="text-xs font-bold text-slate-700 hover:text-indigo-600 px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all flex items-center gap-1.5"
+            >
+              <Info className="w-3.5 h-3.5 text-indigo-600" />
+              <span>¿Cómo funciona?</span>
+            </a>
 
             <button
               onClick={onOpenCreateModal}
