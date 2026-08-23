@@ -3,7 +3,7 @@
  * Main Application Component — Convex Backend
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { showAlert } from "./components/ConfirmDialog";
 import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed } from "./lib/supabaseService";
 import {
@@ -38,11 +38,12 @@ import { RegisterWizard } from "./features/auth/components/RegisterWizard";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
-import { ModeradorPage } from "./components/ModeradorPage";
-import { AdminPanelPage } from "./components/AdminPanelPage";
-import { SocialCardView } from "./components/SocialCardView";
-import { LandingHomePage } from "./components/LandingHomePage";
-import { LegalPage } from "./components/LegalPage";
+// Lazy-loaded pages for code-splitting
+const ModeradorPage = lazy(() => import("./components/ModeradorPage").then(m => ({ default: m.ModeradorPage })));
+const AdminPanelPage = lazy(() => import("./components/AdminPanelPage").then(m => ({ default: m.AdminPanelPage })));
+const SocialCardView = lazy(() => import("./components/SocialCardView").then(m => ({ default: m.SocialCardView })));
+const LandingHomePage = lazy(() => import("./components/LandingHomePage").then(m => ({ default: m.LandingHomePage })));
+const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
@@ -137,7 +138,9 @@ export default function App() {
 
   return (
     <>
-      {content}
+      <Suspense fallback={<div className="min-h-screen bg-[#F5F6F9] flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#1B3A93] border-t-transparent rounded-full animate-spin" /></div>}>
+        {content}
+      </Suspense>
       <DevEnvironmentBanner />
     </>
   );

@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      chunkSizeWarningLimit: 550,
       rollupOptions: {
         output: {
           manualChunks: {
@@ -29,6 +30,8 @@ export default defineConfig(({ mode }) => {
             supabase: ["@supabase/supabase-js"],
             map: ["leaflet"],
             ui: ["lucide-react", "motion"],
+            forms: ["react-hook-form", "@hookform/resolvers", "zod"],
+            utils: ["html-to-image", "supercluster"],
           },
         },
       },
