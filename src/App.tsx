@@ -35,6 +35,7 @@ import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { RegisterWizard } from "./features/auth/components/RegisterWizard";
+import { LoginModal } from "./features/auth/components/LoginModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
@@ -169,6 +170,7 @@ function MainApp() {
   });
 
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     // 1. Obtener la sesión inicial al cargar (útil al regresar de la redirección de Google OAuth)
@@ -901,6 +903,7 @@ function MainApp() {
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => { window.location.href = '/panel'; }}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
@@ -1386,6 +1389,21 @@ function MainApp() {
           }}
         />
       </div>
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onOpenRegisterModal={() => {
+          setIsLoginModalOpen(false);
+          setIsRegisterModalOpen(true);
+        }}
+        onSuccess={(userObj) => {
+          setIsLoginModalOpen(false);
+          if (userObj) {
+            setAuthUser(userObj);
+            localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+          }
+        }}
+      />
       <RegisterWizard
         isOpen={isRegisterModalOpen}
         initialStep={registerInitialStep}

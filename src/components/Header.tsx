@@ -9,6 +9,7 @@ interface HeaderProps {
   onOpenCreateOfferModal: () => void;
   onOpenAdminModal: () => void;
   onOpenRegisterModal?: () => void;
+  onOpenLoginModal?: () => void;
   onOpenWelcomeModal?: () => void;
   onScrollToMap: () => void;
   lastUpdated: string;
@@ -25,6 +26,7 @@ interface UserMenuProps {
   isLoggedIn?: boolean;
   userName?: string;
   onOpenRegisterModal?: () => void;
+  onOpenLoginModal?: () => void;
   onLogout?: () => void;
   onOpenWelcomeModal?: () => void;
   iconOnly?: boolean;
@@ -34,6 +36,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
   isLoggedIn = false,
   userName,
   onOpenRegisterModal,
+  onOpenLoginModal,
   onLogout,
   onOpenWelcomeModal,
   iconOnly = false,
@@ -139,7 +142,12 @@ const UserMenu: React.FC<UserMenuProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => { setIsOpen(false); window.location.href = '/panel'; }}
+                onClick={() => {
+                  setIsOpen(false);
+                  if (onOpenLoginModal) {
+                    onOpenLoginModal();
+                  }
+                }}
                 className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
               >
                 <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -288,6 +296,7 @@ export const Header: React.FC<HeaderProps> = ({
               isLoggedIn={isLoggedIn}
               userName={userName}
               onOpenRegisterModal={onOpenRegisterModal}
+              onOpenLoginModal={onOpenLoginModal}
               onLogout={onLogout}
               onOpenWelcomeModal={onOpenWelcomeModal}
             />
