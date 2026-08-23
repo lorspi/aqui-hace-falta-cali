@@ -85,22 +85,6 @@ const UserMenu: React.FC<UserMenuProps> = ({
             <>
               <button
                 type="button"
-                onClick={() => { setIsOpen(false); window.location.href = '/panel'; }}
-                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-              >
-                <LayoutDashboard className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="font-semibold">Panel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setIsOpen(false); window.location.href = '/moderador'; }}
-                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="font-semibold">{t('moderatorView')}</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => { setIsOpen(false); if (onLogout) onLogout(); }}
                 className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
               >
