@@ -42,6 +42,9 @@ import { ModeradorPage } from "./components/ModeradorPage";
 import { AdminPanelPage } from "./components/AdminPanelPage";
 import { SocialCardView } from "./components/SocialCardView";
 import { LandingHomePage } from "./components/LandingHomePage";
+import { LegalPage } from "./components/LegalPage";
+import terminosMd from "./content/terminos.md?raw";
+import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
 import { RadarMatchModal } from "./components/RadarMatchModal";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
@@ -98,11 +101,13 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   if (path === 'guia') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
+  if (path === 'terminos') return { type: 'terminos' };
+  if (path === 'privacidad') return { type: 'privacidad' };
 
   // Check for /.../:needId/post or /.../:needId/story
   const parts = path.split('/').filter(Boolean);
@@ -122,6 +127,10 @@ export default function App() {
     content = <ModeradorPage />;
   } else if (specialRoute?.type === 'panel') {
     content = <AdminPanelPage />;
+  } else if (specialRoute?.type === 'terminos') {
+    content = <LegalPage markdown={terminosMd} />;
+  } else if (specialRoute?.type === 'privacidad') {
+    content = <LegalPage markdown={privacidadMd} />;
   } else if (specialRoute?.type === 'social') {
     content = <SocialCardView needId={specialRoute.needId} format={specialRoute.format} />;
   }

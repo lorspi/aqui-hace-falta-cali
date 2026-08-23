@@ -344,3 +344,51 @@ body.modal-open {
 .custom-map-pin {
   will-change: transform;
 }
+
+/* ======================================================================
+   LEGAL PAGES — Estilos para contenido markdown de páginas legales
+   ====================================================================== */
+.legal-content h1 {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #1F1C1A;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+.legal-content h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1F1C1A;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.legal-content h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.legal-content p {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #475569;
+  margin-bottom: 0.75rem;
+}
+.legal-content ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+.legal-content li {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #475569;
+  margin-bottom: 0.25rem;
+}
+.legal-content strong {
+  font-weight: 700;
+  color: #1e293b;
+}
