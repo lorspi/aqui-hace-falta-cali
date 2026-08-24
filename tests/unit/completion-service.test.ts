@@ -104,6 +104,30 @@ describe("S5 — El evento de completado crea el incidente con los datos acumula
   });
 });
 
+describe("S5 — Una conversación completada genera un solo registro aunque acumule varias necesidades", () => {
+  it("no genera un registro por cada tipo de necesidad; title y description consolidan", async () => {
+    const deps = makeDeps();
+    const messages = [
+      buildMessage({ id: "evt_need_1", data: { body: "Necesito agua potable", from: "573001234567" } }),
+      buildMessage({ id: "evt_need_2", data: { body: "También necesito medicinas para mi hijo", from: "573001234567" } }),
+      buildMessage({ id: "evt_need_3", data: { body: "Mi techo está dañado", from: "573001234567" } }),
+    ];
+
+    const result = await processCompletionEvent(deps, buildCompletion(), messages);
+
+    expect(result.status).toBe("created");
+    if (result.status !== "created") return;
+
+    // Un único registro en needs para la conversación.
+    expect(deps.needsStore.size()).toBe(1);
+    // title y description consolidan la información acumulada.
+    expect(result.incident.description).toContain("Necesito agua potable");
+    expect(result.incident.description).toContain("medicinas para mi hijo");
+    expect(result.incident.description).toContain("techo está dañado");
+    expect(result.incident.title).toContain("Necesito agua potable");
+  });
+});
+
 describe("S5 — Evento de completado con coordenadas", () => {
   it("crea el incidente con esas coordenadas y resuelve city_id, sin geocoding", async () => {
     let geocoderCalled = false;

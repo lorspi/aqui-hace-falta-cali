@@ -67,7 +67,9 @@
 //     dispara la creación del incidente en `needs` con los mensajes acumulados
 //     de la conversación (source=WhatsApp, contact_whatsapp desde `from`,
 //     PENDING_VERIFICATION, defaults del contrato).
-//   - `conversation_id` vacío → 400 `missing_conversation_id` (sin incidente).
+//   - `conversation_id` vacío/faltante en un completado → 400
+//     `missing_conversation_id` (sin incidente). Se detecta ANTES de la
+//     validación general S2, que devolvería `validation_failed`.
 //   - `data.from` inválido → 400 `invalid_from` (el evento crudo ya quedó en
 //     ingest_responses para auditoría; sin incidente).
 //   - Sin mensajes acumulados previos → 409 `no_messages` (sin incidente).
@@ -247,6 +249,43 @@ export async function handleWebhookEvent(
     );
   }
 
+  // S5 (DEV-41): un evento de completado sin `conversation_id` (o con el valor
+  // vacío) no puede agrupar la conversación. Se responde 400 con el code
+  // específico `missing_conversation_id` ANTES de la validación general S2
+  // (que devolvería `validation_failed`), para que el remitente identifique el
+  // error del flujo de completado. No se persiste ningún registro: el evento
+  // no cumple los campos mínimos del contrato (conversation_id es obligatorio).
+  if (
+    payload !== null &&
+    typeof payload === "object" &&
+    !Array.isArray(payload) &&
+    isCompletionEvent(payload as RawWebhookEvent)
+  ) {
+    const completionConversationId = resolveConversationId(payload as RawWebhookEvent);
+    if (
+      typeof completionConversationId !== "string" ||
+      completionConversationId.trim().length === 0
+    ) {
+      return jsonResponse(
+        {
+          code: "missing_conversation_id",
+          message:
+            "El evento de completado requiere data.conversation_id (o conversation_id) no vacío para crear el incidente.",
+          details: {
+            issues: [
+              {
+                path: ["conversation_id"],
+                message:
+                  "conversation_id: campo requerido (string no vacío) en el evento de completado.",
+              },
+            ],
+          },
+        },
+        400,
+      );
+    }
+  }
+
   // Validación de estructura mínima → 400 con errores detallados.
   const result = validateWebhookEvent(payload);
   if (!result.valid) {
@@ -336,33 +375,11 @@ export async function handleWebhookEvent(
   let incident;
   if (deps.incidentService && isCompletionEvent(payload as RawWebhookEvent)) {
     // El conversation_id puede viajar en `conversation_id` (plano) o en
-    // `data.conversation_id` (shape documentado del contrato S8).
-    const conversationId = resolveConversationId(payload as RawWebhookEvent);
-
-    // Un evento de completado sin conversation_id no puede agrupar la
-    // conversación: la validación devuelve 400 detallando el campo faltante.
-    if (
-      typeof conversationId !== "string" ||
-      conversationId.trim().length === 0
-    ) {
-      return jsonResponse(
-        {
-          code: "missing_conversation_id",
-          message:
-            "El evento de completado requiere data.conversation_id (o conversation_id) no vacío para crear el incidente.",
-          details: {
-            issues: [
-              {
-                path: ["conversation_id"],
-                message:
-                  "conversation_id: campo requerido (string no vacío) en el evento de completado.",
-              },
-            ],
-          },
-        },
-        400,
-      );
-    }
+    // `data.conversation_id` (shape documentado del contrato S8). Para un
+    // evento de completado que llega hasta aquí, el check temprano garantizó
+    // que es un string no vacío (400 `missing_conversation_id` en caso
+    // contrario), así que se resuelve de forma segura.
+    const conversationId = String(resolveConversationId(payload as RawWebhookEvent));
 
     // Mensajes acumulados de la conversación: los eventos `message.received`
     // ya persistidos en ingest_responses (mismo conversation_id, distinto
