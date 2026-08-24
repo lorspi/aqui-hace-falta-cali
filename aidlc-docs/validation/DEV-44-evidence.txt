@@ -1,0 +1,99 @@
+tab Reportes del Chatbot visible: true
+=== DOM RENDERIZADO DEL PANEL (tab Reportes del Chatbot) ===
+PANEL DE MODERACIÓN
+ADMIN
+👤 Operador Evidencia
+Cerrar sesión
+Pendientes por Verificar
+2
+Reportes de usuarios pendientes
+Reportes del Chatbot
+2
+Todas las Solicitudes (5)
+Historial de Auditoría
+Usuarios & Moderadores (1)
+Reportes del chatbot
+2 pendientes por revisar
+
+Reportes generados por el bot de WhatsApp (source = WhatsApp)
+
+ESTADO
+Todos los estados
+◷ Pendiente
+✓ Verificado
+✕ Rechazado
+⚠️ Reportado
+📁 Archivado
+PRIORIDAD
+Todas las prioridades
+🔴 Urgente
+🟠 Prioridad Alta
+🟡 Prioridad Media
+🟢 Prioridad Baja
+TIPO DE NECESIDAD
+Todos los tipos
+Edificio afectado
+Centro de acopio
+Centro de distribución
+Hospital / Centro médico
+Banco de sangre
+Refugio / Albergue
+Comunidad afectada
+Punto logístico
+Organización
+Otro tipo de lugar
+ORDENAR
+Más reciente
+Por prioridad
+◷
+PENDIENTE
+PRIORIDAD MEDIA
+22 DE AGO DE 2026, 12:55 A. M.
+Necesito ayuda sin ubicación
+573001234567
+Por confirmar
+Ubicación pendiente
+Conversación: conv_s8_nocoords
+evt: evt_s8_c1
+◷
+PENDIENTE
+PRIORIDAD MEDIA
+22 DE AGO DE 2026, 12:31 A. M.
+Necesito ayuda
+573001234567
+Por confirmar
+Ubicación pendiente
+Conversación: conv_s6_pipe
+evt: evt_s6_009
+✓
+VERIFICADO
+PRIORIDAD MEDIA
+24 DE AGO DE 2026, 04:20 P. M.
+Necesito medicamentos para mi mamá en el barrio El Peñón
+573009876543
+Calle 5 #34-10
+Ubicación pendiente
+Conversación: walk_a_conv
+evt: walk_a_c1
+✓
+VERIFICADO
+PRIORIDAD MEDIA
+24 DE AGO DE 2026, 04:13 P. M.
+Filtración de agua en la avenida 3N
+573001234567
+Por confirmar
+Ubicación pendiente
+Conversación: demo_a_conv
+evt: demo_a_c1
+✕
+RECHAZADA
+PRIORIDAD MEDIA
+24 DE AGO DE 2026, 04:13 P. M.
+Reporte duplicado sin datos
+573001234567
+Av 3N #45-12
+Ubicación pendiente
+Conversación: demo_b_conv2
+5 reportes · Reportes del chatbot
+MODO DESARROLLO (DATOS DE PRUEBA)
+=== FIN DOM ===

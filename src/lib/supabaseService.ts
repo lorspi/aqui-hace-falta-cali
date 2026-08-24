@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase, dbNeedToNeed, dbOfferToOffer, needToDbNeed, offerToDbOffer } from './supabaseClient';
-import { FilterState, Need, NeedStatus, Offer, OfferStatus, Priority } from '../types';
+import { FilterState, Need, NeedStatus, Offer, OfferStatus, PlaceType, Priority } from '../types';
 import { ALL_COLOMBIA_ID } from '../data/colombiaCities';
+import {
+  filterChatbotReports,
+  countPendingChatbotReports,
+  type ChatbotVerificationFilter,
+  type ChatbotSortOption,
+} from '../utils/chatbotReportUtils';
 
 export interface AdminReport {
   id: string;
@@ -119,6 +125,58 @@ export function useNeeds(filters: FilterState, selectedCityId: string) {
   ]);
 
   return { needs, loading, refetch: fetchNeeds };
+}
+
+// ==========================================
+// CHATBOT REPORTS (US-5) — reportes del chatbot (needs con source = 'WhatsApp')
+// ==========================================
+
+export type { ChatbotVerificationFilter, ChatbotSortOption };
+
+/**
+ * Carga los reportes del chatbot: registros en `needs` con `source = 'WhatsApp'`
+ * (US-5). Reutiliza la lectura de `needs` del frontend (`useNeeds`) y delega el
+ * filtrado/orden en la lógica pura `filterChatbotReports` (NFR-4, testeable).
+ *
+ * La UI no interpreta `raw_event` crudos: solo lee los datos ya persistidos por
+ * el receptor (S1/S5): `contact_whatsapp`, `title`/`categories`/`place_type`,
+ * `verification_status`, `priority`, `created_at`, `source_event_id`,
+ * `conversation_id` y `location_enrichment_status`.
+ */
+export function useChatbotReports(opts: {
+  verificationStatus: ChatbotVerificationFilter;
+  priority: Priority | 'ALL';
+  placeType: PlaceType | 'ALL';
+  sortBy?: ChatbotSortOption;
+}) {
+  // `useNeeds` se usa con includeArchived=true para leer TODOS los estados
+  // (incluido REJECTED y ARCHIVED). El filtro de fuente (source = WhatsApp) y
+  // los filtros de la pantalla se aplican en cliente: el total de reportes del
+  // chatbot suele ser acotado y reutiliza la lectura existente del frontend.
+  const filters: FilterState = {
+    search: '',
+    categories: [],
+    priority: 'ALL',
+    placeType: 'ALL',
+    status: 'ALL',
+    verificationStatus: 'ALL',
+    distanceKm: null,
+    userLat: null,
+    userLng: null,
+    sortBy: 'RECENT',
+    viewMode: 'NEEDS',
+    includeArchived: true,
+  };
+  const { needs, loading, refetch } = useNeeds(filters, 'ALL_COLOMBIA');
+
+  const chatbotReports = useMemo(
+    () => filterChatbotReports(needs, opts),
+    [needs, opts.verificationStatus, opts.priority, opts.placeType, opts.sortBy]
+  );
+
+  const pendingCount = useMemo(() => countPendingChatbotReports(needs), [needs]);
+
+  return { chatbotReports, loading, pendingCount, refetch };
 }
 
 export function useOffers(filters: FilterState, selectedCityId: string) {
