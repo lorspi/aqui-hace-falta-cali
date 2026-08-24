@@ -683,3 +683,99 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-1 — Recepción, validación, mapeo y persistencia idempotente de eventos del webhook
+Como sistema de RaDAR de Ayuda, quiero recibir cada evento que envía la plataforma de conversación, validarlo, mapearlo a un borrador de necesidad y guardarlo de forma idempotente, para tener un registro fiel y sin duplicados de todo lo que ocurrió en cada conversación.
+
+**Criterios de aceptación:**
+- El endpoint `POST /functions/v1/webhook` recibe eventos JSON crudos de cualquier `type` con `Content-Type: application/json`.
+- Evento válido → responde 200 con `event_id`, `type`, el resumen del mapeo (`mapping`) y el resultado de la persistencia.
+- Body no parseable o vacío → responde 400 `invalid_json` con el detalle del problema.
+- Campos mínimos faltantes o inválidos → responde 400 `validation_failed` con el detalle de los campos y no persiste ninguna fila.
+- Reenvío del mismo `event.id` ya procesado → responde 409 `duplicate_event` con la fila existente en `details.record`; no crea fila nueva ni re-ejecuta el mapeo ni la creación del incidente.
+- Evento sin `event.id` (o vacío) → responde 400 `validation_failed` señalando el campo faltante; no se persiste ni se evalúa deduplicación.
+- Error al guardar en `ingest_responses` → responde 500 `persistence_failed` con un mensaje genérico (sin detalles internos) y el error real se registra server-side vía `logError`.
+- Autenticación abierta (deuda reconocida): cualquier origen puede enviar eventos; se resuelve como historia de seguridad aparte (S8).
+- Clave de idempotencia: `event_id` (UNIQUE) en `ingest_responses`. No existen tablas `messages`/`attachments` separadas (los adjuntos viajan dentro de `raw_event`) ni tabla `conversations` (la agrupación es por `conversation_id`, plano o en `data.conversation_id`).
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: Un evento válido se recibe, valida, mapea y persiste de forma idempotente
+  Given la plataforma de conversación envía un evento JSON con estructura mínima válida (event.id, type, conversation_id, body)
+  When se envía por POST a /functions/v1/webhook con Content-Type application/json
+  Then el endpoint responde 200 con event_id, type, el resumen del mapeo (mapping) y el resultado de la persistencia
+  And se crea una fila en ingest_responses con processing_status=RECEIVED y raw_event intacto
+
+Scenario: El mapping resume la normalización del mensaje en un borrador de necesidad
+  Given un evento message.received válido con message_type y workflow.step
+  When el endpoint lo valida y mapea
+  Then la respuesta 200 incluye mapping con message_type normalizado, workflow.step normalizado, contact_whatsapp y builds_incident
+  And el borrador de necesidad queda listo para enriquecerse y persistirse en etapas posteriores
+
+Scenario: Un body no parseable o vacío responde 400 invalid_json
+  Given la plataforma de conversación envía un POST con un body que no es JSON válido o vacío
+  When el endpoint intenta parsear el body
+  Then responde 400 con code=invalid_json
+  And el detalle explica el problema del body
+  And no se persiste ninguna fila en ingest_responses
+
+Scenario Outline: Campos mínimos faltantes o inválidos responden 400 validation_failed
+  Given la plataforma de conversación envía un evento sin el campo <campo> obligatorio (o con valor vacío/inválido)
+  When el endpoint valida el evento
+  Then responde 400 con code=validation_failed
+  And el detalle señala el/los campos afectados
+  And no se persiste ninguna fila en ingest_responses
+
+  Examples:
+    | campo           |
+    | id              |
+    | type            |
+    | conversation_id |
+    | body            |
+
+Scenario: El reenvío del mismo event.id responde 409 duplicate_event sin re-procesar
+  Given un evento con event.id ya procesado con éxito
+  When la plataforma de conversación reenvía el mismo event.id (aunque el body cambie)
+  Then el endpoint responde 409 con code=duplicate_event
+  And details.record incluye la fila existente en ingest_responses
+  And no se crea una fila nueva
+  And no se re-ejecuta el mapeo ni la creación del incidente
+
+Scenario: Un evento sin event.id se rechaza sin evaluar deduplicación
+  Given la plataforma de conversación envía un evento sin id (o con id vacío)
+  When el endpoint valida el evento
+  Then responde 400 con code=validation_failed señalando el campo faltante
+  And no se persiste ninguna fila en ingest_responses
+  And no se evalúa la deduplicación
+
+Scenario: Un error de persistencia responde 500 persistence_failed con mensaje genérico
+  Given el endpoint recibe un evento válido
+  When ocurre un error al guardar en ingest_responses
+  Then responde 500 con code=persistence_failed y un mensaje genérico (sin detalles internos)
+  And el error real se registra server-side vía logError
+
+Scenario: El endpoint acepta peticiones sin autenticación (deuda reconocida)
+  Given el endpoint no valida ningún token ni firma
+  When cualquier origen envía un POST con un evento válido
+  Then el evento se procesa normalmente
+  And la autenticación queda pendiente como historia de seguridad aparte (S8)
+
+Scenario: Un evento sin coordenadas se acepta y deja el geocoding pendiente
+  Given un evento válido que no incluye latitud ni longitud ni dirección para geocoding
+  When el endpoint lo recibe y lo mapea
+  Then responde 200 con mapping indicando location_pending_geocoding=true
+  And el borrador de necesidad queda con la ubicación pendiente de enriquecimiento (geocoding + ciudad)
+
+Scenario: La agrupación por conversación soporta conversation_id plano o en data.conversation_id
+  Given un evento cuyo conversation_id viene plano o anidado en data.conversation_id
+  When el endpoint lo recibe y lo persiste
+  Then la fila en ingest_responses conserva la referencia a la conversación
+  And la agrupación posterior por conversación usa ese campo sin requerir una tabla conversations
+
+Scenario: Los adjuntos viajan dentro del raw_event sin tablas separadas
+  Given un evento cuyo mensaje incluye adjuntos
+  When el endpoint lo persiste
+  Then el raw_event se guarda completo con los adjuntos dentro
+  And no se requiere una tabla messages ni attachments para la persistencia
+```
