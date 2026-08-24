@@ -702,7 +702,7 @@ export const AdminPanelPage: React.FC = () => {
         {/* TAB 2.5: CHATBOT REPORTS (US-5) */}
         {activeTab === 'CHATBOT' && (
           <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <ChatbotReportsList />
+            <ChatbotReportsList operator={currentUser} />
           </div>
         )}
 

@@ -253,6 +253,37 @@ describe("US-3 — La reconstrucción incluye los datos estructurados del incide
     expect(body.need!.conversation_id).toBe("conv_X");
     expect(body.need!.source_event_id).toBe("evt_comp");
   });
+
+  it("expone la trazabilidad de la revisión (verified_by, verified_at, verification_notes) para US-7", async () => {
+    const ingest = createInMemoryIngestResponsesStore();
+    const needs = seededNeeds({
+      verification_status: "REJECTED",
+      verified_by: "operador@radar.local",
+      verified_at: "2026-08-24T19:20:48.547Z",
+      verification_notes: "Información falsa",
+    });
+    seedIngest(ingest, [buildMessage()]);
+
+    const res = await get(ingest, needs, "/needs/00000000-0000-0000-0000-000000000123/conversation");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as ConversationRebuild;
+
+    expect(body.need!.verification_status).toBe("REJECTED");
+    expect(body.need!.verified_by).toBe("operador@radar.local");
+    expect(body.need!.verified_at).toBe("2026-08-24T19:20:48.547Z");
+    expect(body.need!.verification_notes).toBe("Información falsa");
+  });
+
+  it("tolera la ausencia de verified_by/verified_at (null) sin romper el resumen", async () => {
+    const ingest = createInMemoryIngestResponsesStore();
+    const needs = seededNeeds({ verification_status: "VERIFIED", verified_by: null, verified_at: null });
+    seedIngest(ingest, [buildMessage()]);
+
+    const res = await get(ingest, needs, "/needs/00000000-0000-0000-0000-000000000123/conversation");
+    const body = (await res.json()) as ConversationRebuild;
+    expect(body.need!.verified_by).toBeNull();
+    expect(body.need!.verified_at).toBeNull();
+  });
 });
 
 // ============================================================================
