@@ -117,6 +117,8 @@ export interface NeedsStore {
   findBySourceEventId(eventId: string): Promise<NeedRecord | null>;
   /** Devuelve el incidente de una conversación, o null. */
   findByConversationId(conversationId: string): Promise<NeedRecord | null>;
+  /** Devuelve el incidente por su id (US-3: reconstrucción de conversación), o null. */
+  findById(id: string): Promise<NeedRecord | null>;
 }
 
 // -----------------------------------------------------------------------------
@@ -216,6 +218,9 @@ export function createInMemoryNeedsStore(
         if (row.conversation_id === conversationId) return row;
       }
       return null;
+    },
+    async findById(id: string): Promise<NeedRecord | null> {
+      return rows.get(id) ?? null;
     },
     size() {
       return rows.size;
@@ -336,6 +341,10 @@ export function createPostgrestNeedsStore(
 
     async findByConversationId(conversationId: string): Promise<NeedRecord | null> {
       return selectBy("conversation_id", conversationId);
+    },
+
+    async findById(id: string): Promise<NeedRecord | null> {
+      return selectBy("id", id);
     },
   };
 }
