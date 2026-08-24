@@ -321,6 +321,10 @@ export interface ConversationNeedSummary {
   priority: string;
   status: string;
   verification_status: string;
+  // Trazabilidad de la revisión (US-4): quién y cuándo aprobó/rechazó (US-7).
+  verified_by?: string | null;
+  verified_at?: string | null;
+  verification_notes?: string | null;
   conversation_id: string | null;
   source_event_id: string | null;
 }

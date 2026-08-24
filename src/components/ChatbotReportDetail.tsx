@@ -44,6 +44,8 @@ import {
   Clock,
   Bot,
   User,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import {
   fetchConversationByNeedId,
@@ -60,6 +62,16 @@ import {
   type ChatMessageViewModel,
   type ConversationAttachment,
 } from '../utils/conversationDetailUtils';
+import {
+  reviewNeed,
+  ReviewNeedError,
+  type ReviewDecisionInput,
+} from '../lib/reviewService';
+import {
+  isReviewable,
+  resolveVerifiedBy,
+  type ReviewOperator,
+} from '../utils/reviewUtils';
 import { PRIORITY_CONFIG, VERIFICATION_CONFIG } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
 import type { TranslationKey } from '../i18n/translations';
@@ -76,8 +88,43 @@ interface ChatbotReportDetailProps {
   needId: string;
   /** Datos de ubicación/enriquecimiento del need (opcional; desde el listado). */
   need?: NeedLocationInfo | null;
+  /**
+   * Operador autenticado en el panel (rol MODERATOR/ADMIN). Se usa para
+   * identificar al revisor (`verified_by`) en las acciones de aprobar/rechazar
+   * (US-7). Cuando no se provee, se intenta resolver desde la sesión del panel
+   * (`localStorage` `ahf_admin_user`).
+   */
+  operator?: ReviewOperator | null;
   /** Volver al listado de reportes. */
   onClose: () => void;
+}
+
+/** Etiqueta legible del revisor (quién revisó) tolerante a datos ausentes. */
+function reviewedByLabel(t: (k: TranslationKey) => string, value?: string | null): string {
+  if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+  return t('reviewNotAvailable');
+}
+
+/** Etiqueta legible de la fecha de revisión (cuándo) tolerante a datos ausentes. */
+function reviewedAtLabel(t: (k: TranslationKey) => string, value?: string | null): string {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    try {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+    } catch {
+      // Fallo de formato: se muestra el valor crudo o "no disponible".
+    }
+    return value;
+  }
+  return t('reviewNotAvailable');
 }
 
 type DetailState =
@@ -312,14 +359,24 @@ function formatTime(iso: string): string {
 export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
   needId,
   need,
+  operator,
   onClose,
 }) => {
   const { t } = useTranslation();
   const [state, setState] = useState<DetailState>({ kind: 'loading' });
   const [tab, setTab] = useState<'chat' | 'need'>('chat');
+  // Estado de la decisión de revisión (US-7): decisión en curso (evita doble
+  // clic), error y éxito. `reviewed` guarda el need actualizado que devuelve el
+  // endpoint de US-4 para reflejar el nuevo estado sin recargar la pantalla.
+  const [reviewState, setReviewState] = useState<{
+    busy: boolean;
+    error: string | null;
+    reviewed: { verification_status: string; verified_by?: string | null; verified_at?: string | null; verification_notes?: string | null } | null;
+  }>({ busy: false, error: null, reviewed: null });
 
   const load = useCallback(async () => {
     setState({ kind: 'loading' });
+    setReviewState({ busy: false, error: null, reviewed: null });
     try {
       const rebuild = await fetchConversationByNeedId(needId);
       setState({ kind: 'ready', rebuild });
@@ -343,6 +400,113 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
   }, [state]);
 
   const isNeedNotFound = state.kind === 'error' && state.code === 'need_not_found';
+
+  // ---------------------------------------------------------------------------
+  // Acciones de aprobar / rechazar (US-7)
+  // ---------------------------------------------------------------------------
+
+  /** Muestra un mensaje de error claro según el code del endpoint de US-4. */
+  const reviewErrorMessage = useCallback((err: unknown): string => {
+    if (err instanceof ReviewNeedError) {
+      switch (err.code) {
+        case 'missing_operator':
+          return t('reviewMissingOperator');
+        case 'invalid_verification_status':
+          return t('reviewInvalidStatus');
+        case 'need_not_found':
+          return t('conversationDetailNeedNotFound');
+        case 'network_error':
+        case 'config_missing':
+        case 'review_failed':
+        default:
+          return `${t('reviewUnknownError')} ${err.message || ''}`.trim();
+      }
+    }
+    return t('reviewUnknownError');
+  }, [t]);
+
+  // Rebuild disponible cuando la pantalla está en estado ready (acceso seguro
+  // al need del contrato US-3 sin romper el narrowing de la unión `DetailState`).
+  const readyRebuild = state.kind === 'ready' ? state.rebuild : null;
+
+  /** Ejecuta la decisión "aprobar" o "rechazar" llamando al endpoint US-4. */
+  const handleReview = useCallback(
+    async (decision: ReviewDecisionInput) => {
+      // El estado del need: el del rebuild (US-3) o el del resultado de una
+      // revisión reciente (US-4).
+      const currentStatus =
+        reviewState.reviewed?.verification_status ??
+        readyRebuild?.need?.verification_status ??
+        null;
+      // El reporte ya fue revisado (por otro operador o por un reintento
+      // posterior): no se permite una segunda decisión.
+      if (!isReviewable(currentStatus)) return;
+      // Evita duplicar la llamada si ya hay una petición en curso.
+      if (reviewState.busy) return;
+
+      const verifiedBy = resolveVerifiedBy(operator);
+      if (!verifiedBy) {
+        setReviewState((s) => ({ ...s, error: t('reviewMissingOperator') }));
+        return;
+      }
+
+      setReviewState((s) => ({ ...s, busy: true, error: null }));
+      try {
+        const result = await reviewNeed({
+          needId,
+          decision,
+          verifiedBy,
+        });
+        setReviewState((s) => ({
+          busy: false,
+          error: null,
+          reviewed: {
+            verification_status: result.need.verification_status,
+            verified_by: result.need.verified_by,
+            verified_at: result.need.verified_at,
+            verification_notes: result.need.verification_notes,
+          },
+        }));
+      } catch (err) {
+        // El need conserva verification_status = PENDING_VERIFICATION; el
+        // operador puede reintentar la decisión.
+        setReviewState((s) => ({
+          ...s,
+          busy: false,
+          error: reviewErrorMessage(err),
+        }));
+      }
+    },
+    [readyRebuild, reviewState.busy, reviewState.reviewed, operator, needId, t, reviewErrorMessage],
+  );
+
+  const handleApprove = useCallback(() => {
+    void handleReview('aprobar');
+  }, [handleReview]);
+
+  const handleReject = useCallback(() => {
+    void handleReview('rechazar');
+  }, [handleReview]);
+
+  // Estado efectivo del need: si el operador acaba de aprobar/rechazar, la
+  // respuesta del endpoint (US-4) manda; si no, el estado del listado/rebuild.
+  const effectiveNeed = useMemo(() => {
+    if (readyRebuild?.need == null) return null;
+    if (reviewState.reviewed) {
+      return {
+        ...readyRebuild.need,
+        verification_status: reviewState.reviewed.verification_status,
+        verified_by: reviewState.reviewed.verified_by ?? readyRebuild.need.verified_by ?? null,
+        verified_at: reviewState.reviewed.verified_at ?? readyRebuild.need.verified_at ?? null,
+        verification_notes:
+          reviewState.reviewed.verification_notes ?? readyRebuild.need.verification_notes ?? null,
+      };
+    }
+    return readyRebuild.need;
+  }, [readyRebuild, reviewState.reviewed]);
+
+  const canReview = effectiveNeed !== null && isReviewable(effectiveNeed.verification_status);
+  const isProcessing = reviewState.busy;
 
   // ---------------------------------------------------------------
   // Cabecera común (vuelve al listado)
@@ -437,6 +601,110 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
             <p className="font-bold">{t('conversationDetailNoIncident')}</p>
             <p className="text-amber-800/90">{t('conversationDetailNoIncidentHint')}</p>
           </div>
+        </div>
+      )}
+
+      {/* Panel de revisión (US-7): acciones aprobar/rechazar + trazabilidad */}
+      {effectiveNeed && (
+        <div
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3"
+          data-testid="review-actions-panel"
+        >
+          <h4 className="font-black text-slate-900 text-sm uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            {t('reviewActionsTitle')}
+          </h4>
+
+          {canReview ? (
+            <>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {t('reviewActionsPendingHint')}
+              </p>
+
+              {reviewState.error && (
+                <div
+                  className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-start gap-2"
+                  data-testid="review-error"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">{reviewState.error}</p>
+                    <p className="text-red-600/80">{t('reviewRetryHint')}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  onClick={handleApprove}
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  data-testid="review-approve"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  {isProcessing ? t('reviewActionsProcessing') : t('reviewApproveAction')}
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  data-testid="review-reject"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5" />
+                  )}
+                  {isProcessing ? t('reviewActionsProcessing') : t('reviewRejectAction')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500 font-semibold inline-flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                {t('reviewAlreadyReviewed')}
+              </p>
+
+              {/* Trazabilidad: quién y cuándo revisó (tolerante a datos ausentes) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {t('reviewVerifiedBy')}
+                  </p>
+                  <p className="font-bold text-slate-900 text-sm" data-testid="review-verified-by">
+                    {reviewedByLabel(t, effectiveNeed.verified_by)}
+                  </p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {t('reviewVerifiedAt')}
+                  </p>
+                  <p className="font-bold text-slate-900 text-sm" data-testid="review-verified-at">
+                    {reviewedAtLabel(t, effectiveNeed.verified_at)}
+                  </p>
+                </div>
+              </div>
+
+              {effectiveNeed.verification_notes && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    {t('reviewNotesLabel')}
+                  </p>
+                  <p className="text-sm text-slate-700" data-testid="review-notes">
+                    {effectiveNeed.verification_notes}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

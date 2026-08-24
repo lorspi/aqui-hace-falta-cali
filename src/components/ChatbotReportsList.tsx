@@ -40,6 +40,7 @@ import {
   useChatbotReports,
   ChatbotVerificationFilter,
   ChatbotSortOption,
+  AdminUser,
 } from '../lib/supabaseService';
 import {
   CATEGORY_LABELS,
@@ -54,6 +55,8 @@ import { useTranslation } from '../i18n/LanguageContext';
 interface ChatbotReportsListProps {
   /** Muestra la cabecera de la sección (título + tagline). @default true */
   showHeader?: boolean;
+  /** Operador autenticado en el panel (se pasa al detalle para `verified_by`). */
+  operator?: AdminUser | null;
 }
 
 const VERIFICATION_STATUSES: ChatbotVerificationFilter[] = [
@@ -237,6 +240,7 @@ function ChatbotReportCard({
  */
 export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
   showHeader = true,
+  operator,
 }) => {
   const { language, t } = useTranslation();
 
@@ -289,6 +293,7 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
           latitude: selectedReport.latitude ?? null,
           longitude: selectedReport.longitude ?? null,
         }}
+        operator={operator}
         onClose={() => setSelectedReport(null)}
       />
     );

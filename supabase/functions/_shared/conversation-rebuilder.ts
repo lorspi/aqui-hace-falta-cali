@@ -102,6 +102,12 @@ export interface NeedSummary {
   priority: string;
   status: string;
   verification_status: string;
+  // Trazabilidad de la revisión (US-4 / DEV-43): quién y cuándo aprobó o
+  // rechazó. El frontend (US-7) los muestra en el detalle cuando el reporte ya
+  // fue revisado; tolera su ausencia con un valor por defecto.
+  verified_by: string | null;
+  verified_at: string | null;
+  verification_notes: string | null;
   conversation_id: string | null;
   source_event_id: string | null;
 }
@@ -347,6 +353,9 @@ export function summarizeNeed(need: NeedRecord | null): NeedSummary | null {
     priority: need.priority,
     status: need.status,
     verification_status: need.verification_status,
+    verified_by: need.verified_by,
+    verified_at: need.verified_at,
+    verification_notes: need.verification_notes,
     conversation_id: need.conversation_id,
     source_event_id: need.source_event_id,
   };
