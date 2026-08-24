@@ -44,7 +44,8 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
       department: 'Quindío',
       city: 'Armenia',
       isAutoDetected: true,
-      fullName: '',
+      firstName: '',
+      lastName: '',
       documentType: 'cedula',
       documentNumber: '',
       phoneCountryCode: '+57',
@@ -63,7 +64,8 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
   const department = watch('department');
   const city = watch('city');
   const isAutoDetected = watch('isAutoDetected');
-  const fullName = watch('fullName');
+  const firstName = watch('firstName');
+  const lastName = watch('lastName');
   const documentType = watch('documentType');
   const documentNumber = watch('documentNumber');
   const phoneCountryCode = watch('phoneCountryCode');
@@ -80,7 +82,7 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
     } else if (currentStep === 2) {
       isValidStep = await trigger(['country', 'department', 'city']);
     } else if (currentStep === 3) {
-      isValidStep = await trigger(['fullName', 'documentType', 'documentNumber']);
+      isValidStep = await trigger(['firstName', 'lastName', 'documentType', 'documentNumber']);
     }
 
     if (isValidStep && currentStep < 4) {
@@ -175,14 +177,17 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
 
             {currentStep === 3 && (
               <Step3Identity
-                fullName={fullName}
+                firstName={firstName}
+                lastName={lastName}
                 documentType={documentType}
                 documentNumber={documentNumber}
                 errors={{
-                  fullName: errors.fullName?.message,
+                  firstName: errors.firstName?.message,
+                  lastName: errors.lastName?.message,
                   documentNumber: errors.documentNumber?.message,
                 }}
-                onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
+                onChangeFirstName={(val) => setValue('firstName', val, { shouldValidate: true })}
+                onChangeLastName={(val) => setValue('lastName', val, { shouldValidate: true })}
                 onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
                 onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
               />

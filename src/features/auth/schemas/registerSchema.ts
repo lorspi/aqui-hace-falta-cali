@@ -5,6 +5,7 @@ import { z } from 'zod';
  */
 export const userRoleEnum = z.enum([
   'voluntario',
+  'moderador',
   'rescatista',
   'acopio',
   'entidad_profesional',
@@ -28,7 +29,14 @@ export const organizationTypeEnum = z.enum([
 /**
  * Tipos de documento de identidad permitidos
  */
-export const documentTypeEnum = z.enum(['cedula', 'pasaporte']);
+export const documentTypeEnum = z.enum([
+  'cedula',
+  'cedula_extranjeria',
+  'pasaporte',
+  'ppt_pep',
+  'nit',
+  'tarjeta_identidad',
+]);
 
 /**
  * Esquema de validación - Paso 1: Selección de Rol
@@ -36,6 +44,39 @@ export const documentTypeEnum = z.enum(['cedula', 'pasaporte']);
 export const step1Schema = z.object({
   role: userRoleEnum,
 });
+
+/**
+ * Esquema de validación - Paso 1: Creación de Cuenta (Email, Clave, Captcha, Términos)
+ */
+export const step1AccountAuthSchema = z
+  .object({
+    firstName: z
+      .string()
+      .min(2, 'El nombre es obligatorio'),
+    lastName: z
+      .string()
+      .min(2, 'El apellido es obligatorio'),
+    email: z
+      .string()
+      .min(1, 'El correo electrónico es obligatorio')
+      .email('Ingresa un correo electrónico válido'),
+    password: z
+      .string()
+      .min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    confirmPassword: z
+      .string()
+      .min(1, 'Confirma tu contraseña'),
+    captchaVerified: z
+      .boolean()
+      .refine((val) => val === true, 'Por favor confirma que no eres un robot'),
+    acceptTerms: z
+      .boolean()
+      .refine((val) => val === true, 'Debes aceptar los términos y la política de privacidad'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
 
 /**
  * Esquema de validación - Paso 2: Ubicación / Territorio (Flujo Individual)
@@ -51,13 +92,26 @@ export const step2Schema = z.object({
  * Esquema de validación - Paso 3: Identificación de la Persona (Flujo Individual)
  */
 export const step3Schema = z.object({
-  fullName: z
+  firstName: z
     .string()
-    .min(3, 'El nombre completo debe tener al menos 3 caracteres'),
+    .min(2, 'El nombre es obligatorio'),
+  lastName: z
+    .string()
+    .min(2, 'El apellido es obligatorio'),
   documentType: documentTypeEnum,
   documentNumber: z
     .string()
-    .min(4, 'El número de documento debe tener al menos 4 caracteres'),
+    .min(4, 'El número de documento es obligatorio (mínimo 4 caracteres)'),
+});
+
+/**
+ * Esquema de validación - Paso 3 Exclusivo para Moderadores (Postulación)
+ */
+export const stepModeratorSchema = z.object({
+  moderatorCommunityCollective: z.string().optional(),
+  moderatorMotivation: z
+    .string()
+    .min(10, 'Describe tu motivación o experiencia para moderar (mínimo 10 caracteres)'),
 });
 
 /**

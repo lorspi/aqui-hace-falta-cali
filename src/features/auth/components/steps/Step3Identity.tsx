@@ -4,25 +4,35 @@ import { DocumentType, UserRole } from '../../schemas/registerSchema';
 
 interface Step3IdentityProps {
   role?: UserRole;
-  fullName: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   documentType: DocumentType;
   documentNumber: string;
   errors?: {
     fullName?: string;
+    firstName?: string;
+    lastName?: string;
     documentNumber?: string;
   };
-  onChangeFullName: (val: string) => void;
+  onChangeFullName?: (val: string) => void;
+  onChangeFirstName?: (val: string) => void;
+  onChangeLastName?: (val: string) => void;
   onChangeDocumentType: (type: DocumentType) => void;
   onChangeDocumentNumber: (val: string) => void;
 }
 
 export const Step3Identity: React.FC<Step3IdentityProps> = ({
   role,
-  fullName,
+  fullName = '',
+  firstName = '',
+  lastName = '',
   documentType,
   documentNumber,
   errors,
   onChangeFullName,
+  onChangeFirstName,
+  onChangeLastName,
   onChangeDocumentType,
   onChangeDocumentNumber,
 }) => {
@@ -63,74 +73,125 @@ export const Step3Identity: React.FC<Step3IdentityProps> = ({
       </div>
 
       <div className="space-y-5">
-        {/* Nombre y Apellido */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            Nombre y Apellido
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <User className="w-4 h-4" />
+        {/* Nombres y Apellidos */}
+        {onChangeFirstName && onChangeLastName ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Nombres <span className="text-blue-600">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => onChangeFirstName(e.target.value)}
+                  placeholder="Ej: María Camila"
+                  className={`
+                    w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
+                    ${
+                      errors?.firstName
+                        ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
+                        : 'border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                    }
+                  `}
+                />
+              </div>
+              {errors?.firstName && (
+                <p className="text-xs text-red-600 font-semibold mt-1">
+                  {errors.firstName}
+                </p>
+              )}
             </div>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => onChangeFullName(e.target.value)}
-              placeholder="Ej: María Camila Restrepo"
-              className={`
-                w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
-                ${
-                  errors?.fullName
-                    ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
-                }
-              `}
-            />
-          </div>
-          {errors?.fullName && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.fullName}
-            </p>
-          )}
-        </div>
 
-        {/* Tipo de Documento (Toggle / Tabs) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Apellidos <span className="text-blue-600">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => onChangeLastName(e.target.value)}
+                  placeholder="Ej: García López"
+                  className={`
+                    w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
+                    ${
+                      errors?.lastName
+                        ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
+                        : 'border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                    }
+                  `}
+                />
+              </div>
+              {errors?.lastName && (
+                <p className="text-xs text-red-600 font-semibold mt-1">
+                  {errors.lastName}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Nombre y Apellido
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <User className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => onChangeFullName && onChangeFullName(e.target.value)}
+                placeholder="Ej: María Camila Restrepo"
+                className={`
+                  w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
+                  ${
+                    errors?.fullName
+                      ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
+                      : 'border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                  }
+                `}
+              />
+            </div>
+            {errors?.fullName && (
+              <p className="text-xs text-red-600 font-semibold mt-1">
+                {errors.fullName}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Tipo de Documento */}
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Tipo de Documento
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => onChangeDocumentType('cedula')}
-              className={`
-                py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer select-none
-                ${
-                  documentType === 'cedula'
-                    ? 'border-2 border-blue-600 bg-blue-50/60 text-blue-950 font-bold shadow-xs shadow-blue-500/10'
-                    : 'border border-slate-300 bg-white text-slate-600 font-semibold hover:border-slate-400 hover:bg-slate-50'
-                }
-              `}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <CreditCard className="w-4 h-4 text-blue-600" />
+            </div>
+            <select
+              value={documentType}
+              onChange={(e) => onChangeDocumentType(e.target.value as DocumentType)}
+              className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer shadow-xs"
             >
-              <CreditCard className={`w-4 h-4 ${documentType === 'cedula' ? 'text-blue-600' : 'text-slate-400'}`} />
-              <span>Cédula</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onChangeDocumentType('pasaporte')}
-              className={`
-                py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer select-none
-                ${
-                  documentType === 'pasaporte'
-                    ? 'border-2 border-blue-600 bg-blue-50/60 text-blue-950 font-bold shadow-xs shadow-blue-500/10'
-                    : 'border border-slate-300 bg-white text-slate-600 font-semibold hover:border-slate-400 hover:bg-slate-50'
-                }
-              `}
-            >
-              <FileText className={`w-4 h-4 ${documentType === 'pasaporte' ? 'text-blue-600' : 'text-slate-400'}`} />
-              <span>Pasaporte</span>
-            </button>
+              <option value="cedula">Cédula de Ciudadanía (CC)</option>
+              <option value="cedula_extranjeria">Cédula de Extranjería (CE)</option>
+              <option value="pasaporte">Pasaporte (PA)</option>
+              <option value="ppt_pep">Permiso por Protección Temporal (PPT / PEP)</option>
+              <option value="nit">NIT (Identificación Tributaria)</option>
+              <option value="tarjeta_identidad">Tarjeta de Identidad (TI)</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400 text-xs">
+              ▼
+            </div>
           </div>
         </div>
 

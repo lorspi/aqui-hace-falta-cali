@@ -12,6 +12,8 @@ import { Step1AccountAuth } from './steps/Step1AccountAuth';
 import { Step1Role } from './steps/Step1Role';
 import { Step2Location } from './steps/Step2Location';
 import { Step3Identity } from './steps/Step3Identity';
+import { Step3IdentityLocation } from './steps/Step3IdentityLocation';
+import { StepModeratorApplication } from './steps/StepModeratorApplication';
 import { Step4Account } from './steps/Step4Account';
 import { StepOrgCategory } from './steps/StepOrgCategory';
 import { StepOrgMapLocation } from './steps/StepOrgMapLocation';
@@ -49,6 +51,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const {
     watch,
     setValue,
+    setError,
+    clearErrors,
     trigger,
     handleSubmit,
     formState: { errors },
@@ -66,6 +70,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       orgName: '',
       orgDescription: '',
       orgWebsiteOrSocial: '',
+      moderatorCommunityCollective: '',
+      moderatorMotivation: '',
+      firstName: '',
+      lastName: '',
       fullName: '',
       documentType: 'cedula',
       documentNumber: '',
@@ -73,6 +81,9 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       phoneNumber: '',
       email: '',
       password: '',
+      confirmPassword: '',
+      captchaVerified: false,
+      acceptTerms: false,
     },
     mode: 'onTouched',
   });
@@ -94,35 +105,121 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const orgName: string = watch('orgName');
   const orgDescription: string = watch('orgDescription');
   const orgWebsiteOrSocial: string = watch('orgWebsiteOrSocial');
-  const fullName: string = watch('fullName');
+  const moderatorCommunityCollective: string = watch('moderatorCommunityCollective');
+  const moderatorMotivation: string = watch('moderatorMotivation');
+  const firstName: string = watch('firstName');
+  const lastName: string = watch('lastName');
+  const rawFullName: string = watch('fullName');
+  const fullName: string = `${(firstName || '').trim()} ${(lastName || '').trim()}`.trim() || rawFullName;
   const documentType: DocumentType = watch('documentType');
   const documentNumber: string = watch('documentNumber');
   const phoneCountryCode: string = watch('phoneCountryCode');
   const phoneNumber: string = watch('phoneNumber');
   const email: string = watch('email');
   const password: string = watch('password');
+  const confirmPassword: string = watch('confirmPassword');
+  const captchaVerified: boolean = watch('captchaVerified');
+  const acceptTerms: boolean = watch('acceptTerms');
 
-  // Determinar si es flujo de organización o individual
+  // Determinar el tipo de flujo y número de pasos totales
   const isOrgFlow = role === 'entidad_profesional';
-  const totalSteps = isOrgFlow ? 7 : 4;
+  const isModeratorFlow = role === 'moderador';
+  const totalSteps = isOrgFlow ? 7 : (isModeratorFlow ? 4 : 3);
 
   // Control de navegación y validación dinámica por paso
   const handleNextStep = async () => {
     setServerError(null);
+    setSuccessMessage(null);
     let isValidStep = false;
 
     if (currentStep === 1) {
-      // Paso 1: Autenticación (Email/Password)
-      isValidStep = await trigger(['email', 'password']);
+      // Paso 1: Autenticación, Nombres, Apellidos, Claves, Captcha y Términos
+      clearErrors(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'captchaVerified', 'acceptTerms']);
+      let localValid = true;
+
+      if (!firstName?.trim() || firstName.trim().length < 2) {
+        setError('firstName', { type: 'manual', message: 'El nombre es obligatorio' });
+        localValid = false;
+      }
+
+      if (!lastName?.trim() || lastName.trim().length < 2) {
+        setError('lastName', { type: 'manual', message: 'El apellido es obligatorio' });
+        localValid = false;
+      }
+
+      if (!email?.trim()) {
+        setError('email', { type: 'manual', message: 'El correo electrónico es obligatorio' });
+        localValid = false;
+      } else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+        setError('email', { type: 'manual', message: 'Ingresa un correo electrónico válido' });
+        localValid = false;
+      }
+
+      if (!password?.trim() || password.length < 6) {
+        setError('password', { type: 'manual', message: 'La contraseña debe tener al menos 6 caracteres' });
+        localValid = false;
+      }
+
+      if (!confirmPassword) {
+        setError('confirmPassword', { type: 'manual', message: 'Confirma tu contraseña' });
+        localValid = false;
+      } else if (password !== confirmPassword) {
+        setError('confirmPassword', { type: 'manual', message: 'Las contraseñas no coinciden' });
+        localValid = false;
+      }
+
+      if (!captchaVerified) {
+        setError('captchaVerified', { type: 'manual', message: 'Por favor confirma que no eres un robot' });
+        localValid = false;
+      }
+
+      if (!acceptTerms) {
+        setError('acceptTerms', { type: 'manual', message: 'Debes aceptar los términos y la política de privacidad' });
+        localValid = false;
+      }
+
+      isValidStep = localValid;
     } else if (currentStep === 2) {
       // Paso 2: Rol
       isValidStep = await trigger(['role']);
     } else if (!isOrgFlow) {
-      // Flujo Individual (4 Pasos): Paso 3 Identificación & Teléfono, Paso 4 Ubicación
-      if (currentStep === 3) {
-        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber', 'phoneNumber']);
-      } else if (currentStep === 4) {
-        isValidStep = await trigger(['country', 'department', 'city']);
+      // Flujo Moderador o Usuario Regular
+      if (isModeratorFlow) {
+        if (currentStep === 3) {
+          // Paso 3 Moderador: Postulación como Moderador
+          clearErrors(['moderatorMotivation']);
+          if (!moderatorMotivation?.trim() || moderatorMotivation.trim().length < 10) {
+            setError('moderatorMotivation', {
+              type: 'manual',
+              message: 'Describe tu motivación o experiencia para moderar (mínimo 10 caracteres)',
+            });
+            isValidStep = false;
+          } else {
+            isValidStep = true;
+          }
+        } else if (currentStep === 4) {
+          // Paso 4 Moderador: Identificación y Ubicación
+          clearErrors(['documentNumber']);
+          const isLocValid = await trigger(['documentNumber', 'country', 'department', 'city']);
+          if (!documentNumber?.trim()) {
+            setError('documentNumber', { type: 'manual', message: 'El número de documento es obligatorio' });
+            isValidStep = false;
+          } else {
+            isValidStep = isLocValid;
+          }
+        }
+      } else {
+        // Flujo Individual Regular (3 Pasos Totales): Paso 3 Identificación y Ubicación
+        if (currentStep === 3) {
+          clearErrors(['documentNumber']);
+          const isLocValid = await trigger(['documentNumber', 'country', 'department', 'city']);
+          if (!documentNumber?.trim()) {
+            setError('documentNumber', { type: 'manual', message: 'El número de documento es obligatorio' });
+            isValidStep = false;
+          } else {
+            isValidStep = isLocValid;
+          }
+        }
       }
     } else {
       // Flujo Organización (7 Pasos)
@@ -200,6 +297,11 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           userMetadata.longitude = data.longitude;
         }
 
+        if (data.role === 'moderador') {
+          userMetadata.moderator_community_collective = data.moderatorCommunityCollective?.trim();
+          userMetadata.moderator_motivation = data.moderatorMotivation?.trim();
+        }
+
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: data.email.trim(),
           password: data.password,
@@ -211,6 +313,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         if (authError) throw authError;
         targetUserId = authData.user?.id;
         targetEmail = authData.user?.email || data.email.trim();
+      }
+
+      if (!targetUserId) {
+        throw new Error('No se pudo determinar el ID de usuario para completar el registro.');
       }
 
       // 3. Sincronizar en la tabla `profiles` de Supabase
@@ -329,22 +435,39 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         </div>
 
         {/* Cuerpo del Formulario Multi-Paso Adaptable */}
-        <form onSubmit={handleSubmit(onSubmitFinal)} className="flex flex-col justify-between flex-1">
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          className="flex flex-col justify-between flex-1"
+        >
           <div className="px-6 sm:px-8 py-4 flex-1">
             
-            {/* Paso 1: Autenticación (Google 1-clic o Correo/Contraseña) */}
+            {/* Paso 1: Autenticación, Nombres, Apellidos, Claves, Captcha y Términos */}
             {currentStep === 1 && (
               <Step1AccountAuth
+                firstName={firstName}
+                lastName={lastName}
                 email={email}
                 password={password}
+                confirmPassword={confirmPassword}
+                captchaVerified={captchaVerified}
+                acceptTerms={acceptTerms}
                 isSubmitting={isSubmitting}
                 errors={{
+                  firstName: errStr(errors.firstName),
+                  lastName: errStr(errors.lastName),
                   email: errStr(errors.email),
                   password: errStr(errors.password),
+                  confirmPassword: errStr(errors.confirmPassword),
+                  captchaVerified: errStr(errors.captchaVerified),
+                  acceptTerms: errStr(errors.acceptTerms),
                 }}
+                onChangeFirstName={(val) => setValue('firstName', val, { shouldValidate: true })}
+                onChangeLastName={(val) => setValue('lastName', val, { shouldValidate: true })}
                 onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
                 onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
-                onNext={handleNextStep}
+                onChangeConfirmPassword={(val) => setValue('confirmPassword', val, { shouldValidate: true })}
+                onChangeCaptchaVerified={(val) => setValue('captchaVerified', val, { shouldValidate: true })}
+                onChangeAcceptTerms={(val) => setValue('acceptTerms', val, { shouldValidate: true })}
               />
             )}
 
@@ -358,33 +481,39 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
               />
             )}
 
-            {/* Renderizado para Flujo Individual (4 Pasos) */}
+            {/* Renderizado para Flujos Individuales y Moderador */}
             {!isOrgFlow && (
               <>
-                {/* Paso 3 Individual: Identificación y Teléfono */}
-                {currentStep === 3 && (
-                  <Step3Identity
-                    role={role}
-                    fullName={fullName}
-                    documentType={documentType}
-                    documentNumber={documentNumber}
+                {/* Paso 3 Moderador: Postulación como Moderador */}
+                {isModeratorFlow && currentStep === 3 && (
+                  <StepModeratorApplication
+                    moderatorCommunityCollective={moderatorCommunityCollective}
+                    moderatorMotivation={moderatorMotivation}
+                    isSubmitting={isSubmitting}
                     errors={{
-                      fullName: errStr(errors.fullName),
-                      documentNumber: errStr(errors.documentNumber),
+                      moderatorCommunityCollective: errStr(errors.moderatorCommunityCollective),
+                      moderatorMotivation: errStr(errors.moderatorMotivation),
                     }}
-                    onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
-                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
-                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
+                    onChangeCommunityCollective={(val) => setValue('moderatorCommunityCollective', val, { shouldValidate: true })}
+                    onChangeMotivation={(val) => setValue('moderatorMotivation', val, { shouldValidate: true })}
                   />
                 )}
 
-                {/* Paso 4 Individual: Ubicación */}
-                {currentStep === 4 && (
-                  <Step2Location
+                {/* Paso 3 Regular (3 de 3) o Paso 4 Moderador (4 de 4): Identificación y Ubicación */}
+                {((!isModeratorFlow && currentStep === 3) || (isModeratorFlow && currentStep === 4)) && (
+                  <Step3IdentityLocation
+                    documentType={documentType}
+                    documentNumber={documentNumber}
                     country={country}
                     department={department}
                     city={city}
-                    isAutoDetected={isAutoDetected}
+                    isSubmitting={isSubmitting}
+                    errors={{
+                      documentNumber: errStr(errors.documentNumber),
+                      city: errStr(errors.city),
+                    }}
+                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
+                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
                     onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
                     onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
@@ -499,7 +628,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSubmit(onSubmitFinal)()}
                   disabled={isSubmitting}
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all shadow-md shadow-emerald-600/20 ml-auto cursor-pointer"
                 >
