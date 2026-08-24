@@ -1,71 +1,31 @@
-# Términos y Condiciones
+# **TÉRMINOS Y CONDICIONES DE USO** 
 
 **Última actualización:** Agosto 2026
 
-## 1. Aceptación de los Términos
+Al registrarte y hacer uso de esta plataforma, aceptas sin reserva los siguientes términos diseñados para la gestión segura de crisis humanitarias: 
 
-Al acceder y utilizar la plataforma RaDAR de Ayuda ("la Plataforma"), usted acepta estos Términos y Condiciones en su totalidad. Si no está de acuerdo con alguno de estos términos, le solicitamos no utilizar la Plataforma.
+## **1. Naturaleza Comunitariamente Articulada (No Sustitución Oficial)** 
 
-## 2. Descripción del Servicio
+Esta plataforma es una herramienta tecnológica de colaboración ciudadana. **No presta servicios de emergencia ni sustituye a los organismos oficiales** (UNGRD, Puestos de Mando Unificado - PMU, Fuerza Pública, Cruz Roja). Ante cualquier discrepancia en los datos, prevalecerán siempre las instrucciones de las autoridades oficiales. 
 
-RaDAR de Ayuda es una plataforma ciudadana abierta de coordinación de emergencias que permite:
+## **2. Uso Responsable y Riesgos Operativos** 
 
-- Reportar necesidades de ayuda humanitaria y logística.
-- Publicar ofertas de ayuda, recursos y voluntariado.
-- Geolocalizar puntos de acopio, albergues y servicios disponibles.
-- Coordinar esfuerzos entre ciudadanos, organizaciones y voluntarios.
+- **Sensibilidad de Datos en Campo:** Reconoces que la publicación desactualizada de albergues o puntos de acopio puede generar desplazamientos inútiles o colapsos por sobrecapacidad ("cuellos de botella"). Te comprometes a mantener actualizada o retirar la información que publiques. 
 
-La Plataforma es una herramienta de información ciudadana y **no sustituye los canales oficiales de emergencia** (línea 123, Cruz Roja 132, Bomberos 119).
+- **Seguridad contra Saqueos y Extorsión:** Queda prohibido revelar rutas exactas de transporte de ayuda, inventarios detallados de alto valor o la ubicación exacta de líderes comunitarios, albergues de mascotas o refugios de violencia intrafamiliar para prevenir ataques dirigidos, saqueos o extorsiones. 
 
-## 3. Registro y Uso
+- **Geofencing:** Para proteger a poblaciones vulnerables, la plataforma podrá aplicar un margen de imprecisión (500m - 1km) en las coordenadas exactas de ciertos puntos críticos. 
 
-- No se requiere registro para consultar la información publicada.
-- La publicación de reportes puede realizarse de forma anónima o identificada.
-- Los moderadores y administradores acceden mediante credenciales asignadas.
+## **3. Reglas Estrictas de Contenido y Protección Humanitaria** 
 
-## 4. Contenido Publicado por Usuarios
+- **Protección reforzada de Niños, Niñas y Adolescentes (NNA):** Como regla general, los usuarios deberán abstenerse de publicar imágenes, nombres completos, datos biométricos, ubicación exacta u otra información que permita identificar directamente a Niños, Niñas y Adolescentes. Excepcionalmente, cuando el tratamiento de información de un NNA resulte estrictamente necesario para atender una situación humanitaria y sea jurídicamente procedente, deberá prevalecer en todo momento su interés superior y la protección de sus derechos fundamentales. Radar de Ayudas podrá restringir, anonimizar o retirar cualquier información relativa a NNA cuando considere que su publicación puede ponerlos en riesgo. 
 
-- Los usuarios son responsables de la veracidad y exactitud de la información que publican.
-- Está prohibido publicar información falsa, engañosa o que pueda generar pánico.
-- Está prohibido publicar contenido ofensivo, discriminatorio o que viole derechos de terceros.
-- La Plataforma se reserva el derecho de eliminar, editar o archivar cualquier publicación que incumpla estas normas.
+- **Tratamiento Ético de Dignidad:** No se permite la difusión de fotos o videos explícitos de cadáveres, heridos o personas en angustia extrema sin tratamiento de privacidad ( _blurring_ ). 
 
-## 5. Moderación
+- **Prohibición de Fake News y Manipulación:** Está prohibida la publicación de información falsa, sesgada o con fines de manipulación política o fraude financiero (como cobro indebido de subsidios). 
 
-- La Plataforma cuenta con moderadores que verifican y actualizan la información publicada.
-- Los moderadores pueden editar, archivar o eliminar publicaciones.
-- Las decisiones de moderación buscan mantener la calidad y veracidad de la información.
+## **4. Limitación de Responsabilidad Tecnológica y de Inteligencia Artificial** 
 
-## 6. Limitación de Responsabilidad
+- **Fallas y Ciberseguridad:** La plataforma no responderá por caídas del servicio por ciberataques (DDoS), problemas de conectividad en zonas de desastre o fallas en servicios de mapas/APIs de terceros. 
 
-- La Plataforma se ofrece "tal cual" sin garantías de disponibilidad o exactitud.
-- No nos hacemos responsables por decisiones tomadas con base en la información publicada.
-- No garantizamos la disponibilidad continua del servicio.
-- No somos responsables por la conducta de usuarios, voluntarios u organizaciones que se conecten a través de la Plataforma.
-
-## 7. Propiedad Intelectual
-
-- El código fuente de la Plataforma es de código abierto bajo la licencia indicada en el repositorio.
-- El contenido publicado por usuarios permanece bajo su autoría, otorgando una licencia de uso a la Plataforma para su difusión.
-- El nombre, logo y marca "RaDAR de Ayuda" son propiedad de sus creadores.
-
-## 8. Uso Aceptable
-
-Al usar la Plataforma, usted se compromete a:
-
-- No intentar vulnerar la seguridad del sistema.
-- No automatizar consultas masivas sin autorización.
-- No suplantar la identidad de otras personas u organizaciones.
-- No utilizar la Plataforma con fines comerciales no autorizados.
-
-## 9. Modificaciones
-
-Nos reservamos el derecho de modificar estos Términos en cualquier momento. Los cambios serán efectivos desde su publicación en esta página. El uso continuado de la Plataforma constituye aceptación de los términos actualizados.
-
-## 10. Legislación Aplicable
-
-Estos Términos se rigen por las leyes de la República de Colombia. Cualquier controversia se resolverá ante los tribunales competentes de la ciudad de Cali, Valle del Cauca.
-
-## 11. Contacto
-
-Para consultas sobre estos Términos, puede comunicarse a través de los canales disponibles en la Plataforma.
+- **Modelos de IA y Algoritmos:** Toda coincidencia automatizada, alerta o procesamiento mediante Inteligencia Artificial (visión artificial, análisis de texto) es de carácter meramente orientativo. Requiere siempre **validación humana (Human-inthe-Loop)** antes de tomar decisiones operativas. 
