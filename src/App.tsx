@@ -1425,6 +1425,11 @@ function MainApp() {
           setIsRegisterModalOpen(false);
           setRegisterInitialStep(1);
         }}
+        onNavigateToLogin={() => {
+          setIsRegisterModalOpen(false);
+          setRegisterInitialStep(1);
+          setIsLoginModalOpen(true);
+        }}
         onSuccess={(savedProfile) => {
           setIsRegisterModalOpen(false);
           setRegisterInitialStep(1);

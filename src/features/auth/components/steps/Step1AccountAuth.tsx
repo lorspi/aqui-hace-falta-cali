@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Info } from 'lucide-react';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface Step1AccountAuthProps {
   firstName: string;
@@ -46,6 +47,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
   onChangeCaptchaVerified,
   onChangeAcceptTerms,
 }) => {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -54,10 +56,10 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
       {/* Encabezado del Paso 1 */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Crea tu cuenta
+          {t('authStep1Title')}
         </h2>
         <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-          Con una cuenta puedes hacer seguimiento a tus reportes y acceder a funciones avanzadas.
+          {t('authStep1Subtitle')}
         </p>
       </div>
 
@@ -67,13 +69,13 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
           {/* Nombres */}
           <div>
             <label className="block text-sm font-bold text-slate-800 mb-1.5">
-              Nombres <span className="text-blue-600">*</span>
+              {t('authStep1FirstName')} <span className="text-blue-600">*</span>
             </label>
             <input
               type="text"
               value={firstName}
               onChange={(e) => onChangeFirstName(e.target.value)}
-              placeholder="Ej: María Camila"
+              placeholder={t('authStep1FirstNamePlaceholder')}
               disabled={isSubmitting}
               className={`
                 w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -94,13 +96,13 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
           {/* Apellidos */}
           <div>
             <label className="block text-sm font-bold text-slate-800 mb-1.5">
-              Apellidos <span className="text-blue-600">*</span>
+              {t('authStep1LastName')} <span className="text-blue-600">*</span>
             </label>
             <input
               type="text"
               value={lastName}
               onChange={(e) => onChangeLastName(e.target.value)}
-              placeholder="Ej: García López"
+              placeholder={t('authStep1LastNamePlaceholder')}
               disabled={isSubmitting}
               className={`
                 w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -122,13 +124,13 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
         {/* Campo: Correo electrónico */}
         <div>
           <label className="block text-sm font-bold text-slate-800 mb-1.5">
-            Correo electrónico <span className="text-blue-600">*</span>
+            {t('authStep1Email')} <span className="text-blue-600">*</span>
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => onChangeEmail(e.target.value)}
-            placeholder="tiendaheladodenata@gmail.com"
+            placeholder={t('authStep1EmailPlaceholder')}
             disabled={isSubmitting}
             className={`
               w-full px-4 py-3 bg-blue-50/60 border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -149,14 +151,14 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
         {/* Campo: Contraseña */}
         <div>
           <label className="block text-sm font-bold text-slate-800 mb-1.5">
-            Contraseña <span className="text-blue-600">*</span>
+            {t('authStep1Password')} <span className="text-blue-600">*</span>
           </label>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => onChangePassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder={t('authStep1PasswordPlaceholder')}
               disabled={isSubmitting}
               className={`
                 w-full pl-4 pr-12 py-3 bg-blue-50/60 border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -171,7 +173,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showPassword ? t('authHidePassword') : t('authShowPassword')}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -186,14 +188,14 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
         {/* Campo: Confirma contraseña */}
         <div>
           <label className="block text-sm font-bold text-slate-800 mb-1.5">
-            Confirma contraseña <span className="text-blue-600">*</span>
+            {t('authStep1ConfirmPassword')} <span className="text-blue-600">*</span>
           </label>
           <div className="relative">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => onChangeConfirmPassword(e.target.value)}
-              placeholder="Repite tu contraseña"
+              placeholder={t('authStep1ConfirmPasswordPlaceholder')}
               disabled={isSubmitting}
               className={`
                 w-full pl-4 pr-12 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -208,7 +210,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-              title={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              title={showConfirmPassword ? t('authHidePassword') : t('authShowPassword')}
             >
               {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -233,7 +235,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
                 className="w-6 h-6 rounded-md border-2 border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
               />
               <label htmlFor="captcha-check" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
-                Verifica que no eres un robot
+                {t('authStep1CaptchaLabel')}
               </label>
             </div>
             <div className="bg-slate-100/80 px-4 py-2 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
@@ -266,13 +268,13 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
             />
             <label htmlFor="terms-check" className="text-xs font-medium text-slate-700 leading-snug cursor-pointer select-none">
-              Acepto los{' '}
+              {t('authStep1TermsAccept')}{' '}
               <a href="/terminos" target="_blank" rel="noreferrer" className="font-bold text-blue-700 hover:underline">
-                Términos y Condiciones
+                {t('authStep1TermsLink')}
               </a>{' '}
-              y la{' '}
+              {t('authStep1TermsAnd')}{' '}
               <a href="/privacidad" target="_blank" rel="noreferrer" className="font-bold text-blue-700 hover:underline">
-                Política de Privacidad
+                {t('authStep1PrivacyLink')}
               </a>
             </label>
           </div>
@@ -286,4 +288,3 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
     </div>
   );
 };
-

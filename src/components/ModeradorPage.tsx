@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useOffers, updateOffer } from '../lib/supabaseService';
-import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2, LogIn } from 'lucide-react';
+import { ShieldCheck, MessageSquare, CheckCircle2, AlertTriangle, MapPin, Trash2, Phone, Eye, Flag, ArrowLeft, Check, Archive, Loader2, LogIn, UserPlus, User, ChevronDown, Lock } from 'lucide-react';
 import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
+import { RegisterWizard } from '../features/auth/components/RegisterWizard';
+import { LoginModal } from '../features/auth/components/LoginModal';
 
 const PendingOffersSection: React.FC = () => {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
@@ -162,7 +164,24 @@ const PendingOffersSection: React.FC = () => {
   );
 };
 
-export const ModeradorPage: React.FC = () => {
+export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ onOpenRegisterModal }) => {
+  const { t } = useTranslation();
+  const [showRegisterWizard, setShowRegisterWizard] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isMenuOpen]);
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -181,20 +200,45 @@ export const ModeradorPage: React.FC = () => {
                 <div>
                   <h1 className="text-xl md:text-2xl font-black tracking-tight">Guía del Moderador</h1>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Aquí Hace Falta — Valle del Cauca
+                    raDAR de Ayuda — Colombia
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <a
-                href="/panel"
-                className="inline-flex items-center gap-1.5 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Moderación</span>
-              </a>
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors border border-white/20"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>{t('userMenuLogin')}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => { setIsMenuOpen(false); setShowRegisterWizard(true); }}
+                      className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold">{t('userMenuRegister')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setIsMenuOpen(false); setShowLoginModal(true); }}
+                      className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span className="font-semibold">{t('userMenuSignIn')}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -366,30 +410,54 @@ export const ModeradorPage: React.FC = () => {
         {/* CTA: ¿Quieres ayudar a moderar? */}
         <section className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center mx-auto">
-              <ShieldCheck className="w-7 h-7 text-emerald-600" />
+            <div className="w-14 h-14 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-7 h-7 text-blue-600" />
             </div>
             <h3 className="font-black text-slate-900 text-xl">
               ¿Quieres ayudar a moderar?
             </h3>
             <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-              Los moderadores verifican la información, actualizan prioridades y mantienen la plataforma confiable para toda la comunidad. Si quieres ser parte del equipo, ponte en contacto.
+              Para ser moderador debes registrarte, elegir la opción de <strong className="font-bold text-slate-800">Moderador</strong> en el paso de selección de rol, y completar la información solicitada. Nos pondremos en contacto contigo para evaluar tu postulación.
             </p>
-            <a
-              href="https://wa.me/@un.tal.juan"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md transition-all"
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenRegisterModal) {
+                  onOpenRegisterModal();
+                } else {
+                  setShowRegisterWizard(true);
+                }
+              }}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md shadow-blue-600/20 transition-all cursor-pointer"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>Contactar al administrador</span>
-            </a>
-            <p className="text-[11px] text-slate-400">
-              Te responderemos lo antes posible por WhatsApp.
-            </p>
+              <UserPlus className="w-4 h-4" />
+              <span>Registrarme como moderador</span>
+            </button>
           </div>
         </section>
       </div>
+
+      {/* Register Wizard Modal (local fallback) */}
+      <RegisterWizard
+        isOpen={showRegisterWizard}
+        onClose={() => setShowRegisterWizard(false)}
+        onNavigateToLogin={() => {
+          setShowRegisterWizard(false);
+          setShowLoginModal(true);
+        }}
+        onSuccess={() => setShowRegisterWizard(false)}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onOpenRegisterModal={() => {
+          setShowLoginModal(false);
+          setShowRegisterWizard(true);
+        }}
+        onSuccess={() => setShowLoginModal(false)}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { CreditCard, FileText, Globe, Compass, MapPin, CheckCircle2 } from 'lucide-react';
 import { DocumentType } from '../../schemas/registerSchema';
 import { DEPARTMENTS } from '../../../../data/colombiaCities';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface Step3IdentityLocationProps {
   documentType: DocumentType;
@@ -43,6 +44,8 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
   onChangeDepartment,
   onChangeCity,
 }) => {
+  const { t } = useTranslation();
+
   // Lista dinámica de departamentos
   const departmentList = useMemo(() => {
     return DEPARTMENTS.map((d) => d.name).sort();
@@ -75,10 +78,10 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
       {/* Encabezado del Paso 3 */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          ¿Dónde estás?
+          {t('authIdentityTitle')}
         </h2>
         <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-          Confirma tu identificación y ubicación para conectar con las solicitudes y apoyos más cercanos en tu territorio.
+          {t('authIdentitySubtitle')}
         </p>
       </div>
 
@@ -89,11 +92,11 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
         </div>
         <div className="flex-1 space-y-0.5">
           <div className="flex items-center gap-1.5 font-bold text-blue-950">
-            <span>Ubicación detectada automáticamente</span>
+            <span>{t('authIdentityAutoDetected')}</span>
             <CheckCircle2 className="w-4 h-4 text-blue-600 inline shrink-0" />
           </div>
           <p className="text-slate-600 text-xs leading-relaxed">
-            Parece que estás en <strong className="text-slate-900 font-semibold">{city || 'Armenia'}, {department || 'Quindío'}, {country || 'Colombia'}</strong>. Ya lo completamos por ti; si no es correcto, cámbialo abajo.
+            {t('authIdentityAutoDetectedDesc')} <strong className="text-slate-900 font-semibold">{city || 'Armenia'}, {department || 'Quindío'}, {country || 'Colombia'}</strong>{t('authIdentityAutoDetectedSuffix')}
           </p>
         </div>
       </div>
@@ -104,7 +107,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
           {/* Tipo de Documento */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Tipo de Documento <span className="text-blue-600">*</span>
+              {t('authIdentityDocType')} <span className="text-blue-600">*</span>
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -116,12 +119,12 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
                 disabled={isSubmitting}
                 className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer shadow-xs"
               >
-                <option value="cedula">Cédula de Ciudadanía (CC)</option>
-                <option value="cedula_extranjeria">Cédula de Extranjería (CE)</option>
-                <option value="pasaporte">Pasaporte (PA)</option>
-                <option value="ppt_pep">Permiso por Protección Temporal (PPT / PEP)</option>
-                <option value="nit">NIT (Identificación Tributaria)</option>
-                <option value="tarjeta_identidad">Tarjeta de Identidad (TI)</option>
+                <option value="cedula">{t('authIdentityDocCedula')}</option>
+                <option value="cedula_extranjeria">{t('authIdentityDocCedulaExtranjeria')}</option>
+                <option value="pasaporte">{t('authIdentityDocPassport')}</option>
+                <option value="ppt_pep">{t('authIdentityDocPPT')}</option>
+                <option value="nit">{t('authIdentityDocNIT')}</option>
+                <option value="tarjeta_identidad">{t('authIdentityDocTI')}</option>
               </select>
               <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400 text-xs">
                 ▼
@@ -132,14 +135,14 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
           {/* Número de Documento */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Número de Documento <span className="text-blue-600">*</span>
+              {t('authIdentityDocNumber')} <span className="text-blue-600">*</span>
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={documentNumber}
                 onChange={(e) => onChangeDocumentNumber(e.target.value)}
-                placeholder="Ej: 1023456789"
+                placeholder={t('authIdentityDocNumberPlaceholder')}
                 disabled={isSubmitting}
                 className={`
                   w-full px-4 py-2.5 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
@@ -164,7 +167,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
           {/* País */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              País
+              {t('authIdentityCountry')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -192,7 +195,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
             {/* Departamento */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Departamento
+                {t('authIdentityDepartment')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -205,7 +208,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
                   className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer shadow-xs"
                 >
                   <option value="" disabled>
-                    Selecciona departamento
+                    {t('authIdentityDepartmentPlaceholder')}
                   </option>
                   {departmentList.map((deptName) => (
                     <option key={deptName} value={deptName}>
@@ -222,7 +225,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
             {/* Municipio / Ciudad */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Municipio / Ciudad
+                {t('authIdentityCity')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -235,7 +238,7 @@ export const Step3IdentityLocation: React.FC<Step3IdentityLocationProps> = ({
                   className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer shadow-xs disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                 >
                   <option value="" disabled>
-                    Selecciona municipio
+                    {t('authIdentityCityPlaceholder')}
                   </option>
                   {cityList.map((cityName) => (
                     <option key={cityName} value={cityName}>

@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Search, MapPin, CheckCircle2, Loader2, Compass } from 'lucide-react';
 import { geocodeAddress } from '../../../../utils/geocoding';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface StepOrgMapLocationProps {
   searchAddress: string;
@@ -47,6 +48,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
   onChangeSearchAddress,
   onChangeCoordinates,
 }) => {
+  const { t } = useTranslation();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -124,11 +126,11 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
           mapInstanceRef.current.flyTo([result.latitude, result.longitude], 16);
         }
       } else {
-        setGeocodingError('No se encontró la dirección especificada. Intenta con una referencia cercana.');
+        setGeocodingError(t('authOrgMapErrorNotFound'));
       }
     } catch (err) {
       console.error('[StepOrgMapLocation] Geocoding Error:', err);
-      setGeocodingError('Ocurrió un error al buscar la dirección.');
+      setGeocodingError(t('authOrgMapErrorGeneric'));
     } finally {
       setIsGeocoding(false);
     }
@@ -137,7 +139,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
   // Autodetectar ubicación actual del navegador
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
-      setGeocodingError('Tu navegador no soporta la geolocalización.');
+      setGeocodingError(t('authOrgMapErrorNoGeo'));
       return;
     }
 
@@ -155,7 +157,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
       },
       (err) => {
         console.warn('[StepOrgMapLocation] Geolocation denied:', err);
-        setGeocodingError('No pudimos obtener tu ubicación actual. Permite el acceso e intenta de nuevo.');
+        setGeocodingError(t('authOrgMapErrorDenied'));
         setIsGeocoding(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -167,10 +169,10 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
       {/* Encabezado del Paso 4 de Organización */}
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          ¿Dónde están ubicados?
+          {t('authOrgMapTitle')}
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Marca el punto exacto: es lo que verá la gente en el mapa para saber dónde llegar.
+          {t('authOrgMapSubtitle')}
         </p>
       </div>
 
@@ -191,7 +193,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
                   handleSearchAddress();
                 }
               }}
-              placeholder="Ej: Calle 5 # 38-25, Cali..."
+              placeholder={t('authOrgMapSearchPlaceholder')}
               className={`
                 w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
                 ${
@@ -217,7 +219,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
             ) : (
               <>
                 <Search className="w-4 h-4" />
-                <span>Buscar</span>
+                <span>{t('authOrgMapSearch')}</span>
               </>
             )}
           </button>
@@ -225,7 +227,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
           <button
             type="button"
             onClick={handleDetectLocation}
-            title="Usar mi ubicación actual"
+            title={t('authOrgMapDetectLocation')}
             className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors shrink-0 cursor-pointer"
           >
             <Compass className="w-4 h-4" />
@@ -250,7 +252,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
       {/* Texto de Confirmación Inferior en Verde */}
       <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3.5 py-2.5 rounded-xl text-xs font-semibold animate-in fade-in">
         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-        <span>Punto fijado. Arrastra el pin si no quedó exacto.</span>
+        <span>{t('authOrgMapConfirmation')}</span>
       </div>
     </div>
   );

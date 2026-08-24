@@ -1,5 +1,6 @@
 import React from 'react';
 import { Building, Globe, AlignLeft } from 'lucide-react';
+import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface StepOrgDetailsProps {
   orgName: string;
@@ -24,15 +25,17 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
   onChangeOrgDescription,
   onChangeOrgWebsiteOrSocial,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       {/* Encabezado del Paso 5 de Organización */}
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Tu organización
+          {t('authOrgDetailsTitle')}
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Proporciona el nombre oficial y los datos clave de tu entidad para que la comunidad pueda identificarlos.
+          {t('authOrgDetailsSubtitle')}
         </p>
       </div>
 
@@ -40,7 +43,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
         {/* Nombre Oficial de la Organización */}
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            Nombre oficial <span className="text-red-500">*</span>
+            {t('authOrgDetailsName')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -50,7 +53,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
               type="text"
               value={orgName}
               onChange={(e) => onChangeOrgName(e.target.value)}
-              placeholder="Ej: Cuerpo de Bomberos de Coquimbo"
+              placeholder={t('authOrgDetailsNamePlaceholder')}
               className={`
                 w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
                 ${
@@ -71,7 +74,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
         {/* ¿Qué hacen? (opcional) */}
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            ¿Qué hacen? (opcional)
+            {t('authOrgDetailsWhat')}
           </label>
           <div className="relative">
             <div className="absolute top-3.5 left-3.5 text-slate-400 pointer-events-none">
@@ -81,7 +84,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
               rows={3}
               value={orgDescription}
               onChange={(e) => onChangeOrgDescription(e.target.value)}
-              placeholder="En una línea, para que la gente sepa en qué pueden ayudar."
+              placeholder={t('authOrgDetailsWhatPlaceholder')}
               className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 resize-none"
             />
           </div>
@@ -90,7 +93,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
         {/* Sitio web o red social (opcional) */}
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            Sitio web o red social (opcional)
+            {t('authOrgDetailsWebsite')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -100,12 +103,12 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
               type="text"
               value={orgWebsiteOrSocial}
               onChange={(e) => onChangeOrgWebsiteOrSocial(e.target.value)}
-              placeholder="Ayuda a verificarlos más rápido"
+              placeholder={t('authOrgDetailsWebsitePlaceholder')}
               className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
             />
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            Ejemplo: https://bomberos.cl o @bomberoscoquimbo
+            {t('authOrgDetailsWebsiteHint')}
           </p>
         </div>
       </div>
