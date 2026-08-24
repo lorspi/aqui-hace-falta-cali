@@ -1,0 +1,119 @@
+############################################################
+# DEV-43 — US-4: Transición de estado de revisión
+# Fecha: 2026-08-24T19:37:57Z
+# Rama: agent/DEV-43
+# Endpoints reales (Deno): http://127.0.0.1:8000/functions/v1/webhook | http://127.0.0.1:8002/functions/v1/review
+############################################################
+
+=== 1. Aprobar need pendiente dev43_aprobado ===
+
+--- seed comp dev43_aprobado_c1
+{"ok":true,"status":"accepted","event_id":"dev43_aprobado_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"f196975b-827a-4e18-894b-59c8eb5fac93","event_id":"dev43_aprobado_c1","processing_status":"RECEIVED","received_at":"2026-08-24T19:37:57.253+00:00","created_at":"2026-08-24T19:37:57.253+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"4152de66-8894-4ee3-b3d0-3ee3b582b4e3","conversation_id":"dev43_aprobado_conv","source_event_id":"dev43_aprobado_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+    HTTP 200
+
+    need id: 4152de66-8894-4ee3-b3d0-3ee3b582b4e3
+
+--- 1a. aprobar con nota
+{"ok":true,"status":"reviewed","decision":"approve","need":{"id":"4152de66-8894-4ee3-b3d0-3ee3b582b4e3","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","conversation_id":"dev43_aprobado_conv","source_event_id":"dev43_aprobado_c1","verification_status":"VERIFIED","verified_by":"operador@radar.local","verified_at":"2026-08-24T19:37:57.329+00:00","verification_notes":"Verificado en terreno por la Cruz Roja","last_updated_by":"operador@radar.local","updated_at":"2026-08-24T19:37:57.359247+00:00"}}
+    HTTP 200
+
+--- verificación en BD (needs del prefijo):
+4152de66-8894-4ee3-b3d0-3ee3b582b4e3|VERIFIED|operador@radar.local|Verificado en terreno por la Cruz Roja|t
+
+=== 3. Rechazar need pendiente dev43_rechazado (con motivo) ===
+
+--- seed comp dev43_rechazado_c1
+{"ok":true,"status":"accepted","event_id":"dev43_rechazado_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"71717f40-fb7d-4d9b-93a5-1dedc35bac56","event_id":"dev43_rechazado_c1","processing_status":"RECEIVED","received_at":"2026-08-24T19:37:57.393+00:00","created_at":"2026-08-24T19:37:57.393+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"5a5a7a46-2709-4266-9e3f-4536b56beb14","conversation_id":"dev43_rechazado_conv","source_event_id":"dev43_rechazado_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+    HTTP 200
+
+    need id: 5a5a7a46-2709-4266-9e3f-4536b56beb14
+
+--- 3a. rechazar con motivo
+{"ok":true,"status":"reviewed","decision":"reject","need":{"id":"5a5a7a46-2709-4266-9e3f-4536b56beb14","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","conversation_id":"dev43_rechazado_conv","source_event_id":"dev43_rechazado_c1","verification_status":"REJECTED","verified_by":"operador@radar.local","verified_at":"2026-08-24T19:37:57.453+00:00","verification_notes":"Información falsa","last_updated_by":"operador@radar.local","updated_at":"2026-08-24T19:37:57.493488+00:00"}}
+    HTTP 200
+
+--- verificación en BD (registro NO borrado, REJECTED):
+1|REJECTED
+
+=== 4. Rechazar sin motivo es válido dev43_rechazado_sinmotivo ===
+
+--- seed comp dev43_rechazado_sinmotivo_c1
+{"ok":true,"status":"accepted","event_id":"dev43_rechazado_sinmotivo_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a431c5e9-cdb3-48e6-aa3f-a61ca50c4698","event_id":"dev43_rechazado_sinmotivo_c1","processing_status":"RECEIVED","received_at":"2026-08-24T19:37:57.51+00:00","created_at":"2026-08-24T19:37:57.51+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"5c736cb9-12d2-41ea-be46-4a39dbdd6cea","conversation_id":"dev43_rechazado_sinmotivo_conv","source_event_id":"dev43_rechazado_sinmotivo_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+    HTTP 200
+
+    need id: 5c736cb9-12d2-41ea-be46-4a39dbdd6cea
+
+--- 4a. rechazar sin notas
+{"ok":true,"status":"reviewed","decision":"reject","need":{"id":"5c736cb9-12d2-41ea-be46-4a39dbdd6cea","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","conversation_id":"dev43_rechazado_sinmotivo_conv","source_event_id":"dev43_rechazado_sinmotivo_c1","verification_status":"REJECTED","verified_by":"operador@radar.local","verified_at":"2026-08-24T19:37:57.566+00:00","verification_notes":null,"last_updated_by":"operador@radar.local","updated_at":"2026-08-24T19:37:57.61149+00:00"}}
+    HTTP 200
+
+--- verificación en BD (verification_notes NULL, operación completada):
+REJECTED||operador@radar.local
+
+=== 5. Reintentar aprobar un need ya VERIFIED -> 409 ===
+
+--- 5a. aprobar de nuevo
+{"code":"invalid_verification_status","message":"El need con id '4152de66-8894-4ee3-b3d0-3ee3b582b4e3' ya fue revisado. Estado actual: VERIFIED. Solo se pueden aprobar/rechazar needs con verification_status = PENDING_VERIFICATION.","details":{"need_id":"4152de66-8894-4ee3-b3d0-3ee3b582b4e3","current_status":"VERIFIED"}}
+    HTTP 409
+
+--- verificación en BD (registro NO modificado):
+VERIFIED|operador@radar.local|Verificado en terreno por la Cruz Roja
+
+=== 6. Reintentar rechazar un need ya REJECTED -> 409 ===
+
+--- 6a. rechazar de nuevo
+{"code":"invalid_verification_status","message":"El need con id '5a5a7a46-2709-4266-9e3f-4536b56beb14' ya fue revisado. Estado actual: REJECTED. Solo se pueden aprobar/rechazar needs con verification_status = PENDING_VERIFICATION.","details":{"need_id":"5a5a7a46-2709-4266-9e3f-4536b56beb14","current_status":"REJECTED"}}
+    HTTP 409
+
+--- verificación en BD (registro NO modificado):
+REJECTED|operador@radar.local|Información falsa
+
+=== 7. Need inexistente -> 404 need_not_found ===
+
+--- 7a. id no-UUID 'need_999'
+{"code":"need_not_found","message":"No existe un need con id 'need_999'.","details":{"need_id":"need_999"}}
+    HTTP 404
+
+
+--- 7b. UUID bien formado inexistente
+{"code":"need_not_found","message":"No existe un need con id '00000000-0000-0000-0000-000000000999'.","details":{"need_id":"00000000-0000-0000-0000-000000000999"}}
+    HTTP 404
+
+
+=== 8. Decisión inválida -> 400 invalid_decision ===
+
+--- seed comp dev43_invalido_c1
+{"ok":true,"status":"accepted","event_id":"dev43_invalido_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a7babdfb-db26-4b13-8366-0371b5cdb8b3","event_id":"dev43_invalido_c1","processing_status":"RECEIVED","received_at":"2026-08-24T19:37:57.735+00:00","created_at":"2026-08-24T19:37:57.735+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"65fd20aa-41e5-430b-b263-bb7c867e12b1","conversation_id":"dev43_invalido_conv","source_event_id":"dev43_invalido_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+    HTTP 200
+
+    need id: 65fd20aa-41e5-430b-b263-bb7c867e12b1
+
+--- 8a. decisión 'quizás'
+{"code":"invalid_decision","message":"Decisión inválida. Debe ser 'aprobar'/'approve' o 'rechazar'/'reject'.","details":{"issues":[{"path":["decision"],"message":"decision: debe ser 'aprobar'/'approve' o 'rechazar'/'reject'."}]}}
+    HTTP 400
+
+--- verificación en BD (registro NO modificado):
+PENDING_VERIFICATION|
+
+=== 9. Decisión sin operador -> 400 missing_operator ===
+
+--- seed comp dev43_sinop_c1
+{"ok":true,"status":"accepted","event_id":"dev43_sinop_c1","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a1b0433b-9752-4ae5-a43c-1f702ed5312f","event_id":"dev43_sinop_c1","processing_status":"RECEIVED","received_at":"2026-08-24T19:37:57.838+00:00","created_at":"2026-08-24T19:37:57.838+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"b40f0a03-13c4-4e81-b893-abc696200c28","conversation_id":"dev43_sinop_conv","source_event_id":"dev43_sinop_c1","title":"Necesito agua potable en mi barrio","description":"Necesito agua potable en mi barrio","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Por confirmar","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":null,"longitude":null,"city_id":"cali","location_enrichment_status":"PENDING"}}
+    HTTP 200
+
+    need id: b40f0a03-13c4-4e81-b893-abc696200c28
+
+--- 9a. sin verified_by
+{"code":"missing_operator","message":"Falta identificar al operador (verified_by). La decisión de revisión exige trazabilidad de quién aprueba o rechaza.","details":{"issues":[{"path":["verified_by"],"message":"verified_by: campo requerido (string no vacío) que identifica al operador que toma la decisión (trazabilidad)."}]}}
+    HTTP 400
+
+--- verificación en BD (registro NO modificado):
+PENDING_VERIFICATION|
+
+=== Limpieza de datos de prueba dev43_% ===
+DELETE 5
+DELETE 10
+needs restantes con prefijo dev43: 0
+ingest restantes con prefijo dev43: 0
+
+=== Fin de la batería de evidencia DEV-43 ===

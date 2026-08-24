@@ -109,6 +109,23 @@ export interface InsertNeedResult {
   duplicate: boolean;
 }
 
+/**
+ * Parche de la transición de revisión (US-4 / DEV-43).
+ *
+ * "Aprobar" transiciona `verification_status` a `VERIFIED`; "Rechazar" lo
+ * transiciona a `REJECTED`. En ambos casos se guarda quién revisó
+ * (`verified_by`), cuándo (`verified_at`) y, opcionalmente, el motivo
+ * (`verification_notes`). `last_updated_by` refleja al operador que tomó la
+ * decisión (trazabilidad).
+ */
+export interface VerificationUpdate {
+  verification_status: "VERIFIED" | "REJECTED";
+  verified_by: string;
+  verified_at: string;
+  verification_notes: string | null;
+  last_updated_by?: string | null;
+}
+
 /** Store mínima que la capa de creación de incidentes necesita sobre `needs`. */
 export interface NeedsStore {
   /** Inserta la fila; si ya existe (event.id o conversación), devuelve la existente. */
@@ -119,6 +136,15 @@ export interface NeedsStore {
   findByConversationId(conversationId: string): Promise<NeedRecord | null>;
   /** Devuelve el incidente por su id (US-3: reconstrucción de conversación), o null. */
   findById(id: string): Promise<NeedRecord | null>;
+  /**
+   * Aplica la transición de revisión (US-4): actualiza `verification_status`
+   * (VERIFIED/REJECTED), `verified_by`, `verified_at` y `verification_notes`.
+   * Devuelve la fila actualizada, o null si el id no existe.
+   */
+  updateVerification(
+    id: string,
+    patch: VerificationUpdate,
+  ): Promise<NeedRecord | null>;
 }
 
 // -----------------------------------------------------------------------------
@@ -221,6 +247,27 @@ export function createInMemoryNeedsStore(
     },
     async findById(id: string): Promise<NeedRecord | null> {
       return rows.get(id) ?? null;
+    },
+    async updateVerification(
+      id: string,
+      patch: VerificationUpdate,
+    ): Promise<NeedRecord | null> {
+      const existing = rows.get(id);
+      if (!existing) return null;
+      const updated: NeedRecord = {
+        ...existing,
+        verification_status: patch.verification_status,
+        verified_by: patch.verified_by,
+        verified_at: patch.verified_at,
+        verification_notes: patch.verification_notes,
+        last_updated_by:
+          patch.last_updated_by !== undefined
+            ? patch.last_updated_by
+            : existing.last_updated_by,
+        updated_at: new Date().toISOString(),
+      };
+      rows.set(id, updated);
+      return updated;
     },
     size() {
       return rows.size;
@@ -345,6 +392,29 @@ export function createPostgrestNeedsStore(
 
     async findById(id: string): Promise<NeedRecord | null> {
       return selectBy("id", id);
+    },
+
+    async updateVerification(
+      id: string,
+      patch: VerificationUpdate,
+    ): Promise<NeedRecord | null> {
+      // PATCH /rest/v1/needs?id=eq.<id> con Prefer: return=representation.
+      // PostgREST devuelve la fila actualizada; una representación vacía
+      // significa que el id no existe (o no matcheó el filtro) → null.
+      const patchRes = await f(`${base}?id=eq.${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(patch),
+      });
+      if (!patchRes.ok) {
+        throw parsePostgrestError(patchRes.status, await patchRes.text());
+      }
+      const rows = (await patchRes.json()) as Array<Record<string, unknown>>;
+      return Array.isArray(rows) && rows.length > 0 ? toRecord(rows[0]) : null;
     },
   };
 }
