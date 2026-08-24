@@ -506,12 +506,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Creando cuenta...</span>
+                      <span>{isGoogleProfileOnboarding ? 'Guardando perfil...' : 'Creando cuenta...'}</span>
                     </>
                   ) : (
                     <>
                       <UserPlus className="w-4 h-4" />
-                      <span>Crear cuenta</span>
+                      <span>{isGoogleProfileOnboarding ? 'Guardar perfil' : 'Crear cuenta'}</span>
                     </>
                   )}
                 </button>
