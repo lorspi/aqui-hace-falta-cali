@@ -34,11 +34,12 @@ import { OfferCard } from "./components/OfferCard";
 import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
-import { RegisterWizard } from "./features/auth/components/RegisterWizard";
-import { LoginModal } from "./features/auth/components/LoginModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
+// Lazy-loaded auth modals for code-splitting
+const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
+const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
 // Lazy-loaded pages for code-splitting
 const ModeradorPage = lazy(() => import("./components/ModeradorPage").then(m => ({ default: m.ModeradorPage })));
 const AdminPanelPage = lazy(() => import("./components/AdminPanelPage").then(m => ({ default: m.AdminPanelPage })));
