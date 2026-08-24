@@ -1,5 +1,4 @@
 import React from 'react';
-import { Building, Globe, AlignLeft } from 'lucide-react';
 import { useTranslation } from '../../../../i18n/LanguageContext';
 
 interface StepOrgDetailsProps {
@@ -29,7 +28,7 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Encabezado del Paso 5 de Organización */}
+      {/* Encabezado */}
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
           {t('authOrgDetailsTitle')}
@@ -42,71 +41,47 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
       <div className="space-y-5">
         {/* Nombre Oficial de la Organización */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            {t('authOrgDetailsName')} <span className="text-red-500">*</span>
+          <label className="form-label">
+            {t('authOrgDetailsName')} <span className="text-blue-600">*</span>
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Building className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              value={orgName}
-              onChange={(e) => onChangeOrgName(e.target.value)}
-              placeholder={t('authOrgDetailsNamePlaceholder')}
-              className={`
-                w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
-                ${
-                  errors?.orgName
-                    ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
-                }
-              `}
-            />
-          </div>
+          <input
+            type="text"
+            value={orgName}
+            onChange={(e) => onChangeOrgName(e.target.value)}
+            placeholder={t('authOrgDetailsNamePlaceholder')}
+            className={`input-base ${errors?.orgName ? 'input-error' : ''}`}
+          />
           {errors?.orgName && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.orgName}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.orgName}</p>
           )}
         </div>
 
         {/* ¿Qué hacen? (opcional) */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          <label className="form-label">
             {t('authOrgDetailsWhat')}
           </label>
-          <div className="relative">
-            <div className="absolute top-3.5 left-3.5 text-slate-400 pointer-events-none">
-              <AlignLeft className="w-4 h-4" />
-            </div>
-            <textarea
-              rows={3}
-              value={orgDescription}
-              onChange={(e) => onChangeOrgDescription(e.target.value)}
-              placeholder={t('authOrgDetailsWhatPlaceholder')}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 resize-none"
-            />
-          </div>
+          <textarea
+            rows={3}
+            value={orgDescription}
+            onChange={(e) => onChangeOrgDescription(e.target.value)}
+            placeholder={t('authOrgDetailsWhatPlaceholder')}
+            className="textarea-base"
+          />
         </div>
 
         {/* Sitio web o red social (opcional) */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          <label className="form-label">
             {t('authOrgDetailsWebsite')}
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Globe className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              value={orgWebsiteOrSocial}
-              onChange={(e) => onChangeOrgWebsiteOrSocial(e.target.value)}
-              placeholder={t('authOrgDetailsWebsitePlaceholder')}
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
-            />
-          </div>
+          <input
+            type="text"
+            value={orgWebsiteOrSocial}
+            onChange={(e) => onChangeOrgWebsiteOrSocial(e.target.value)}
+            placeholder={t('authOrgDetailsWebsitePlaceholder')}
+            className="input-base"
+          />
           <p className="text-[11px] text-slate-400 mt-1">
             {t('authOrgDetailsWebsiteHint')}
           </p>

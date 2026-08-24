@@ -104,3 +104,54 @@ export async function geocodeAddress(
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Reverse geocoding result structure for Colombia.
+ */
+export interface ReverseGeocodingResult {
+  city: string;
+  department: string;
+  country: string;
+  displayName: string;
+}
+
+/**
+ * Reverse geocode lat/lng coordinates to a location name using Nominatim.
+ * Returns city (municipio), department, and country if possible.
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodingResult | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?${new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      format: "json",
+      addressdetails: "1",
+      zoom: "10",
+    })}`;
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "AquiHaceFalta-Cali/1.0 (Emergency Coordination Platform)",
+      },
+    });
+
+    if (!response.ok) return null;
+    const result = await response.json();
+    if (!result || !result.address) return null;
+
+    const address = result.address;
+    // Nominatim returns city/town/municipality in various keys
+    const city = address.city || address.town || address.municipality || address.village || '';
+    const department = address.state || '';
+    const country = address.country || '';
+
+    return {
+      city,
+      department,
+      country,
+      displayName: result.display_name || '',
+    };
+  } catch {
+    return null;
+  }
+}

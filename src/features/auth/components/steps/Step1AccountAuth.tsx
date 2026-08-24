@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '../../../../i18n/LanguageContext';
 import { Turnstile } from '../../../../components/Turnstile';
@@ -72,7 +72,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Nombres */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-1.5">
+            <label className="form-label">
               {t('authStep1FirstName')} <span className="text-blue-600">*</span>
             </label>
             <input
@@ -81,25 +81,16 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               onChange={(e) => onChangeFirstName(e.target.value)}
               placeholder={t('authStep1FirstNamePlaceholder')}
               disabled={isSubmitting}
-              className={`
-                w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-                ${
-                  errors?.firstName
-                    ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-                }
-              `}
+              className={`input-base ${errors?.firstName ? 'input-error' : ''}`}
             />
             {errors?.firstName && (
-              <p className="text-xs text-red-600 font-semibold mt-1">
-                {errors.firstName}
-              </p>
+              <p className="text-xs text-red-600 font-semibold mt-1">{errors.firstName}</p>
             )}
           </div>
 
           {/* Apellidos */}
           <div>
-            <label className="block text-sm font-bold text-slate-800 mb-1.5">
+            <label className="form-label">
               {t('authStep1LastName')} <span className="text-blue-600">*</span>
             </label>
             <input
@@ -108,26 +99,17 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               onChange={(e) => onChangeLastName(e.target.value)}
               placeholder={t('authStep1LastNamePlaceholder')}
               disabled={isSubmitting}
-              className={`
-                w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-                ${
-                  errors?.lastName
-                    ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-                }
-              `}
+              className={`input-base ${errors?.lastName ? 'input-error' : ''}`}
             />
             {errors?.lastName && (
-              <p className="text-xs text-red-600 font-semibold mt-1">
-                {errors.lastName}
-              </p>
+              <p className="text-xs text-red-600 font-semibold mt-1">{errors.lastName}</p>
             )}
           </div>
         </div>
 
         {/* Campo: Correo electrónico */}
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-1.5">
+          <label className="form-label">
             {t('authStep1Email')} <span className="text-blue-600">*</span>
           </label>
           <input
@@ -136,25 +118,16 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
             onChange={(e) => onChangeEmail(e.target.value)}
             placeholder={t('authStep1EmailPlaceholder')}
             disabled={isSubmitting}
-            className={`
-              w-full px-4 py-3 bg-blue-50/60 border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-              ${
-                errors?.email
-                  ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                  : 'border-blue-100 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-              }
-            `}
+            className={`input-base ${errors?.email ? 'input-error' : ''}`}
           />
           {errors?.email && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.email}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.email}</p>
           )}
         </div>
 
         {/* Campo: Contraseña */}
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-1.5">
+          <label className="form-label">
             {t('authStep1Password')} <span className="text-blue-600">*</span>
           </label>
           <div className="relative">
@@ -164,34 +137,25 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               onChange={(e) => onChangePassword(e.target.value)}
               placeholder={t('authStep1PasswordPlaceholder')}
               disabled={isSubmitting}
-              className={`
-                w-full pl-4 pr-12 py-3 bg-blue-50/60 border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-                ${
-                  errors?.password
-                    ? 'border-red-500 bg-red-50/30 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-blue-100 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-                }
-              `}
+              className={`input-base pr-12 ${errors?.password ? 'input-error' : ''}`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
               title={showPassword ? t('authHidePassword') : t('authShowPassword')}
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
             </button>
           </div>
           {errors?.password && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.password}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.password}</p>
           )}
         </div>
 
         {/* Campo: Confirma contraseña */}
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-1.5">
+          <label className="form-label">
             {t('authStep1ConfirmPassword')} <span className="text-blue-600">*</span>
           </label>
           <div className="relative">
@@ -201,32 +165,23 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
               onChange={(e) => onChangeConfirmPassword(e.target.value)}
               placeholder={t('authStep1ConfirmPasswordPlaceholder')}
               disabled={isSubmitting}
-              className={`
-                w-full pl-4 pr-12 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-                ${
-                  errors?.confirmPassword
-                    ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                    : 'border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-                }
-              `}
+              className={`input-base pr-12 ${errors?.confirmPassword ? 'input-error' : ''}`}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
               title={showConfirmPassword ? t('authHidePassword') : t('authShowPassword')}
             >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showConfirmPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
             </button>
           </div>
           {errors?.confirmPassword && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.confirmPassword}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.confirmPassword}</p>
           )}
         </div>
 
-        {/* Cloudflare Turnstile (interaction-only: invisible hasta que sea necesario) */}
+        {/* Cloudflare Turnstile */}
         <div className="pt-2">
           <Turnstile
             onVerify={onCaptchaVerify}
@@ -238,9 +193,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
             language="es"
           />
           {errors?.captchaToken && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.captchaToken}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.captchaToken}</p>
           )}
         </div>
 
@@ -267,9 +220,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
             </label>
           </div>
           {errors?.acceptTerms && (
-            <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.acceptTerms}
-            </p>
+            <p className="text-xs text-red-600 font-semibold mt-1">{errors.acceptTerms}</p>
           )}
         </div>
       </div>

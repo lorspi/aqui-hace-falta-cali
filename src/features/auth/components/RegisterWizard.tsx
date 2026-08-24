@@ -63,12 +63,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       role: 'voluntario',
       organizationType: 'bomberos_defensa_civil',
       country: 'Colombia',
-      department: 'Quindío',
-      city: 'Armenia',
-      isAutoDetected: true,
+      department: '',
+      city: '',
+      cityId: '',
+      departmentId: '',
       searchAddress: '',
-      latitude: 3.4516,
-      longitude: -76.532,
+      latitude: 0,
+      longitude: 0,
       orgName: '',
       orgDescription: '',
       orgWebsiteOrSocial: '',
@@ -100,7 +101,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const country: string = watch('country');
   const department: string = watch('department');
   const city: string = watch('city');
-  const isAutoDetected: boolean = watch('isAutoDetected');
+  const cityId: string = watch('cityId');
+  const departmentId: string = watch('departmentId');
   const searchAddress: string = watch('searchAddress');
   const latitude: number = watch('latitude');
   const longitude: number = watch('longitude');
@@ -293,7 +295,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           country: data.country || 'Colombia',
           department: data.department || 'Quindío',
           city: data.city || 'Armenia',
-          is_auto_detected_location: data.isAutoDetected ?? true,
+          is_auto_detected_location: false,
           role: data.role || 'voluntario',
           accept_terms: true,
           terms_accepted_at: new Date().toISOString(),
@@ -347,7 +349,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         country: data.country,
         department: data.department,
         city: data.city,
-        is_auto_detected_location: data.isAutoDetected,
+        is_auto_detected_location: false,
         role: data.role || 'voluntario',
         accept_terms: true,
         terms_accepted_at: new Date().toISOString(),
@@ -533,8 +535,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     documentType={documentType}
                     documentNumber={documentNumber}
                     country={country}
-                    department={department}
-                    city={city}
+                    cityId={cityId}
+                    departmentId={departmentId}
                     isSubmitting={isSubmitting}
                     errors={{
                       documentNumber: errStr(errors.documentNumber),
@@ -543,8 +545,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
                     onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                    onChangeCityId={(cId, dId) => {
+                      setValue('cityId', cId, { shouldValidate: true });
+                      setValue('departmentId', dId || '', { shouldValidate: true });
+                    }}
                   />
                 )}
               </>
@@ -583,12 +587,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 {currentStep === 5 && (
                   <Step2Location
                     country={country}
-                    department={department}
-                    city={city}
-                    isAutoDetected={isAutoDetected}
+                    cityId={cityId}
+                    departmentId={departmentId}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                    onChangeCityId={(cId, dId) => {
+                      setValue('cityId', cId, { shouldValidate: true });
+                      setValue('departmentId', dId || '', { shouldValidate: true });
+                    }}
                   />
                 )}
 

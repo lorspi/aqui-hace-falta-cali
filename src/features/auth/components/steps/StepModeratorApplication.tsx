@@ -38,7 +38,7 @@ export const StepModeratorApplication: React.FC<StepModeratorApplicationProps> =
       <div className="space-y-5 pt-1">
         {/* Campo 1: Colectivo / Organización comunitaria */}
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-1.5">
+          <label className="form-label">
             {t('authModeratorCommunity')}
           </label>
           <input
@@ -47,14 +47,7 @@ export const StepModeratorApplication: React.FC<StepModeratorApplicationProps> =
             onChange={(e) => onChangeCommunityCollective(e.target.value)}
             placeholder={t('authModeratorCommunityPlaceholder')}
             disabled={isSubmitting}
-            className={`
-              w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none
-              ${
-                errors?.moderatorCommunityCollective
-                  ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                  : 'border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-              }
-            `}
+            className={`input-base ${errors?.moderatorCommunityCollective ? 'input-error' : ''}`}
           />
           {errors?.moderatorCommunityCollective && (
             <p className="text-xs text-red-600 font-semibold mt-1">
@@ -65,7 +58,7 @@ export const StepModeratorApplication: React.FC<StepModeratorApplicationProps> =
 
         {/* Campo 2: Motivación o experiencia para moderar */}
         <div>
-          <label className="block text-sm font-bold text-slate-800 mb-1.5">
+          <label className="form-label">
             {t('authModeratorMotivation')} <span className="text-blue-600">*</span>
           </label>
           <textarea
@@ -74,14 +67,7 @@ export const StepModeratorApplication: React.FC<StepModeratorApplicationProps> =
             onChange={(e) => onChangeMotivation(e.target.value)}
             placeholder={t('authModeratorMotivationPlaceholder')}
             disabled={isSubmitting}
-            className={`
-              w-full px-4 py-3 bg-white border rounded-2xl text-sm font-medium text-slate-900 transition-all placeholder:text-slate-400 focus:outline-none resize-none
-              ${
-                errors?.moderatorMotivation
-                  ? 'border-red-500 bg-red-50/20 focus:border-red-600 focus:ring-2 focus:ring-red-600/20'
-                  : 'border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 shadow-xs'
-              }
-            `}
+            className={`textarea-base ${errors?.moderatorMotivation ? 'input-error' : ''}`}
           />
           {errors?.moderatorMotivation && (
             <p className="text-xs text-red-600 font-semibold mt-1">
