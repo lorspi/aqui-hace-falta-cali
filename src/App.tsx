@@ -36,6 +36,7 @@ import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { RegisterWizard } from "./features/auth/components/RegisterWizard";
 import { LoginModal } from "./features/auth/components/LoginModal";
+import { UserProfileModal } from "./features/auth/components/UserProfileModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
@@ -175,6 +176,7 @@ function MainApp() {
 
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -915,6 +917,7 @@ function MainApp() {
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => { window.location.href = '/panel'; }}
+        onOpenProfileModal={() => setIsProfileModalOpen(true)}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
@@ -1435,6 +1438,18 @@ function MainApp() {
             setAuthUser(userObj);
             localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
           }
+        }}
+      />
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onSuccess={(updatedProfile) => {
+          if (updatedProfile?.full_name) {
+            const userObj = { name: updatedProfile.full_name, email: updatedProfile.email || authUser?.email };
+            setAuthUser(userObj);
+            localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+          }
+          setUserProfile(updatedProfile);
         }}
       />
     </div>

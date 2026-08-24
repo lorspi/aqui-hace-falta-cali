@@ -8,6 +8,7 @@ interface HeaderProps {
   onOpenCreateModal: () => void;
   onOpenCreateOfferModal: () => void;
   onOpenAdminModal: () => void;
+  onOpenProfileModal?: () => void;
   onOpenRegisterModal?: () => void;
   onOpenLoginModal?: () => void;
   onOpenWelcomeModal?: () => void;
@@ -28,6 +29,7 @@ interface UserMenuProps {
   isModerator?: boolean;
   userName?: string;
   onOpenAdminModal?: () => void;
+  onOpenProfileModal?: () => void;
   onOpenRegisterModal?: () => void;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
@@ -40,6 +42,7 @@ const UserMenu: React.FC<UserMenuProps> = ({
   isModerator = false,
   userName,
   onOpenAdminModal,
+  onOpenProfileModal,
   onOpenRegisterModal,
   onOpenLoginModal,
   onLogout,
@@ -88,6 +91,19 @@ const UserMenu: React.FC<UserMenuProps> = ({
         <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-52 sm:w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
           {isLoggedIn ? (
             <>
+              {onOpenProfileModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenProfileModal();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer border-b border-slate-100 font-semibold"
+                >
+                  <User className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Mi Perfil</span>
+                </button>
+              )}
               {isModerator && (
                 <button
                   type="button"
@@ -173,6 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreateModal,
   onOpenCreateOfferModal,
   onOpenAdminModal: _onOpenAdminModal,
+  onOpenProfileModal,
   onOpenRegisterModal,
   onOpenLoginModal,
   onOpenWelcomeModal,
@@ -244,6 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
               isModerator={isModerator}
               userName={userName}
               onOpenAdminModal={_onOpenAdminModal}
+              onOpenProfileModal={onOpenProfileModal}
               onOpenRegisterModal={onOpenRegisterModal}
               onLogout={onLogout}
               onOpenWelcomeModal={onOpenWelcomeModal}
@@ -301,6 +319,7 @@ export const Header: React.FC<HeaderProps> = ({
               isModerator={isModerator}
               userName={userName}
               onOpenAdminModal={_onOpenAdminModal}
+              onOpenProfileModal={onOpenProfileModal}
               onOpenRegisterModal={onOpenRegisterModal}
               onOpenLoginModal={onOpenLoginModal}
               onLogout={onLogout}

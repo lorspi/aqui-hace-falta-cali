@@ -806,6 +806,26 @@ export async function upsertOrganization(orgData: {
   return data;
 }
 
+export async function fetchUserOrganization(userId: string) {
+  if (!userId) return null;
+  try {
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[Supabase] Error fetching user organization:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('[Supabase] Exception fetching user organization:', err);
+    return null;
+  }
+}
+
 // ==========================================
 // MATCHING FUNCTIONS (NEEDS <-> OFFERS)
 // ==========================================
