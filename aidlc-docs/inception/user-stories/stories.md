@@ -683,3 +683,113 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-6 — Pantalla de detalle: conversación formateada + datos de validación (Frontend)
+
+Como operador de RaDAR de Ayuda, quiero ver la conversación completa en formato de chat, junto con los datos clave ya identificados, para validar la necesidad e identificar a la persona sin tener que leer el JSON crudo del intercambio.
+
+**Criterios de aceptación:**
+- Al abrir el detalle de un need, la pantalla consulta el endpoint de reconstrucción de conversación (US-3 / DEV-42) y muestra los mensajes en orden cronológico, diferenciando visualmente los mensajes entrantes (ciudadano) de los salientes (bot/equipo de conversación).
+- Las fotos y ubicaciones de los mensajes se muestran renderizadas (imagen / mapa o tarjeta de ubicación), no como texto o enlace crudo.
+- En un panel separado del chat se muestran los campos ya mapeados por el receptor: `contact_whatsapp`, `address`, `neighborhood`, `title`, `description`, `priority` y `verification_status`.
+- Cuando el need tiene `location_enrichment_status = PENDING`, el panel indica que la ubicación aún no fue geolocalizada en lugar de mostrar un mapa vacío.
+- La pantalla tolera datos incompletos (mensajes sin `sender`, sin contenido o con `message_type` desconocido) sin romper el chat.
+- Estados claros de carga, error (need inexistente / fallo de red) y de conversación sin incidente asociado (aún sin evento de completado).
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: El operador ve la conversación tipo chat con mensajes entrantes y salientes en orden cronológico
+  Given existe un need con id 'need_123' y contact_whatsapp '573001234567'
+  And el endpoint de reconstrucción devuelve mensajes con sender '573001234567' y otros con el sender del bot
+  When el operador abre el detalle del need 'need_123'
+  Then la pantalla consulta el endpoint de reconstrucción de conversación (US-3)
+  And los mensajes se muestran en orden cronológico (received_at ascendente)
+  And los mensajes con sender igual a contact_whatsapp se muestran como entrantes del ciudadano
+  And los mensajes con sender distinto se muestran como salientes del bot/equipo de conversación
+  And no se muestra el JSON crudo de ningún evento
+
+Scenario: Las fotos de la conversación se renderizan como imágenes
+  Given un mensaje de la conversación con un adjunto de tipo image (URL y mime)
+  When el operador abre el detalle del need
+  Then la foto se muestra renderizada en la burbuja del mensaje
+  And no se muestra la URL cruda como texto ni como enlace sin procesar
+  And un adjunto de imagen sin URL válida se muestra con un placeholder sin romper la burbuja
+
+Scenario: Las ubicaciones de la conversación se renderizan como mapa o tarjeta de ubicación
+  Given un mensaje de la conversación con un adjunto de tipo location que incluye latitud y longitud
+  When el operador abre el detalle del need
+  Then la ubicación se muestra renderizada en un mapa
+  And se muestra la dirección (address) del adjunto junto al mapa
+  When el adjunto de location no incluye coordenadas pero sí address
+  Then la ubicación se muestra como tarjeta con la dirección, sin mostrar un mapa vacío
+
+Scenario: El panel muestra los campos ya identificados por el receptor
+  Given el need tiene title, description, contact_whatsapp, address, neighborhood, priority y verification_status mapeados
+  When el operador abre el detalle del need
+  Then el panel separado del chat muestra title y description del need
+  And el panel muestra contact_whatsapp para identificar a la persona
+  And el panel muestra address y neighborhood
+  And el panel muestra priority y verification_status
+  And el operador puede validar la necesidad sin leer el JSON crudo
+
+Scenario: La ubicación pendiente de geocoding se indica en el panel
+  Given el need tiene location_enrichment_status = PENDING y latitud/longitud NULL
+  When el operador abre el detalle del need
+  Then el panel indica que la ubicación aún no fue geolocalizada
+  And no se muestra un mapa vacío en el panel
+  And los mensajes con adjuntos de ubicación se siguen mostrando con sus datos
+
+Scenario: La ubicación resuelta se muestra en el panel
+  Given el need tiene location_enrichment_status = RESOLVED y latitud/longitud válidas
+  When el operador abre el detalle del need
+  Then el panel muestra un mapa con las coordenadas resueltas
+  And se muestra la dirección (address/neighborhood) asociada
+
+Scenario: Un mensaje con campos faltantes se muestra de forma tolerante
+  Given un mensaje de la conversación sin sender o sin contenido en el raw_event
+  When el operador abre el detalle del need
+  Then el mensaje se muestra igualmente en el chat con contenido por defecto y remitente neutro
+  And la fila no se pierde de la conversación (auditoría)
+  And la pantalla no falla por datos incompletos
+
+Scenario: Un mensaje con message_type desconocido se muestra como mensaje genérico
+  Given un mensaje de la conversación con type UNKNOWN o message_type desconocido
+  When el operador abre el detalle del need
+  Then el mensaje se muestra con un estilo genérico sin romper el chat
+  And no se intenta renderizar como imagen o ubicación
+
+Scenario: Un reenvío con el mismo event.id aparece una sola vez en el chat
+  Given la capa de ingestión deduplicó un evento reenviado (UNIQUE event_id en ingest_responses)
+  When el operador abre el detalle del need
+  Then cada event.id aparece una sola vez entre los mensajes del chat
+  And no se muestran burbujas duplicadas
+
+Scenario: El evento de completado no se muestra como un mensaje del chat
+  Given la conversación del need recibió el evento de completado
+  When el operador abre el detalle del need
+  Then el chat muestra solo los mensajes del ciudadano/bot
+  And el evento de completado no aparece como burbuja con contenido
+  And su event.id queda disponible en source_event_id del need
+
+Scenario: Una conversación aún sin incidente asociado se muestra sin romper
+  Given la conversación consultada no tiene need asociado (has_need=false, aún sin evento de completado)
+  When el operador abre el detalle de esa conversación
+  Then los mensajes disponibles se muestran en el chat
+  And el panel indica que aún no existe un incidente asociado
+  And no se muestran datos de un need inexistente
+
+Scenario: Un need inexistente muestra un estado de error claro
+  Given no existe un need con id 'need_999'
+  When el operador abre el detalle de 'need_999'
+  Then la pantalla muestra un estado de error claro (need no encontrado)
+  And no se rompe la aplicación
+
+Scenario: Fallo al cargar la conversación muestra un estado de error
+  Given el endpoint de reconstrucción no está disponible o responde con error
+  When el operador abre el detalle de un need
+  Then la pantalla muestra un estado de error claro
+  And no se bloquea el resto de la aplicación
+```
+
+> ⚠️ **Nota de dominio**: el formato uniforme de mensaje (US-3) expone `sender` = `data.from` del evento. La distinción visual entrante/saliente se resuelve comparando `sender` contra `contact_whatsapp` del need (ciudadano) frente al remitente del bot/equipo de conversación. El contrato del webhook (S8) no define explícitamente eventos de mensajes salientes del bot; confirmar al implementar cómo se identifica al remitente del bot. La pantalla consume `GET /needs/{id}/conversation` (US-3) y no interpreta `raw_event`.
