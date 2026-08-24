@@ -276,14 +276,21 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         }
 
         const userMetadata: Record<string, any> = {
-          full_name: data.fullName?.trim() || '',
+          first_name: data.firstName?.trim() || '',
+          last_name: data.lastName?.trim() || '',
+          full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.fullName?.trim() || 'Usuario',
+          phone_country_code: data.phoneCountryCode || '+57',
+          phone_number: data.phoneNumber?.trim() || '',
           phone: fullPhone,
           document_type: data.documentType || 'cedula',
           document_number: data.documentNumber?.trim() || '',
           country: data.country || 'Colombia',
           department: data.department || 'Quindío',
           city: data.city || 'Armenia',
+          is_auto_detected_location: data.isAutoDetected ?? true,
           role: data.role || 'voluntario',
+          accept_terms: true,
+          terms_accepted_at: new Date().toISOString(),
           is_verified: false,
         };
 
@@ -323,14 +330,23 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       const savedProfile = await upsertUserProfile({
         id: targetUserId,
         email: targetEmail,
-        full_name: data.fullName?.trim() || currentUser?.user_metadata?.full_name || 'Usuario',
+        first_name: data.firstName?.trim(),
+        last_name: data.lastName?.trim(),
+        full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.fullName?.trim() || currentUser?.user_metadata?.full_name || 'Usuario',
+        phone_country_code: data.phoneCountryCode || '+57',
+        phone_number: data.phoneNumber?.trim(),
         phone: fullPhone,
         document_type: data.documentType,
         document_number: data.documentNumber,
         country: data.country,
         department: data.department,
         city: data.city,
+        is_auto_detected_location: data.isAutoDetected,
         role: data.role || 'voluntario',
+        accept_terms: true,
+        terms_accepted_at: new Date().toISOString(),
+        moderator_community_collective: data.moderatorCommunityCollective,
+        moderator_motivation: data.moderatorMotivation,
       });
 
       if (!savedProfile) {

@@ -137,35 +137,141 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
 
--- 7. TABLA: users (Moderadores y Administradores de la plataforma)
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- 7. TABLA: profiles (Perfiles completos de usuarios vinculados a auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  role VARCHAR(50) DEFAULT 'MODERATOR',
-  active BOOLEAN DEFAULT TRUE,
+  first_name TEXT,
+  last_name TEXT,
+  full_name TEXT NOT NULL,
+  phone_country_code VARCHAR(10) DEFAULT '+57',
+  phone_number VARCHAR(50),
+  phone VARCHAR(50),
+  document_type VARCHAR(50) DEFAULT 'cedula',
+  document_number VARCHAR(50),
+  country VARCHAR(100) DEFAULT 'Colombia',
+  department VARCHAR(100) DEFAULT 'Quindío',
+  city VARCHAR(100) DEFAULT 'Armenia',
+  is_auto_detected_location BOOLEAN DEFAULT TRUE,
+  role VARCHAR(50) DEFAULT 'voluntario',
+  is_verified BOOLEAN DEFAULT FALSE,
+  
+  -- Auditoría de Términos y Condiciones
+  accept_terms BOOLEAN DEFAULT TRUE NOT NULL,
+  terms_accepted_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  
+  -- Postulación como Moderador
+  moderator_community_collective TEXT,
+  moderator_motivation TEXT,
+  moderation_status VARCHAR(50) DEFAULT 'PENDING',
+  
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  last_login_at TIMESTAMPTZ
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profiles_city ON public.profiles(city);
 
--- Insertar usuario Administrador por defecto
-INSERT INTO users (email, name, password_hash, role, active)
-VALUES ('admin@aquihacefalta.com', 'Administrador Principal', 'admin123', 'ADMIN', TRUE)
-ON CONFLICT (email) DO NOTHING;
+-- 8. TABLA: organizations (Organizaciones / Entidades gubernamentales y ONGs)
+CREATE TABLE IF NOT EXISTS public.organizations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  org_name TEXT NOT NULL,
+  organization_type VARCHAR(100) NOT NULL,
+  description TEXT,
+  website_or_social TEXT,
+  address TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  is_verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- 8. POLÍTICAS DE SEGURIDAD RLS (Row Level Security)
+CREATE INDEX IF NOT EXISTS idx_organizations_user_id ON public.organizations(user_id);
+
+-- 9. TRIGGER: Creación automática de perfiles desde auth.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (
+    id,
+    email,
+    first_name,
+    last_name,
+    full_name,
+    phone_country_code,
+    phone_number,
+    phone,
+    document_type,
+    document_number,
+    country,
+    department,
+    city,
+    is_auto_detected_location,
+    role,
+    accept_terms,
+    terms_accepted_at,
+    moderator_community_collective,
+    moderator_motivation,
+    moderation_status
+  )
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name',
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'Usuario'),
+    COALESCE(NEW.raw_user_meta_data->>'phone_country_code', '+57'),
+    NEW.raw_user_meta_data->>'phone_number',
+    NEW.raw_user_meta_data->>'phone',
+    COALESCE(NEW.raw_user_meta_data->>'document_type', 'cedula'),
+    NEW.raw_user_meta_data->>'document_number',
+    COALESCE(NEW.raw_user_meta_data->>'country', 'Colombia'),
+    COALESCE(NEW.raw_user_meta_data->>'department', 'Quindío'),
+    COALESCE(NEW.raw_user_meta_data->>'city', 'Armenia'),
+    COALESCE((NEW.raw_user_meta_data->>'is_auto_detected_location')::boolean, true),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'voluntario'),
+    COALESCE((NEW.raw_user_meta_data->>'accept_terms')::boolean, true),
+    NOW(),
+    NEW.raw_user_meta_data->>'moderator_community_collective',
+    NEW.raw_user_meta_data->>'moderator_motivation',
+    CASE 
+      WHEN NEW.raw_user_meta_data->>'role' = 'moderador' THEN 'PENDING'
+      ELSE 'APPROVED'
+    END
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    phone = EXCLUDED.phone,
+    document_type = EXCLUDED.document_type,
+    document_number = EXCLUDED.document_number,
+    country = EXCLUDED.country,
+    department = EXCLUDED.department,
+    city = EXCLUDED.city,
+    updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 10. POLÍTICAS DE SEGURIDAD RLS (Row Level Security)
 ALTER TABLE needs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE offer_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE update_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Lectura y Escritura Públicas (Anon Key para la emergencia)
+-- Políticas Públicas de Emergencia
 CREATE POLICY "Permitir lectura publica de necesidades" ON needs FOR SELECT USING (true);
 CREATE POLICY "Permitir creacion publica de necesidades" ON needs FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir edicion publica de necesidades" ON needs FOR UPDATE USING (true);
@@ -188,5 +294,8 @@ CREATE POLICY "Permitir insercion de logs" ON update_logs FOR INSERT WITH CHECK 
 CREATE POLICY "Permitir lectura de auditoria" ON audit_logs FOR SELECT USING (true);
 CREATE POLICY "Permitir insercion de auditoria" ON audit_logs FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Permitir lectura de usuarios" ON users FOR SELECT USING (true);
-CREATE POLICY "Permitir gestion de usuarios" ON users FOR ALL USING (true);
+CREATE POLICY "Permitir lectura de perfiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Permitir edicion de perfiles" ON public.profiles FOR ALL USING (true);
+
+CREATE POLICY "Permitir lectura de organizaciones" ON public.organizations FOR SELECT USING (true);
+CREATE POLICY "Permitir edicion de organizaciones" ON public.organizations FOR ALL USING (true);

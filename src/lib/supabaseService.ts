@@ -694,14 +694,24 @@ export async function fetchUserProfile(userId: string) {
 export async function upsertUserProfile(profileData: {
   id: string;
   email?: string;
+  first_name?: string;
+  last_name?: string;
   full_name: string;
+  phone_country_code?: string;
+  phone_number?: string;
   phone?: string;
   document_type?: string;
   document_number?: string;
   country?: string;
   department?: string;
   city?: string;
+  is_auto_detected_location?: boolean;
   role?: string;
+  accept_terms?: boolean;
+  terms_accepted_at?: string;
+  moderator_community_collective?: string;
+  moderator_motivation?: string;
+  moderation_status?: string;
 }) {
   const { data, error } = await supabase
     .from('profiles')
@@ -709,14 +719,24 @@ export async function upsertUserProfile(profileData: {
       {
         id: profileData.id,
         email: profileData.email?.trim().toLowerCase(),
+        first_name: profileData.first_name?.trim(),
+        last_name: profileData.last_name?.trim(),
         full_name: profileData.full_name?.trim(),
+        phone_country_code: profileData.phone_country_code || '+57',
+        phone_number: profileData.phone_number?.trim(),
         phone: profileData.phone,
-        document_type: profileData.document_type,
-        document_number: profileData.document_number,
+        document_type: profileData.document_type || 'cedula',
+        document_number: profileData.document_number?.trim(),
         country: profileData.country || 'Colombia',
         department: profileData.department || 'Quindío',
         city: profileData.city || 'Armenia',
+        is_auto_detected_location: profileData.is_auto_detected_location ?? true,
         role: profileData.role || 'voluntario',
+        accept_terms: profileData.accept_terms ?? true,
+        terms_accepted_at: profileData.terms_accepted_at || new Date().toISOString(),
+        moderator_community_collective: profileData.moderator_community_collective?.trim(),
+        moderator_motivation: profileData.moderator_motivation?.trim(),
+        moderation_status: profileData.moderation_status || (profileData.role === 'moderador' ? 'PENDING' : 'APPROVED'),
         is_verified: false,
         updated_at: new Date().toISOString(),
       },
