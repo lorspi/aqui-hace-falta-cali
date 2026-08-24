@@ -9,14 +9,15 @@ import type { Geocoder, GeocodingResult } from "../../supabase/functions/_shared
 //
 // Cubren los escenarios Gherkin de la historia S5 a nivel HTTP:
 //   1. message.received acumulados + evento de completado → incidente en needs.
-//   2. Con coordenadas → sin geocoding, city_id resuelto.
-//   3. Sin coordenadas + dirección → geocoding + ciudad.
-//   4. Geocoding no disponible → incidente igual, lat/lng NULL, PENDING.
-//   5. Reenvío del mismo event.id → no duplica (idempotencia).
-//   6. Sin conversation_id → 400 detallando el campo.
-//   7. Sin mensajes acumulados → 409.
-//   8. from inválido → 400, con el evento registrado en ingest_responses.
-//   9. Conversaciones distintas no mezclan sus mensajes.
+//   2. Una conversación con varias necesidades → un solo registro en needs.
+//   3. Con coordenadas → sin geocoding, city_id resuelto.
+//   4. Sin coordenadas + dirección → geocoding + ciudad.
+//   5. Geocoding no disponible → incidente igual, lat/lng NULL, PENDING.
+//   6. Reenvío del mismo event.id → no duplica (idempotencia).
+//   7. Sin conversation_id → 400 missing_conversation_id.
+//   8. Sin mensajes acumulados → 409 no_messages.
+//   9. from inválido → 400 invalid_from, con el evento en ingest_responses.
+//  10. Conversaciones distintas no mezclan sus mensajes.
 // ============================================================================
 
 function buildMessage(overrides: Record<string, unknown> = {}) {
@@ -121,6 +122,44 @@ describe("S5 — El evento de completado crea el incidente con los datos acumula
 
     // El incidente quedó persistido en needs.
     expect(needs.size()).toBe(1);
+  });
+});
+
+describe("S5 — Una conversación completada genera un solo registro de needs aunque acumule varias necesidades", () => {
+  it("consolida múltiples necesidades en un único incidente por conversación", async () => {
+    const ingest = createInMemoryIngestResponsesStore();
+    const needs = createInMemoryNeedsStore();
+
+    // La conversación acumula mensajes que mencionan necesidades distintas.
+    const messages = [
+      buildMessage({
+        id: "evt_need_1",
+        data: { body: "Necesito agua potable", from: "573001234567" },
+      }),
+      buildMessage({
+        id: "evt_need_2",
+        data: { body: "También necesito medicinas para mi hijo", from: "573001234567" },
+      }),
+    ];
+    const res = await seedConversation(ingest, needs, messages, buildCompletion());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    // Un único registro en needs para la conversación.
+    expect(needs.size()).toBe(1);
+    expect(body.incident.outcome).toBe("created");
+    expect(body.incident.conversation_id).toBe("conv_123");
+
+    // title y description consolidan la información acumulada.
+    expect(body.incident.description).toContain("Necesito agua potable");
+    expect(body.incident.description).toContain("medicinas para mi hijo");
+    expect(body.incident.title).toContain("Necesito agua potable");
+
+    // No se genera un registro por cada tipo de necesidad.
+    const all = needs.all();
+    expect(all).toHaveLength(1);
+    expect(all[0].description).toContain("Necesito agua potable");
+    expect(all[0].description).toContain("medicinas para mi hijo");
   });
 });
 
@@ -230,24 +269,32 @@ describe("S5 — Un reenvío del mismo evento de completado no crea un incidente
   });
 });
 
-describe("S5 — Un evento de completado sin conversation_id no crea incidente", () => {
-  it("devuelve 400 detallando el campo faltante y no crea ningún registro en needs", async () => {
-    const ingest = createInMemoryIngestResponsesStore();
-    const needs = createInMemoryNeedsStore();
+describe("S5 — Un evento de completado sin conversation_id responde 400 missing_conversation_id", () => {
+  it.each([
+    ["vacío", { conversation_id: "" }],
+    ["faltante", { conversation_id: undefined }],
+  ])(
+    "con conversation_id %s → 400 con code=missing_conversation_id y sin crear incidente",
+    async (_label, override) => {
+      const ingest = createInMemoryIngestResponsesStore();
+      const needs = createInMemoryNeedsStore();
 
-    const res = await postWith(ingest, needs, buildCompletion({ conversation_id: "" }));
-    expect(res.status).toBe(400);
-    const body = await res.json();
+      const res = await postWith(ingest, needs, buildCompletion(override));
+      expect(res.status).toBe(400);
+      const body = await res.json();
 
-    // El 400 puede venir de la validación general S2 (validation_failed) o del
-    // check específico S5 (missing_conversation_id). Ambos detallan el campo.
-    expect(["validation_failed", "missing_conversation_id"]).toContain(body.code);
-    const paths = (body.details?.issues ?? []).map((i: { path: string[] }) =>
-      i.path.join("."),
-    );
-    expect(paths).toContain("conversation_id");
-    expect(needs.size()).toBe(0);
-  });
+      // El evento de completado sin conversation_id devuelve el code específico
+      // del flujo S5 (criterio groomed DEV-41), no el validation_failed genérico.
+      expect(body.code).toBe("missing_conversation_id");
+      const paths = (body.details?.issues ?? []).map((i: { path: string[] }) =>
+        i.path.join("."),
+      );
+      expect(paths).toContain("conversation_id");
+      expect(needs.size()).toBe(0);
+      // No cumple los campos mínimos del contrato: no se persiste en ingest.
+      expect(ingest.size()).toBe(0);
+    },
+  );
 });
 
 describe("S5 — Un evento de completado sin mensajes acumulados previos no crea incidente", () => {
