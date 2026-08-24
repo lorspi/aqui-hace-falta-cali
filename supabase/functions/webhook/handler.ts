@@ -42,8 +42,11 @@
 //   - Clave de idempotencia: `event.id`. La UNIQUE(event_id) de
 //     ingest_responses (S1 + migración S6) resuelve los reenvíos y la
 //     condición de carrera de POSTs concurrentes con el mismo event.id.
-//   - Un reenvío (mismo event.id, incluso con body distinto) NO crea una fila
-//     nueva NI sobrescribe la original: el store devuelve la fila existente.
+//   - ORDEN US-1: la persistencia se ejecuta ANTES del mapeo. Un reenvío
+//     (mismo event.id, incluso con body distinto) NO crea una fila nueva NI
+//     sobrescribe la original: el store devuelve la fila existente y el handler
+//     responde 409 ANTES de mapear — no se re-ejecuta el mapeo (S3) ni la
+//     creación del incidente (S5).
 //   - Confirmación al remitente (S7): un reenvío del mismo event.id ya
 //     procesado con éxito responde **409 Conflict** (`duplicate_event`) con el
 //     error estructurado (code + message) indicando que el evento ya fue
@@ -258,14 +261,16 @@ export async function handleWebhookEvent(
     );
   }
 
-  // Mapeo del evento a borrador de Need (S3). Se incluye el resumen en el ACK;
-  // el borrador completo queda disponible para la creación del incidente (S5).
-  const mapping = mapEventToNeedDraft(payload);
-
   // Persistencia del evento crudo (S4). Solo si se inyectó un store (en la
   // Edge Function real siempre se inyecta). Un error de persistencia es un 500
   // estructurado; la validación ya rechazó antes los eventos sin campos mínimos,
   // por lo que aquí SOLO se persisten eventos válidos.
+  //
+  // ORDEN (US-1 / DEV-40): la persistencia corre ANTES del mapeo (S3). Así, un
+  // reenvío con el mismo event.id se corta en la capa de ingestión (409) SIN
+  // re-ejecutar el mapeo ni el procesamiento aguas abajo (S5), cumpliendo el
+  // criterio de aceptación de US-1 "no re-ejecuta el mapeo ni la creación del
+  // incidente". El mapeo solo se calcula para eventos NUEVOS (ACK 200).
   let persistence;
   if (deps.ingestStore) {
     try {
@@ -295,8 +300,9 @@ export async function handleWebhookEvent(
   // del contrato S7 exige que un reenvío del mismo event.id (ya procesado con
   // éxito) responda **409 Conflict** con error estructurado (`code` +
   // `message`) indicando que el evento ya fue recibido, e incluye la fila
-  // existente en `details.record`. NO se re-ejecuta el mapeo (S3) ni el
-  // procesamiento aguas abajo (S5 no re-crea el incidente), y NO se crea un
+  // existente en `details.record`. Este retorno ocurre ANTES del mapeo (S3) y
+  // del procesamiento aguas abajo (S5 no re-crea el incidente): no se
+  // re-ejecuta el mapeo ni la creación del incidente (US-1), y no se crea un
   // duplicado en `ingest_responses`.
   if (persistence?.duplicate) {
     return jsonResponse(
@@ -318,6 +324,11 @@ export async function handleWebhookEvent(
       409,
     );
   }
+
+  // Mapeo del evento a borrador de Need (S3). Solo se alcanza para eventos
+  // NUEVOS (no duplicados). El resumen se incluye en el ACK 200; el borrador
+  // completo queda disponible para la creación del incidente (S5).
+  const mapping = mapEventToNeedDraft(payload);
 
   // Creación del incidente (S5). Si el evento es de completado y se inyectó el
   // servicio de incidentes, se crea el registro en `needs` con los mensajes
