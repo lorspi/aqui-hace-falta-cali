@@ -124,7 +124,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   // Determinar el tipo de flujo y número de pasos totales
   const isOrgFlow = role === 'entidad_profesional';
   const isModeratorFlow = role === 'moderador';
-  const totalSteps = isOrgFlow ? 7 : (isModeratorFlow ? 4 : 3);
+  const totalSteps = isOrgFlow ? 6 : (isModeratorFlow ? 4 : 3);
 
   // Control de navegación y validación dinámica por paso
   const handleNextStep = async () => {
@@ -222,16 +222,20 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         }
       }
     } else {
-      // Flujo Organización (7 Pasos)
+      // Flujo Organización (6 Pasos Totales)
       if (currentStep === 3) {
         isValidStep = await trigger(['organizationType']);
       } else if (currentStep === 4) {
-        isValidStep = await trigger(['orgName']);
+        clearErrors(['orgName']);
+        if (!orgName?.trim() || orgName.trim().length < 2) {
+          setError('orgName', { type: 'manual', message: 'El nombre de la organización es obligatorio' });
+          isValidStep = false;
+        } else {
+          isValidStep = true;
+        }
       } else if (currentStep === 5) {
-        isValidStep = await trigger(['fullName', 'documentType', 'documentNumber', 'phoneNumber']);
-      } else if (currentStep === 6) {
         isValidStep = await trigger(['country', 'department', 'city']);
-      } else if (currentStep === 7) {
+      } else if (currentStep === 6) {
         isValidStep = await trigger(['searchAddress', 'latitude', 'longitude']);
       }
     }
@@ -355,16 +359,21 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
       // 4. Si es un registro de Entidad / Organización, guardar en la tabla `organizations`
       if (isOrg) {
-        await upsertOrganization({
-          user_id: targetUserId,
-          org_name: data.orgName?.trim() || '',
-          organization_type: data.organizationType || 'bomberos_defensa_civil',
-          description: data.orgDescription?.trim() || '',
-          website_or_social: data.orgWebsiteOrSocial?.trim() || '',
-          address: data.searchAddress?.trim() || '',
-          latitude: data.latitude || 3.4516,
-          longitude: data.longitude || -76.532,
-        });
+        try {
+          await upsertOrganization({
+            user_id: targetUserId,
+            org_name: data.orgName?.trim() || data.orgDescription?.trim() || `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || 'Organización Registrada',
+            organization_type: data.organizationType || 'bomberos_defensa_civil',
+            description: data.orgDescription?.trim() || '',
+            website_or_social: data.orgWebsiteOrSocial?.trim() || '',
+            address: data.searchAddress?.trim() || '',
+            latitude: data.latitude || 3.4516,
+            longitude: data.longitude || -76.532,
+          });
+        } catch (orgErr: any) {
+          console.error('[RegisterWizard] Error al guardar datos de la organización:', orgErr);
+          // Si el perfil principal guardó con éxito, notificamos el registro exitoso
+        }
       }
 
       setSuccessMessage(
@@ -538,10 +547,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
               </>
             )}
 
-            {/* Renderizado para Flujo de Organización (7 Pasos) */}
+            {/* Renderizado para Flujo de Organización (6 Pasos) */}
             {isOrgFlow && (
               <>
-                {/* Paso 3 Org: Tipo de Organización */}
+                {/* Paso 3 Org (3 de 6): Tipo de Organización */}
                 {currentStep === 3 && (
                   <StepOrgCategory
                     selectedType={organizationType}
@@ -549,7 +558,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 4 Org: Tu organización (Datos Entidad) */}
+                {/* Paso 4 Org (4 de 6): Tu organización (Datos Entidad) */}
                 {currentStep === 4 && (
                   <StepOrgDetails
                     orgName={orgName}
@@ -558,31 +567,17 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     errors={{
                       orgName: errStr(errors.orgName),
                     }}
-                    onChangeOrgName={(val) => setValue('orgName', val, { shouldValidate: true })}
+                    onChangeOrgName={(val) => {
+                      setValue('orgName', val, { shouldValidate: true });
+                      setValue('fullName', val, { shouldValidate: true });
+                    }}
                     onChangeOrgDescription={(val) => setValue('orgDescription', val, { shouldValidate: true })}
                     onChangeOrgWebsiteOrSocial={(val) => setValue('orgWebsiteOrSocial', val, { shouldValidate: true })}
                   />
                 )}
 
-                {/* Paso 5 Org: Identificación Representante */}
+                {/* Paso 5 Org (5 de 6): Ubicación Territorio */}
                 {currentStep === 5 && (
-                  <Step3Identity
-                    role={role}
-                    fullName={fullName}
-                    documentType={documentType}
-                    documentNumber={documentNumber}
-                    errors={{
-                      fullName: errStr(errors.fullName),
-                      documentNumber: errStr(errors.documentNumber),
-                    }}
-                    onChangeFullName={(val) => setValue('fullName', val, { shouldValidate: true })}
-                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
-                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
-                  />
-                )}
-
-                {/* Paso 6 Org: Ubicación Territorio */}
-                {currentStep === 6 && (
                   <Step2Location
                     country={country}
                     department={department}
@@ -594,8 +589,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 7 Org: Mapa y Dirección */}
-                {currentStep === 7 && (
+                {/* Paso 6 Org (6 de 6): Mapa y Dirección */}
+                {currentStep === 6 && (
                   <StepOrgMapLocation
                     searchAddress={searchAddress}
                     latitude={latitude}

@@ -175,6 +175,7 @@ function MainApp() {
 
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     const handleSessionUser = async (sessionUser: any) => {
@@ -194,11 +195,14 @@ function MainApp() {
       // 3. Consultar perfil en DB en segundo plano
       try {
         const profile = await fetchUserProfile(sessionUser.id);
-        if (profile?.full_name || profile?.name) {
-          const dbName = profile.full_name || profile.name;
-          const updatedUserObj = { name: dbName, email: sessionUser.email };
-          setAuthUser(updatedUserObj);
-          localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
+        if (profile) {
+          setUserProfile(profile);
+          if (profile.full_name || profile.name) {
+            const dbName = profile.full_name || profile.name;
+            const updatedUserObj = { name: dbName, email: sessionUser.email };
+            setAuthUser(updatedUserObj);
+            localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
+          }
         }
 
         if (!profile) {
@@ -924,6 +928,7 @@ function MainApp() {
         activeCount={activeCount}
         criticalCount={criticalCount}
         isLoggedIn={isModeratorLoggedIn || !!authUser}
+        isModerator={isModeratorLoggedIn || userProfile?.role === 'moderador' || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN'}
         userName={authUser?.name || (sessionUser as any)?.name}
         onLogout={async () => {
           await supabase.auth.signOut();

@@ -175,7 +175,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
       </div>
 
       {/* Input de Búsqueda de Dirección con Botón Buscar */}
-      <form onSubmit={handleSearchAddress} className="space-y-2">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -185,6 +185,12 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
               type="text"
               value={searchAddress}
               onChange={(e) => onChangeSearchAddress(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSearchAddress();
+                }
+              }}
               placeholder="Ej: Calle 5 # 38-25, Cali..."
               className={`
                 w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400
@@ -198,7 +204,11 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
           </div>
 
           <button
-            type="submit"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              handleSearchAddress();
+            }}
             disabled={isGeocoding || !searchAddress.trim()}
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
@@ -230,7 +240,7 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
             {geocodingError}
           </p>
         )}
-      </form>
+      </div>
 
       {/* Contenedor del Mapa Leaflet */}
       <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-56 sm:h-64 z-0">

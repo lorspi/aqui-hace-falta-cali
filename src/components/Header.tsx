@@ -18,13 +18,16 @@ interface HeaderProps {
   criticalCount: number;
   // Auth
   isLoggedIn?: boolean;
+  isModerator?: boolean;
   userName?: string;
   onLogout?: () => void;
 }
 
 interface UserMenuProps {
   isLoggedIn?: boolean;
+  isModerator?: boolean;
   userName?: string;
+  onOpenAdminModal?: () => void;
   onOpenRegisterModal?: () => void;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
@@ -34,7 +37,9 @@ interface UserMenuProps {
 
 const UserMenu: React.FC<UserMenuProps> = ({
   isLoggedIn = false,
+  isModerator = false,
   userName,
+  onOpenAdminModal,
   onOpenRegisterModal,
   onOpenLoginModal,
   onLogout,
@@ -83,6 +88,23 @@ const UserMenu: React.FC<UserMenuProps> = ({
         <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-52 sm:w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
           {isLoggedIn ? (
             <>
+              {isModerator && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    if (onOpenAdminModal) {
+                      onOpenAdminModal();
+                    } else {
+                      window.location.href = '/panel';
+                    }
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer border-b border-slate-100 font-semibold"
+                >
+                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Panel de Moderación</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => { setIsOpen(false); if (onLogout) onLogout(); }}
@@ -160,6 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeCount: _activeCount,
   criticalCount: _criticalCount,
   isLoggedIn = false,
+  isModerator = false,
   userName,
   onLogout,
 }) => {
@@ -218,7 +241,9 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 3. User / Auth Icon Pill */}
             <UserMenu
               isLoggedIn={isLoggedIn}
+              isModerator={isModerator}
               userName={userName}
+              onOpenAdminModal={_onOpenAdminModal}
               onOpenRegisterModal={onOpenRegisterModal}
               onLogout={onLogout}
               onOpenWelcomeModal={onOpenWelcomeModal}
@@ -273,7 +298,9 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 5. Menú de Usuario / Ingresar */}
             <UserMenu
               isLoggedIn={isLoggedIn}
+              isModerator={isModerator}
               userName={userName}
+              onOpenAdminModal={_onOpenAdminModal}
               onOpenRegisterModal={onOpenRegisterModal}
               onOpenLoginModal={onOpenLoginModal}
               onLogout={onLogout}

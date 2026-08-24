@@ -295,7 +295,9 @@ CREATE POLICY "Permitir lectura de auditoria" ON audit_logs FOR SELECT USING (tr
 CREATE POLICY "Permitir insercion de auditoria" ON audit_logs FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Permitir lectura de perfiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Permitir edicion de perfiles" ON public.profiles FOR ALL USING (true);
+CREATE POLICY "Permitir insercion de perfiles" ON public.profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir edicion de perfiles" ON public.profiles FOR UPDATE USING (true);
 
 CREATE POLICY "Permitir lectura de organizaciones" ON public.organizations FOR SELECT USING (true);
-CREATE POLICY "Permitir edicion de organizaciones" ON public.organizations FOR ALL USING (true);
+CREATE POLICY "Permitir insercion de organizaciones" ON public.organizations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir edicion de organizaciones" ON public.organizations FOR UPDATE USING (true);

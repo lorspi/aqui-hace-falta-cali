@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
 import { showConfirm, showAlert } from "./ConfirmDialog";
 import {
   ShieldCheck,
@@ -153,6 +154,56 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
+  // Comprobar automáticamente la sesión activa de Supabase Auth para moderadores aprobados
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      if (authToken && currentUser) return;
+
+      setIsLoggingIn(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (profile) {
+            const isModeratorRole = profile.role === 'moderador' || profile.role === 'ADMIN';
+            const isApproved = profile.moderation_status === 'APPROVED' || profile.role === 'ADMIN';
+
+            if (isModeratorRole && isApproved) {
+              const adminUser: AdminUser = {
+                id: profile.id,
+                email: session.user.email || profile.email || '',
+                name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.full_name || 'Moderador',
+                role: profile.role === 'ADMIN' ? 'ADMIN' : 'MODERATOR',
+                active: true,
+                createdAt: profile.created_at || new Date().toISOString(),
+              };
+
+              setAuthToken(session.access_token);
+              setCurrentUser(adminUser);
+              localStorage.setItem('ahf_admin_token', session.access_token);
+              localStorage.setItem('ahf_admin_user', JSON.stringify(adminUser));
+            } else if (isModeratorRole && profile.moderation_status === 'PENDING') {
+              setAuthError('Tu solicitud de moderador se encuentra en estado pendiente de aprobación.');
+            } else if (isModeratorRole && profile.moderation_status === 'REJECTED') {
+              setAuthError('Tu solicitud de moderador fue rechazada.');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[AdminPanelPage] Error al verificar sesión activa:', err);
+      } finally {
+        setIsLoggingIn(false);
+      }
+    };
+
+    checkActiveSession();
+  }, []);
+
   useEffect(() => {
     if (authToken) {
       loadData();
@@ -177,11 +228,12 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem("ahf_admin_token");
     localStorage.removeItem("ahf_admin_user");
     setAuthToken(null);
     setCurrentUser(null);
+    await supabase.auth.signOut();
   };
 
   const handleVerifyNeed = async (id: string, action: 'verify' | 'archive') => {
