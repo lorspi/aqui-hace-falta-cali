@@ -539,96 +539,115 @@ export async function logAudit(action: string, adminEmail: string, details: stri
 }
 
 export async function fetchUsersList(): Promise<AdminUser[]> {
-  const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
   return data.map((u) => ({
     id: u.id,
     email: u.email,
-    name: u.name,
-    role: u.role,
-    active: u.active ?? true,
+    name: u.full_name || u.email,
+    role: (u.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : (u.role === 'moderador' ? 'MODERATOR' : 'USER')) as any,
+    active: u.is_verified ?? true,
     createdAt: u.created_at,
-    lastLoginAt: u.last_login_at,
+    lastLoginAt: u.updated_at,
   }));
 }
 
 export async function adminLogin(email: string, passwordInput: string): Promise<{ user: AdminUser; token: string }> {
-  // Support quick moderator access password
-  if (passwordInput === 'moderador123' || passwordInput === 'admin123') {
-    const user: AdminUser = {
-      id: 'session-mod',
-      email: email || 'moderador@lorspi.com',
-      name: 'Moderador',
-      role: 'ADMIN',
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
-    const token = 'ahf_token_' + Date.now();
-    return { user, token };
+  // 1. Intentar inicio de sesión nativo con Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password: passwordInput,
+  });
+
+  if (authError || !authData.user) {
+    // Si falla la autenticación de Supabase, probar clave de paso temporal de acceso de moderación
+    if (passwordInput === 'moderador123' || passwordInput === 'admin123') {
+      const fallbackUser: AdminUser = {
+        id: 'session-mod',
+        email: email || 'moderador@aquihacefalta.com',
+        name: 'Moderador de Emergencia',
+        role: 'ADMIN',
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      const token = 'ahf_token_' + Date.now();
+      return { user: fallbackUser, token };
+    }
+    throw new Error(authError?.message || 'Correo o contraseña incorrectos.');
   }
 
-  // Database user lookup
-  const { data: userRow } = await supabase.from('users').select('*').eq('email', email.trim().toLowerCase()).single();
-  if (!userRow) {
-    throw new Error('Usuario o contraseña incorrectos.');
+  // 2. Consultar el perfil en public.profiles para verificar rol y estado
+  const profile = await fetchUserProfile(authData.user.id);
+  const roleUpper = (profile?.role || authData.user.user_metadata?.role || '').toString().toUpperCase();
+
+  const isModeratorOrAdmin = roleUpper === 'ADMIN' || roleUpper === 'MODERADOR' || roleUpper === 'MODERATOR';
+
+  if (!isModeratorOrAdmin) {
+    throw new Error('No tienes permisos de moderación o administración.');
   }
 
-  if (!userRow.active) {
-    throw new Error('Esta cuenta ha sido desactivada por el administrador.');
-  }
-
-  const user: AdminUser = {
-    id: userRow.id,
-    email: userRow.email,
-    name: userRow.name,
-    role: userRow.role,
-    active: userRow.active,
-    createdAt: userRow.created_at,
-    lastLoginAt: userRow.last_login_at,
+  const userObj: AdminUser = {
+    id: authData.user.id,
+    email: authData.user.email || email,
+    name: profile?.full_name || authData.user.user_metadata?.full_name || 'Moderador',
+    role: roleUpper.includes('ADMIN') ? 'ADMIN' : 'MODERATOR',
+    active: true,
+    createdAt: profile?.created_at || authData.user.created_at,
+    lastLoginAt: new Date().toISOString(),
   };
-  const token = 'ahf_session_' + userRow.id + '_' + Date.now();
 
-  // Update last login
-  await supabase.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', userRow.id);
+  const token = authData.session?.access_token || ('ahf_session_' + authData.user.id);
 
-  return { user, token };
+  return { user: userObj, token };
 }
 
 export async function createAdminUser(data: { email: string; name: string; password: string; role: 'ADMIN' | 'MODERATOR' }): Promise<AdminUser> {
-  const { data: inserted, error } = await supabase.from('users').insert([
-    {
-      email: data.email.trim().toLowerCase(),
-      name: data.name.trim(),
-      password_hash: data.password.trim(),
-      role: data.role,
-      active: true,
-      created_at: new Date().toISOString(),
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: data.email.trim(),
+    password: data.password.trim(),
+    options: {
+      data: {
+        full_name: data.name.trim(),
+        role: data.role.toLowerCase(),
+      },
     },
-  ]).select().single();
+  });
 
-  if (error) throw error;
+  if (authError || !authData.user) throw authError || new Error('No se pudo crear el usuario.');
+
+  await upsertUserProfile({
+    id: authData.user.id,
+    email: data.email,
+    full_name: data.name,
+    role: data.role.toLowerCase(),
+  });
+
   return {
-    id: inserted.id,
-    email: inserted.email,
-    name: inserted.name,
-    role: inserted.role,
-    active: inserted.active,
-    createdAt: inserted.created_at,
+    id: authData.user.id,
+    email: data.email,
+    name: data.name,
+    role: data.role,
+    active: true,
+    createdAt: new Date().toISOString(),
   };
 }
 
 export async function updateAdminUserStatus(userId: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from('users').update({ active }).eq('id', userId);
+  const { error } = await supabase.from('profiles').update({ is_verified: active }).eq('id', userId);
   if (error) throw error;
 }
 
 export async function updateAdminUser(userId: string, updates: Partial<{ name: string; role: string; password_hash: string }>): Promise<void> {
-  const { error } = await supabase.from('users').update(updates).eq('id', userId);
+  const payload: Record<string, any> = {};
+  if (updates.name) payload.full_name = updates.name;
+  if (updates.role) payload.role = updates.role.toLowerCase();
+  
+  const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
   if (error) throw error;
 }
 
 export async function deleteAdminUser(userId: string): Promise<void> {
-  const { error } = await supabase.from('users').delete().eq('id', userId);
+  const { error } = await supabase.from('profiles').delete().eq('id', userId);
   if (error) throw error;
 }
 
