@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, Info } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from '../../../../i18n/LanguageContext';
+import { Turnstile } from '../../../../components/Turnstile';
 
 interface Step1AccountAuthProps {
   firstName: string;
@@ -8,7 +9,8 @@ interface Step1AccountAuthProps {
   email: string;
   password: string;
   confirmPassword: string;
-  captchaVerified: boolean;
+  /** Token string from Turnstile (empty string = not verified) */
+  captchaToken: string;
   acceptTerms: boolean;
   isSubmitting?: boolean;
   errors?: {
@@ -17,7 +19,7 @@ interface Step1AccountAuthProps {
     email?: string;
     password?: string;
     confirmPassword?: string;
-    captchaVerified?: string;
+    captchaToken?: string;
     acceptTerms?: string;
   };
   onChangeFirstName: (val: string) => void;
@@ -25,7 +27,8 @@ interface Step1AccountAuthProps {
   onChangeEmail: (val: string) => void;
   onChangePassword: (val: string) => void;
   onChangeConfirmPassword: (val: string) => void;
-  onChangeCaptchaVerified: (val: boolean) => void;
+  onCaptchaVerify: (token: string) => void;
+  onCaptchaExpire: () => void;
   onChangeAcceptTerms: (val: boolean) => void;
 }
 
@@ -35,7 +38,7 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
   email,
   password,
   confirmPassword,
-  captchaVerified,
+  captchaToken,
   acceptTerms,
   isSubmitting = false,
   errors,
@@ -44,7 +47,8 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
   onChangeEmail,
   onChangePassword,
   onChangeConfirmPassword,
-  onChangeCaptchaVerified,
+  onCaptchaVerify,
+  onCaptchaExpire,
   onChangeAcceptTerms,
 }) => {
   const { t } = useTranslation();
@@ -222,36 +226,20 @@ export const Step1AccountAuth: React.FC<Step1AccountAuthProps> = ({
           )}
         </div>
 
-        {/* Widget Captcha (Cloudflare Turnstile) */}
+        {/* Cloudflare Turnstile (interaction-only: invisible hasta que sea necesario) */}
         <div className="pt-2">
-          <div className={`rounded-2xl border ${errors?.captchaVerified ? 'border-red-400 bg-red-50/20' : 'border-slate-200 bg-slate-50/40'} overflow-hidden shadow-2xs transition-all`}>
-            <div className="p-4 flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="captcha-check"
-                checked={captchaVerified}
-                onChange={(e) => onChangeCaptchaVerified(e.target.checked)}
-                disabled={isSubmitting}
-                className="w-6 h-6 rounded-md border-2 border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
-              />
-              <label htmlFor="captcha-check" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">
-                {t('authStep1CaptchaLabel')}
-              </label>
-            </div>
-            <div className="bg-slate-100/80 px-4 py-2 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-1.5">
-                {/* Cloudflare SVG logo */}
-                <svg className="w-4 h-4 text-amber-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
-                </svg>
-                <span className="font-medium text-slate-600 text-[11px]">Cloudflare Turnstile</span>
-              </div>
-              <Info className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-pointer" />
-            </div>
-          </div>
-          {errors?.captchaVerified && (
+          <Turnstile
+            onVerify={onCaptchaVerify}
+            onError={onCaptchaExpire}
+            onExpire={onCaptchaExpire}
+            appearance="always"
+            size="flexible"
+            theme="light"
+            language="es"
+          />
+          {errors?.captchaToken && (
             <p className="text-xs text-red-600 font-semibold mt-1">
-              {errors.captchaVerified}
+              {errors.captchaToken}
             </p>
           )}
         </div>

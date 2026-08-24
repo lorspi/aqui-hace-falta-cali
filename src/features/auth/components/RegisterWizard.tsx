@@ -84,7 +84,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       email: '',
       password: '',
       confirmPassword: '',
-      captchaVerified: false,
+      captchaToken: '',
       acceptTerms: false,
     },
     mode: 'onTouched',
@@ -120,7 +120,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const email: string = watch('email');
   const password: string = watch('password');
   const confirmPassword: string = watch('confirmPassword');
-  const captchaVerified: boolean = watch('captchaVerified');
+  const captchaToken: string = watch('captchaToken');
   const acceptTerms: boolean = watch('acceptTerms');
 
   // Determinar el tipo de flujo y número de pasos totales
@@ -136,7 +136,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
     if (currentStep === 1) {
       // Paso 1: Autenticación, Nombres, Apellidos, Claves, Captcha y Términos
-      clearErrors(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'captchaVerified', 'acceptTerms']);
+      clearErrors(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'captchaToken', 'acceptTerms']);
       let localValid = true;
 
       if (!firstName?.trim() || firstName.trim().length < 2) {
@@ -170,8 +170,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         localValid = false;
       }
 
-      if (!captchaVerified) {
-        setError('captchaVerified', { type: 'manual', message: 'Por favor confirma que no eres un robot' });
+      if (!captchaToken) {
+        setError('captchaToken', { type: 'manual', message: 'Por favor confirma que no eres un robot' });
         localValid = false;
       }
 
@@ -476,7 +476,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 email={email}
                 password={password}
                 confirmPassword={confirmPassword}
-                captchaVerified={captchaVerified}
+                captchaToken={captchaToken}
                 acceptTerms={acceptTerms}
                 isSubmitting={isSubmitting}
                 errors={{
@@ -485,7 +485,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   email: errStr(errors.email),
                   password: errStr(errors.password),
                   confirmPassword: errStr(errors.confirmPassword),
-                  captchaVerified: errStr(errors.captchaVerified),
+                  captchaToken: errStr(errors.captchaToken),
                   acceptTerms: errStr(errors.acceptTerms),
                 }}
                 onChangeFirstName={(val) => setValue('firstName', val, { shouldValidate: true })}
@@ -493,7 +493,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
                 onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
                 onChangeConfirmPassword={(val) => setValue('confirmPassword', val, { shouldValidate: true })}
-                onChangeCaptchaVerified={(val) => setValue('captchaVerified', val, { shouldValidate: true })}
+                onCaptchaVerify={(token) => setValue('captchaToken', token, { shouldValidate: true })}
+                onCaptchaExpire={() => setValue('captchaToken', '', { shouldValidate: true })}
                 onChangeAcceptTerms={(val) => setValue('acceptTerms', val, { shouldValidate: true })}
               />
             )}
