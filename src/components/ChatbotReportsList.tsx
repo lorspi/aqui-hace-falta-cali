@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Hash,
+  Eye,
 } from 'lucide-react';
 import { Need, PlaceType, Priority } from '../types';
 import {
@@ -47,6 +48,7 @@ import {
   VERIFICATION_CONFIG,
   getCategoryLabel,
 } from '../utils/formatters';
+import { ChatbotReportDetail } from './ChatbotReportDetail';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface ChatbotReportsListProps {
@@ -108,7 +110,13 @@ function CategoriesText({ need }: { need: Need }) {
 }
 
 /** Tarjeta de un reporte del chatbot (tolerante a campos opcionales ausentes). */
-function ChatbotReportCard({ report }: { report: Need }) {
+function ChatbotReportCard({
+  report,
+  onOpenDetail,
+}: {
+  report: Need;
+  onOpenDetail: (report: Need) => void;
+}) {
   const { language, t } = useTranslation();
   const contact = report.contactWhatsapp || report.contactPhone || '';
   const title = report.title?.trim() || t('chatbotReportsNoTitle');
@@ -127,7 +135,18 @@ function ChatbotReportCard({ report }: { report: Need }) {
       : enrichment || null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenDetail(report)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpenDetail(report);
+        }
+      }}
+      className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+    >
       {/* Fila superior: badges */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -192,6 +211,21 @@ function ChatbotReportCard({ report }: { report: Need }) {
           )}
         </div>
       )}
+
+      {/* Acción: abrir el detalle (US-6) */}
+      <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetail(report);
+          }}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>{t('chatbotReportsShowDetail')}</span>
+        </button>
+        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+      </div>
     </div>
   );
 }
@@ -212,6 +246,9 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
   const [sortBy, setSortBy] = useState<ChatbotSortOption>('RECENT');
   const [error, setError] = useState<boolean>(false);
   const [retryKey, setRetryKey] = useState(0);
+  // Detalle del reporte del chatbot (US-6): cuando hay un reporte seleccionado
+  // se muestra la pantalla de detalle en lugar del listado.
+  const [selectedReport, setSelectedReport] = useState<Need | null>(null);
 
   const { chatbotReports, loading, pendingCount, refetch } = useChatbotReports({
     verificationStatus: verificationFilter,
@@ -240,6 +277,22 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
   };
 
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
+
+  // Pantalla de detalle (US-6): al abrir un reporte se muestra la conversación
+  // formateada + panel de validación, en lugar del listado.
+  if (selectedReport) {
+    return (
+      <ChatbotReportDetail
+        needId={selectedReport.id}
+        need={{
+          locationEnrichmentStatus: selectedReport.locationEnrichmentStatus ?? null,
+          latitude: selectedReport.latitude ?? null,
+          longitude: selectedReport.longitude ?? null,
+        }}
+        onClose={() => setSelectedReport(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -404,7 +457,11 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
       ) : (
         <div className="space-y-3">
           {chatbotReports.map((report) => (
-            <ChatbotReportCard key={report.id} report={report} />
+            <ChatbotReportCard
+              key={report.id}
+              report={report}
+              onOpenDetail={setSelectedReport}
+            />
           ))}
           <div className="flex items-center justify-center text-[11px] text-slate-400 pt-2">
             <ChevronRight className="w-3 h-3" />
