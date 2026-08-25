@@ -164,6 +164,12 @@ export const VERIFICATION_CONFIG: Record<
     icon: '⚠️',
     description: 'Reportada por usuarios como posiblemente desactualizada o incorrecta.',
   },
+  REJECTED: {
+    label: 'Rechazada',
+    badgeClass: 'text-red-700 bg-red-50 border-red-200 font-bold uppercase text-[10px]',
+    icon: '✕',
+    description: 'Descartada por el moderador (US-4). El registro permanece en needs para trazabilidad pero se excluye de las vistas públicas.',
+  },
   ARCHIVED: {
     label: 'Archivada',
     badgeClass: 'text-slate-400 bg-slate-100 border-slate-200 font-medium uppercase text-[10px]',

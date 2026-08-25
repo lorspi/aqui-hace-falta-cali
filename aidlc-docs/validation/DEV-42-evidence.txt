@@ -1,0 +1,127 @@
+############################################################
+# DEV-42 — US-3: Endpoint de reconstrucción de conversación
+# Fecha: 2026-08-24T19:22:00Z
+# Rama: agent/DEV-42
+# Endpoints reales (Deno): http://127.0.0.1:8000/functions/v1/webhook | http://127.0.0.1:8001/functions/v1/conversation
+############################################################
+
+=== 1. Siembra: conversación dev42_conv_full (mensajes variados) ===
+
+--- 1a. message.received texto (recibido 10:01Z)
+{"ok":true,"status":"accepted","event_id":"dev42_m1","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"29fc6bee-d303-47e2-ba8c-3c09a2b86285","event_id":"dev42_m1","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.859+00:00","created_at":"2026-08-24T19:22:00.859+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"AWAITING_LOCATION","contribution":"LOCATION","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- 1b. message.received imagen (recibido 10:02Z)
+{"ok":true,"status":"accepted","event_id":"dev42_m2","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"dca93aea-06a4-462b-95cf-1c86113b1cd4","event_id":"dev42_m2","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.887+00:00","created_at":"2026-08-24T19:22:00.887+00:00"},"mapping":{"result":"mapped","message_type":"IMAGE","workflow_step":"AWAITING_DETAILS","contribution":"DETAILS","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- 1c. message.received ubicación (recibido 10:03Z)
+{"ok":true,"status":"accepted","event_id":"dev42_m3","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a63a0115-1bcf-4b85-b055-d97a629f2e2f","event_id":"dev42_m3","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.899+00:00","created_at":"2026-08-24T19:22:00.899+00:00"},"mapping":{"result":"mapped","message_type":"LOCATION","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":false}}
+    HTTP 200
+
+
+--- 1d. message.received tipo desconocido (recibido 10:04Z)
+{"ok":true,"status":"accepted","event_id":"dev42_m4","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"4b0f54aa-6e53-4f44-9652-a8d6b0adc39c","event_id":"dev42_m4","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.91+00:00","created_at":"2026-08-24T19:22:00.91+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- 1e. evento de completado -> crea el need
+{"ok":true,"status":"accepted","event_id":"dev42_comp","type":"conversation_completed","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a0d716aa-25f8-4f69-93ee-0835088e9ca2","event_id":"dev42_comp","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.921+00:00","created_at":"2026-08-24T19:22:00.921+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"COMPLETED","contribution":"COMPLETION","builds_incident":false,"incident_ready":true,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true},"incident":{"outcome":"created","id":"cad7b719-486c-4d1c-b3b1-74a3381c8963","conversation_id":"dev42_conv_full","source_event_id":"dev42_comp","title":"Necesito agua potable","description":"Necesito agua potable | Te adjunto la foto del daño | Estoy aquí | Mensaje raro","source":"WhatsApp","contact_whatsapp":"573001234567","address":"Calle 5 #10-20","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","latitude":3.4516,"longitude":-76.532,"city_id":"cali","location_enrichment_status":"RESOLVED"}}
+    HTTP 200
+
+
+--- id del need creado para dev42_conv_full:
+    cad7b719-486c-4d1c-b3b1-74a3381c8963
+
+=== 2. GET /needs/{id}/conversation (reconstrucción ordenada + datos del incidente) ===
+
+--- GET /needs/cad7b719-486c-4d1c-b3b1-74a3381c8963/conversation
+{"conversation_id":"dev42_conv_full","has_need":true,"need":{"id":"cad7b719-486c-4d1c-b3b1-74a3381c8963","title":"Necesito agua potable","description":"Necesito agua potable | Te adjunto la foto del daño | Estoy aquí | Mensaje raro","contact_whatsapp":"573001234567","address":"Calle 5 #10-20","neighborhood":"Por confirmar","priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","conversation_id":"dev42_conv_full","source_event_id":"dev42_comp"},"messages":[{"event_id":"dev42_m1","sender":"573001234567","content":"Necesito agua potable","type":"TEXT","attachments":[],"received_at":"2026-08-24T19:22:00.859+00:00"},{"event_id":"dev42_m2","sender":"573001234567","content":"Te adjunto la foto del daño","type":"IMAGE","attachments":[{"type":"image","url":"https://media.example.com/foto.jpg","mime":"image/jpeg"}],"received_at":"2026-08-24T19:22:00.887+00:00"},{"event_id":"dev42_m3","sender":"573001234567","content":"Estoy aquí","type":"LOCATION","attachments":[{"type":"location","latitude":3.4516,"longitude":-76.532,"address":"Calle 5 #10-20"}],"received_at":"2026-08-24T19:22:00.899+00:00"},{"event_id":"dev42_m4","sender":"573001234567","content":"Mensaje raro","type":"UNKNOWN","attachments":[],"received_at":"2026-08-24T19:22:00.91+00:00"}]}
+    HTTP 200
+
+
+--- Verificación en BD: filas de ingest_responses ordenadas por received_at
+dev42_m1|TEXT|2026-08-24 19:22:00.859+00
+dev42_m2|IMAGE|2026-08-24 19:22:00.887+00
+dev42_m3|LOCATION|2026-08-24 19:22:00.899+00
+dev42_m4|UNKNOWN|2026-08-24 19:22:00.91+00
+dev42_comp|UNKNOWN|2026-08-24 19:22:00.921+00
+
+=== 3. Conversación dev42_conv_ongoing SIN evento de completado ===
+
+--- 3a. message.received en curso
+{"ok":true,"status":"accepted","event_id":"dev42_o1","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"6a14d31c-c87a-469f-9f80-cf5fee62bfc8","event_id":"dev42_o1","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:01.042+00:00","created_at":"2026-08-24T19:22:01.042+00:00"},"mapping":{"result":"mapped","message_type":"TEXT","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- GET ?conversation_id=dev42_conv_ongoing (has_need=false, mensajes disponibles)
+{"conversation_id":"dev42_conv_ongoing","has_need":false,"need":null,"messages":[{"event_id":"dev42_o1","sender":"573001234567","content":"Estamos atrapados en el 5to piso","type":"TEXT","attachments":[],"received_at":"2026-08-24T19:22:01.042+00:00"}]}
+    HTTP 200
+
+
+=== 9. Conversación dev42_conv_tol: fila con campos faltantes (sin body/from) ===
+--- El webhook rechaza el evento con 400 (no se persiste):
+
+--- 9a. mensaje sin body ni from -> 400 validation_failed (borde correcto)
+{"code":"validation_failed","message":"Estructura mínima inválida. Campos faltantes o con formato inválido.","details":{"issues":[{"path":["body"],"message":"body: campo requerido (en data.body o body)."}]}}
+    HTTP 400
+
+--- Una fila malformada SÍ puede existir en ingest_responses (p. ej. insertada
+--- por una ruta anterior del pipeline); la reconstrucción NO la pierde:
+INSERT 0 1
+    fila insertada vía SQL
+
+--- GET ?conversation_id=dev42_conv_tol (content por defecto, sender null, auditoría)
+{"conversation_id":"dev42_conv_tol","has_need":false,"need":null,"messages":[{"event_id":"dev42_t1","sender":null,"content":"Solicitud de ayuda vía WhatsApp","type":"UNKNOWN","attachments":[],"received_at":"2026-08-24T19:22:01.203444+00:00"}]}
+    HTTP 200
+
+
+=== 7. Conversación dev42_conv_locnc: ubicación sin coordenadas ===
+
+--- 7a. message.received location con address solamente
+{"ok":true,"status":"accepted","event_id":"dev42_lnc1","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"f9ea6f39-7cd6-446d-a7bf-6f1cb90b5bd0","event_id":"dev42_lnc1","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:01.122+00:00","created_at":"2026-08-24T19:22:01.122+00:00"},"mapping":{"result":"mapped","message_type":"LOCATION","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- 7b. mensaje normal posterior
+{"ok":true,"status":"accepted","event_id":"dev42_lnc2","type":"message.received","message":"Evento aceptado.","persisted":true,"duplicate":false,"record":{"id":"a6ded500-edc9-43c0-8361-085ecbfcf86e","event_id":"dev42_lnc2","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:01.132+00:00","created_at":"2026-08-24T19:22:01.132+00:00"},"mapping":{"result":"mapped","message_type":"UNKNOWN","workflow_step":"UNKNOWN","contribution":"UNKNOWN","builds_incident":true,"incident_ready":false,"priority":"MEDIUM","status":"NEED_HELP_NOW","verification_status":"PENDING_VERIFICATION","source":"WhatsApp","contact_whatsapp":"573001234567","location_pending_geocoding":true}}
+    HTTP 200
+
+
+--- GET ?conversation_id=dev42_conv_locnc (adjunto location sin coords + resto intacto)
+{"conversation_id":"dev42_conv_locnc","has_need":false,"need":null,"messages":[{"event_id":"dev42_lnc1","sender":"573001234567","content":"Estoy en San Fernando","type":"LOCATION","attachments":[{"type":"location","address":"San Fernando"}],"received_at":"2026-08-24T19:22:01.122+00:00"},{"event_id":"dev42_lnc2","sender":"573001234567","content":"Otro mensaje normal","type":"UNKNOWN","attachments":[],"received_at":"2026-08-24T19:22:01.132+00:00"}]}
+    HTTP 200
+
+
+=== 10. Reenvío del mismo event.id -> una sola fila en ingest ===
+
+--- 10a. reenvío del event.id dev42_m1 (debe responder 409 duplicate_event)
+{"code":"duplicate_event","message":"El evento con event.id 'dev42_m1' ya fue recibido. No se creó un duplicado.","details":{"event_id":"dev42_m1","type":"message.received","record":{"id":"29fc6bee-d303-47e2-ba8c-3c09a2b86285","event_id":"dev42_m1","processing_status":"RECEIVED","received_at":"2026-08-24T19:22:00.859+00:00","created_at":"2026-08-24T19:22:00.859+00:00"}}}
+    HTTP 409
+
+--- nº de filas para event_id dev42_m1 (debe ser 1):
+1
+
+=== 12. need.id inexistente -> 404 need_not_found ===
+
+--- GET /needs/need_999/conversation
+{"code":"need_not_found","message":"No existe un need con id 'need_999'.","details":{"need_id":"need_999"}}
+    HTTP 404
+
+
+=== 13. Conversación sin mensajes -> lista vacía (contrato intacto) ===
+
+--- GET ?conversation_id=dev42_conv_vacia
+{"conversation_id":"dev42_conv_vacia","has_need":false,"need":null,"messages":[]}
+    HTTP 200
+
+
+=== Limpieza de datos de prueba dev42_% ===
+DELETE 1
+DELETE 9
+needs restantes con prefijo dev42: 0
+ingest restantes con prefijo dev42: 0
+
+=== Fin de la batería de evidencia DEV-42 ===

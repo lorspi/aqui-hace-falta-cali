@@ -40,6 +40,7 @@ import { PublicEditOfferModal } from "./PublicEditOfferModal";
 import { PublicEditModal } from "./PublicEditModal";
 import { NeedDetailModal } from "./NeedDetailModal";
 import { OfferDetailModal } from "./OfferDetailModal";
+import { ChatbotReportsList } from "./ChatbotReportsList";
 import {
   useNeeds,
   useOffers,
@@ -79,7 +80,7 @@ export const AdminPanelPage: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
-    "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS"
+    "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS" | "CHATBOT"
   >("PENDING");
 
   // Search & Filters
@@ -132,6 +133,10 @@ export const AdminPanelPage: React.FC = () => {
   const pendingNeeds = needs.filter((n) => n.verificationStatus === "PENDING_VERIFICATION");
   const pendingOffers = offers.filter((o) => o.verificationStatus === "PENDING_VERIFICATION");
   const pendingReports = reports.filter((r) => r.status === "PENDING");
+  // Reportes del chatbot (US-5) pendientes de verificación: needs con source = 'WhatsApp'.
+  const chatbotPendingCount = needs.filter(
+    (n) => (n.source || "").toLowerCase() === "whatsapp" && n.verificationStatus === "PENDING_VERIFICATION"
+  ).length;
 
   // Load admin reports & users
   const loadData = async () => {
@@ -476,6 +481,23 @@ export const AdminPanelPage: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('CHATBOT')}
+            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
+              activeTab === 'CHATBOT'
+                ? 'bg-white text-emerald-600 border-t-2 border-emerald-600 shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Reportes del Chatbot</span>
+            {chatbotPendingCount > 0 && (
+              <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                {chatbotPendingCount}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('ALL')}
             className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'ALL'
@@ -674,6 +696,13 @@ export const AdminPanelPage: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 2.5: CHATBOT REPORTS (US-5) */}
+        {activeTab === 'CHATBOT' && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+            <ChatbotReportsList operator={currentUser} />
           </div>
         )}
 

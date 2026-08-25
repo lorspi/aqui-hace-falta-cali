@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase, dbNeedToNeed, dbOfferToOffer, needToDbNeed, offerToDbOffer } from './supabaseClient';
-import { FilterState, Need, NeedStatus, Offer, OfferStatus, Priority } from '../types';
+import { FilterState, Need, NeedStatus, Offer, OfferStatus, PlaceType, Priority } from '../types';
 import { ALL_COLOMBIA_ID } from '../data/colombiaCities';
+import {
+  filterChatbotReports,
+  countPendingChatbotReports,
+  type ChatbotVerificationFilter,
+  type ChatbotSortOption,
+} from '../utils/chatbotReportUtils';
 
 export interface AdminReport {
   id: string;
@@ -121,6 +127,58 @@ export function useNeeds(filters: FilterState, selectedCityId: string) {
   return { needs, loading, refetch: fetchNeeds };
 }
 
+// ==========================================
+// CHATBOT REPORTS (US-5) — reportes del chatbot (needs con source = 'WhatsApp')
+// ==========================================
+
+export type { ChatbotVerificationFilter, ChatbotSortOption };
+
+/**
+ * Carga los reportes del chatbot: registros en `needs` con `source = 'WhatsApp'`
+ * (US-5). Reutiliza la lectura de `needs` del frontend (`useNeeds`) y delega el
+ * filtrado/orden en la lógica pura `filterChatbotReports` (NFR-4, testeable).
+ *
+ * La UI no interpreta `raw_event` crudos: solo lee los datos ya persistidos por
+ * el receptor (S1/S5): `contact_whatsapp`, `title`/`categories`/`place_type`,
+ * `verification_status`, `priority`, `created_at`, `source_event_id`,
+ * `conversation_id` y `location_enrichment_status`.
+ */
+export function useChatbotReports(opts: {
+  verificationStatus: ChatbotVerificationFilter;
+  priority: Priority | 'ALL';
+  placeType: PlaceType | 'ALL';
+  sortBy?: ChatbotSortOption;
+}) {
+  // `useNeeds` se usa con includeArchived=true para leer TODOS los estados
+  // (incluido REJECTED y ARCHIVED). El filtro de fuente (source = WhatsApp) y
+  // los filtros de la pantalla se aplican en cliente: el total de reportes del
+  // chatbot suele ser acotado y reutiliza la lectura existente del frontend.
+  const filters: FilterState = {
+    search: '',
+    categories: [],
+    priority: 'ALL',
+    placeType: 'ALL',
+    status: 'ALL',
+    verificationStatus: 'ALL',
+    distanceKm: null,
+    userLat: null,
+    userLng: null,
+    sortBy: 'RECENT',
+    viewMode: 'NEEDS',
+    includeArchived: true,
+  };
+  const { needs, loading, refetch } = useNeeds(filters, 'ALL_COLOMBIA');
+
+  const chatbotReports = useMemo(
+    () => filterChatbotReports(needs, opts),
+    [needs, opts.verificationStatus, opts.priority, opts.placeType, opts.sortBy]
+  );
+
+  const pendingCount = useMemo(() => countPendingChatbotReports(needs), [needs]);
+
+  return { chatbotReports, loading, pendingCount, refetch };
+}
+
 export function useOffers(filters: FilterState, selectedCityId: string) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -224,6 +282,119 @@ export async function getNeedById(id: string): Promise<Need | null> {
   const { data, error } = await supabase.from('needs').select('*').eq('id', id).single();
   if (error || !data) return null;
   return dbNeedToNeed(data);
+}
+
+// ==========================================
+// RECONSTRUCCIÓN DE CONVERSACIÓN (US-6)
+// ==========================================
+
+/**
+ * Tipos del contrato US-3 (`GET /needs/{id}/conversation`). El frontend NO
+ * interpreta `raw_event`: recibe mensajes normalizados al formato uniforme y
+ * los datos ya mapeados del incidente.
+ */
+export interface ConversationAttachment {
+  type: 'image' | 'location';
+  url?: string;
+  mime?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+}
+
+export interface ConversationMessage {
+  event_id: string;
+  sender: string | null;
+  content: string;
+  type: string;
+  attachments: ConversationAttachment[];
+  received_at: string;
+}
+
+export interface ConversationNeedSummary {
+  id: string;
+  title: string;
+  description: string;
+  contact_whatsapp: string | null;
+  address: string;
+  neighborhood: string;
+  priority: string;
+  status: string;
+  verification_status: string;
+  // Trazabilidad de la revisión (US-4): quién y cuándo aprobó/rechazó (US-7).
+  verified_by?: string | null;
+  verified_at?: string | null;
+  verification_notes?: string | null;
+  conversation_id: string | null;
+  source_event_id: string | null;
+}
+
+export interface ConversationRebuild {
+  conversation_id: string | null;
+  has_need: boolean;
+  need: ConversationNeedSummary | null;
+  messages: ConversationMessage[];
+}
+
+/** Error estructurado que devuelve la Edge Function `conversation` (US-3). */
+export interface ConversationError {
+  code?: string;
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Consulta `GET {SUPABASE_URL}/functions/v1/conversation/needs/{id}` (US-3).
+ *
+ * En el entorno local (supabase functions serve) la base es
+ * `http://127.0.0.1:54341/functions/v1/conversation`; la función usa la misma
+ * URL de Supabase configurada en el frontend (`VITE_SUPABASE_URL`) para no
+ * depender de un host separado. Devuelve el rebuild normalizado o lanza un
+ * error tipado con `code` (p. ej. `need_not_found`) cuando el need no existe.
+ */
+export async function fetchConversationByNeedId(
+  needId: string,
+): Promise<ConversationRebuild> {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string) || '';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  // Ruta canónica del contrato US-3: GET /needs/{id}/conversation (con el
+  // prefijo /functions/v1/conversation que inyecta Supabase). El handler
+  // espera el sufijo "/conversation" para resolver el need por path.
+  const url = `${base.replace(/\/$/, '')}/functions/v1/conversation/needs/${encodeURIComponent(needId)}/conversation`;
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Las Edge Functions de Supabase (verify_jwt=true por defecto) requieren un
+  // JWT válido en la cabecera `apikey` (la anon key pública lo es). Esto hace
+  // que el frontend público pueda consultar el endpoint de reconstrucción
+  // (US-3) sin exponer el service role.
+  if (anonKey) {
+    headers['apikey'] = anonKey;
+    headers['Authorization'] = `Bearer ${anonKey}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+  } catch (err) {
+    throw new Error(
+      `No se pudo contactar el endpoint de reconstrucción de conversación (US-3): ${(err as Error)?.message || String(err)}`,
+    );
+  }
+
+  const body = (await res.json().catch(() => ({}))) as ConversationRebuild & ConversationError;
+
+  if (!res.ok) {
+    const code = (body as ConversationError).code || `http_${res.status}`;
+    const err = new Error((body as ConversationError).message || `Error ${res.status}`);
+    (err as Error & { code?: string }).code = code;
+    (err as Error & { status?: number }).status = res.status;
+    throw err;
+  }
+
+  return body as ConversationRebuild;
 }
 
 export async function getOfferById(id: string): Promise<Offer | null> {

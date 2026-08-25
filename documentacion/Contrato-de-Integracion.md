@@ -356,6 +356,89 @@ Estados de `location_enrichment_status`:
 
 ---
 
+## 8.1 Revisión de necesidades (US-4)
+
+El operador/moderador aprueba o rechaza un reporte **ya revisado** (un need con
+`verification_status = PENDING_VERIFICATION`) mediante el endpoint de revisión:
+
+| Entorno | URL |
+|---------|-----|
+| Producción | `POST https://<project-ref>.supabase.co/functions/v1/review` |
+| Local (Supabase CLI) | `POST http://127.0.0.1:54341/functions/v1/review` |
+
+**Cuerpo de la solicitud:**
+
+```json
+{
+  "need_id": "…uuid del need…",
+  "decision": "aprobar",
+  "verified_by": "operador@radar.local",
+  "notes": "Verificado en terreno por voluntarios de la Cruz Roja"
+}
+```
+
+| Campo | Tipo | ¿Requerido? | Descripción |
+|-------|------|-------------|-------------|
+| `need_id` | `string` | ✅ | Id del need a revisar (UUID). |
+| `decision` | `string` | ✅ | `aprobar` / `approve` (→ `VERIFIED`) o `rechazar` / `reject` (→ `REJECTED`). |
+| `verified_by` | `string` | ✅ | Identificación del operador que toma la decisión (trazabilidad de quién revisó). |
+| `notes` | `string` | — | Motivo / nota opcional de la decisión. |
+
+**Transiciones:**
+
+| Decisión | `verification_status` destino | Nota de dominio |
+|----------|-------------------------------|-----------------|
+| `aprobar` / `approve` | `VERIFIED` | El need cuenta como **necesidad real** para el resto del sistema. |
+| `rechazar` / `reject` | `REJECTED` | El registro **permanece** en `needs` para trazabilidad pero se **excluye** de las vistas/consultas de necesidades "oficiales". |
+
+En ambos casos se guarda `verified_by` (quién), `verified_at` (cuándo) y,
+opcionalmente, `verification_notes` (motivo). **Rechazar sin motivo es válido**
+(`verification_notes` queda vacío/nulo).
+
+**Respuesta 200 — revisión aplicada:**
+
+```json
+{
+  "ok": true,
+  "status": "reviewed",
+  "decision": "approve",
+  "need": {
+    "id": "…uuid…",
+    "title": "Necesito agua potable en mi barrio",
+    "description": "Necesito agua potable en mi barrio",
+    "source": "WhatsApp",
+    "contact_whatsapp": "573001234567",
+    "conversation_id": "conv_001",
+    "source_event_id": "evt_c1",
+    "verification_status": "VERIFIED",
+    "verified_by": "operador@radar.local",
+    "verified_at": "…",
+    "verification_notes": "Verificado en terreno por voluntarios de la Cruz Roja",
+    "last_updated_by": "operador@radar.local",
+    "updated_at": "…"
+  }
+}
+```
+
+**Errores específicos del endpoint de revisión:**
+
+| HTTP | `code` | ¿Cuándo aplica? |
+|------|--------|-----------------|
+| `400` | `invalid_decision` | La `decision` no es "aprobar"/"rechazar" (ni su forma en inglés). El registro **no se modifica**. |
+| `400` | `missing_operator` | Falta `verified_by` (operador no identificado). El registro **no se modifica**. |
+| `404` | `need_not_found` | El `need_id` no existe (o no es un UUID válido). No se modifica ningún registro. |
+| `409` | `invalid_verification_status` | El need tiene `verification_status` distinto de `PENDING_VERIFICATION` (p. ej. ya `VERIFIED`/`REJECTED`). Informa el estado actual en `details.current_status` y **no modifica** el registro. |
+| `500` | `review_failed` | Error interno al aplicar la revisión. Error genérico (sin detalles internos). |
+
+> ⚠️ **Nota de dominio**: el frontend actual tipa
+> `VerificationStatus = VERIFIED | PENDING_VERIFICATION | REPORTED | ARCHIVED`
+> (sin `REJECTED`). US-4 asume `REJECTED` tal como pide la card. Al consumir
+> este endpoint, el frontend deberá agregar `REJECTED` al enum/filtros (o
+> mapearlo a `ARCHIVED`, que el resto del sistema ya reconoce como "descartado
+> por moderador").
+
+---
+
 ## 9. Autenticación (deuda de seguridad)
 
 > ⚠️ **NOTA EXPLÍCITA**: actualmente la autenticación del webhook está
@@ -406,5 +489,7 @@ Esto garantiza trazabilidad y permite reproducir el procesamiento.
 | Evento de completado → incidente | `supabase/functions/_shared/incident-builder.ts`, `completion-service.ts` |
 | Geocoding / detección de ciudad | `supabase/functions/_shared/geocoding.ts` |
 | Endpoint HTTP | `supabase/functions/webhook/handler.ts` |
+| Reconstrucción de conversación | `supabase/functions/conversation/handler.ts`, `_shared/conversation-rebuilder.ts` |
+| Transición de revisión (US-4) | `supabase/functions/review/handler.ts`, `_shared/review-service.ts` |
 | Esquema `needs` + `ingest_responses` | `supabase/migrations/` (S1, S4, S5, S6) |
 | README del endpoint | `supabase/functions/webhook/README.md` |

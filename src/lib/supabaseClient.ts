@@ -53,6 +53,9 @@ export function dbNeedToNeed(row: any): Need {
     lastUpdatedBy: row.last_updated_by,
     expiresAt: row.expires_at,
     isDemoData: row.is_demo_data,
+    sourceEventId: row.source_event_id ?? null,
+    conversationId: row.conversation_id ?? null,
+    locationEnrichmentStatus: row.location_enrichment_status ?? null,
   };
 }
 
@@ -90,6 +93,9 @@ export function needToDbNeed(need: Partial<Need>): Record<string, any> {
   if (need.lastUpdatedBy !== undefined) data.last_updated_by = need.lastUpdatedBy;
   if (need.expiresAt !== undefined) data.expires_at = need.expiresAt;
   if (need.isDemoData !== undefined) data.is_demo_data = need.isDemoData;
+  if (need.sourceEventId !== undefined) data.source_event_id = need.sourceEventId;
+  if (need.conversationId !== undefined) data.conversation_id = need.conversationId;
+  if (need.locationEnrichmentStatus !== undefined) data.location_enrichment_status = need.locationEnrichmentStatus;
   return data;
 }
 
