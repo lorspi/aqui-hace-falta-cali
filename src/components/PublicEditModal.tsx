@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { updateNeed, addNeedUpdateNote } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
+import { showToast } from './Toast';
 import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
@@ -14,9 +15,11 @@ interface PublicEditModalProps {
   onClose: () => void;
   /** If provided, indicates a moderator is editing (skip Turnstile, lock name) */
   moderatorName?: string;
+  /** Called after a successful save with the updated need, so the caller can reopen its detail view */
+  onSaved?: (updatedNeed: Need) => void;
 }
 
-export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose, moderatorName }) => {
+export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose, moderatorName, onSaved }) => {
   const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
   // Form state — mirrors CreateNeedModal
@@ -44,7 +47,6 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const isTurnstileValid = !!turnstileToken;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [showPickerMap, setShowPickerMap] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
@@ -95,7 +97,6 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       setEditorName(moderatorName || '');
       setEditReason('');
       setTurnstileToken(isModerator ? 'moderator-bypass' : null);
-      setSubmitted(false);
       setShowPickerMap(false);
       setIsArchived(need.verificationStatus === 'ARCHIVED');
     }
@@ -216,7 +217,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`)
         : (editorName.trim() || 'Ciudadano anónimo');
 
-      await updateNeed(need.id, {
+      const updatedFields = {
         title,
         description,
         placeType,
@@ -232,7 +233,9 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         operatingHours: operatingHours || undefined,
         priority,
         lastUpdatedBy: finalUpdatedBy,
-      });
+      };
+
+      await updateNeed(need.id, updatedFields);
 
       await addNeedUpdateNote({
         needId: need.id,
@@ -242,7 +245,16 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         updatedBy: finalUpdatedBy,
       });
 
-      setSubmitted(true);
+      // Confirmación tipo toast (no bloqueante)
+      showToast('Información actualizada. El cambio quedó registrado.', { variant: 'success' });
+
+      const updatedNeed: Need = { ...need, ...updatedFields };
+      if (onSaved) {
+        // Reabrir el detalle de la entrada específica para que el usuario no se pierda
+        onSaved(updatedNeed);
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
     } finally {
@@ -271,24 +283,6 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       showAlert('Publicación puesta en pendiente de verificación.', { title: 'Publicada', variant: 'success' });
     } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
-
-  if (submitted) {
-    return (
-      <div
-        className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
-        <div className="bg-white rounded-2xl max-w-sm w-full p-8 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h3 className="font-bold text-slate-900 text-lg">¡Información actualizada!</h3>
-          <p className="text-xs text-slate-600">Gracias por mantener la información al día. El cambio quedó registrado.</p>
-          <button onClick={onClose} className="bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs">Cerrar</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { updateOffer, addOfferUpdateNote } from '../lib/supabaseService';
 import { X, MapPin, Plus, Trash2, ShieldCheck, Loader2, Edit3, CheckCircle2 } from 'lucide-react';
 import { showConfirm, showAlert } from './ConfirmDialog';
+import { showToast } from './Toast';
 import { HelpCategory, Offer } from '../types';
 import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
@@ -12,9 +13,11 @@ interface PublicEditOfferModalProps {
   offer: Offer | null;
   onClose: () => void;
   moderatorName?: string;
+  /** Called after a successful save with the updated offer, so the caller can reopen its detail view */
+  onSaved?: (updatedOffer: Offer) => void;
 }
 
-export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offer, onClose, moderatorName }) => {
+export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offer, onClose, moderatorName, onSaved }) => {
   const { language, t } = useTranslation();
   const isModerator = !!moderatorName;
   const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
@@ -41,7 +44,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const [editorName, setEditorName] = useState(moderatorName || '');
   const [editReason, setEditReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [showPickerMap, setShowPickerMap] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
@@ -81,7 +83,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       );
       setEditorName(moderatorName || '');
       setEditReason('');
-      setSubmitted(false);
       setShowPickerMap(false);
       setIsArchived(offer.verificationStatus === 'ARCHIVED');
     }
@@ -184,7 +185,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       const logReason = editReason.trim() ? `${editReason.trim()}. ${changesSummary}` : changesSummary;
       const finalUpdatedBy = isModerator ? (editorName.startsWith('[MOD] ') ? editorName : `[MOD] ${editorName || 'Moderador'}`) : (editorName.trim() || 'Ciudadano anónimo');
 
-      await updateOffer(offer.id, {
+      const updatedFields = {
         title,
         description,
         categories: selectedCategories,
@@ -198,7 +199,9 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
         contactEmail: contactEmail || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-      });
+      };
+
+      await updateOffer(offer.id, updatedFields);
 
       await addOfferUpdateNote({
         offerId: offer.id,
@@ -208,7 +211,16 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
         updatedBy: finalUpdatedBy,
       });
 
-      setSubmitted(true);
+      // Confirmación tipo toast (no bloqueante)
+      showToast('Oferta actualizada. El cambio quedó registrado.', { variant: 'success' });
+
+      const updatedOffer: Offer = { ...offer, ...updatedFields };
+      if (onSaved) {
+        // Reabrir el detalle de la oferta específica para que el usuario no se pierda
+        onSaved(updatedOffer);
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       showAlert(err.message || 'Error al enviar la edición.', { title: 'Error', variant: 'error' });
     } finally {
@@ -236,24 +248,6 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       showAlert('Oferta publicada correctamente.', { title: 'Publicada', variant: 'success' });
     } catch (e: any) { showAlert(e?.message || 'Error al publicar', { title: 'Error', variant: 'error' }); }
   };
-
-  if (submitted) {
-    return (
-      <div
-        className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
-        <div className="bg-white rounded-2xl max-w-sm w-full p-8 text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h3 className="font-bold text-slate-900 text-lg">¡Información actualizada!</h3>
-          <p className="text-xs text-slate-600">Gracias por mantener la información de esta oferta al día. El cambio quedó registrado.</p>
-          <button onClick={onClose} className="bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs">Cerrar</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

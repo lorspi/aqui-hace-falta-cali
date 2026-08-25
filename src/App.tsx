@@ -1345,12 +1345,20 @@ function MainApp() {
         need={selectedForPublicEdit}
         onClose={() => setSelectedForPublicEdit(null)}
         moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
+        onSaved={(updatedNeed) => {
+          setSelectedForPublicEdit(null);
+          handleSelectNeed(updatedNeed);
+        }}
       />
 
       <PublicEditOfferModal
         offer={selectedOfferForEdit}
         onClose={() => setSelectedOfferForEdit(null)}
         moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
+        onSaved={(updatedOffer) => {
+          setSelectedOfferForEdit(null);
+          handleSelectOffer(updatedOffer);
+        }}
       />
 
       <UpdateStatusModal

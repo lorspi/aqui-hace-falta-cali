@@ -14,7 +14,6 @@ import {
   Check,
   Edit,
   Users,
-  Plus,
   LogOut,
   Trash2,
   Loader2,
@@ -24,6 +23,7 @@ import {
   Search,
   ArrowLeft,
   BookOpen,
+  X,
 } from "lucide-react";
 import { Need, Offer, Priority, VerificationStatus } from "../types";
 import {
@@ -37,6 +37,7 @@ import {
 import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
+import { CustomSelect } from "./CustomSelect";
 import { PublicEditOfferModal } from "./PublicEditOfferModal";
 import { PublicEditModal } from "./PublicEditModal";
 import { NeedDetailModal } from "./NeedDetailModal";
@@ -50,9 +51,7 @@ import {
   fetchAuditLogs,
   fetchUsersList,
   adminLogin,
-  createAdminUser,
-  updateAdminUserStatus,
-  updateAdminUser,
+  updateUserModerationStatus,
   deleteAdminUser,
   deleteNeed,
   deleteOffer,
@@ -124,9 +123,17 @@ export const AdminPanelPage: React.FC = () => {
     checkSupabaseSession();
   }, [authToken]);
 
-  const [activeTab, setActiveTab] = useState<
-    "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS"
-  >("PENDING");
+  type AdminTab = "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS";
+  const VALID_TABS: AdminTab[] = ["PENDING", "REPORTS", "METRICS", "ALL", "AUDIT", "USERS"];
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const saved = localStorage.getItem("ahf_admin_active_tab");
+    return saved && VALID_TABS.includes(saved as AdminTab) ? (saved as AdminTab) : "PENDING";
+  });
+
+  // Persistir la pestaña activa para restaurarla al recargar la página
+  useEffect(() => {
+    localStorage.setItem("ahf_admin_active_tab", activeTab);
+  }, [activeTab]);
 
   // Search & Filters
   const [adminSearch, setAdminSearch] = useState("");
@@ -136,18 +143,14 @@ export const AdminPanelPage: React.FC = () => {
 
   // User management state
   const [usersList, setUsersList] = useState<AdminUser[]>([]);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserName, setNewUserName] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"ADMIN" | "MODERATOR">("MODERATOR");
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  // Edit user state
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [editUserName, setEditUserName] = useState("");
-  const [editUserRole, setEditUserRole] = useState<"ADMIN" | "MODERATOR">("MODERATOR");
-  const [editUserPassword, setEditUserPassword] = useState("");
-  const [isSavingUser, setIsSavingUser] = useState(false);
+  // User detail modal state
+  const [viewingUser, setViewingUser] = useState<AdminUser | null>(null);
+  const [isSavingUserStatus, setIsSavingUserStatus] = useState(false);
+
+  // User list filters
+  const [userStatusFilter, setUserStatusFilter] = useState<string>("ALL");
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("ALL");
 
   // Reports and Audit logs
   const [reports, setReports] = useState<AdminReport[]>([]);
@@ -386,34 +389,27 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreatingUser(true);
+  const handleChangeModerationStatus = async (
+    userId: string,
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  ) => {
+    setIsSavingUserStatus(true);
     try {
-      await createAdminUser({
-        email: newUserEmail,
-        name: newUserName,
-        password: newUserPassword,
-        role: newUserRole,
-      });
-      setNewUserEmail('');
-      setNewUserName('');
-      setNewUserPassword('');
-      loadData();
-      showAlert('Usuario creado exitosamente.', { title: 'Éxito', variant: 'success' });
+      await updateUserModerationStatus(userId, status);
+      await logAudit(
+        'UPDATE_USER_MODERATION_STATUS',
+        currentUser?.email || 'admin@lorspi.com',
+        `Estado de moderación del usuario ID ${userId} actualizado a ${status}.`
+      );
+      // Refrescar lista y modal abierto
+      const updated = await fetchUsersList();
+      setUsersList(updated);
+      setViewingUser((prev) => (prev ? { ...prev, moderationStatus: status } : prev));
+      showAlert('Estado de moderación actualizado.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
-      showAlert(err.message || 'Error creando usuario', { title: 'Error', variant: 'error' });
+      showAlert(err.message || 'Error al actualizar el estado', { title: 'Error', variant: 'error' });
     } finally {
-      setIsCreatingUser(false);
-    }
-  };
-
-  const handleToggleUserActive = async (userId: string, currentActive: boolean) => {
-    try {
-      await updateAdminUserStatus(userId, !currentActive);
-      loadData();
-    } catch (err: any) {
-      showAlert(err.message || 'Error al actualizar', { title: 'Error', variant: 'error' });
+      setIsSavingUserStatus(false);
     }
   };
 
@@ -832,41 +828,47 @@ export const AdminPanelPage: React.FC = () => {
                 </div>
 
                 {/* Filter 1: Type */}
-                <select
+                <CustomSelect
                   value={adminTypeFilter}
-                  onChange={(e) => setAdminTypeFilter(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="ALL">Todas (necesidades + ofertas)</option>
-                  <option value="NEEDS">Solo necesidades</option>
-                  <option value="OFFERS">Solo ofertas</option>
-                </select>
+                  onChange={setAdminTypeFilter}
+                  className="w-52"
+                  icon={<List className="w-3.5 h-3.5 text-slate-400" />}
+                  options={[
+                    { value: 'ALL', label: 'Todas (necesidades + ofertas)' },
+                    { value: 'NEEDS', label: 'Solo necesidades' },
+                    { value: 'OFFERS', label: 'Solo ofertas' },
+                  ]}
+                />
 
                 {/* Filter 2: Priority */}
-                <select
+                <CustomSelect
                   value={adminPriorityFilter}
-                  onChange={(e) => setAdminPriorityFilter(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="ALL">Todas las prioridades</option>
-                  <option value="CRITICAL">🔴 Crítica</option>
-                  <option value="HIGH">🟠 Alta</option>
-                  <option value="MEDIUM">🟡 Media</option>
-                  <option value="LOW">🟢 Baja</option>
-                </select>
+                  onChange={setAdminPriorityFilter}
+                  className="w-44"
+                  icon={<AlertTriangle className="w-3.5 h-3.5 text-slate-400" />}
+                  options={[
+                    { value: 'ALL', label: 'Todas las prioridades' },
+                    { value: 'CRITICAL', label: '🔴 Crítica' },
+                    { value: 'HIGH', label: '🟠 Alta' },
+                    { value: 'MEDIUM', label: '🟡 Media' },
+                    { value: 'LOW', label: '🟢 Baja' },
+                  ]}
+                />
 
                 {/* Filter 3: Verification */}
-                <select
+                <CustomSelect
                   value={adminVerificationFilter}
-                  onChange={(e) => setAdminVerificationFilter(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="ALL">Todas las verificaciones</option>
-                  <option value="VERIFIED">✓ Verificadas</option>
-                  <option value="PENDING_VERIFICATION">◷ Pendientes</option>
-                  <option value="REPORTED">⚠️ Reportadas</option>
-                  <option value="ARCHIVED">📁 Archivadas</option>
-                </select>
+                  onChange={setAdminVerificationFilter}
+                  className="w-48"
+                  icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
+                  options={[
+                    { value: 'ALL', label: 'Todas las verificaciones' },
+                    { value: 'VERIFIED', label: '✓ Verificadas' },
+                    { value: 'PENDING_VERIFICATION', label: '◷ Pendientes' },
+                    { value: 'REPORTED', label: '⚠️ Reportadas' },
+                    { value: 'ARCHIVED', label: '📁 Archivadas' },
+                  ]}
+                />
 
                 {(adminSearch || adminPriorityFilter !== 'ALL' || adminVerificationFilter !== 'ALL' || adminTypeFilter !== 'ALL') && (
                   <button
@@ -1067,108 +1069,111 @@ export const AdminPanelPage: React.FC = () => {
 
         {/* TAB 5: USERS */}
         {activeTab === 'USERS' && currentUser?.role === 'ADMIN' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Create User Form */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm h-fit">
-              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-600" />
-                Crear Nuevo Moderador
-              </h3>
-
-              <form onSubmit={handleCreateUser} className="space-y-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    placeholder="Ej: Ana María"
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Correo electrónico</label>
-                  <input
-                    type="email"
-                    required
-                    value={newUserEmail}
-                    onChange={(e) => setNewUserEmail(e.target.value)}
-                    placeholder="ana@lorspi.com"
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Contraseña</label>
-                  <input
-                    type="password"
-                    required
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Rol</label>
-                  <select
-                    value={newUserRole}
-                    onChange={(e) => setNewUserRole(e.target.value as any)}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  >
-                    <option value="MODERATOR">Moderador</option>
-                    <option value="ADMIN">Administrador</option>
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isCreatingUser}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-sm"
-                >
-                  {isCreatingUser ? 'Creando...' : 'Crear Usuario'}
-                </button>
-              </form>
-            </div>
-
+          <div className="space-y-4">
             {/* Users List */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-600" />
-                Moderadores Registrados ({usersList.length})
-              </h3>
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  Usuarios Registrados ({usersList.length})
+                </h3>
 
-              <div className="space-y-3">
-                {usersList.map((usr) => (
-                  <div key={usr.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
-                    <div>
-                      <h4 className="font-bold text-slate-900">{usr.name}</h4>
-                      <p className="text-xs text-slate-600">{usr.email}</p>
-                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 mt-1 inline-block">
-                        {usr.role}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleUserActive(usr.id, usr.active)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold ${usr.active ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
-                      >
-                        {usr.active ? 'Desactivar' : 'Activar'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUserItem(usr.id, usr.name)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex items-center gap-2">
+                  <CustomSelect
+                    value={userStatusFilter}
+                    onChange={setUserStatusFilter}
+                    className="w-40"
+                    icon={<CheckCircle className="w-3.5 h-3.5 text-slate-400" />}
+                    options={[
+                      { value: 'ALL', label: 'Todos los estados' },
+                      { value: 'PENDING', label: 'Pendiente' },
+                      { value: 'APPROVED', label: 'Aprobado' },
+                      { value: 'REJECTED', label: 'Rechazado' },
+                    ]}
+                  />
+                  <CustomSelect
+                    value={userRoleFilter}
+                    onChange={setUserRoleFilter}
+                    className="w-40"
+                    icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
+                    options={[
+                      { value: 'ALL', label: 'Todos los roles' },
+                      { value: 'ADMIN', label: 'Administrador' },
+                      { value: 'MODERATOR', label: 'Moderador' },
+                      { value: 'USER', label: 'Usuario' },
+                    ]}
+                  />
+                </div>
               </div>
+
+              {(() => {
+                const filteredUsers = usersList.filter((u) => {
+                  const status = (u.moderationStatus || 'APPROVED').toUpperCase();
+                  const matchesStatus = userStatusFilter === 'ALL' || status === userStatusFilter;
+                  const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+                  return matchesStatus && matchesRole;
+                });
+
+                const sortedUsers = [...filteredUsers].sort((a, b) => {
+                  const aPending = (a.moderationStatus || 'APPROVED') === 'PENDING' ? 0 : 1;
+                  const bPending = (b.moderationStatus || 'APPROVED') === 'PENDING' ? 0 : 1;
+                  if (aPending !== bPending) return aPending - bPending;
+                  return (b.createdAt || '').localeCompare(a.createdAt || '');
+                });
+
+                if (sortedUsers.length === 0) {
+                  return (
+                    <p className="text-slate-500 italic text-center py-6">
+                      {usersList.length === 0
+                        ? 'No hay usuarios registrados.'
+                        : 'No hay usuarios que coincidan con los filtros.'}
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {sortedUsers.map((usr) => (
+                      <div
+                        key={usr.id}
+                        className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
+                          (usr.moderationStatus || 'APPROVED') === 'PENDING'
+                            ? 'bg-amber-50 border-amber-200'
+                            : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-slate-900 truncate">{usr.name}</h4>
+                          <p className="text-xs text-slate-600 truncate">{usr.email}</p>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 inline-block">
+                              {usr.role}
+                            </span>
+                            <ModerationStatusChip status={usr.moderationStatus} />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setViewingUser(usr)}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Ver detalle</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUserItem(usr.id, usr.name)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Eliminar usuario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1201,6 +1206,12 @@ export const AdminPanelPage: React.FC = () => {
             refetchNeeds();
           }}
           moderatorName={currentUser?.name || "Moderador"}
+          onSaved={(updatedNeed) => {
+            setEditingNeedViaModal(null);
+            refetchNeeds();
+            // Reabrir el detalle de la necesidad específica
+            setViewingNeed(updatedNeed);
+          }}
         />
       )}
 
@@ -1212,8 +1223,162 @@ export const AdminPanelPage: React.FC = () => {
             refetchOffers();
           }}
           moderatorName={currentUser?.name || "Moderador"}
+          onSaved={(updatedOffer) => {
+            setEditingOfferViaModal(null);
+            refetchOffers();
+            // Reabrir el detalle de la oferta específica
+            setViewingOffer(updatedOffer);
+          }}
         />
       )}
+
+      {viewingUser && (
+        <UserDetailModal
+          user={viewingUser}
+          isSaving={isSavingUserStatus}
+          onChangeStatus={(status) => handleChangeModerationStatus(viewingUser.id, status)}
+          onClose={() => setViewingUser(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// ==========================================
+// MODERATION STATUS CHIP
+// ==========================================
+const MODERATION_STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  PENDING: { label: 'Pendiente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  APPROVED: { label: 'Aprobado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  REJECTED: { label: 'Rechazado', className: 'bg-red-100 text-red-700 border-red-200' },
+};
+
+const ModerationStatusChip: React.FC<{ status?: string }> = ({ status }) => {
+  const key = (status || 'APPROVED').toUpperCase();
+  const cfg = MODERATION_STATUS_STYLES[key] || {
+    label: key,
+    className: 'bg-slate-100 text-slate-700 border-slate-200',
+  };
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${cfg.className}`}>
+      {cfg.label}
+    </span>
+  );
+};
+
+// ==========================================
+// USER DETAIL MODAL
+// ==========================================
+const UserDetailModal: React.FC<{
+  user: AdminUser;
+  isSaving: boolean;
+  onChangeStatus: (status: 'PENDING' | 'APPROVED' | 'REJECTED') => void;
+  onClose: () => void;
+}> = ({ user, isSaving, onChangeStatus, onClose }) => {
+  const currentStatus = (user.moderationStatus || 'APPROVED').toUpperCase();
+
+  const Row: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
+    <div className="flex flex-col gap-0.5 py-2 border-b border-slate-100">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-slate-800 break-words">{value?.toString().trim() || '—'}</span>
+    </div>
+  );
+
+  const fullPhone =
+    user.phone ||
+    [user.phoneCountryCode, user.phoneNumber].filter(Boolean).join(' ') ||
+    undefined;
+
+  const isModerator = user.role === 'MODERATOR' || user.rawRole === 'moderador';
+
+  const statusOptions: Array<{ value: 'PENDING' | 'APPROVED' | 'REJECTED'; label: string; className: string }> = [
+    { value: 'APPROVED', label: 'Aprobar', className: 'bg-emerald-600 hover:bg-emerald-500 text-white' },
+    { value: 'PENDING', label: 'Marcar pendiente', className: 'bg-amber-500 hover:bg-amber-400 text-white' },
+    { value: 'REJECTED', label: 'Rechazar', className: 'bg-red-600 hover:bg-red-500 text-white' },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-scroll shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="font-black text-slate-900 text-base truncate">{user.name}</h3>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                {user.role}
+              </span>
+              <ModerationStatusChip status={user.moderationStatus} />
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-3">
+          <h4 className="text-xs font-black text-slate-700 mt-1 mb-1">Datos personales</h4>
+          <Row label="Nombres" value={user.firstName} />
+          <Row label="Apellidos" value={user.lastName} />
+          <Row label="Nombre completo" value={user.name} />
+          <Row label="Correo electrónico" value={user.email} />
+          <Row label="Teléfono" value={fullPhone} />
+          <Row label="Tipo de documento" value={user.documentType} />
+          <Row label="Número de documento" value={user.documentNumber} />
+
+          <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Ubicación</h4>
+          <Row label="País" value={user.country} />
+          <Row label="Departamento" value={user.department} />
+          <Row label="Ciudad" value={user.city} />
+
+          {isModerator && (
+            <>
+              <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Solicitud de moderador</h4>
+              <Row label="Comunidad / colectivo" value={user.moderatorCommunityCollective} />
+              <Row label="Motivación" value={user.moderatorMotivation} />
+            </>
+          )}
+
+          <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Cuenta</h4>
+          <Row label="Rol (crudo)" value={user.rawRole || user.role} />
+          <Row label="Términos aceptados" value={user.acceptTerms ? 'Sí' : 'No'} />
+          <Row label="Fecha aceptación términos" value={user.termsAcceptedAt} />
+          <Row label="Fecha de registro" value={user.createdAt} />
+        </div>
+
+        {/* Footer: change moderation status */}
+        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-5 py-4 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-slate-600">Estado de moderación</span>
+            <ModerationStatusChip status={user.moderationStatus} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {statusOptions.map((opt) => (
+              <button
+                key={opt.value}
+                disabled={isSaving || currentStatus === opt.value}
+                onClick={() => onChangeStatus(opt.value)}
+                className={`py-2 rounded-lg text-[11px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${opt.className}`}
+              >
+                {isSaving ? '...' : opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 leading-snug">
+            Al aprobar, el usuario obtiene los permisos correspondientes a su rol.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

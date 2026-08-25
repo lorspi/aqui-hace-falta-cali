@@ -32,10 +32,28 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'MODERATOR';
+  role: 'ADMIN' | 'MODERATOR' | 'USER';
   active: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  /** Estado de moderación del perfil: PENDING | APPROVED | REJECTED */
+  moderationStatus?: string;
+  // Datos completos diligenciados en el formulario de registro
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  phoneCountryCode?: string;
+  phoneNumber?: string;
+  documentType?: string;
+  documentNumber?: string;
+  country?: string;
+  department?: string;
+  city?: string;
+  rawRole?: string;
+  acceptTerms?: boolean;
+  termsAcceptedAt?: string;
+  moderatorCommunityCollective?: string;
+  moderatorMotivation?: string;
 }
 
 // ==========================================
@@ -549,6 +567,22 @@ export async function fetchUsersList(): Promise<AdminUser[]> {
     active: u.is_verified ?? true,
     createdAt: u.created_at,
     lastLoginAt: u.updated_at,
+    moderationStatus: u.moderation_status || (u.role === 'moderador' ? 'PENDING' : 'APPROVED'),
+    firstName: u.first_name || undefined,
+    lastName: u.last_name || undefined,
+    phone: u.phone || undefined,
+    phoneCountryCode: u.phone_country_code || undefined,
+    phoneNumber: u.phone_number || undefined,
+    documentType: u.document_type || undefined,
+    documentNumber: u.document_number || undefined,
+    country: u.country || undefined,
+    department: u.department || undefined,
+    city: u.city || undefined,
+    rawRole: u.role || undefined,
+    acceptTerms: u.accept_terms ?? undefined,
+    termsAcceptedAt: u.terms_accepted_at || undefined,
+    moderatorCommunityCollective: u.moderator_community_collective || undefined,
+    moderatorMotivation: u.moderator_motivation || undefined,
   }));
 }
 
@@ -630,6 +664,14 @@ export async function createAdminUser(data: { email: string; name: string; passw
     active: true,
     createdAt: new Date().toISOString(),
   };
+}
+
+export async function updateUserModerationStatus(userId: string, moderationStatus: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ moderation_status: moderationStatus, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw error;
 }
 
 export async function updateAdminUserStatus(userId: string, active: boolean): Promise<void> {
