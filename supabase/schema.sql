@@ -176,7 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_city ON public.profiles(city);
 -- 8. TABLA: organizations (Organizaciones / Entidades gubernamentales y ONGs)
 CREATE TABLE IF NOT EXISTS public.organizations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
   org_name TEXT NOT NULL,
   organization_type VARCHAR(100) NOT NULL,
   description TEXT,
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_organizations_user_id ON public.organizations(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_user_id ON public.organizations(user_id);
 
 -- 9. TRIGGER: Creación automática de perfiles desde auth.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()

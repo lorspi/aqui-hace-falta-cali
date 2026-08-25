@@ -788,19 +788,22 @@ export async function upsertOrganization(orgData: {
 }) {
   const { data, error } = await supabase
     .from('organizations')
-    .upsert([
-      {
-        user_id: orgData.user_id,
-        org_name: orgData.org_name?.trim(),
-        organization_type: orgData.organization_type,
-        description: orgData.description?.trim(),
-        website_or_social: orgData.website_or_social?.trim(),
-        address: orgData.address?.trim(),
-        latitude: orgData.latitude,
-        longitude: orgData.longitude,
-        is_verified: false,
-      },
-    ])
+    .upsert(
+      [
+        {
+          user_id: orgData.user_id,
+          org_name: orgData.org_name?.trim(),
+          organization_type: orgData.organization_type,
+          description: orgData.description?.trim(),
+          website_or_social: orgData.website_or_social?.trim(),
+          address: orgData.address?.trim(),
+          latitude: orgData.latitude,
+          longitude: orgData.longitude,
+          is_verified: false,
+        },
+      ],
+      { onConflict: 'user_id' }
+    )
     .select()
     .maybeSingle();
 

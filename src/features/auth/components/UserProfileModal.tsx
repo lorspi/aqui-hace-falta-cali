@@ -118,7 +118,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             country: profile.country || 'Colombia',
             department: profile.department || 'Quindío',
             city: profile.city || 'Armenia',
-            orgName: orgData?.org_name || '',
+            orgName: orgData?.org_name || profile?.full_name || '',
             organizationType: orgData?.organization_type || 'bomberos_defensa_civil',
             orgDescription: orgData?.description || '',
             orgWebsiteOrSocial: orgData?.website_or_social || '',
