@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arquitectura de Datos y Entidades — Aquí Hace Falta</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mermaid.js CDN para diagramas visuales -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; padding: 0 !important; }
+      .page-break { page-break-before: always; }
+      .shadow-2xl, .shadow-xl, .shadow-md { box-shadow: none !important; }
+      .border { border-color: #cbd5e1 !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans antialiased p-4 md:p-8">
+
+  <!-- Botón flotante para imprimir a PDF -->
+  <div class="fixed bottom-6 right-6 no-print z-50">
+    <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-2 cursor-pointer transition-all hover:scale-105">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+      <span>Imprimir / Guardar en PDF</span>
+    </button>
+  </div>
+
+  <div class="max-w-5xl mx-auto bg-white rounded-3xl border border-slate-200 p-8 md:p-12 shadow-xl space-y-10">
+
+    <!-- Encabezado del Informe -->
+    <div class="border-b border-slate-200 pb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 font-bold text-xs mb-3">
+          DOCUMENTO EJECUTIVO DE ARQUITECTURA
+        </div>
+        <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+          🗺️ Arquitectura de Datos y Entidades
+        </h1>
+        <p class="text-sm font-semibold text-slate-500 mt-1">
+          Plataforma Ciudadana de Coordinación de Ayuda — Aquí Hace Falta
+        </p>
+      </div>
+      <div class="text-left md:text-right text-xs text-slate-500 space-y-1">
+        <p><strong>Fecha:</strong> 25 de Agosto de 2026</p>
+        <p><strong>Versión:</strong> 2.0 (Producción / Pruebas)</p>
+        <p><strong>Estado:</strong> Oficial y Completo</p>
+      </div>
+    </div>
+
+    <!-- Resumen Ejecutivo -->
+    <div class="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-6 space-y-2">
+      <h3 class="font-black text-indigo-950 text-base flex items-center gap-2">
+        📌 Resumen Ejecutivo
+      </h3>
+      <p class="text-xs md:text-sm text-indigo-900 leading-relaxed">
+        Este documento explica en lenguaje sencillo, funcional y visual cómo está organizada la base de datos de la plataforma <strong>Aquí Hace Falta</strong>. Permite entender cómo se conectan los ciudadanos, los voluntarios, las organizaciones oficiales y los moderadores para coordinar la ayuda en momentos de emergencia o necesidad comunitaria.
+      </p>
+    </div>
+
+    <!-- Sección 1: Diagrama Conceptual -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-black text-slate-900 border-b border-slate-200 pb-2">
+        1. Diagrama Conceptual de Relaciones (Visión de Negocio)
+      </h2>
+      <p class="text-xs text-slate-600">
+        El siguiente mapa visual muestra cómo interactúan las distintas entidades desde una perspectiva de procesos de negocio:
+      </p>
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-x-auto">
+        <pre class="mermaid text-center">
+erDiagram
+    USUARIO ||--o| ORGANIZACION : "Representa o administra"
+    USUARIO ||--o{ NECESIDAD : "Publica / Reporta"
+    USUARIO ||--o{ OFERTA : "Ofrece ayuda / Donación"
+    USUARIO ||--o{ AUDITORIA : "Registra acciones como Moderador/Admin"
+    
+    NECESIDAD ||--o{ REPORTE_NECESIDAD : "Recibe reportes de ciudadanos"
+    NECESIDAD ||--o{ HISTORIAL_CAMBIOS : "Registra actualizaciones de estado"
+    
+    OFERTA ||--o{ REPORTE_OFERTA : "Recibe reportes de la comunidad"
+    
+    USUARIO {
+        string ID "Identificador Único"
+        string NombreCompleto "Nombre y Apellidos"
+        string Correo "Email de contacto"
+        string Rol "Regular | Voluntario | Moderador | Entidad | Admin"
+        string EstadoModerador "Pendiente | Aprobado"
+        string Ciudad "Municipio y Departamento"
+    }
+
+    ORGANIZACION {
+        string ID "Identificador Único"
+        string NombreOficial "Nombre de la Entidad / ONG"
+        string TipoOrganizacion "Bomberos | Rescate | Gobierno | ONG"
+        string NIT_Documento "Identificación Legal (NIT / Cédula)"
+        string UbicacionSede "Dirección y Coordenadas en Mapa"
+        boolean Verificada "Sello de Verificación Oficial"
+    }
+
+    NECESIDAD {
+        string ID "Identificador Único"
+        string Titulo "Resumen del requerimiento"
+        string Categoria "Víveres | Salud | Rescate | Albergue"
+        string Prioridad "Alta | Media | Baja"
+        string Estado "Necesita Ayuda | En Proceso | Resuelto"
+        string Verificacion "Pendiente | Verificado por Moderador"
+        string Ubicacion "Dirección y Punto en Mapa"
+    }
+
+    OFERTA {
+        string ID "Identificador Único"
+        string Titulo "Recurso o donación ofrecida"
+        string Categoria "Centro de Acopio | Transporte | Voluntariado"
+        string Estado "Disponible | Agotado"
+        string Ubicacion "Dirección y Punto en Mapa"
+    }
+
+    REPORTE_NECESIDAD {
+        string Motivo "Información Falsa | Ya Resuelto | Inapropiado"
+        string Detalle "Explicación del ciudadano"
+        string Estado "Pendiente | Resuelto"
+    }
+        </pre>
+      </div>
+    </section>
+
+    <!-- Sección 2: 5 Módulos Principales -->
+    <section class="space-y-6 page-break">
+      <h2 class="text-xl font-black text-slate-900 border-b border-slate-200 pb-2">
+        2. Los 5 Módulos Principales de Información
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Módulo 1 -->
+        <div class="border border-slate-200 rounded-2xl p-5 bg-white space-y-2">
+          <span class="text-xs font-black text-blue-600 uppercase tracking-wider">Módulo 1</span>
+          <h3 class="font-bold text-slate-900 text-base">👤 Perfiles de Usuario (`public.profiles`)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Es la libreta principal de datos de cualquier persona registrada en la plataforma. Almacena nombre completo, documento de identidad (Cédula/PASAPORTE/NIT), teléfono de contacto, correo electrónico, ubicación (País, Departamento, Ciudad) y aceptación de términos de privacidad.
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1 pl-4 list-disc">
+            <li><strong>Usuario Regular:</strong> Ciudadano registrado que puede publicar o solicitar ayuda.</li>
+            <li><strong>Voluntario / Donante:</strong> Ciudadano dispuesto a brindar recursos o apoyo en terreno.</li>
+            <li><strong>Moderador:</strong> Usuario postulante o aprobado para verificar publicaciones.</li>
+            <li><strong>Entidad / Organización:</strong> Cuenta representante de una institución oficial o comunidad.</li>
+            <li><strong>Administrador:</strong> Gestor total con acceso a métricas globales y aprobación de moderadores.</li>
+          </ul>
+        </div>
+
+        <!-- Módulo 2 -->
+        <div class="border border-slate-200 rounded-2xl p-5 bg-white space-y-2">
+          <span class="text-xs font-black text-indigo-600 uppercase tracking-wider">Módulo 2</span>
+          <h3 class="font-bold text-slate-900 text-base">🏢 Organizaciones e Instituciones (`public.organizations`)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Registra la información institucional de las entidades que coordinan o prestan auxilio (*Bomberos, Defensa Civil, Cruz Roja, ONG, Gobierno Municipal*). Guarda el NIT o registro legal, dirección física de la sede, ubicación en mapa (Latitud/Longitud) y redes sociales/sitio web.
+          </p>
+          <p class="text-xs text-slate-600 font-semibold">
+            Sello de Verificación: Permite saber si la entidad ha sido validada oficialmente por los administradores de la plataforma.
+          </p>
+        </div>
+
+        <!-- Módulo 3 -->
+        <div class="border border-slate-200 rounded-2xl p-5 bg-white space-y-2">
+          <span class="text-xs font-black text-red-600 uppercase tracking-wider">Módulo 3</span>
+          <h3 class="font-bold text-slate-900 text-base">🚨 Solicitudes de Ayuda / Necesidades (`public.needs`)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Representa cada punto crítico o requerimiento publicado en el mapa. Almacena título, descripción detallada, categoría (*Alimentos, Medicamentos, Herramientas, Albergue, Agua*), prioridad (*Alta / Urgente, Media, Baja*), dirección exacta, barrio y ubicación en mapa.
+          </p>
+          <ul class="text-xs text-slate-700 space-y-1 pl-4 list-disc">
+            <li><strong>NEED_HELP_NOW:</strong> Publicación activa en espera de atención.</li>
+            <li><strong>IN_PROGRESS:</strong> Voluntarios u organizaciones están atendiendo el punto.</li>
+            <li><strong>RESOLVED:</strong> Requerimiento atendido con éxito.</li>
+          </ul>
+        </div>
+
+        <!-- Módulo 4 -->
+        <div class="border border-slate-200 rounded-2xl p-5 bg-white space-y-2">
+          <span class="text-xs font-black text-emerald-600 uppercase tracking-wider">Módulo 4</span>
+          <h3 class="font-bold text-slate-900 text-base">🎁 Ofertas de Ayuda y Donaciones (`public.offers`)</h3>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Almacena los recursos que la ciudadanía o las entidades ponen a disposición (*Centros de acopio, Apoyo médico, Transporte, Víveres*), dirección física, punto geográfico donde se puede recoger o contactar y horarios de atención.
+          </p>
+        </div>
+      </div>
+
+      <!-- Módulo 5 -->
+      <div class="border border-slate-200 rounded-2xl p-5 bg-amber-50/50 space-y-2">
+        <span class="text-xs font-black text-amber-700 uppercase tracking-wider">Módulo 5</span>
+        <h3 class="font-bold text-slate-900 text-base">🛡️ Transparencia, Reportes y Auditoría (`reports`, `update_logs`, `audit_logs`)</h3>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Garantiza la seguridad, la veracidad y la auditoría de la plataforma:
+        </p>
+        <ul class="text-xs text-slate-700 space-y-1 pl-4 list-disc">
+          <li><strong>Reportes Ciudadanos (`reports` / `offer_reports`):</strong> Si un usuario detecta información falsa, obsoleta o inapropiada en el mapa, puede reportarlo para revisión.</li>
+          <li><strong>Historial de Cambios (`update_logs`):** Bitácora de actualizaciones en las solicitudes (*quién cambió el estado y en qué fecha*).</li>
+          <li><strong>Registro de Auditoría (`audit_logs`):** Bitácora de seguridad que registra cada acción realizada por los moderadores o administradores.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Sección 3: Tabla Resumen -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-black text-slate-900 border-b border-slate-200 pb-2">
+        3. Tabla Resumen para Gestión y Negocio
+      </h2>
+      <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+            <tr>
+              <th class="p-3">Entidad en BD</th>
+              <th class="p-3">Propósito en el Negocio</th>
+              <th class="p-3">Gestor / Creador</th>
+              <th class="p-3">Impacto en la Plataforma</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-slate-700">
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.profiles</td>
+              <td class="p-3">Identificación de usuarios y asignación de permisos de acceso.</td>
+              <td class="p-3">Registro automático con Correo/Google.</td>
+              <td class="p-3">Control de acceso y trazabilidad de contactos.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.organizations</td>
+              <td class="p-3">Ficha institucional de ONGs y cuerpos de socorro.</td>
+              <td class="p-3">Representante legal durante el registro.</td>
+              <td class="p-3">Genera confianza y habilita sedes oficiales en el mapa.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.needs</td>
+              <td class="p-3">Mapear emergencias y coordinar recursos donde hace falta.</td>
+              <td class="p-3">Ciudadanos, voluntarios o moderadores.</td>
+              <td class="p-3">Alimenta el mapa principal de alertas de la ciudad.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.offers</td>
+              <td class="p-3">Mapear puntos de acopio y donaciones disponibles.</td>
+              <td class="p-3">Voluntarios, ONGs y empresas solidarias.</td>
+              <td class="p-3">Muestra centros de acopio y recursos de ayuda inmediata.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.reports</td>
+              <td class="p-3">Control de calidad e información falsa en necesidades.</td>
+              <td class="p-3">Cualquier ciudadano navegando en el portal.</td>
+              <td class="p-3">Mantiene limpia la información y evita pánico falso.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.offer_reports</td>
+              <td class="p-3">Control de calidad e información falsa en ofertas.</td>
+              <td class="p-3">Cualquier ciudadano navegando en el portal.</td>
+              <td class="p-3">Mantiene limpias las ofertas de ayuda.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.update_logs</td>
+              <td class="p-3">Bitácora de cambios de estado en publicaciones.</td>
+              <td class="p-3">Sistema y moderadores al actualizar una ayuda.</td>
+              <td class="p-3">Historial público de atención a emergencias.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-900">public.audit_logs</td>
+              <td class="p-3">Trazabilidad legal y transparencia operativa de admins.</td>
+              <td class="p-3">Sistema automático al ejecutar acciones administrativas.</td>
+              <td class="p-3">Permite auditar el trabajo de moderación en emergencias.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Sección 4: Diagrama Técnico ERD Completo -->
+    <section class="space-y-4 page-break">
+      <h2 class="text-xl font-black text-slate-900 border-b border-slate-200 pb-2">
+        4. Diagrama Técnico Completo (Modelo Físico de Base de Datos)
+      </h2>
+      <p class="text-xs text-slate-600">
+        Estructura detallada con el 100% de las tablas y los campos que existen en la base de datos de pruebas/desarrollo de Supabase:
+      </p>
+      <div class="bg-slate-900 text-slate-100 border border-slate-800 rounded-2xl p-4 overflow-x-auto text-xs">
+        <pre class="mermaid text-center">
+erDiagram
+    auth_users ||--|| profiles : "id = id (1:1)"
+    profiles ||--o| organizations : "id = user_id (1:1)"
+    needs ||--o{ reports : "id = need_id (1:N)"
+    needs ||--o{ update_logs : "id = need_id (1:N)"
+    offers ||--o{ offer_reports : "id = offer_id (1:N)"
+
+    auth_users {
+        uuid id PK
+        string email
+        timestamptz created_at
+    }
+
+    profiles {
+        uuid id PK,FK "Ref auth.users(id)"
+        string email UK
+        string first_name
+        string last_name
+        string full_name
+        string phone_country_code
+        string phone_number
+        string phone
+        string document_type "cedula | nit | pasaporte | extrangeria"
+        string document_number
+        string country
+        string department
+        string city
+        boolean is_auto_detected_location
+        string role "regular | voluntario | moderador | entidad_profesional | ADMIN"
+        boolean is_verified
+        boolean accept_terms
+        timestamptz terms_accepted_at
+        string moderator_community_collective
+        string moderator_motivation
+        string moderation_status "PENDING | APPROVED | REJECTED"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    organizations {
+        uuid id PK
+        uuid user_id FK,UK "Ref profiles(id)"
+        string org_name
+        string organization_type "Bomberos | Defensa Civil | Cruz Roja | ONG | Gobierno | Empresa"
+        string description
+        string website_or_social
+        string address
+        float latitude
+        float longitude
+        string document_type "nit | cedula"
+        string document_number
+        boolean is_verified
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    needs {
+        uuid id PK
+        string city_id
+        string emergency_id
+        string title
+        string description
+        string place_type
+        jsonb categories
+        jsonb resources
+        string address
+        string neighborhood
+        float latitude
+        float longitude
+        string priority "HIGH | MEDIUM | LOW"
+        string status "NEED_HELP_NOW | IN_PROGRESS | RESOLVED"
+        string verification_status "PENDING_VERIFICATION | VERIFIED | REJECTED"
+        string verified_by
+        string verification_notes
+        timestamptz verified_at
+        string source
+        string source_url
+        string contact_name
+        string contact_phone
+        string contact_whatsapp
+        string contact_email
+        string organization_name
+        string requester_type "PERSONA | ORGANIZACION | GRUPO"
+        string operating_hours
+        string evidence_url
+        timestamptz created_at
+        timestamptz updated_at
+        string last_updated_by
+        timestamptz expires_at
+        boolean is_demo_data
+    }
+
+    offers {
+        uuid id PK
+        string city_id
+        string title
+        string description
+        jsonb categories
+        jsonb resources
+        string address
+        string neighborhood
+        float latitude
+        float longitude
+        string offer_status "AVAILABLE | EXHAUSTED | CLOSED"
+        string verification_status "PENDING_VERIFICATION | VERIFIED | ARCHIVED"
+        string verified_by
+        timestamptz verified_at
+        string contact_name
+        string contact_phone
+        string contact_whatsapp
+        string contact_email
+        string organization_name
+        string operating_hours
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    reports {
+        uuid id PK
+        uuid need_id FK "Ref needs(id)"
+        string need_title
+        string reason
+        string description
+        string reporter_contact
+        string status "PENDING | RESOLVED | DISMISSED"
+        timestamptz created_at
+        timestamptz resolved_at
+        string resolved_by
+    }
+
+    offer_reports {
+        uuid id PK
+        uuid offer_id FK "Ref offers(id)"
+        string offer_title
+        string reason
+        string description
+        string reporter_contact
+        string status "PENDING | RESOLVED | DISMISSED"
+        timestamptz created_at
+        timestamptz resolved_at
+        string resolved_by
+    }
+
+    update_logs {
+        uuid id PK
+        uuid need_id FK "Ref needs(id)"
+        string previous_status
+        string new_status
+        string description
+        string updated_by
+        timestamptz created_at
+    }
+
+    audit_logs {
+        uuid id PK
+        string action
+        uuid need_id
+        uuid offer_id
+        string admin_email
+        string details
+        timestamptz timestamp
+    }
+        </pre>
+      </div>
+    </section>
+
+    <!-- Sección 5: Diagrama de Secuencia -->
+    <section class="space-y-4 page-break">
+      <h2 class="text-xl font-black text-slate-900 border-b border-slate-200 pb-2">
+        5. Flujo de Trabajo: Ciclo de Vida de una Necesidad
+      </h2>
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-x-auto">
+        <pre class="mermaid text-center">
+sequenceDiagram
+    autonumber
+    actor Ciudadano
+    participant Sistema as Plataforma AHF
+    actor Moderador
+    actor Voluntario
+
+    Ciudadano->>Sistema: 1. Publica necesidad ("Agua embotellada en Barrio X")
+    Sistema-->>Sistema: 2. Registra la ubicación y queda en estado "PENDIENTE DE VERIFICACIÓN"
+    Moderador->>Sistema: 3. Revisa la necesidad y llama al contacto
+    Moderador->>Sistema: 4. Marca la publicación como "VERIFICADA"
+    Voluntario->>Sistema: 5. Consulta el mapa, ve el pin verificado y acude a ayudar
+    Voluntario->>Sistema: 6. Actualiza el estado a "RESUELTO"
+    Sistema-->>Ciudadano: 7. Notifica cierre exitoso de la ayuda
+        </pre>
+      </div>
+    </section>
+
+    <!-- Pie de página -->
+    <div class="border-t border-slate-200 pt-6 text-center text-xs text-slate-400">
+      <p>Aquí Hace Falta — Valle del Cauca, Colombia © 2026. Documento generado para gestión institucional.</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

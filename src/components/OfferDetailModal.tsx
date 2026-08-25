@@ -510,18 +510,30 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
           </div>
 
           {/* Verification info */}
-          <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1 text-emerald-950">
-            <div className="flex items-center gap-2 font-bold text-emerald-900">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Nivel de Verificación: {verificationInfo.label}</span>
+          {offer.verificationStatus === 'VERIFIED' ? (
+            <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1 text-emerald-950">
+              <div className="flex items-center gap-2 font-bold text-emerald-900">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Nivel de Verificación: {verificationInfo.label}</span>
+              </div>
+              {offer.verifiedBy && (
+                <p><strong>Verificado por:</strong> {offer.verifiedBy}</p>
+              )}
+              <p className="text-slate-500 text-[11px] pt-0.5">
+                Última actualización: {new Date(offer.updatedAt).toLocaleString('es-CO')} ({formatTimeAgo(offer.updatedAt)})
+              </p>
             </div>
-            {offer.verifiedBy && (
-              <p><strong>Verificado por:</strong> {offer.verifiedBy}</p>
-            )}
-            <p className="text-slate-500 text-[11px] pt-0.5">
-              Última actualización: {new Date(offer.updatedAt).toLocaleString('es-CO')} ({formatTimeAgo(offer.updatedAt)})
-            </p>
-          </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-xs space-y-1 text-slate-800">
+              <div className="flex items-center gap-2 font-bold text-slate-700">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <span>Estado: Pendiente de verificación</span>
+              </div>
+              <p className="text-slate-400 text-[11px] pt-0.5">
+                Última actualización: {new Date(offer.updatedAt).toLocaleString('es-CO')} ({formatTimeAgo(offer.updatedAt)})
+              </p>
+            </div>
+          )}
 
           {/* Contact Direct Buttons */}
           <div className="space-y-2">

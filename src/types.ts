@@ -39,6 +39,7 @@ export type HelpCategory =
   | 'ALOJAMIENTO'
   | 'ANIMALES'
   | 'LOGISTICA'
+  | 'IMPLEMENTOS_ASEO'
   | 'CLASIFICACION_DONACIONES'
   | 'VOLUNTARIADO_GENERAL'
   | 'OTRO';

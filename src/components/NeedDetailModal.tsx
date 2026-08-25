@@ -142,7 +142,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 </span>
               ) : (
                 <span className={`badge-pill uppercase ${priorityInfo.badgeClass}`}>
-                  {priorityInfo.dot} {language === 'en' ? 'Priority ' + need.priority : 'Prioridad ' + priorityInfo.label}
+                  {priorityInfo.dot} {language === 'en' ? 'Priority ' + need.priority : priorityInfo.label}
                 </span>
               )}
               {!isCollectionCenter && (
@@ -377,20 +377,37 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
           </div>
 
           {/* Verification Trail & Source Attribution */}
-          <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1 text-emerald-950">
-            <div className="flex items-center gap-2 font-bold text-emerald-900">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>{t('cardVerifiedBy')}: {need.verifiedBy || (language === 'en' ? 'Community Report' : 'Reporte Ciudadano')}</span>
-            </div>
-            {need.source && (
-              <p>
-                <strong>{t('detailSource')}</strong> {need.source}
+          {need.verificationStatus === 'VERIFIED' ? (
+            <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-xl text-xs space-y-1 text-emerald-950">
+              <div className="flex items-center gap-2 font-bold text-emerald-900">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>{t('cardVerifiedBy')}: {need.verifiedBy || (language === 'en' ? 'Verified Moderator' : 'Moderador Verificado')}</span>
+              </div>
+              {need.source && (
+                <p>
+                  <strong>{t('detailSource')}</strong> {need.source}
+                </p>
+              )}
+              <p className="text-slate-500 text-[11px] pt-0.5">
+                {formatTimeAgo(need.updatedAt, language)}
               </p>
-            )}
-            <p className="text-slate-500 text-[11px] pt-0.5">
-              {formatTimeAgo(need.updatedAt, language)}
-            </p>
-          </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-xs space-y-1 text-slate-800">
+              <div className="flex items-center gap-2 font-bold text-slate-700">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <span>{language === 'en' ? 'Status: Pending Verification' : 'Estado: Pendiente de verificación'}</span>
+              </div>
+              {need.source && (
+                <p className="text-slate-600">
+                  <strong>{t('detailSource')}</strong> {need.source}
+                </p>
+              )}
+              <p className="text-slate-400 text-[11px] pt-0.5">
+                {formatTimeAgo(need.updatedAt, language)}
+              </p>
+            </div>
+          )}
 
           {/* Contact Direct Buttons */}
           <div className="space-y-2">
