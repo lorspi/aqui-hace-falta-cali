@@ -255,7 +255,6 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       setCurrentStep((prev) => prev - 1);
     }
   };
-
   // Envío final del Formulario a Supabase Auth y Base de Datos
   const onSubmitFinal: SubmitHandler<any> = async (data) => {
     setIsSubmitting(true);
@@ -263,7 +262,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     setSuccessMessage(null);
 
     try {
-      const fullPhone = `${data.phoneCountryCode || '+57'}${data.phoneNumber ? data.phoneNumber.trim() : ''}`;
+      const hasPhone = !!data.phoneNumber?.trim();
+      const fullPhone = hasPhone ? `${data.phoneCountryCode || '+57'}${data.phoneNumber.trim()}` : null;
       const isOrg = data.role === 'entidad_profesional';
 
       // 1. Obtener la sesión / usuario activo (por ejemplo, si inició con Google OAuth)
@@ -283,8 +283,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           first_name: data.firstName?.trim() || '',
           last_name: data.lastName?.trim() || '',
           full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.fullName?.trim() || 'Usuario',
-          phone_country_code: data.phoneCountryCode || '+57',
-          phone_number: data.phoneNumber?.trim() || '',
+          phone_country_code: hasPhone ? (data.phoneCountryCode || '+57') : null,
+          phone_number: hasPhone ? data.phoneNumber.trim() : null,
           phone: fullPhone,
           document_type: data.documentType || 'cedula',
           document_number: data.documentNumber?.trim() || '',
@@ -322,23 +322,25 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         });
 
         if (authError) throw authError;
-        targetUserId = authData.user?.id;
-        targetEmail = authData.user?.email || data.email.trim();
+        if (authData.user) {
+          targetUserId = authData.user.id;
+          targetEmail = authData.user.email || data.email.trim();
+        }
       }
 
       if (!targetUserId) {
-        throw new Error('No se pudo determinar el ID de usuario para completar el registro.');
+        throw new Error('No se pudo determinar el ID de usuario.');
       }
 
-      // 3. Sincronizar en la tabla `profiles` de Supabase
+      // 3. Normalizar y guardar el perfil en la tabla `public.profiles`
       const savedProfile = await upsertUserProfile({
         id: targetUserId,
         email: targetEmail,
         first_name: data.firstName?.trim(),
         last_name: data.lastName?.trim(),
-        full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.fullName?.trim() || currentUser?.user_metadata?.full_name || 'Usuario',
-        phone_country_code: data.phoneCountryCode || '+57',
-        phone_number: data.phoneNumber?.trim(),
+        full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.orgName?.trim() || data.email,
+        phone_country_code: hasPhone ? (data.phoneCountryCode || '+57') : null,
+        phone_number: hasPhone ? data.phoneNumber.trim() : null,
         phone: fullPhone,
         document_type: data.documentType,
         document_number: data.documentNumber,

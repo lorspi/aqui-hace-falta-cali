@@ -716,9 +716,9 @@ export async function upsertUserProfile(profileData: {
   first_name?: string;
   last_name?: string;
   full_name: string;
-  phone_country_code?: string;
-  phone_number?: string;
-  phone?: string;
+  phone_country_code?: string | null;
+  phone_number?: string | null;
+  phone?: string | null;
   document_type?: string;
   document_number?: string;
   country?: string;
@@ -732,6 +732,11 @@ export async function upsertUserProfile(profileData: {
   moderator_motivation?: string;
   moderation_status?: string;
 }) {
+  const hasPhone = !!(profileData.phone_number?.trim() || (profileData.phone && profileData.phone !== '+57'));
+  const fullPhone = hasPhone
+    ? (profileData.phone && profileData.phone.startsWith('+') ? profileData.phone : `${profileData.phone_country_code || '+57'}${profileData.phone_number?.trim() || ''}`)
+    : null;
+
   const { data, error } = await supabase
     .from('profiles')
     .upsert([
@@ -741,9 +746,9 @@ export async function upsertUserProfile(profileData: {
         first_name: profileData.first_name?.trim(),
         last_name: profileData.last_name?.trim(),
         full_name: profileData.full_name?.trim(),
-        phone_country_code: profileData.phone_country_code || '+57',
-        phone_number: profileData.phone_number?.trim(),
-        phone: profileData.phone,
+        phone_country_code: hasPhone ? (profileData.phone_country_code || '+57') : null,
+        phone_number: hasPhone ? profileData.phone_number?.trim() : null,
+        phone: fullPhone,
         document_type: profileData.document_type || 'cedula',
         document_number: profileData.document_number?.trim(),
         country: profileData.country || 'Colombia',

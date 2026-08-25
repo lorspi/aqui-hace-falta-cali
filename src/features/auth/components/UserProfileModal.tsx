@@ -100,12 +100,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         }
 
         if (profile) {
+          let rawPhone = profile.phone_number || profile.phone || '';
+          if (rawPhone.startsWith('+57')) {
+            rawPhone = rawPhone.replace(/^\+57/, '').trim();
+          } else if (rawPhone === '+57') {
+            rawPhone = '';
+          }
+
           reset({
             firstName: profile.first_name || '',
             lastName: profile.last_name || '',
             email: profile.email || '',
             phoneCountryCode: profile.phone_country_code || '+57',
-            phoneNumber: profile.phone_number || profile.phone || '',
+            phoneNumber: rawPhone,
             documentType: profile.document_type || 'cedula',
             documentNumber: profile.document_number || '',
             country: profile.country || 'Colombia',
@@ -134,20 +141,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   // Cálculo del Porcentaje de Completitud
   const isOrg = activeProfile?.role === 'entidad_profesional';
 
-  const fieldsToCheck = [
-    { name: 'Nombres', filled: !!firstName?.trim() },
-    { name: 'Apellidos', filled: !!lastName?.trim() },
-    { name: 'Teléfono', filled: !!phoneNumber?.trim() },
-    { name: 'Documento', filled: !!documentNumber?.trim() },
-    { name: 'Ciudad', filled: !!city?.trim() },
-  ];
-
-  if (isOrg) {
-    fieldsToCheck.push(
-      { name: 'Nombre de Entidad', filled: !!orgName?.trim() },
-      { name: 'Descripción de Entidad', filled: !!orgDescription?.trim() }
-    );
-  }
+  const fieldsToCheck = isOrg
+    ? [
+        { name: 'Nombres', filled: !!firstName?.trim() },
+        { name: 'Apellidos', filled: !!lastName?.trim() },
+        { name: 'Ciudad', filled: !!city?.trim() },
+        { name: 'Nombre de Entidad', filled: !!orgName?.trim() },
+        { name: 'Descripción de Entidad', filled: !!orgDescription?.trim() },
+      ]
+    : [
+        { name: 'Nombres', filled: !!firstName?.trim() },
+        { name: 'Apellidos', filled: !!lastName?.trim() },
+        { name: 'Teléfono', filled: !!phoneNumber?.trim() },
+        { name: 'Documento', filled: !!documentNumber?.trim() },
+        { name: 'Ciudad', filled: !!city?.trim() },
+      ];
 
   const filledCount = fieldsToCheck.filter((f) => f.filled).length;
   const completenessPercent = Math.round((filledCount / fieldsToCheck.length) * 100);
@@ -185,7 +193,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       if (!targetUserId) throw new Error('ID de usuario no encontrado');
 
       const fullName = `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim();
-      const fullPhone = `${data.phoneCountryCode || '+57'}${data.phoneNumber ? data.phoneNumber.trim() : ''}`;
+      const hasPhone = !!data.phoneNumber?.trim();
+      const fullPhone = hasPhone ? `${data.phoneCountryCode || '+57'}${data.phoneNumber.trim()}` : null;
 
       // 1. Actualizar tabla public.profiles
       const updatedProfile = await upsertUserProfile({
@@ -193,9 +202,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         email: data.email,
         first_name: data.firstName?.trim(),
         last_name: data.lastName?.trim(),
-        full_name: fullName || data.email,
-        phone_country_code: data.phoneCountryCode || '+57',
-        phone_number: data.phoneNumber?.trim(),
+        full_name: fullName || data.orgName?.trim() || data.email,
+        phone_country_code: hasPhone ? (data.phoneCountryCode || '+57') : null,
+        phone_number: hasPhone ? data.phoneNumber.trim() : null,
         phone: fullPhone,
         document_type: data.documentType || 'cedula',
         document_number: data.documentNumber?.trim(),
