@@ -649,6 +649,15 @@ export async function updateAdminUser(userId: string, updates: Partial<{ name: s
 export async function deleteAdminUser(userId: string): Promise<void> {
   const { error } = await supabase.from('profiles').delete().eq('id', userId);
   if (error) throw error;
+
+  try {
+    const { error: authErr } = await (supabase.auth as any).admin?.deleteUser(userId);
+    if (authErr) {
+      console.warn('[deleteAdminUser] Supabase auth deletion note:', authErr.message);
+    }
+  } catch (e) {
+    console.warn('[deleteAdminUser] Supabase auth delete warning:', e);
+  }
 }
 
 // ==========================================

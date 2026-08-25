@@ -163,7 +163,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   // Rol Badge Helper
   const getRoleBadge = (role?: string) => {
-    switch (role) {
+    const normalizedRole = role?.trim().toLowerCase();
+    switch (normalizedRole) {
       case 'rescatista':
         return { label: 'Rescatista / Operativo', icon: '🚚', color: 'bg-amber-50 text-amber-900 border-amber-200' };
       case 'acopio':
@@ -172,7 +173,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         return { label: 'Entidad / Organización', icon: '🛡️', color: 'bg-slate-100 text-slate-900 border-slate-300' };
       case 'moderador':
         return { label: 'Moderador', icon: '⚡', color: 'bg-indigo-50 text-indigo-900 border-indigo-200' };
-      case 'ADMIN':
+      case 'admin':
+      case 'administrador':
         return { label: 'Administrador', icon: '👑', color: 'bg-emerald-50 text-emerald-900 border-emerald-200' };
       case 'voluntario':
         return { label: 'Voluntario / Donante', icon: '❤️', color: 'bg-rose-50 text-rose-900 border-rose-200' };

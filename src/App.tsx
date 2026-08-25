@@ -200,11 +200,28 @@ function MainApp() {
         const profile = await fetchUserProfile(sessionUser.id);
         if (profile) {
           setUserProfile(profile);
-          if (profile.full_name || profile.name) {
-            const dbName = profile.full_name || profile.name;
-            const updatedUserObj = { name: dbName, email: sessionUser.email };
-            setAuthUser(updatedUserObj);
-            localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
+          const dbName = profile.full_name || profile.name || metaName;
+          const updatedUserObj = { name: dbName, email: sessionUser.email };
+          setAuthUser(updatedUserObj);
+          localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
+
+          const normRole = profile.role?.toString().trim().toUpperCase();
+          const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
+          const isApprovedMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR') && profile.moderation_status === 'APPROVED';
+
+          if (isAdmin || isApprovedMod) {
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || 'supabase_token';
+            const adminUserObj = {
+              id: profile.id,
+              name: dbName,
+              email: sessionUser.email || '',
+              role: isAdmin ? 'ADMIN' : 'MODERATOR',
+              active: true,
+              createdAt: profile.created_at || new Date().toISOString(),
+            };
+            localStorage.setItem('ahf_admin_token', token);
+            localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
           }
         }
 
@@ -936,12 +953,16 @@ function MainApp() {
         isModeratorApproved={isModeratorLoggedIn || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN' || userProfile?.moderation_status === 'APPROVED'}
         userName={authUser?.name || (sessionUser as any)?.name}
         onLogout={async () => {
-          await supabase.auth.signOut();
+          try {
+            await supabase.auth.signOut();
+          } catch (e) {
+            console.error("Error al cerrar sesión en Supabase:", e);
+          }
           localStorage.removeItem('ahf_admin_token');
           localStorage.removeItem('ahf_admin_user');
           localStorage.removeItem('ahf_auth_user');
           setAuthUser(null);
-          window.location.reload();
+          window.location.href = '/home';
         }}
       />
       {/* Spacer for fixed header */}
@@ -1401,10 +1422,17 @@ function MainApp() {
           isLoggedIn={isModeratorLoggedIn}
           userName={(sessionUser as any)?.name}
           onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
-          onLogout={() => {
+          onLogout={async () => {
+            try {
+              await supabase.auth.signOut();
+            } catch (e) {
+              console.error("Error al cerrar sesión en Supabase:", e);
+            }
             localStorage.removeItem('ahf_admin_token');
             localStorage.removeItem('ahf_admin_user');
-            window.location.reload();
+            localStorage.removeItem('ahf_auth_user');
+            setAuthUser(null);
+            window.location.href = '/home';
           }}
         />
       </div>

@@ -35,6 +35,13 @@ import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
 import { PublicEditOfferModal } from "./PublicEditOfferModal";
+import { supabase } from "../lib/supabaseClient";
+
+// Stub fallback for legacy modal declarations
+const useQuery: any = () => null;
+const useMutation: any = () => async () => {};
+const api: any = new Proxy({}, { get: () => new Proxy({}, { get: () => ({}) }) });
+type Id<T extends string> = string;
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -211,11 +218,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
   const handleLogout = async () => {
     if (authToken) {
-      await logoutMutation({ token: authToken });
+      try {
+        await logoutMutation({ token: authToken });
+      } catch (e) {}
     }
     localStorage.removeItem("ahf_admin_token");
+    localStorage.removeItem("ahf_admin_user");
+    localStorage.removeItem("ahf_auth_user");
     setAuthToken(null);
     setCurrentUser(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
+    window.location.href = "/home";
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {

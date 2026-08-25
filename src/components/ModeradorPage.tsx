@@ -182,6 +182,11 @@ export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ 
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isMenuOpen]);
+  const isLoggedInModerator = typeof window !== 'undefined' && !!localStorage.getItem('ahf_admin_token');
+  const loggedInUserObj = typeof window !== 'undefined' && localStorage.getItem('ahf_admin_user')
+    ? (() => { try { return JSON.parse(localStorage.getItem('ahf_admin_user')!); } catch { return null; } })()
+    : null;
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -207,38 +212,62 @@ export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ 
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="relative" ref={menuRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors border border-white/20"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>{t('userMenuLogin')}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
+              {isLoggedInModerator ? (
+                <div className="flex items-center gap-2">
+                  <a
+                    href="/panel"
+                    className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-sm"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Ir al Panel de Moderación</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('ahf_admin_token');
+                      localStorage.removeItem('ahf_admin_user');
+                      localStorage.removeItem('ahf_auth_user');
+                      window.location.href = '/home';
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-red-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition-colors border border-white/20"
+                  >
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="relative" ref={menuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors border border-white/20"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>{t('userMenuLogin')}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <button
-                      type="button"
-                      onClick={() => { setIsMenuOpen(false); setShowRegisterWizard(true); }}
-                      className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span className="font-semibold">{t('userMenuRegister')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setIsMenuOpen(false); setShowLoginModal(true); }}
-                      className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span className="font-semibold">{t('userMenuSignIn')}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                  {isMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 w-48 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <button
+                        type="button"
+                        onClick={() => { setIsMenuOpen(false); setShowRegisterWizard(true); }}
+                        className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-semibold">{t('userMenuRegister')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsMenuOpen(false); window.location.href = '/panel'; }}
+                        className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span className="font-semibold">Acceso Moderadores</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -413,26 +442,55 @@ export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ 
             <div className="w-14 h-14 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center mx-auto">
               <ShieldCheck className="w-7 h-7 text-blue-600" />
             </div>
-            <h3 className="font-black text-slate-900 text-xl">
-              ¿Quieres ayudar a moderar?
-            </h3>
-            <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-              Para ser moderador debes registrarte, elegir la opción de <strong className="font-bold text-slate-800">Moderador</strong> en el paso de selección de rol, y completar la información solicitada. Nos pondremos en contacto contigo para evaluar tu postulación.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (onOpenRegisterModal) {
-                  onOpenRegisterModal();
-                } else {
-                  setShowRegisterWizard(true);
-                }
-              }}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md shadow-blue-600/20 transition-all cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Registrarme como moderador</span>
-            </button>
+            {isLoggedInModerator ? (
+              <>
+                <h3 className="font-black text-slate-900 text-xl">
+                  ¡Ya tienes acceso como moderador!
+                </h3>
+                <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Tu sesión como moderador/administrador se encuentra activa. Puedes ir directamente al panel de moderación para gestionar necesidades, verificar ofertas y atender la emergencia.
+                </p>
+                <a
+                  href="/panel"
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Ir al Panel de Moderación</span>
+                </a>
+              </>
+            ) : (
+              <>
+                <h3 className="font-black text-slate-900 text-xl">
+                  ¿Quieres ayudar a moderar?
+                </h3>
+                <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                  Para ser moderador debes registrarte, elegir la opción de <strong className="font-bold text-slate-800">Moderador</strong> en el paso de selección de rol, y completar la información solicitada. Nos pondremos en contacto contigo para evaluar tu postulación.
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenRegisterModal) {
+                        onOpenRegisterModal();
+                      } else {
+                        setShowRegisterWizard(true);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Registrarme como moderador</span>
+                  </button>
+                  <a
+                    href="/panel"
+                    className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4 text-indigo-400" />
+                    <span>Ingresar al Panel</span>
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         </section>
       </div>

@@ -254,6 +254,12 @@ export const AdminPanelPage: React.FC = () => {
     }
   }, [authToken]);
 
+  useEffect(() => {
+    if (activeTab === 'USERS' && currentUser?.role !== 'ADMIN') {
+      setActiveTab('PENDING');
+    }
+  }, [activeTab, currentUser]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
@@ -275,9 +281,15 @@ export const AdminPanelPage: React.FC = () => {
   const handleLogout = async () => {
     localStorage.removeItem("ahf_admin_token");
     localStorage.removeItem("ahf_admin_user");
+    localStorage.removeItem("ahf_auth_user");
     setAuthToken(null);
     setCurrentUser(null);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Error al cerrar sesión en Supabase:", e);
+    }
+    window.location.href = "/home";
   };
 
   const handleVerifyNeed = async (id: string, action: 'verify' | 'archive') => {
@@ -619,17 +631,19 @@ export const AdminPanelPage: React.FC = () => {
             <span>Historial de Auditoría</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('USERS')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'USERS'
-                ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Usuarios & Moderadores ({usersList.length})</span>
-          </button>
+          {currentUser?.role === 'ADMIN' && (
+            <button
+              onClick={() => setActiveTab('USERS')}
+              className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
+                activeTab === 'USERS'
+                  ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/60'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Usuarios & Moderadores ({usersList.length})</span>
+            </button>
+          )}
         </div>
 
         {/* TAB 1: PENDING VERIFICATION */}
@@ -1052,7 +1066,7 @@ export const AdminPanelPage: React.FC = () => {
         )}
 
         {/* TAB 5: USERS */}
-        {activeTab === 'USERS' && (
+        {activeTab === 'USERS' && currentUser?.role === 'ADMIN' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Create User Form */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm h-fit">
