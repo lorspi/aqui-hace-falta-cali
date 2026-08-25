@@ -1,65 +1,125 @@
-import React, { useMemo } from 'react';
-import { MapPin, Globe, Compass, CheckCircle2 } from 'lucide-react';
-import { DEPARTMENTS } from '../../../../data/colombiaCities';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Globe, Search, ChevronDown } from 'lucide-react';
+import { CityFormCombobox } from '../../../../components/CityFormCombobox';
+import { COUNTRIES } from '../../../../data/countries';
 
 interface Step2LocationProps {
   country: string;
-  department: string;
-  city: string;
-  isAutoDetected?: boolean;
+  cityId: string;
+  departmentId: string;
   onChangeCountry: (country: string) => void;
-  onChangeDepartment: (dept: string) => void;
-  onChangeCity: (city: string) => void;
+  onChangeCityId: (cityId: string, departmentId?: string) => void;
 }
 
-const COUNTRIES = [
-  { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
-  { code: 'VE', name: 'Venezuela', flag: '🇻🇪' },
-  { code: 'EC', name: 'Ecuador', flag: '🇪🇨' },
-  { code: 'PE', name: 'Perú', flag: '🇵🇪' },
-  { code: 'MX', name: 'México', flag: '🇲🇽' },
-];
+/** Country searchable combobox */
+const CountryCombobox: React.FC<{ value: string; onChange: (val: string) => void }> = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedCountry = COUNTRIES.find((c) => c.name === value);
+  const displayLabel = selectedCountry ? selectedCountry.name : value || 'Seleccionar país';
+
+  const filtered = useMemo(() => {
+    if (!search) return COUNTRIES;
+    const s = search.toLowerCase();
+    return COUNTRIES.filter((c) => c.name.toLowerCase().includes(s));
+  }, [search]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-300 text-slate-900 font-semibold text-sm rounded-xl px-3.5 py-2.5 hover:bg-slate-100 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
+      >
+        <span className="flex items-center gap-1.5 truncate">
+          <Globe className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <span className="font-semibold truncate">{displayLabel}</span>
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar país..."
+                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+              />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length > 0 ? (
+              filtered.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => {
+                    onChange(c.name);
+                    setIsOpen(false);
+                    setSearch('');
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between transition-colors ${
+                    value === c.name
+                      ? 'bg-blue-50 text-blue-700 font-bold'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>{c.name}</span>
+                  </span>
+                  {value === c.name && (
+                    <span className="text-blue-600 text-[10px] font-bold">&#10003;</span>
+                  )}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-xs text-slate-400 text-center">
+                No se encontró "{search}"
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Step2Location: React.FC<Step2LocationProps> = ({
   country,
-  department,
-  city,
-  isAutoDetected = true,
+  cityId,
+  departmentId,
   onChangeCountry,
-  onChangeDepartment,
-  onChangeCity,
+  onChangeCityId,
 }) => {
-  // Lista dinámica de departamentos
-  const departmentList = useMemo(() => {
-    return DEPARTMENTS.map((d) => d.name).sort();
-  }, []);
-
-  // Lista dinámica de municipios según el departamento seleccionado
-  const cityList = useMemo(() => {
-    if (!department) return [];
-    const deptObj = DEPARTMENTS.find(
-      (d) => d.name.toLowerCase() === department.toLowerCase()
-    );
-    return deptObj ? deptObj.cities.map((c) => c.name).sort() : [];
-  }, [department]);
-
-  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newDept = e.target.value;
-    onChangeDepartment(newDept);
-    // Reiniciar municipio al cambiar de departamento
-    const deptObj = DEPARTMENTS.find(
-      (d) => d.name.toLowerCase() === newDept.toLowerCase()
-    );
-    if (deptObj && deptObj.cities.length > 0) {
-      onChangeCity(deptObj.cities[0].name);
-    } else {
-      onChangeCity('');
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Encabezado del Paso 2 */}
+      {/* Encabezado */}
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
           ¿Dónde estás?
@@ -69,109 +129,33 @@ export const Step2Location: React.FC<Step2LocationProps> = ({
         </p>
       </div>
 
-      {/* Banner Informativo Superior (Autodetectado) */}
-      <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-4 flex items-start gap-3 text-xs sm:text-sm text-blue-900 shadow-xs">
-        <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-          <MapPin className="w-4 h-4" />
-        </div>
-        <div className="flex-1 space-y-0.5">
-          <div className="flex items-center gap-1.5 font-bold text-blue-950">
-            <span>Ubicación detectada automáticamente</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-600 inline shrink-0" />
-          </div>
-          <p className="text-slate-600 text-xs leading-relaxed">
-            Parece que estás en <strong className="text-slate-900 font-semibold">{city || 'Armenia'}, {department || 'Quindío'}, {country || 'Colombia'}</strong>. Ya lo completamos por ti; si no es correcto, cámbialo abajo.
-          </p>
-        </div>
-      </div>
-
       {/* Formulario de Ubicación */}
       <div className="space-y-4">
         {/* País */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            País
+          <label className="form-label">
+            País <span className="text-blue-600">*</span>
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Globe className="w-4 h-4" />
-            </div>
-            <select
-              value={country}
-              onChange={(e) => onChangeCountry(e.target.value)}
-              className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer"
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.name}>
-                  {c.flag} {c.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-              ▼
-            </div>
-          </div>
+          <CountryCombobox value={country} onChange={onChangeCountry} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Departamento */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Departamento
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Compass className="w-4 h-4" />
-              </div>
-              <select
-                value={department}
-                onChange={handleDepartmentChange}
-                className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer"
-              >
-                <option value="" disabled>
-                  Selecciona departamento
-                </option>
-                {departmentList.map((deptName) => (
-                  <option key={deptName} value={deptName}>
-                    {deptName}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                ▼
-              </div>
+        {/* Departamento / Municipio */}
+        <div>
+          <label className="form-label">
+            Departamento / Municipio <span className="text-blue-600">*</span>
+          </label>
+          {country === 'Colombia' ? (
+            <CityFormCombobox
+              value={cityId}
+              departmentId={departmentId}
+              onChange={onChangeCityId}
+            />
+          ) : (
+            <div className="w-full flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-400 text-sm rounded-lg px-3 py-2.5 cursor-not-allowed">
+              <Globe className="w-4 h-4 text-slate-300 shrink-0" />
+              <span className="text-xs">Solo disponible para Colombia</span>
             </div>
-          </div>
-
-          {/* Municipio / Ciudad */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Municipio / Ciudad
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <MapPin className="w-4 h-4 text-blue-600" />
-              </div>
-              <select
-                value={city}
-                onChange={(e) => onChangeCity(e.target.value)}
-                disabled={!department}
-                className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-              >
-                <option value="" disabled>
-                  Selecciona municipio
-                </option>
-                {cityList.map((cityName) => (
-                  <option key={cityName} value={cityName}>
-                    {cityName}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                ▼
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

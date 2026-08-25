@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, X, LogIn, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { signInWithGoogle, fetchUserProfile } from '../../../lib/supabaseService';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -16,6 +17,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onOpenRegisterModal,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +34,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      setServerError('Error al conectar con Google: ' + (err?.message || err));
+      setServerError(t('authLoginErrorGoogle') + (err?.message || err));
       setGoogleLoading(false);
     }
   };
@@ -43,11 +45,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setSuccessMessage(null);
 
     if (!email.trim()) {
-      setServerError('Ingresa tu correo electrónico.');
+      setServerError(t('authLoginErrorEmail'));
       return;
     }
     if (!password) {
-      setServerError('Ingresa tu contraseña.');
+      setServerError(t('authLoginErrorPassword'));
       return;
     }
 
@@ -61,7 +63,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Correo o contraseña incorrectos. Verifica tus datos.');
+          throw new Error(t('authLoginErrorInvalid'));
         }
         throw error;
       }
@@ -78,7 +80,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         }
 
         const userObj = { name, email: data.user.email };
-        setSuccessMessage('¡Sesión iniciada exitosamente!');
+        setSuccessMessage(t('authLoginSuccess'));
 
         setTimeout(() => {
           if (onSuccess) onSuccess(userObj);
@@ -87,7 +89,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
     } catch (err: any) {
       console.error('[LoginModal] Error logging in:', err);
-      setServerError(err?.message || 'Ocurrió un error al iniciar sesión.');
+      setServerError(err?.message || t('authLoginErrorGeneric'));
     } finally {
       setIsSubmitting(false);
     }
@@ -101,7 +103,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Cabecera con Botón Cerrar */}
         <div className="px-6 sm:px-8 pt-6 pb-2 flex items-center justify-between sticky top-0 bg-white z-10">
           <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
-            Acceso a la plataforma
+            {t('authLoginBadge')}
           </span>
           {onClose && (
             <button
@@ -118,10 +120,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="px-6 sm:px-8 py-4 space-y-5">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Inicia sesión
+              {t('authLoginTitle')}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Accede de forma segura con tu cuenta de Google o tu correo registrado.
+              {t('authLoginSubtitle')}
             </p>
           </div>
 
@@ -154,13 +156,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
-              <span>Continuar con Google (Deshabilitado)</span>
+              <span>{t('authLoginGoogleButton')}</span>
             </button>
           </div>
 
           <div className="relative flex items-center my-3">
             <div className="flex-grow border-t border-slate-200" />
-            <span className="shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">o con tu correo</span>
+            <span className="shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('authLoginOrEmail')}</span>
             <div className="flex-grow border-t border-slate-200" />
           </div>
 
@@ -168,7 +170,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Correo Electrónico
+                {t('authLoginEmailLabel')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -178,7 +180,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu.correo@ejemplo.com"
+                  placeholder={t('authLoginEmailPlaceholder')}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
                 />
               </div>
@@ -186,7 +188,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Contraseña
+                {t('authLoginPasswordLabel')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -196,14 +198,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('authLoginPasswordPlaceholder')}
                   className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showPassword ? t('authHidePassword') : t('authShowPassword')}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -218,12 +220,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Iniciando sesión...</span>
+                  <span>{t('authLoginSubmitting')}</span>
                 </>
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>Iniciar sesión</span>
+                  <span>{t('authLoginSubmit')}</span>
                 </>
               )}
             </button>
@@ -233,7 +235,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Pie de Modal: ¿No tienes cuenta? Regístrate aquí */}
         <div className="px-6 sm:px-8 py-4 bg-slate-50/70 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-600">
-            ¿No tienes cuenta todavía?{' '}
+            {t('authLoginNoAccount')}{' '}
             <button
               type="button"
               onClick={() => {
@@ -242,7 +244,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               }}
               className="font-extrabold text-blue-600 hover:text-blue-700 hover:underline ml-1 cursor-pointer"
             >
-              Regístrate aquí
+              {t('authLoginRegisterLink')}
             </button>
           </p>
         </div>

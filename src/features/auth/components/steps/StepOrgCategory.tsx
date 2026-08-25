@@ -11,6 +11,8 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { OrganizationType } from '../../schemas/registerSchema';
+import { useTranslation } from '../../../../i18n/LanguageContext';
+import { TranslationKey } from '../../../../i18n/translations';
 
 interface StepOrgCategoryProps {
   selectedType: OrganizationType | '';
@@ -19,64 +21,64 @@ interface StepOrgCategoryProps {
 
 interface OrgCategoryOption {
   id: OrganizationType;
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   icon: React.ElementType;
 }
 
 const ORG_CATEGORY_OPTIONS: OrgCategoryOption[] = [
   {
     id: 'bomberos_defensa_civil',
-    title: 'Bomberos / Defensa Civil / Cruz Roja',
-    description: 'Cuerpos oficiales y voluntarios de emergencia y primera respuesta.',
+    titleKey: 'authOrgCatFirefighters',
+    descriptionKey: 'authOrgCatFirefightersDesc',
     icon: Flame,
   },
   {
     id: 'organismo_rescate',
-    title: 'Organismos de Socorro / Rescate',
-    description: 'Equipos especializados en salvamento, búsqueda y rescate técnico.',
+    titleKey: 'authOrgCatRescue',
+    descriptionKey: 'authOrgCatRescueDesc',
     icon: ShieldAlert,
   },
   {
     id: 'ong_animal',
-    title: 'Protección Animal y Albergues',
-    description: 'Rescate, refugio, atención veterinaria y suministro para animales.',
+    titleKey: 'authOrgCatAnimal',
+    descriptionKey: 'authOrgCatAnimalDesc',
     icon: PawPrint,
   },
   {
     id: 'ong_personas',
-    title: 'ONG Humanitaria / Ayuda Social',
-    description: 'Organizaciones de apoyo alimentario, ropa, albergue y ayuda humanitaria.',
+    titleKey: 'authOrgCatHumanitarian',
+    descriptionKey: 'authOrgCatHumanitarianDesc',
     icon: HeartHandshake,
   },
   {
     id: 'municipalidad_gobierno',
-    title: 'Alcaldía / Entidad Pública',
-    description: 'Dependencias gubernamentales, municipalidades y gestión del riesgo.',
+    titleKey: 'authOrgCatGovernment',
+    descriptionKey: 'authOrgCatGovernmentDesc',
     icon: Landmark,
   },
   {
     id: 'junta_vecinal',
-    title: 'Junta de Acción Comunal / Vecinal',
-    description: 'Líderes comunitarios, comités de barrio y organizaciones locales.',
+    titleKey: 'authOrgCatCommunity',
+    descriptionKey: 'authOrgCatCommunityDesc',
     icon: Users,
   },
   {
     id: 'apoyo_psicosocial',
-    title: 'Apoyo Psicosocial y Salud Mental',
-    description: 'Atención psicológica, primeros auxilios emocionales y contención.',
+    titleKey: 'authOrgCatPsychosocial',
+    descriptionKey: 'authOrgCatPsychosocialDesc',
     icon: Brain,
   },
   {
     id: 'empresa_privada',
-    title: 'Empresa Privada / RSE',
-    description: 'Empresas y gremios aportando logística, maquinaria o recursos masivos.',
+    titleKey: 'authOrgCatBusiness',
+    descriptionKey: 'authOrgCatBusinessDesc',
     icon: Building2,
   },
   {
     id: 'profesional_individual',
-    title: 'Profesional de Salud / Técnico',
-    description: 'Médicos, enfermeros, ingenieros y especialistas independientes.',
+    titleKey: 'authOrgCatHealth',
+    descriptionKey: 'authOrgCatHealthDesc',
     icon: Stethoscope,
   },
 ];
@@ -85,15 +87,17 @@ export const StepOrgCategory: React.FC<StepOrgCategoryProps> = ({
   selectedType,
   onSelectType,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-5">
       {/* Encabezado del Paso 2 de Organización */}
       <div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          ¿Qué representas?
+          {t('authOrgCategoryTitle')}
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Selecciona la subcategoría que mejor describa la entidad, brigada u organización que estás registrando.
+          {t('authOrgCategorySubtitle')}
         </p>
       </div>
 
@@ -132,10 +136,10 @@ export const StepOrgCategory: React.FC<StepOrgCategoryProps> = ({
 
                 <div className="min-w-0">
                   <h3 className="font-bold text-slate-900 text-xs sm:text-sm truncate">
-                    {option.title}
+                    {t(option.titleKey)}
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-500 leading-snug line-clamp-2">
-                    {option.description}
+                    {t(option.descriptionKey)}
                   </p>
                 </div>
               </div>

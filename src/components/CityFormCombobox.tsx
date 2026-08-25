@@ -121,7 +121,7 @@ export const CityFormCombobox: React.FC<CityFormComboboxProps> = ({
       <button
         type="button"
         onClick={handleOpen}
-        className="w-full flex items-center justify-between gap-2 bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 hover:bg-slate-50 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl px-3.5 py-2.5 hover:bg-slate-100 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-brand-blue/30 focus:border-brand-blue"
       >
         <span className="flex items-center gap-2 truncate">
           <MapPin className="w-4 h-4 text-indigo-600 shrink-0" />

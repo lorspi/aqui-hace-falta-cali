@@ -3,6 +3,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { ArrowLeft, ArrowRight, X, UserPlus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { upsertUserProfile, upsertOrganization } from '../../../lib/supabaseService';
+import { useTranslation } from '../../../i18n/LanguageContext';
 import {
   UserRole,
   OrganizationType,
@@ -39,6 +40,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Synchronize currentStep whenever the modal opens or initialStep changes
   React.useEffect(() => {
@@ -61,12 +63,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       role: 'voluntario',
       organizationType: 'bomberos_defensa_civil',
       country: 'Colombia',
-      department: 'Quindío',
-      city: 'Armenia',
-      isAutoDetected: true,
+      department: '',
+      city: '',
+      cityId: '',
+      departmentId: '',
       searchAddress: '',
-      latitude: 3.4516,
-      longitude: -76.532,
+      latitude: 0,
+      longitude: 0,
       orgName: '',
       orgDescription: '',
       orgWebsiteOrSocial: '',
@@ -82,7 +85,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       email: '',
       password: '',
       confirmPassword: '',
-      captchaVerified: false,
+      captchaToken: '',
       acceptTerms: false,
     },
     mode: 'onTouched',
@@ -98,7 +101,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const country: string = watch('country');
   const department: string = watch('department');
   const city: string = watch('city');
-  const isAutoDetected: boolean = watch('isAutoDetected');
+  const cityId: string = watch('cityId');
+  const departmentId: string = watch('departmentId');
   const searchAddress: string = watch('searchAddress');
   const latitude: number = watch('latitude');
   const longitude: number = watch('longitude');
@@ -118,7 +122,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   const email: string = watch('email');
   const password: string = watch('password');
   const confirmPassword: string = watch('confirmPassword');
-  const captchaVerified: boolean = watch('captchaVerified');
+  const captchaToken: string = watch('captchaToken');
   const acceptTerms: boolean = watch('acceptTerms');
 
   // Determinar el tipo de flujo y número de pasos totales
@@ -134,7 +138,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
     if (currentStep === 1) {
       // Paso 1: Autenticación, Nombres, Apellidos, Claves, Captcha y Términos
-      clearErrors(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'captchaVerified', 'acceptTerms']);
+      clearErrors(['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'captchaToken', 'acceptTerms']);
       let localValid = true;
 
       if (!firstName?.trim() || firstName.trim().length < 2) {
@@ -168,8 +172,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         localValid = false;
       }
 
-      if (!captchaVerified) {
-        setError('captchaVerified', { type: 'manual', message: 'Por favor confirma que no eres un robot' });
+      if (!captchaToken) {
+        setError('captchaToken', { type: 'manual', message: 'Por favor confirma que no eres un robot' });
         localValid = false;
       }
 
@@ -276,7 +280,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       // 2. Si NO hay usuario activo de Google, registrar la cuenta en Supabase Auth con Correo y Contraseña
       if (!targetUserId) {
         if (!data.email?.trim() || !data.password?.trim()) {
-          throw new Error('Por favor ingresa un correo electrónico y una contraseña válida.');
+          throw new Error(t('authRegisterErrorNoEmail'));
         }
 
         const userMetadata: Record<string, any> = {
@@ -291,7 +295,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           country: data.country || 'Colombia',
           department: data.department || 'Quindío',
           city: data.city || 'Armenia',
-          is_auto_detected_location: data.isAutoDetected ?? true,
+          is_auto_detected_location: false,
           role: data.role || 'voluntario',
           accept_terms: true,
           terms_accepted_at: new Date().toISOString(),
@@ -329,7 +333,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       }
 
       if (!targetUserId) {
-        throw new Error('No se pudo determinar el ID de usuario.');
+        throw new Error(t('authRegisterErrorNoUser'));
       }
 
       // 3. Normalizar y guardar el perfil en la tabla `public.profiles`
@@ -347,7 +351,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         country: data.country,
         department: data.department,
         city: data.city,
-        is_auto_detected_location: data.isAutoDetected,
+        is_auto_detected_location: false,
         role: data.role || 'voluntario',
         accept_terms: true,
         terms_accepted_at: new Date().toISOString(),
@@ -356,7 +360,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       });
 
       if (!savedProfile) {
-        throw new Error('No se pudo guardar la información del perfil en la base de datos.');
+        throw new Error(t('authRegisterErrorProfile'));
       }
 
       // 4. Si es un registro de Entidad / Organización, guardar en la tabla `organizations`
@@ -380,8 +384,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
       setSuccessMessage(
         isOrg
-          ? '¡Solicitud de organización registrada! Verificaremos la información y activaremos tu insignia.'
-          : '¡Perfil y cuenta guardados exitosamente!'
+          ? t('authRegisterSuccessOrg')
+          : t('authRegisterSuccessProfile')
       );
 
       setTimeout(() => {
@@ -390,7 +394,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       }, 2000);
     } catch (err: any) {
       console.error('[RegisterWizard] Error signing up:', err);
-      const msg = err?.message || 'Ocurrió un error al registrar la cuenta. Verifica tus datos e intenta nuevamente.';
+      const msg = err?.message || t('authRegisterErrorGeneric');
       setServerError(msg);
     } finally {
       setIsSubmitting(false);
@@ -400,17 +404,17 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-[#0b1329]/85 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
       {/* Contenedor Modal Tarjeta Blanca */}
-      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92dvh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col justify-between animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92dvh] overflow-y-auto modal-scroll shadow-2xl border border-slate-100 flex flex-col justify-between animate-in zoom-in-95 duration-200">
         
         {/* Header con indicador de paso y botón cerrar */}
         <div className="px-6 sm:px-8 pt-5 pb-3 flex items-center justify-between sticky top-0 bg-white z-20 border-b border-slate-100 shadow-2xs">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
-              {isGoogleProfileOnboarding ? 'Completar Perfil — ' : ''}Paso {displayStep} de {displayTotalSteps}
+              {isGoogleProfileOnboarding ? `${t('authRegisterCompleteProfile')} ` : ''}{t('authRegisterStepLabel')} {displayStep} {t('authRegisterStepOf')} {displayTotalSteps}
             </span>
             {isOrgFlow && (
               <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                Organización / Entidad
+                {t('authRegisterOrgBadge')}
               </span>
             )}
           </div>
@@ -476,7 +480,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 email={email}
                 password={password}
                 confirmPassword={confirmPassword}
-                captchaVerified={captchaVerified}
+                captchaToken={captchaToken}
                 acceptTerms={acceptTerms}
                 isSubmitting={isSubmitting}
                 errors={{
@@ -485,7 +489,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   email: errStr(errors.email),
                   password: errStr(errors.password),
                   confirmPassword: errStr(errors.confirmPassword),
-                  captchaVerified: errStr(errors.captchaVerified),
+                  captchaToken: errStr(errors.captchaToken),
                   acceptTerms: errStr(errors.acceptTerms),
                 }}
                 onChangeFirstName={(val) => setValue('firstName', val, { shouldValidate: true })}
@@ -493,7 +497,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 onChangeEmail={(val) => setValue('email', val, { shouldValidate: true })}
                 onChangePassword={(val) => setValue('password', val, { shouldValidate: true })}
                 onChangeConfirmPassword={(val) => setValue('confirmPassword', val, { shouldValidate: true })}
-                onChangeCaptchaVerified={(val) => setValue('captchaVerified', val, { shouldValidate: true })}
+                onCaptchaVerify={(token) => setValue('captchaToken', token, { shouldValidate: true })}
+                onCaptchaExpire={() => setValue('captchaToken', '', { shouldValidate: true })}
                 onChangeAcceptTerms={(val) => setValue('acceptTerms', val, { shouldValidate: true })}
               />
             )}
@@ -532,8 +537,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     documentType={documentType}
                     documentNumber={documentNumber}
                     country={country}
-                    department={department}
-                    city={city}
+                    cityId={cityId}
+                    departmentId={departmentId}
                     isSubmitting={isSubmitting}
                     errors={{
                       documentNumber: errStr(errors.documentNumber),
@@ -542,8 +547,10 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
                     onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                    onChangeCityId={(cId, dId) => {
+                      setValue('cityId', cId, { shouldValidate: true });
+                      setValue('departmentId', dId || '', { shouldValidate: true });
+                    }}
                   />
                 )}
               </>
@@ -582,12 +589,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                 {currentStep === 5 && (
                   <Step2Location
                     country={country}
-                    department={department}
-                    city={city}
-                    isAutoDetected={isAutoDetected}
+                    cityId={cityId}
+                    departmentId={departmentId}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                    onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                    onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                    onChangeCityId={(cId, dId) => {
+                      setValue('cityId', cId, { shouldValidate: true });
+                      setValue('departmentId', dId || '', { shouldValidate: true });
+                    }}
                   />
                 )}
 
@@ -624,7 +632,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   className="px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all shadow-xs disabled:opacity-50"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Atrás</span>
+                  <span>{t('authRegisterBack')}</span>
                 </button>
               ) : (
                 <div />
@@ -636,7 +644,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   onClick={handleNextStep}
                   className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all shadow-md shadow-blue-600/20 ml-auto cursor-pointer"
                 >
-                  <span>Siguiente</span>
+                  <span>{t('authRegisterNext')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
@@ -649,12 +657,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isGoogleProfileOnboarding ? 'Guardando perfil...' : 'Creando cuenta...'}</span>
+                      <span>{isGoogleProfileOnboarding ? t('authRegisterSavingProfile') : t('authRegisterCreating')}</span>
                     </>
                   ) : (
                     <>
                       <UserPlus className="w-4 h-4" />
-                      <span>{isGoogleProfileOnboarding ? 'Guardar perfil' : 'Crear cuenta'}</span>
+                      <span>{isGoogleProfileOnboarding ? t('authRegisterSaveProfile') : t('authRegisterCreateAccount')}</span>
                     </>
                   )}
                 </button>
@@ -664,13 +672,13 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
             {/* Pie de Tarjeta: "¿Ya tienes cuenta? Iniciar sesión" */}
             <div className="text-center pt-2 border-t border-slate-200/60">
               <p className="text-xs text-slate-500">
-                ¿Ya tienes cuenta?{' '}
+                {t('authRegisterHasAccount')}{' '}
                 <button
                   type="button"
                   onClick={onNavigateToLogin}
                   className="font-bold text-blue-600 hover:text-blue-700 hover:underline ml-1"
                 >
-                  Iniciar sesión
+                  {t('authRegisterLoginLink')}
                 </button>
               </p>
             </div>

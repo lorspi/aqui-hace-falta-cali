@@ -17,7 +17,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
   onOpenCreateNeed,
   onOpenCreateOffer,
 }) => {
-  const { language } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isOpen) {
@@ -99,10 +99,10 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
         {/* Crisis Copy Headline */}
         <div className="mt-5 space-y-2 relative z-10 text-center">
           <h2 className="text-xl sm:text-2xl font-black text-[#1F1C1A] tracking-tight leading-snug">
-            ¿Necesitas ayuda o puedes ofrecerla?
+            {t('welcomeTitle')}
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-            <strong className="font-bold text-[#1F1C1A]">RaDAR de Ayuda</strong> es una red ciudadana abierta para coordinar auxilio y recursos en tiempo real, directamente sobre el mapa.
+            <strong className="font-bold text-[#1F1C1A]">RaDAR de Ayuda</strong> {t('welcomeDescription')}
           </p>
         </div>
 
@@ -118,12 +118,12 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#CE3B3B] shrink-0" />
                 <h3 className="text-xs sm:text-sm font-extrabold text-[#1F1C1A]">
-                  Si necesitas ayuda (Pedir)
+                  {t('welcomeNeedTitle')}
                 </h3>
               </div>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed pl-4.5 group-hover:text-slate-900 transition-colors">
-              Publica el punto exacto en el mapa, indica qué hace falta (alimentos, salud, refugio) y deja un contacto directo.
+              {t('welcomeNeedDesc')}
             </p>
           </button>
 
@@ -137,12 +137,12 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#1B3A93] shrink-0" />
                 <h3 className="text-xs sm:text-sm font-extrabold text-[#1F1C1A]">
-                  Si puedes ayudar (Ofrecer)
+                  {t('welcomeOfferTitle')}
                 </h3>
               </div>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed pl-4.5 group-hover:text-slate-900 transition-colors">
-              Explora las necesidades en tu zona o publica donaciones e insumos disponibles. Conéctate en 1 clic por WhatsApp o llamada.
+              {t('welcomeOfferDesc')}
             </p>
           </button>
         </div>
@@ -155,7 +155,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
             className="w-full sm:w-1/2 px-4 py-3 rounded-2xl bg-[#F5F6F9] hover:bg-slate-200/80 border border-slate-200/90 text-[#1F1C1A] hover:text-[#1B3A93] font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
           >
             <HelpCircle className="w-4 h-4 text-slate-500 shrink-0" />
-            <span>Ver guía completa</span>
+            <span>{t('welcomeFullGuide')}</span>
           </button>
 
           <button
@@ -164,7 +164,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
             className="w-full sm:w-1/2 px-4 py-3 rounded-2xl bg-[#1B3A93] hover:bg-[#1B3A93]/90 text-white font-black text-xs sm:text-sm shadow-md shadow-[#1B3A93]/20 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
           >
             <MapPin className="w-4 h-4 text-[#F2C33D] shrink-0" />
-            <span>Entendido, ir al mapa</span>
+            <span>{t('welcomeGoToMap')}</span>
           </button>
         </div>
       </div>

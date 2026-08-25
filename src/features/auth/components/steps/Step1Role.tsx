@@ -1,6 +1,8 @@
 import React from 'react';
 import { User, Shield, Building2 } from 'lucide-react';
 import { UserRole } from '../../schemas/registerSchema';
+import { useTranslation } from '../../../../i18n/LanguageContext';
+import { TranslationKey } from '../../../../i18n/translations';
 
 interface Step1RoleProps {
   selectedRole: UserRole | '';
@@ -9,28 +11,28 @@ interface Step1RoleProps {
 
 interface RoleOption {
   id: UserRole;
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   icon: React.ElementType;
 }
 
 const ROLE_OPTIONS: RoleOption[] = [
   {
     id: 'voluntario',
-    title: 'Usuario regular',
-    description: 'Puedes ver, crear y editar tus propios reportes',
+    titleKey: 'authRoleVolunteer',
+    descriptionKey: 'authRoleVolunteerDesc',
     icon: User,
   },
   {
     id: 'moderador',
-    title: 'Moderador',
-    description: 'Ideal para líderes comunitarios con experiencia en verificación.',
+    titleKey: 'authRoleModerator',
+    descriptionKey: 'authRoleModeratorDesc',
     icon: Shield,
   },
   {
     id: 'entidad_profesional',
-    title: 'Gobierno / Organización',
-    description: 'Para funcionarios de entidades públicas, ONGs o institucionales con correo verificado.',
+    titleKey: 'authRoleOrg',
+    descriptionKey: 'authRoleOrgDesc',
     icon: Building2,
   },
 ];
@@ -39,19 +41,21 @@ export const Step1Role: React.FC<Step1RoleProps> = ({
   selectedRole,
   onSelectRole,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-5 py-2">
       {/* Encabezado del Paso 2 */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          ¿Cuál es tu rol?
+          {t('authRoleTitle')}
         </h2>
         <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-          Elige el rol que describe tu participación. Obtendrás acceso inmediato como Usuario Regular mientras se procesa tu postulación.
+          {t('authRoleSubtitle')}
         </p>
       </div>
 
-      {/* Lista Vertical de Tarjetas de Rol (Fidelidad 100% al Mockup) */}
+      {/* Lista Vertical de Tarjetas de Rol */}
       <div className="space-y-3 pt-2">
         {ROLE_OPTIONS.map((option) => {
           const Icon = option.icon;
@@ -88,10 +92,10 @@ export const Step1Role: React.FC<Step1RoleProps> = ({
                 {/* Texto de título y descripción */}
                 <div className="flex-1">
                   <h3 className="font-bold text-slate-900 text-base sm:text-lg">
-                    {option.title}
+                    {t(option.titleKey)}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 mt-0.5 leading-snug">
-                    {option.description}
+                    {t(option.descriptionKey)}
                   </p>
                 </div>
               </div>
@@ -118,4 +122,3 @@ export const Step1Role: React.FC<Step1RoleProps> = ({
     </div>
   );
 };
-

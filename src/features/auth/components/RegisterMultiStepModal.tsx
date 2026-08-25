@@ -63,7 +63,8 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
   const country = watch('country');
   const department = watch('department');
   const city = watch('city');
-  const isAutoDetected = watch('isAutoDetected');
+  const cityId = (watch as any)('cityId') || '';
+  const departmentId = (watch as any)('departmentId') || '';
   const firstName = watch('firstName');
   const lastName = watch('lastName');
   const documentType = watch('documentType');
@@ -166,12 +167,13 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
             {currentStep === 2 && (
               <Step2Location
                 country={country}
-                department={department}
-                city={city}
-                isAutoDetected={isAutoDetected}
+                cityId={cityId}
+                departmentId={departmentId}
                 onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
-                onChangeDepartment={(d) => setValue('department', d, { shouldValidate: true })}
-                onChangeCity={(ct) => setValue('city', ct, { shouldValidate: true })}
+                onChangeCityId={(cId, dId) => {
+                  setValue('cityId' as any, cId, { shouldValidate: true });
+                  setValue('departmentId' as any, dId || '', { shouldValidate: true });
+                }}
               />
             )}
 

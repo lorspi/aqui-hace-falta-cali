@@ -3,6 +3,17 @@ import React, { useEffect, useRef, useCallback } from 'react';
 interface TurnstileProps {
   onVerify: (token: string) => void;
   onError?: () => void;
+  onExpire?: () => void;
+  /** 
+   * 'always' = widget siempre visible (default)
+   * 'interaction-only' = invisible hasta que sea necesario (challenge)
+   * 'execute' = totalmente invisible, se ejecuta programáticamente
+   */
+  appearance?: 'always' | 'interaction-only' | 'execute';
+  size?: 'normal' | 'compact' | 'flexible';
+  theme?: 'light' | 'dark' | 'auto';
+  /** Language for the widget (e.g. 'es', 'en') */
+  language?: string;
 }
 
 declare global {
@@ -11,21 +22,32 @@ declare global {
       render: (container: HTMLElement, options: any) => string;
       reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
+      execute: (container: HTMLElement | string, options?: any) => void;
     };
   }
 }
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
-export const Turnstile: React.FC<TurnstileProps> = React.memo(({ onVerify, onError }) => {
+export const Turnstile: React.FC<TurnstileProps> = React.memo(({
+  onVerify,
+  onError,
+  onExpire,
+  appearance = 'always',
+  size = 'normal',
+  theme = 'light',
+  language,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const onVerifyRef = useRef(onVerify);
   const onErrorRef = useRef(onError);
+  const onExpireRef = useRef(onExpire);
 
   // Keep refs updated without causing re-renders
   onVerifyRef.current = onVerify;
   onErrorRef.current = onError;
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
     const renderWidget = () => {
@@ -40,8 +62,13 @@ export const Turnstile: React.FC<TurnstileProps> = React.memo(({ onVerify, onErr
         'error-callback': () => {
           onErrorRef.current?.();
         },
-        theme: 'light',
-        size: 'compact',
+        'expired-callback': () => {
+          onExpireRef.current?.();
+        },
+        theme,
+        size,
+        appearance,
+        language: language || 'es',
       });
     };
 
