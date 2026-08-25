@@ -755,7 +755,7 @@ export async function upsertUserProfile(profileData: {
         department: profileData.department || 'Quindío',
         city: profileData.city || 'Armenia',
         is_auto_detected_location: profileData.is_auto_detected_location ?? true,
-        role: profileData.role || 'voluntario',
+        role: profileData.role || 'regular',
         accept_terms: profileData.accept_terms ?? true,
         terms_accepted_at: profileData.terms_accepted_at || new Date().toISOString(),
         moderator_community_collective: profileData.moderator_community_collective?.trim(),
@@ -785,6 +785,8 @@ export async function upsertOrganization(orgData: {
   address?: string;
   latitude?: number;
   longitude?: number;
+  document_type?: string;
+  document_number?: string;
 }) {
   const { data, error } = await supabase
     .from('organizations')
@@ -799,6 +801,8 @@ export async function upsertOrganization(orgData: {
           address: orgData.address?.trim(),
           latitude: orgData.latitude,
           longitude: orgData.longitude,
+          document_type: orgData.document_type || 'nit',
+          document_number: orgData.document_number?.trim(),
           is_verified: false,
         },
       ],
@@ -821,13 +825,14 @@ export async function fetchUserOrganization(userId: string) {
       .from('organizations')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
     if (error) {
       console.error('[Supabase] Error fetching user organization:', error);
       return null;
     }
-    return data;
+    return data && data.length > 0 ? data[0] : null;
   } catch (err) {
     console.error('[Supabase] Exception fetching user organization:', err);
     return null;

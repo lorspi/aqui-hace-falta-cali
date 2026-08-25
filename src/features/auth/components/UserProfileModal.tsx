@@ -175,8 +175,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       case 'ADMIN':
         return { label: 'Administrador', icon: '👑', color: 'bg-emerald-50 text-emerald-900 border-emerald-200' };
       case 'voluntario':
+        return { label: 'Voluntario / Donante', icon: '❤️', color: 'bg-rose-50 text-rose-900 border-rose-200' };
+      case 'regular':
       default:
-        return { label: 'Voluntario / Donante', icon: '❤️', color: 'bg-blue-50 text-blue-900 border-blue-200' };
+        return { label: 'Usuario Regular', icon: '👤', color: 'bg-blue-50 text-blue-900 border-blue-200' };
     }
   };
 
@@ -211,7 +213,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         country: data.country || 'Colombia',
         department: data.department || 'Quindío',
         city: data.city || 'Armenia',
-        role: activeProfile?.role || 'voluntario',
+        role: activeProfile?.role || 'regular',
         moderation_status: activeProfile?.moderation_status,
       });
 
@@ -224,6 +226,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           description: data.orgDescription?.trim() || '',
           website_or_social: data.orgWebsiteOrSocial?.trim() || '',
           address: data.orgAddress?.trim() || '',
+          latitude: activeOrg?.latitude,
+          longitude: activeOrg?.longitude,
+          document_type: data.documentType || 'nit',
+          document_number: data.documentNumber?.trim(),
         });
       }
 
@@ -340,21 +346,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {activeProfile.moderator_motivation && (
                     <p className="text-xs opacity-80 mt-1">Motivación: "{activeProfile.moderator_motivation}"</p>
                   )}
-                </div>
-              )}
-
-              {/* Alertas de Servidor o Éxito */}
-              {serverError && (
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>{serverError}</span>
-                </div>
-              )}
-
-              {saveSuccess && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>¡Los cambios de tu perfil se guardaron correctamente!</span>
                 </div>
               )}
 
@@ -583,6 +574,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Alertas de Servidor o Éxito cerca al botón inferior */}
+                {serverError && (
+                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold flex items-center gap-2 animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>{serverError}</span>
+                  </div>
+                )}
+
+                {saveSuccess && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>¡Los cambios de tu perfil se guardaron correctamente!</span>
                   </div>
                 )}
 

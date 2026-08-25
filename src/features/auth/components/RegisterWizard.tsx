@@ -20,6 +20,7 @@ import { StepOrgCategory } from './steps/StepOrgCategory';
 import { StepOrgMapLocation } from './steps/StepOrgMapLocation';
 import { StepOrgDetails } from './steps/StepOrgDetails';
 import { StepOrgAccount } from './steps/StepOrgAccount';
+import { getCityCoordinates } from '../../../data/colombiaCities';
 
 interface RegisterWizardProps {
   isOpen?: boolean;
@@ -60,7 +61,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
     formState: { errors },
   } = useForm<any>({
     defaultValues: {
-      role: 'voluntario',
+      role: 'regular',
       organizationType: 'bomberos_defensa_civil',
       country: 'Colombia',
       department: '',
@@ -128,7 +129,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
   // Determinar el tipo de flujo y número de pasos totales
   const isOrgFlow = role === 'entidad_profesional';
   const isModeratorFlow = role === 'moderador';
-  const totalSteps = isOrgFlow ? 6 : (isModeratorFlow ? 4 : 3);
+  const totalSteps = isOrgFlow ? 5 : (isModeratorFlow ? 4 : 3);
 
   // Control de navegación y validación dinámica por paso
   const handleNextStep = async () => {
@@ -226,10 +227,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         }
       }
     } else {
-      // Flujo Organización (6 Pasos Totales)
+      // Flujo Organización (5 Pasos Totales)
       if (currentStep === 3) {
-        isValidStep = await trigger(['organizationType']);
-      } else if (currentStep === 4) {
         clearErrors(['orgName']);
         if (!orgName?.trim() || orgName.trim().length < 2) {
           setError('orgName', { type: 'manual', message: 'El nombre de la organización es obligatorio' });
@@ -237,9 +236,23 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         } else {
           isValidStep = true;
         }
+      } else if (currentStep === 4) {
+        clearErrors(['documentNumber']);
+        const isLocValid = await trigger(['documentNumber', 'country', 'department', 'city']);
+        if (!documentNumber?.trim()) {
+          setError('documentNumber', { type: 'manual', message: 'El número de documento es obligatorio' });
+          isValidStep = false;
+        } else {
+          isValidStep = isLocValid;
+          if (isLocValid && cityId) {
+            const coords = getCityCoordinates(cityId, departmentId);
+            if (coords && coords.lat && coords.lng) {
+              setValue('latitude', coords.lat, { shouldValidate: true });
+              setValue('longitude', coords.lng, { shouldValidate: true });
+            }
+          }
+        }
       } else if (currentStep === 5) {
-        isValidStep = await trigger(['country', 'department', 'city']);
-      } else if (currentStep === 6) {
         isValidStep = await trigger(['searchAddress', 'latitude', 'longitude']);
       }
     }
@@ -296,7 +309,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           department: data.department || 'Quindío',
           city: data.city || 'Armenia',
           is_auto_detected_location: false,
-          role: data.role || 'voluntario',
+          role: data.role || 'regular',
           accept_terms: true,
           terms_accepted_at: new Date().toISOString(),
           is_verified: false,
@@ -352,7 +365,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         department: data.department,
         city: data.city,
         is_auto_detected_location: false,
-        role: data.role || 'voluntario',
+        role: data.role || 'regular',
         accept_terms: true,
         terms_accepted_at: new Date().toISOString(),
         moderator_community_collective: data.moderatorCommunityCollective,
@@ -375,6 +388,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
             address: data.searchAddress?.trim() || '',
             latitude: data.latitude || 3.4516,
             longitude: data.longitude || -76.532,
+            document_type: data.documentType || 'nit',
+            document_number: data.documentNumber?.trim(),
           });
         } catch (orgErr: any) {
           console.error('[RegisterWizard] Error al guardar datos de la organización:', orgErr);
@@ -556,26 +571,20 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
               </>
             )}
 
-            {/* Renderizado para Flujo de Organización (6 Pasos) */}
+            {/* Renderizado para Flujo de Organización (5 Pasos) */}
             {isOrgFlow && (
               <>
-                {/* Paso 3 Org (3 de 6): Tipo de Organización */}
+                {/* Paso 3 Org (3 de 5): Datos de la Organización (Tipo + Nombre + Misión + Red Social) */}
                 {currentStep === 3 && (
-                  <StepOrgCategory
-                    selectedType={organizationType}
-                    onSelectType={(t) => setValue('organizationType', t, { shouldValidate: true })}
-                  />
-                )}
-
-                {/* Paso 4 Org (4 de 6): Tu organización (Datos Entidad) */}
-                {currentStep === 4 && (
                   <StepOrgDetails
+                    selectedType={organizationType}
                     orgName={orgName}
                     orgDescription={orgDescription}
                     orgWebsiteOrSocial={orgWebsiteOrSocial}
                     errors={{
                       orgName: errStr(errors.orgName),
                     }}
+                    onSelectType={(t) => setValue('organizationType', t, { shouldValidate: true })}
                     onChangeOrgName={(val) => {
                       setValue('orgName', val, { shouldValidate: true });
                       setValue('fullName', val, { shouldValidate: true });
@@ -585,12 +594,21 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 5 Org (5 de 6): Ubicación Territorio */}
-                {currentStep === 5 && (
-                  <Step2Location
+                {/* Paso 4 Org (4 de 5): Identificación Legal y Ubicación Territorio */}
+                {currentStep === 4 && (
+                  <Step3IdentityLocation
+                    documentType={documentType || 'nit'}
+                    documentNumber={documentNumber}
                     country={country}
                     cityId={cityId}
                     departmentId={departmentId}
+                    isSubmitting={isSubmitting}
+                    errors={{
+                      documentNumber: errStr(errors.documentNumber),
+                      city: errStr(errors.city),
+                    }}
+                    onChangeDocumentType={(type: DocumentType) => setValue('documentType', type, { shouldValidate: true })}
+                    onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
                     onChangeCityId={(cId, dId) => {
                       setValue('cityId', cId, { shouldValidate: true });
@@ -599,8 +617,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                   />
                 )}
 
-                {/* Paso 6 Org (6 de 6): Mapa y Dirección */}
-                {currentStep === 6 && (
+                {/* Paso 5 Org (5 de 5): Ubicación en Mapa y Dirección de la Sede */}
+                {currentStep === 5 && (
                   <StepOrgMapLocation
                     searchAddress={searchAddress}
                     latitude={latitude}

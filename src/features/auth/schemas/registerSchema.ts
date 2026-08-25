@@ -4,6 +4,7 @@ import { z } from 'zod';
  * Roles de usuario permitidos en la plataforma
  */
 export const userRoleEnum = z.enum([
+  'regular',
   'voluntario',
   'moderador',
   'rescatista',

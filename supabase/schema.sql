@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   department VARCHAR(100) DEFAULT 'Quindío',
   city VARCHAR(100) DEFAULT 'Armenia',
   is_auto_detected_location BOOLEAN DEFAULT TRUE,
-  role VARCHAR(50) DEFAULT 'voluntario',
+  role VARCHAR(50) DEFAULT 'regular',
   is_verified BOOLEAN DEFAULT FALSE,
   
   -- Auditoría de Términos y Condiciones
@@ -184,6 +184,8 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   address TEXT,
   latitude DOUBLE PRECISION,
   longitude DOUBLE PRECISION,
+  document_type VARCHAR(50) DEFAULT 'nit',
+  document_number VARCHAR(50),
   is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

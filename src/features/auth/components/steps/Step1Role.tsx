@@ -18,7 +18,7 @@ interface RoleOption {
 
 const ROLE_OPTIONS: RoleOption[] = [
   {
-    id: 'voluntario',
+    id: 'regular',
     titleKey: 'authRoleVolunteer',
     descriptionKey: 'authRoleVolunteerDesc',
     icon: User,

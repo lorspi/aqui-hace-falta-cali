@@ -42,6 +42,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [editorName, setEditorName] = useState('');
   const [editReason, setEditReason] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const isTurnstileValid = !!turnstileToken;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showPickerMap, setShowPickerMap] = useState(false);

@@ -1095,12 +1095,16 @@ export const AdminPanelPage: React.FC = () => {
         <NeedDetailModal
           need={viewingNeed}
           onClose={() => setViewingNeed(null)}
+          onOpenQuieroAyudar={() => {}}
+          onOpenReportModal={() => {}}
+          onOpenUpdateStatusModal={() => {}}
         />
       )}
 
       {viewingOffer && (
         <OfferDetailModal
           offer={viewingOffer}
+          isOpen={!!viewingOffer}
           onClose={() => setViewingOffer(null)}
         />
       )}
