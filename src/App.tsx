@@ -933,6 +933,7 @@ function MainApp() {
         criticalCount={criticalCount}
         isLoggedIn={isModeratorLoggedIn || !!authUser}
         isModerator={isModeratorLoggedIn || userProfile?.role === 'moderador' || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN'}
+        isModeratorApproved={isModeratorLoggedIn || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN' || userProfile?.moderation_status === 'APPROVED'}
         userName={authUser?.name || (sessionUser as any)?.name}
         onLogout={async () => {
           await supabase.auth.signOut();

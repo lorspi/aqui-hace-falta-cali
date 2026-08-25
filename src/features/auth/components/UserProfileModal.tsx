@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { X, User, Phone, MapPin, Building2, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Save, CreditCard, Mail, Globe, AlignLeft } from 'lucide-react';
 import { fetchUserProfile, upsertUserProfile, fetchUserOrganization, upsertOrganization } from '../../../lib/supabaseService';
 import { supabase } from '../../../lib/supabaseClient';
-import { CityCombobox } from '../../../components/CityCombobox';
-import { ALL_CITIES } from '../../../data/colombiaCities';
+import { CityFormCombobox } from '../../../components/CityFormCombobox';
+import { ALL_CITIES, findCityById, findDepartmentByCityId } from '../../../data/colombiaCities';
 import { DocumentType, userRoleEnum } from '../schemas/registerSchema';
 
 interface UserProfileModalProps {
@@ -43,8 +43,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       documentType: 'cedula',
       documentNumber: '',
       country: 'Colombia',
-      department: 'Quindío',
-      city: 'Armenia',
+      department: 'Valle del Cauca',
+      city: 'Cali',
       orgName: '',
       organizationType: 'bomberos_defensa_civil',
       orgDescription: '',
@@ -116,8 +116,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             documentType: profile.document_type || 'cedula',
             documentNumber: profile.document_number || '',
             country: profile.country || 'Colombia',
-            department: profile.department || 'Quindío',
-            city: profile.city || 'Armenia',
+            department: profile.department || 'Valle del Cauca',
+            city: profile.city || 'Cali',
             orgName: orgData?.org_name || profile?.full_name || '',
             organizationType: orgData?.organization_type || 'bomberos_defensa_civil',
             orgDescription: orgData?.description || '',
@@ -211,8 +211,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         document_type: data.documentType || 'cedula',
         document_number: data.documentNumber?.trim(),
         country: data.country || 'Colombia',
-        department: data.department || 'Quindío',
-        city: data.city || 'Armenia',
+        department: data.department || 'Valle del Cauca',
+        city: data.city || 'Cali',
         role: activeProfile?.role || 'regular',
         moderation_status: activeProfile?.moderation_status,
       });
@@ -468,7 +468,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <span>Ubicación Territorial</span>
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         País
@@ -483,28 +483,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Departamento
-                      </label>
-                      <input
-                        type="text"
-                        value={department}
-                        onChange={(e) => setValue('department', e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         Ciudad / Municipio
                       </label>
-                      <CityCombobox
+                      <CityFormCombobox
                         value={city}
-                        onChange={(newCity) => {
-                          setValue('city', newCity);
-                          const cityObj = ALL_CITIES.find((c: any) => c.name === newCity);
-                          if (cityObj) {
-                            setValue('department', (cityObj as any).department);
-                          }
+                        onChange={(cId, dId) => {
+                          const cObj = findCityById(cId, dId);
+                          const dObj = findDepartmentByCityId(cId, dId);
+                          if (cObj) setValue('city', cObj.name);
+                          if (dObj) setValue('department', dObj.name);
                         }}
                       />
                     </div>

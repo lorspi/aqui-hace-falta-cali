@@ -19,6 +19,7 @@ interface HeaderProps {
   // Auth
   isLoggedIn?: boolean;
   isModerator?: boolean;
+  isModeratorApproved?: boolean;
   userName?: string;
   onLogout?: () => void;
 }
@@ -26,6 +27,7 @@ interface HeaderProps {
 interface UserMenuProps {
   isLoggedIn?: boolean;
   isModerator?: boolean;
+  isModeratorApproved?: boolean;
   userName?: string;
   onOpenAdminModal?: () => void;
   onOpenProfileModal?: () => void;
@@ -39,6 +41,7 @@ interface UserMenuProps {
 const UserMenu: React.FC<UserMenuProps> = ({
   isLoggedIn = false,
   isModerator = false,
+  isModeratorApproved = false,
   userName,
   onOpenAdminModal,
   onOpenProfileModal,
@@ -104,21 +107,38 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 </button>
               )}
               {isModerator && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOpen(false);
-                    if (onOpenAdminModal) {
-                      onOpenAdminModal();
-                    } else {
-                      window.location.href = '/panel';
-                    }
-                  }}
-                  className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer border-b border-slate-100 font-semibold"
-                >
-                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <span>{t('userMenuModPanel')}</span>
-                </button>
+                isModeratorApproved ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      if (onOpenAdminModal) {
+                        onOpenAdminModal();
+                      } else {
+                        window.location.href = '/panel';
+                      }
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer border-b border-slate-100 font-semibold"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>{t('userMenuModPanel')}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full text-left px-3.5 py-2.5 text-xs text-slate-400 bg-slate-50 flex items-center justify-between transition-colors border-b border-slate-100 font-semibold cursor-not-allowed opacity-80"
+                    title="Tu solicitud de moderador se encuentra pendiente de aprobación"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate">{t('userMenuModPanel')}</span>
+                        <span className="text-[10px] text-amber-600 font-bold">Pendiente de aprobación</span>
+                      </div>
+                    </div>
+                  </button>
+                )
               )}
               <button
                 type="button"
@@ -185,6 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
   criticalCount: _criticalCount,
   isLoggedIn = false,
   isModerator = false,
+  isModeratorApproved = false,
   userName,
   onLogout,
 }) => {
@@ -244,6 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
             <UserMenu
               isLoggedIn={isLoggedIn}
               isModerator={isModerator}
+              isModeratorApproved={isModeratorApproved}
               userName={userName}
               onOpenAdminModal={_onOpenAdminModal}
               onOpenProfileModal={onOpenProfileModal}
@@ -302,6 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
             <UserMenu
               isLoggedIn={isLoggedIn}
               isModerator={isModerator}
+              isModeratorApproved={isModeratorApproved}
               userName={userName}
               onOpenAdminModal={_onOpenAdminModal}
               onOpenProfileModal={onOpenProfileModal}

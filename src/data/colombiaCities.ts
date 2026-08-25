@@ -304,27 +304,36 @@ const CAPITAL_HOMONYMS: Record<string, string> = {
   'la-union': 'valle-del-cauca',
 };
 
-/** Find a city by its slug id and optional department id */
-export function findCityById(cityId: string, departmentId?: string): ColombiaCity | undefined {
-  if (!cityId) return undefined;
-  const cleanCity = cityId.toLowerCase().trim();
-  const cleanDept = (departmentId || CAPITAL_HOMONYMS[cleanCity])?.toLowerCase().trim();
+/** Find a city by its slug id, display name, or optional department id */
+export function findCityById(cityIdOrName: string, departmentIdOrName?: string): ColombiaCity | undefined {
+  if (!cityIdOrName) return undefined;
+  const cleanInput = cityIdOrName.trim();
+  const slugInput = toSlug(cleanInput);
 
-  if (cleanDept) {
-    const found = ALL_CITIES.find((c) => c.id === cleanCity && c.departmentId === cleanDept);
+  const cleanDeptInput = departmentIdOrName ? departmentIdOrName.trim() : undefined;
+  const slugDeptInput = cleanDeptInput ? (CAPITAL_HOMONYMS[slugInput] || toSlug(cleanDeptInput)) : CAPITAL_HOMONYMS[slugInput];
+
+  if (slugDeptInput) {
+    const found = ALL_CITIES.find(
+      (c) => (c.id === slugInput || toSlug(c.name) === slugInput || c.name.toLowerCase() === cleanInput.toLowerCase()) &&
+             (c.departmentId === slugDeptInput || toSlug(c.departmentId) === slugDeptInput)
+    );
     if (found) return found;
   }
 
-  return ALL_CITIES.find((c) => c.id === cleanCity);
+  return ALL_CITIES.find(
+    (c) => c.id === slugInput || toSlug(c.name) === slugInput || c.name.toLowerCase() === cleanInput.toLowerCase()
+  );
 }
 
 /** Find the department a city belongs to */
-export function findDepartmentByCityId(cityId: string, departmentId?: string): Department | undefined {
-  if (departmentId) {
-    const d = DEPARTMENTS.find((dept) => dept.id === departmentId.toLowerCase().trim());
+export function findDepartmentByCityId(cityIdOrName: string, departmentIdOrName?: string): Department | undefined {
+  if (departmentIdOrName) {
+    const slugDept = toSlug(departmentIdOrName);
+    const d = DEPARTMENTS.find((dept) => dept.id === slugDept || toSlug(dept.name) === slugDept || dept.name.toLowerCase() === departmentIdOrName.toLowerCase().trim());
     if (d) return d;
   }
-  const city = findCityById(cityId, departmentId);
+  const city = findCityById(cityIdOrName, departmentIdOrName);
   if (!city) return undefined;
   return DEPARTMENTS.find((d) => d.id === city.departmentId);
 }

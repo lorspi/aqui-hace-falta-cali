@@ -44,6 +44,7 @@ import { OfferDetailModal } from "./OfferDetailModal";
 import {
   useNeeds,
   useOffers,
+  fetchUserProfile,
   fetchAdminReports,
   resolveReport,
   fetchAuditLogs,
@@ -79,6 +80,49 @@ export const AdminPanelPage: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [pendingStatusUser, setPendingStatusUser] = useState<boolean>(false);
+
+  // Auto-login si ya existe una sesión activa autenticada en Supabase
+  useEffect(() => {
+    const checkSupabaseSession = async () => {
+      if (authToken) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id);
+          if (profile) {
+            const isApprovedMod = profile.role === 'moderador' && profile.moderation_status === 'APPROVED';
+            const isAdmin = profile.role === 'ADMIN';
+            const isPendingMod = profile.role === 'moderador' && profile.moderation_status !== 'APPROVED';
+
+            if (isPendingMod) {
+              setPendingStatusUser(true);
+              return;
+            }
+
+            if (isApprovedMod || isAdmin) {
+              const token = session.access_token || 'supabase_mod_token';
+              const adminUserObj: AdminUser = {
+                id: profile.id,
+                name: profile.full_name || profile.name || session.user.email?.split('@')[0] || 'Moderador',
+                email: session.user.email || '',
+                role: isAdmin ? 'ADMIN' : 'MODERATOR',
+                active: true,
+                createdAt: new Date().toISOString(),
+              };
+              localStorage.setItem('ahf_admin_token', token);
+              localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+              setAuthToken(token);
+              setCurrentUser(adminUserObj);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[AdminPanelPage] Auto session check note:', err);
+      }
+    };
+    checkSupabaseSession();
+  }, [authToken]);
 
   const [activeTab, setActiveTab] = useState<
     "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS"
@@ -371,6 +415,32 @@ export const AdminPanelPage: React.FC = () => {
       showAlert(err.message || 'Error al eliminar', { title: 'Error', variant: 'error' });
     }
   };
+
+  if (pendingStatusUser && !authToken) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-black text-slate-900">Solicitud en Revisión</h1>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tu solicitud de moderador se encuentra en estado <strong>pendiente de aprobación</strong>. Un administrador revisará tu información para habilitar tu acceso al panel.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/'; }}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-md text-xs flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a la plataforma</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // If not logged in, render Login View
   if (!authToken) {

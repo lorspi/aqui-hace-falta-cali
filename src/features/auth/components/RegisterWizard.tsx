@@ -20,7 +20,7 @@ import { StepOrgCategory } from './steps/StepOrgCategory';
 import { StepOrgMapLocation } from './steps/StepOrgMapLocation';
 import { StepOrgDetails } from './steps/StepOrgDetails';
 import { StepOrgAccount } from './steps/StepOrgAccount';
-import { getCityCoordinates } from '../../../data/colombiaCities';
+import { getCityCoordinates, findCityById, findDepartmentByCityId, getCityDisplayName } from '../../../data/colombiaCities';
 
 interface RegisterWizardProps {
   isOpen?: boolean;
@@ -290,6 +290,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       let targetUserId = currentUser?.id;
       let targetEmail = currentUser?.email || (data.email ? data.email.trim() : '');
 
+      // Resolver nombres reales de ciudad y departamento desde cityId
+      const selectedCityObj = data.cityId ? findCityById(data.cityId) : null;
+      const selectedDeptObj = data.cityId ? findDepartmentByCityId(data.cityId) : null;
+      const resolvedCity = data.city?.trim() || (selectedCityObj ? selectedCityObj.name : 'Cali');
+      const resolvedDept = data.department?.trim() || (selectedDeptObj ? selectedDeptObj.name : 'Valle del Cauca');
+
       // 2. Si NO hay usuario activo de Google, registrar la cuenta en Supabase Auth con Correo y Contraseña
       if (!targetUserId) {
         if (!data.email?.trim() || !data.password?.trim()) {
@@ -306,8 +312,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
           document_type: data.documentType || 'cedula',
           document_number: data.documentNumber?.trim() || '',
           country: data.country || 'Colombia',
-          department: data.department || 'Quindío',
-          city: data.city || 'Armenia',
+          department: resolvedDept,
+          city: resolvedCity,
           is_auto_detected_location: false,
           role: data.role || 'regular',
           accept_terms: true,
@@ -361,9 +367,9 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         phone: fullPhone,
         document_type: data.documentType,
         document_number: data.documentNumber,
-        country: data.country,
-        department: data.department,
-        city: data.city,
+        country: data.country || 'Colombia',
+        department: resolvedDept,
+        city: resolvedCity,
         is_auto_detected_location: false,
         role: data.role || 'regular',
         accept_terms: true,
