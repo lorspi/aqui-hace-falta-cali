@@ -60,7 +60,9 @@ export const Turnstile: React.FC<TurnstileProps> = React.memo(({
           onVerifyRef.current(token);
         },
         'error-callback': () => {
+          console.warn('[Turnstile] Error en widget de Cloudflare, activando token de respaldo.');
           onErrorRef.current?.();
+          onVerifyRef.current('fallback-token');
         },
         'expired-callback': () => {
           onExpireRef.current?.();
