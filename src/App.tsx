@@ -1347,6 +1347,7 @@ function MainApp() {
         moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
         onSaved={(updatedNeed) => {
           setSelectedForPublicEdit(null);
+          refetchNeeds();
           handleSelectNeed(updatedNeed);
         }}
       />
@@ -1357,6 +1358,7 @@ function MainApp() {
         moderatorName={isModeratorLoggedIn ? (sessionUser as any)?.name : undefined}
         onSaved={(updatedOffer) => {
           setSelectedOfferForEdit(null);
+          refetchOffers();
           handleSelectOffer(updatedOffer);
         }}
       />

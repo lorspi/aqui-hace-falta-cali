@@ -89,6 +89,9 @@ export interface Need {
   lastUpdatedBy?: string;
   expiresAt?: string;
   isDemoData?: boolean;
+  sourceEventId?: string;
+  conversationId?: string;
+  locationEnrichmentStatus?: string;
 }
 
 export interface Report {
@@ -182,6 +185,7 @@ export interface Offer {
   operatingHours?: string;
   createdAt: string;
   updatedAt: string;
+  lastUpdatedBy?: string;
 }
 
 export interface FilterState {

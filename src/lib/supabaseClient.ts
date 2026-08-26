@@ -54,6 +54,9 @@ export function dbNeedToNeed(row: any): Need {
     lastUpdatedBy: row.last_updated_by,
     expiresAt: row.expires_at,
     isDemoData: row.is_demo_data,
+    sourceEventId: row.source_event_id,
+    conversationId: row.conversation_id,
+    locationEnrichmentStatus: row.location_enrichment_status,
   };
 }
 
@@ -92,6 +95,9 @@ export function needToDbNeed(need: Partial<Need>): Record<string, any> {
   if (need.lastUpdatedBy !== undefined) data.last_updated_by = need.lastUpdatedBy;
   if (need.expiresAt !== undefined) data.expires_at = need.expiresAt;
   if (need.isDemoData !== undefined) data.is_demo_data = need.isDemoData;
+  if (need.sourceEventId !== undefined) data.source_event_id = need.sourceEventId;
+  if (need.conversationId !== undefined) data.conversation_id = need.conversationId;
+  if (need.locationEnrichmentStatus !== undefined) data.location_enrichment_status = need.locationEnrichmentStatus;
   return data;
 }
 
@@ -120,6 +126,7 @@ export function dbOfferToOffer(row: any): Offer {
     operatingHours: row.operating_hours,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    lastUpdatedBy: row.last_updated_by,
   };
 }
 
@@ -147,6 +154,7 @@ export function offerToDbOffer(offer: Partial<Offer>): Record<string, any> {
   if (offer.operatingHours !== undefined) data.operating_hours = offer.operatingHours;
   if (offer.createdAt !== undefined) data.created_at = offer.createdAt;
   if (offer.updatedAt !== undefined) data.updated_at = offer.updatedAt;
+  if (offer.lastUpdatedBy !== undefined) data.last_updated_by = offer.lastUpdatedBy;
   return data;
 }
 

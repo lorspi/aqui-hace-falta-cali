@@ -10,6 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS needs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   city_id VARCHAR(100) NOT NULL DEFAULT 'cali',
+  department_id VARCHAR(100),
   emergency_id VARCHAR(100) DEFAULT 'general',
   title TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -54,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_needs_created_at ON needs(created_at DESC);
 CREATE TABLE IF NOT EXISTS offers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   city_id VARCHAR(100) NOT NULL DEFAULT 'cali',
+  department_id VARCHAR(100),
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   categories JSONB DEFAULT '[]'::jsonb,
@@ -117,6 +119,17 @@ CREATE INDEX IF NOT EXISTS idx_offer_reports_status ON offer_reports(status);
 CREATE TABLE IF NOT EXISTS update_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   need_id UUID REFERENCES needs(id) ON DELETE CASCADE,
+  previous_status VARCHAR(50),
+  new_status VARCHAR(50),
+  description TEXT,
+  updated_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5b. TABLA: offer_update_logs (Historial de actualizaciones en ofertas)
+CREATE TABLE IF NOT EXISTS offer_update_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  offer_id UUID REFERENCES offers(id) ON DELETE CASCADE,
   previous_status VARCHAR(50),
   new_status VARCHAR(50),
   description TEXT,
@@ -292,6 +305,9 @@ CREATE POLICY "Permitir edicion publica de reportes ofertas" ON offer_reports FO
 
 CREATE POLICY "Permitir lectura publica de logs" ON update_logs FOR SELECT USING (true);
 CREATE POLICY "Permitir insercion de logs" ON update_logs FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Permitir lectura publica de logs ofertas" ON offer_update_logs FOR SELECT USING (true);
+CREATE POLICY "Permitir insercion de logs ofertas" ON offer_update_logs FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Permitir lectura de auditoria" ON audit_logs FOR SELECT USING (true);
 CREATE POLICY "Permitir insercion de auditoria" ON audit_logs FOR INSERT WITH CHECK (true);

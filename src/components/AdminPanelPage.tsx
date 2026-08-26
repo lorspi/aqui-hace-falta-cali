@@ -319,6 +319,8 @@ export const AdminPanelPage: React.FC = () => {
     try {
       await updateOffer(id, {
         verificationStatus: action === 'verify' ? 'VERIFIED' : 'ARCHIVED',
+        verifiedBy: action === 'verify' ? (currentUser?.name || 'Moderador') : undefined,
+        lastUpdatedBy: currentUser?.name ? `[MOD] ${currentUser.name}` : '[MOD] Moderador',
       });
       await logAudit(
         action === 'verify' ? 'VERIFY_OFFER' : 'ARCHIVE_OFFER',

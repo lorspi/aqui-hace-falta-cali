@@ -544,16 +544,18 @@ export async function fetchAuditLogs(): Promise<AdminAuditLog[]> {
 }
 
 export async function logAudit(action: string, adminEmail: string, details: string, needId?: string, offerId?: string): Promise<void> {
-  await supabase.from('audit_logs').insert([
+  const { error } = await supabase.from('audit_logs').insert([
     {
       action,
       admin_email: adminEmail,
       details,
-      need_id: needId || null,
-      offer_id: offerId || null,
+      need_id: needId || offerId || null,
       timestamp: new Date().toISOString(),
     },
   ]);
+  if (error) {
+    console.warn('[logAudit] Error al registrar auditoría:', error.message);
+  }
 }
 
 export async function fetchUsersList(): Promise<AdminUser[]> {
