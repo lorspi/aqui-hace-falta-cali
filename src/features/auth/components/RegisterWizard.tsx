@@ -272,6 +272,16 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       setCurrentStep((prev) => prev - 1);
     }
   };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentStep < totalSteps) {
+      handleNextStep();
+    } else {
+      handleSubmit(onSubmitFinal)();
+    }
+  };
+
   // Envío final del Formulario a Supabase Auth y Base de Datos
   const onSubmitFinal: SubmitHandler<any> = async (data) => {
     setIsSubmitting(true);
@@ -488,7 +498,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
         {/* Cuerpo del Formulario Multi-Paso Adaptable */}
         <form
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleFormSubmit}
           className="flex flex-col justify-between flex-1"
         >
           <div className="px-6 sm:px-8 py-4 flex-1">
