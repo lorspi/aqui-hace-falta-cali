@@ -32,7 +32,7 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'MODERATOR' | 'USER';
+  role: 'ADMIN' | 'MODERATOR' | 'USER' | 'VOLUNTARIO' | string;
   active: boolean;
   createdAt: string;
   lastLoginAt?: string;
@@ -568,7 +568,7 @@ export async function fetchUsersList(): Promise<AdminUser[]> {
     id: u.id,
     email: u.email,
     name: u.full_name || u.email,
-    role: (u.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : (u.role === 'moderador' ? 'MODERATOR' : 'USER')) as any,
+    role: (u.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : (u.role === 'moderador' ? 'MODERATOR' : (u.role === 'voluntario' ? 'VOLUNTARIO' : 'USER'))),
     active: u.is_verified ?? true,
     createdAt: u.created_at,
     lastLoginAt: u.updated_at,

@@ -181,6 +181,10 @@ export const AdminPanelPage: React.FC = () => {
   const pendingNeeds = needs.filter((n) => n.verificationStatus === "PENDING_VERIFICATION");
   const pendingOffers = offers.filter((o) => o.verificationStatus === "PENDING_VERIFICATION");
   const pendingReports = reports.filter((r) => r.status === "PENDING");
+  const pendingVolunteers = usersList.filter((u) => 
+    (u.rawRole === 'voluntario' || u.role === 'VOLUNTARIO' || u.volunteerConnectionType) &&
+    (u.moderationStatus || 'PENDING') === 'PENDING'
+  );
 
   // Load admin reports & users
   const loadData = async () => {
@@ -754,6 +758,74 @@ export const AdminPanelPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Pending Volunteers */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-600" />
+                  Postulaciones de Voluntarios Pendientes ({pendingVolunteers.length})
+                </h3>
+              </div>
+
+              {pendingVolunteers.length === 0 ? (
+                <p className="text-slate-500 italic text-center py-6">
+                  No hay solicitudes de voluntarios pendientes de revisión. 🎉
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingVolunteers.map((vol) => (
+                    <div key={vol.id} className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200/80 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            🧑‍🌾 Voluntario RaDAR
+                          </span>
+                          <h4 className="font-extrabold text-slate-900 mt-1">{vol.name}</h4>
+                          <p className="text-xs text-slate-600">{vol.email}</p>
+                        </div>
+                        <span className="bg-amber-500/20 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-500/30">
+                          ◷ PENDIENTE
+                        </span>
+                      </div>
+
+                      <div className="bg-white/80 rounded-xl p-2.5 text-xs text-slate-700 space-y-1 border border-amber-100">
+                        <p><strong className="text-slate-900">Contacto:</strong> {vol.phone || 'No registrado'} ({vol.preferredContactMethod || 'WhatsApp'})</p>
+                        <p><strong className="text-slate-900">Tipo Aporte:</strong> {vol.volunteerConnectionType === 'VOLUNTEER' ? 'Ser voluntario/a' : vol.volunteerConnectionType === 'OFFER_HELP' ? 'Ofrecer ayuda' : vol.volunteerConnectionType === 'COLLABORATE' ? 'Colaborar' : vol.volunteerConnectionType === 'COMMUNITY' ? 'Comunidad' : 'Voluntariado'}</p>
+                        {vol.volunteerNotes && (
+                          <p className="italic text-slate-600 border-t border-slate-100 pt-1 mt-1">"{vol.volunteerNotes}"</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2 border-t border-amber-200/60">
+                        <button
+                          onClick={() => handleChangeModerationStatus(vol.id, 'APPROVED')}
+                          disabled={isSavingUserStatus}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Aprobar</span>
+                        </button>
+                        <button
+                          onClick={() => handleChangeModerationStatus(vol.id, 'REJECTED')}
+                          disabled={isSavingUserStatus}
+                          className="bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs px-3 py-2 rounded-xl transition-all border border-red-200 flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Rechazar</span>
+                        </button>
+                        <button
+                          onClick={() => setViewingUser(vol)}
+                          className="bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-3 py-2 rounded-xl border border-slate-200 ml-auto cursor-pointer"
+                        >
+                          Ver detalle
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1096,13 +1168,14 @@ export const AdminPanelPage: React.FC = () => {
                   <CustomSelect
                     value={userRoleFilter}
                     onChange={setUserRoleFilter}
-                    className="w-40"
+                    className="w-44"
                     icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
                     options={[
                       { value: 'ALL', label: 'Todos los roles' },
-                      { value: 'ADMIN', label: 'Administrador' },
-                      { value: 'MODERATOR', label: 'Moderador' },
-                      { value: 'USER', label: 'Usuario' },
+                      { value: 'VOLUNTARIO', label: '🧑‍🌾 Voluntario RaDAR' },
+                      { value: 'MODERATOR', label: '🛡️ Moderador' },
+                      { value: 'ADMIN', label: '👑 Administrador' },
+                      { value: 'USER', label: '👤 Usuario Regular' },
                     ]}
                   />
                 </div>
@@ -1112,7 +1185,19 @@ export const AdminPanelPage: React.FC = () => {
                 const filteredUsers = usersList.filter((u) => {
                   const status = (u.moderationStatus || 'APPROVED').toUpperCase();
                   const matchesStatus = userStatusFilter === 'ALL' || status === userStatusFilter;
-                  const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+                  
+                  const isVoluntario = u.rawRole === 'voluntario' || u.role === 'VOLUNTARIO' || !!u.volunteerConnectionType;
+                  const isModerator = u.role === 'MODERATOR' || u.rawRole === 'moderador';
+                  const isAdmin = u.role === 'ADMIN';
+                  const isRegularUser = !isVoluntario && !isModerator && !isAdmin;
+
+                  const matchesRole =
+                    userRoleFilter === 'ALL' ||
+                    (userRoleFilter === 'VOLUNTARIO' && isVoluntario) ||
+                    (userRoleFilter === 'MODERATOR' && isModerator) ||
+                    (userRoleFilter === 'ADMIN' && isAdmin) ||
+                    (userRoleFilter === 'USER' && isRegularUser);
+
                   return matchesStatus && matchesRole;
                 });
 
@@ -1135,44 +1220,85 @@ export const AdminPanelPage: React.FC = () => {
 
                 return (
                   <div className="space-y-3">
-                    {sortedUsers.map((usr) => (
-                      <div
-                        key={usr.id}
-                        className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${
-                          (usr.moderationStatus || 'APPROVED') === 'PENDING'
-                            ? 'bg-amber-50 border-amber-200'
-                            : 'bg-slate-50 border-slate-200'
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-slate-900 truncate">{usr.name}</h4>
-                          <p className="text-xs text-slate-600 truncate">{usr.email}</p>
-                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 inline-block">
-                              {usr.role}
-                            </span>
-                            <ModerationStatusChip status={usr.moderationStatus} />
+                    {sortedUsers.map((usr) => {
+                      const isVoluntario = usr.rawRole === 'voluntario' || usr.role === 'VOLUNTARIO' || !!usr.volunteerConnectionType;
+                      const isPending = (usr.moderationStatus || 'APPROVED') === 'PENDING';
+
+                      return (
+                        <div
+                          key={usr.id}
+                          className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                            isPending
+                              ? 'bg-amber-50/70 border-amber-200'
+                              : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-extrabold text-slate-900 truncate">{usr.name}</h4>
+                              {isVoluntario ? (
+                                <span className="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">
+                                  🧑‍🌾 Voluntario RaDAR
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 inline-block">
+                                  {usr.role}
+                                </span>
+                              )}
+                              <ModerationStatusChip status={usr.moderationStatus} />
+                            </div>
+
+                            <p className="text-xs text-slate-600 truncate">{usr.email} {usr.phone ? `• Tel: ${usr.phone}` : ''}</p>
+
+                            {isVoluntario && (
+                              <p className="text-[11px] text-slate-500 italic truncate">
+                                <strong>Aporte:</strong> {usr.volunteerConnectionType === 'VOLUNTEER' ? 'Tiempo/Experiencia' : usr.volunteerConnectionType === 'OFFER_HELP' ? 'Recursos/Ayuda' : usr.volunteerConnectionType === 'COLLABORATE' ? 'Alianza' : 'Voluntariado'} • <strong>Prefiere:</strong> {usr.preferredContactMethod || 'WhatsApp'}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            {isPending && (
+                              <>
+                                <button
+                                  onClick={() => handleChangeModerationStatus(usr.id, 'APPROVED')}
+                                  disabled={isSavingUserStatus}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                  title="Aprobar Solicitud"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Aprobar</span>
+                                </button>
+                                <button
+                                  onClick={() => handleChangeModerationStatus(usr.id, 'REJECTED')}
+                                  disabled={isSavingUserStatus}
+                                  className="bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs px-3 py-1.5 rounded-lg transition-all border border-red-200 flex items-center gap-1 cursor-pointer"
+                                  title="Rechazar Solicitud"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Rechazar</span>
+                                </button>
+                              </>
+                            )}
+
+                            <button
+                              onClick={() => setViewingUser(usr)}
+                              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Search className="w-3.5 h-3.5" />
+                              <span>Detalle</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUserItem(usr.id, usr.name)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
+                              title="Eliminar usuario"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => setViewingUser(usr)}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5"
-                          >
-                            <Search className="w-3.5 h-3.5" />
-                            <span>Ver detalle</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUserItem(usr.id, usr.name)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Eliminar usuario"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })()}
