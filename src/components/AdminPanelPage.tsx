@@ -292,7 +292,7 @@ export const AdminPanelPage: React.FC = () => {
     } catch (e) {
       console.error("Error al cerrar sesión en Supabase:", e);
     }
-    window.location.href = "/home";
+    window.location.href = "/";
   };
 
   const handleVerifyNeed = async (id: string, action: 'verify' | 'archive') => {

@@ -230,7 +230,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     try {
       await supabase.auth.signOut();
     } catch (e) {}
-    window.location.href = "/home";
+    window.location.href = "/";
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {

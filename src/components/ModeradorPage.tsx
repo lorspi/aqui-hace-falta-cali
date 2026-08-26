@@ -227,7 +227,7 @@ export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ 
                       localStorage.removeItem('ahf_admin_token');
                       localStorage.removeItem('ahf_admin_user');
                       localStorage.removeItem('ahf_auth_user');
-                      window.location.href = '/home';
+                      window.location.href = '/';
                     }}
                     className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-red-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition-colors border border-white/20"
                   >

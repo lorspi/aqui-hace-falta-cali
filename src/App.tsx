@@ -962,7 +962,7 @@ function MainApp() {
           localStorage.removeItem('ahf_admin_user');
           localStorage.removeItem('ahf_auth_user');
           setAuthUser(null);
-          window.location.href = '/home';
+          window.location.href = '/';
         }}
       />
       {/* Spacer for fixed header */}
@@ -1442,7 +1442,7 @@ function MainApp() {
             localStorage.removeItem('ahf_admin_user');
             localStorage.removeItem('ahf_auth_user');
             setAuthUser(null);
-            window.location.href = '/home';
+            window.location.href = '/';
           }}
         />
       </div>
