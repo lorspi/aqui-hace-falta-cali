@@ -78,6 +78,9 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
     if (!documentNumber.trim()) {
       newErrors.documentNumber = 'El número de documento es obligatorio';
     }
+    if (!phoneNumber.trim() || phoneNumber.trim().length < 7) {
+      newErrors.phoneNumber = 'El teléfono / WhatsApp es obligatorio (mínimo 7 dígitos)';
+    }
     if (!captchaToken) {
       newErrors.captchaToken = 'Por favor confirma que no eres un robot';
     }
@@ -359,7 +362,7 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp *</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -372,9 +375,10 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="300 123 4567"
-                      className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-blue-500"
+                      className={`flex-1 p-3 bg-slate-50 border ${errors.phoneNumber ? 'border-red-500' : 'border-slate-200'} rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-blue-500`}
                     />
                   </div>
+                  {errors.phoneNumber && <p className="text-[11px] text-red-600 font-semibold mt-1">{errors.phoneNumber}</p>}
                 </div>
 
                 <div>
