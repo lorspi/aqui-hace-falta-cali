@@ -1351,6 +1351,15 @@ const UserDetailModal: React.FC<{
             </>
           )}
 
+          {(user.rawRole === 'voluntario' || user.volunteerConnectionType || user.volunteerNotes) && (
+            <>
+              <h4 className="text-xs font-black text-amber-700 mt-4 mb-1">Postulación de Voluntario / Aliado</h4>
+              <Row label="Forma de conexión" value={user.volunteerConnectionType === 'VOLUNTEER' ? 'Ser voluntario/a (tiempo/experiencia)' : user.volunteerConnectionType === 'OFFER_HELP' ? 'Ofrecer ayuda (recursos/servicios)' : user.volunteerConnectionType === 'COLLABORATE' ? 'Colaborar (alianza/proyecto)' : user.volunteerConnectionType === 'COMMUNITY' ? 'Ser parte de la comunidad' : user.volunteerConnectionType} />
+              <Row label="Contacto preferido" value={user.preferredContactMethod === 'WHATSAPP' ? 'Mensaje WhatsApp' : user.preferredContactMethod === 'PHONE_CALL' ? 'Llamada telefónica' : user.preferredContactMethod === 'EMAIL' ? 'Correo electrónico' : user.preferredContactMethod} />
+              <Row label="Propuesta / Notas" value={user.volunteerNotes} />
+            </>
+          )}
+
           <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Cuenta</h4>
           <Row label="Rol (crudo)" value={user.rawRole || user.role} />
           <Row label="Términos aceptados" value={user.acceptTerms ? 'Sí' : 'No'} />

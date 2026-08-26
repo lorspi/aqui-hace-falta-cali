@@ -32,10 +32,12 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { VolunteerRegisterModal } from '../features/auth/components/VolunteerRegisterModal';
 
 export const LandingHomePage: React.FC = () => {
   const { language, t } = useTranslation();
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState(false);
 
   const toggleFaq = (index: number) => {
     setActiveFaq(activeFaq === index ? null : index);
@@ -400,6 +402,16 @@ export const LandingHomePage: React.FC = () => {
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* Registro de Voluntarios (Modal Directo) */}
+            <button
+              type="button"
+              onClick={() => setIsVolunteerModalOpen(true)}
+              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-[#F2C33D] hover:bg-[#e0b232] text-[#1F1C1A] font-black text-sm transition-all shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105"
+            >
+              <HeartHandshake className="w-5 h-5 shrink-0 text-[#1B3A93]" />
+              <span>🧑‍🌾 Registrarme como Voluntario RaDAR</span>
+            </button>
+
             {/* WhatsApp */}
             <a
               href="https://wa.me/573112323588"
@@ -463,6 +475,12 @@ export const LandingHomePage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Modal de Registro para Voluntarios */}
+      <VolunteerRegisterModal
+        isOpen={isVolunteerModalOpen}
+        onClose={() => setIsVolunteerModalOpen(false)}
+      />
     </div>
   );
 };

@@ -41,6 +41,7 @@ import { MobileBottomBar } from "./components/MobileBottomBar";
 const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
 const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
 const UserProfileModal = lazy(() => import("./features/auth/components/UserProfileModal").then(m => ({ default: m.UserProfileModal })));
+const VolunteerRegisterModal = lazy(() => import("./features/auth/components/VolunteerRegisterModal").then(m => ({ default: m.VolunteerRegisterModal })));
 // Lazy-loaded pages for code-splitting
 const ModeradorPage = lazy(() => import("./components/ModeradorPage").then(m => ({ default: m.ModeradorPage })));
 const AdminPanelPage = lazy(() => import("./components/AdminPanelPage").then(m => ({ default: m.AdminPanelPage })));
@@ -178,6 +179,9 @@ function MainApp() {
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.pathname === '/voluntario';
+  });
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -1484,6 +1488,10 @@ function MainApp() {
             localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
           }
         }}
+      />
+      <VolunteerRegisterModal
+        isOpen={isVolunteerModalOpen}
+        onClose={() => setIsVolunteerModalOpen(false)}
       />
       <UserProfileModal
         isOpen={isProfileModalOpen}

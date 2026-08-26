@@ -54,6 +54,9 @@ export interface AdminUser {
   termsAcceptedAt?: string;
   moderatorCommunityCollective?: string;
   moderatorMotivation?: string;
+  volunteerConnectionType?: string;
+  volunteerNotes?: string;
+  preferredContactMethod?: string;
 }
 
 // ==========================================
@@ -585,6 +588,9 @@ export async function fetchUsersList(): Promise<AdminUser[]> {
     termsAcceptedAt: u.terms_accepted_at || undefined,
     moderatorCommunityCollective: u.moderator_community_collective || undefined,
     moderatorMotivation: u.moderator_motivation || undefined,
+    volunteerConnectionType: u.volunteer_connection_type || undefined,
+    volunteerNotes: u.volunteer_notes || undefined,
+    preferredContactMethod: u.preferred_contact_method || undefined,
   }));
 }
 
@@ -784,6 +790,9 @@ export async function upsertUserProfile(profileData: {
   moderator_community_collective?: string;
   moderator_motivation?: string;
   moderation_status?: string;
+  volunteer_connection_type?: string;
+  volunteer_notes?: string;
+  preferred_contact_method?: string;
 }) {
   const hasPhone = !!(profileData.phone_number?.trim() || (profileData.phone && profileData.phone !== '+57'));
   const fullPhone = hasPhone
@@ -813,7 +822,10 @@ export async function upsertUserProfile(profileData: {
         terms_accepted_at: profileData.terms_accepted_at || new Date().toISOString(),
         moderator_community_collective: profileData.moderator_community_collective?.trim(),
         moderator_motivation: profileData.moderator_motivation?.trim(),
-        moderation_status: profileData.moderation_status || (profileData.role === 'moderador' ? 'PENDING' : 'APPROVED'),
+        moderation_status: profileData.moderation_status || (profileData.role === 'moderador' || profileData.role === 'voluntario' ? 'PENDING' : 'APPROVED'),
+        volunteer_connection_type: profileData.volunteer_connection_type,
+        volunteer_notes: profileData.volunteer_notes?.trim(),
+        preferred_contact_method: profileData.preferred_contact_method,
         is_verified: false,
         updated_at: new Date().toISOString(),
       },
