@@ -271,7 +271,7 @@ export const translations = {
     // Auth - Login Modal
     authLoginBadge: 'Acceso a la plataforma',
     authLoginTitle: 'Inicia sesión',
-    authLoginSubtitle: 'Accede de forma segura con tu cuenta de Google o tu correo registrado.',
+    authLoginSubtitle: 'Accede de forma segura con tu correo registrado.',
     authLoginGoogleButton: 'Continuar con Google (Deshabilitado)',
     authLoginOrEmail: 'o con tu correo',
     authLoginEmailLabel: 'Correo Electrónico',
