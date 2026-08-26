@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, MapPin, HelpCircle } from 'lucide-react';
+import { X, MapPin, HelpCircle, Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface WelcomeOnboardingModalProps {
@@ -166,6 +166,28 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
             <MapPin className="w-4 h-4 text-[#F2C33D] shrink-0" />
             <span>{t('welcomeGoToMap')}</span>
           </button>
+        </div>
+
+        {/* Contacto Directo para Voluntarios o Aliados */}
+        <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-500 relative z-10">
+          <span className="font-semibold text-slate-700">Contacto Aliados / Voluntarios:</span>
+          <a
+            href="mailto:Info@radardeayuda.co"
+            className="inline-flex items-center gap-1 font-bold text-blue-700 hover:underline"
+          >
+            <Mail className="w-3 h-3 text-blue-600" />
+            <span>Info@radardeayuda.co</span>
+          </a>
+          <span>•</span>
+          <a
+            href="https://wa.me/573112323588"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-bold text-emerald-700 hover:underline"
+          >
+            <MessageCircle className="w-3 h-3 text-emerald-600" />
+            <span>WhatsApp: +57 311 232 3588</span>
+          </a>
         </div>
       </div>
     </div>

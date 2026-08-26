@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   Radio,
   ExternalLink,
+  Mail,
+  MessageCircle,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -382,15 +384,74 @@ export const LandingHomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Seccion de Contacto para Voluntarios y Aliados */}
+      <section className="relative z-10 bg-gradient-to-br from-[#1B3A93] to-[#0f2461] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-blue-900/50">
+        <div className="max-w-4xl mx-auto text-center space-y-6">
+          <div className="inline-flex items-center gap-2 bg-white/10 text-blue-200 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
+            <Users className="w-4 h-4 text-[#F2C33D]" />
+            <span>Voluntarios y Aliados</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+            ¿Quieres sumarte como voluntario o aliarte con nosotros?
+          </h2>
+          <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl mx-auto leading-relaxed">
+            Estamos coordinando ayuda activa en Cali y la región. Si eres voluntario, entidad u organización y deseas colaborar, comunícate directamente con nuestro equipo.
+          </p>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* WhatsApp */}
+            <a
+              href="https://wa.me/573112323588"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-sm transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105"
+            >
+              <MessageCircle className="w-5 h-5 shrink-0" />
+              <span>WhatsApp: +57 311 232 3588</span>
+            </a>
+
+            {/* Correo */}
+            <a
+              href="mailto:Info@radardeayuda.co"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-extrabold text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105 backdrop-blur-xs"
+            >
+              <Mail className="w-5 h-5 shrink-0 text-blue-200" />
+              <span>Info@radardeayuda.co</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="relative z-10 bg-[#1F1C1A] text-slate-300 py-10 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-8 w-auto brightness-0 invert opacity-90" />
             <div className="border-l border-slate-700 pl-3">
               <p className="text-xs font-bold text-white">RaDAR de Ayuda</p>
               <p className="text-[11px] text-slate-400">Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
             </div>
+          </div>
+
+          {/* Datos de contacto en el Footer */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-300">
+            <a
+              href="mailto:Info@radardeayuda.co"
+              className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-semibold bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-400" />
+              <span>Info@radardeayuda.co</span>
+            </a>
+            <a
+              href="https://wa.me/573112323588"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-semibold bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span>WhatsApp: +57 311 232 3588</span>
+            </a>
           </div>
 
           <div className="flex items-center gap-4 text-xs text-slate-400">
