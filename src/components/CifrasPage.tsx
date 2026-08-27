@@ -662,7 +662,7 @@ export const CifrasPage: React.FC = () => {
                 <StatCard label="Total Publicaciones" value={totalPublications} icon={<Globe className="w-5 h-5" />} color="blue" />
                 <StatCard label="Necesidades" value={totalNeeds} icon={<AlertTriangle className="w-5 h-5" />} color="red" />
                 <StatCard label="Ofertas de ayuda" value={totalOffers} icon={<Heart className="w-5 h-5" />} color="green" />
-                <StatCard label="Usuarios registrados" value={totalUsers} icon={<Users className="w-5 h-5" />} color="yellow" />
+                <StatCard label="Usuarios registrados (Global)" value={totalUsers} icon={<Users className="w-5 h-5" />} color="yellow" />
               </div>
 
               {/* Priority breakdown */}
@@ -807,76 +807,7 @@ export const CifrasPage: React.FC = () => {
               </div>
             </SectionWrapper>
 
-            {/* =========== SECTION 3: USERS =========== */}
-            <SectionWrapper
-              title="Usuarios de la Plataforma"
-              icon={<Users className="w-5 h-5 text-[#1B3A93]" />}
-              sectionKey="users"
-              expanded={expandedSections.users}
-              toggle={toggleSection}
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {Object.entries(userRoleStats).map(([role, count]) => (
-                  <div key={role} className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
-                    <p className="text-2xl font-black text-[#1B3A93]">{count}</p>
-                    <p className="text-[11px] font-bold text-slate-600 mt-1">{ROLE_LABELS[role] || role}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mt-4">
-                <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-slate-400" />
-                  Datos agregados. No se expone información personal de los usuarios.
-                </p>
-              </div>
-            </SectionWrapper>
-
-            {/* =========== SECTION 4: MODERATION =========== */}
-            <SectionWrapper
-              title="Estadísticas de Moderación"
-              icon={<Activity className="w-5 h-5 text-emerald-600" />}
-              sectionKey="moderation"
-              expanded={expandedSections.moderation}
-              toggle={toggleSection}
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatCard label="Acciones totales" value={moderationStats.totalLogs} icon={<FileText className="w-5 h-5" />} color="blue" />
-                <StatCard label="En necesidades" value={moderationStats.totalNeedLogs} icon={<AlertTriangle className="w-5 h-5" />} color="red" />
-                <StatCard label="En ofertas" value={moderationStats.totalOfferLogs} icon={<Heart className="w-5 h-5" />} color="green" />
-                <StatCard label="Entradas moderadas" value={moderationStats.uniqueNeedsModerated + moderationStats.uniqueOffersModerated} icon={<CheckCircle2 className="w-5 h-5" />} color="yellow" />
-              </div>
-
-              {/* Transitions - hidden */}
-
-              {/* Monthly timeline */}
-              {moderationStats.logsByMonth.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 mt-4">
-                  <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-slate-500" />
-                    Actividad de moderación por mes
-                  </h4>
-                  <div className="space-y-1.5">
-                    {moderationStats.logsByMonth.map(([month, count]) => {
-                      const maxCount = Math.max(...moderationStats.logsByMonth.map(([, c]) => c));
-                      return (
-                        <div key={month} className="flex items-center gap-3">
-                          <span className="text-[11px] font-mono text-slate-500 w-16">{month}</span>
-                          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-[#1B3A93] to-[#1B3A93]/60 rounded-full transition-all"
-                              style={{ width: `${maxCount ? (count / maxCount) * 100 : 0}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] font-bold text-slate-700 w-8 text-right">{count}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </SectionWrapper>
-
-            {/* =========== SECTION 5: CATEGORIES =========== */}
+            {/* =========== SECTION 3: CATEGORIES =========== */}
             <SectionWrapper
               title="Categorías de Ayuda"
               icon={<Layers className="w-5 h-5 text-[#F2C33D]" />}
@@ -933,7 +864,7 @@ export const CifrasPage: React.FC = () => {
               )}
             </SectionWrapper>
 
-            {/* =========== SECTION 6: RADAR MATCH =========== */}
+            {/* =========== SECTION 4: RADAR MATCH =========== */}
             <SectionWrapper
               title="Motor Radar Match"
               icon={<Zap className="w-5 h-5 text-emerald-500" />}
@@ -1024,21 +955,78 @@ export const CifrasPage: React.FC = () => {
                   </div>
                 </div>
               )}
+            </SectionWrapper>
 
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-4">
-                <p className="text-[11px] text-emerald-800 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                  Cálculo basado en el mismo algoritmo del motor Radar Match: coincidencia de categorías + proximidad por ciudad.
-                </p>
+            {/* =========== GLOBAL PLATFORM METRICS HEADER =========== */}
+            <div className="pt-6 pb-2 border-t border-slate-200/80">
+              <h2 className="text-xl font-black text-[#1F1C1A] tracking-tight">
+                Datos Generales de la Plataforma
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Métricas globales acumuladas de usuarios registrados y actividad de moderación en todo RaDAR de Ayuda.
+              </p>
+            </div>
+
+            {/* =========== SECTION 5: USERS =========== */}
+            <SectionWrapper
+              title="Usuarios de la Plataforma"
+              icon={<Users className="w-5 h-5 text-[#1B3A93]" />}
+              sectionKey="users"
+              expanded={expandedSections.users}
+              toggle={toggleSection}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {Object.entries(userRoleStats).map(([role, count]) => (
+                  <div key={role} className="bg-white border border-slate-200 rounded-2xl p-4 text-center">
+                    <p className="text-2xl font-black text-[#1B3A93]">{count}</p>
+                    <p className="text-[11px] font-bold text-slate-600 mt-1">{ROLE_LABELS[role] || role}</p>
+                  </div>
+                ))}
               </div>
             </SectionWrapper>
 
-            {/* Footer note */}
-            <div className="text-center pt-4 pb-8">
-              <p className="text-[11px] text-slate-400">
-                Datos cargados en tiempo real desde la base de datos de RaDAR de Ayuda. No se expone información personal.
-              </p>
-            </div>
+            {/* =========== SECTION 6: MODERATION =========== */}
+            <SectionWrapper
+              title="Estadísticas de Moderación"
+              icon={<Activity className="w-5 h-5 text-emerald-600" />}
+              sectionKey="moderation"
+              expanded={expandedSections.moderation}
+              toggle={toggleSection}
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <StatCard label="Acciones totales" value={moderationStats.totalLogs} icon={<FileText className="w-5 h-5" />} color="blue" />
+                <StatCard label="En necesidades" value={moderationStats.totalNeedLogs} icon={<AlertTriangle className="w-5 h-5" />} color="red" />
+                <StatCard label="En ofertas" value={moderationStats.totalOfferLogs} icon={<Heart className="w-5 h-5" />} color="green" />
+                <StatCard label="Entradas moderadas" value={moderationStats.uniqueNeedsModerated + moderationStats.uniqueOffersModerated} icon={<CheckCircle2 className="w-5 h-5" />} color="yellow" />
+              </div>
+
+              {/* Monthly timeline */}
+              {moderationStats.logsByMonth.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 mt-4">
+                  <h4 className="text-sm font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-500" />
+                    Actividad de moderación por mes
+                  </h4>
+                  <div className="space-y-1.5">
+                    {moderationStats.logsByMonth.map(([month, count]) => {
+                      const maxCount = Math.max(...moderationStats.logsByMonth.map(([, c]) => c));
+                      return (
+                        <div key={month} className="flex items-center gap-3">
+                          <span className="text-[11px] font-mono text-slate-500 w-16">{month}</span>
+                          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#1B3A93] to-[#1B3A93]/60 rounded-full transition-all"
+                              style={{ width: `${maxCount ? (count / maxCount) * 100 : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-700 w-8 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </SectionWrapper>
           </>
         )}
       </main>
