@@ -49,6 +49,7 @@ const SocialCardView = lazy(() => import("./components/SocialCardView").then(m =
 const LandingHomePage = lazy(() => import("./components/LandingHomePage").then(m => ({ default: m.LandingHomePage })));
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const SimulatedRegisterPage = lazy(() => import("./components/SimulatedRegisterPage").then(m => ({ default: m.SimulatedRegisterPage })));
+const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
@@ -108,7 +109,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
@@ -116,6 +117,7 @@ function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: '
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro') return { type: 'reg2' };
+  if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
   const parts = path.split('/').filter(Boolean);
@@ -141,6 +143,8 @@ export default function App() {
     content = <LegalPage markdown={privacidadMd} />;
   } else if (specialRoute?.type === 'reg2') {
     content = <SimulatedRegisterPage />;
+  } else if (specialRoute?.type === 'cifras') {
+    content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {
     content = <SocialCardView needId={specialRoute.needId} format={specialRoute.format} />;
   }
