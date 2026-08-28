@@ -187,10 +187,11 @@ export const CifrasPage: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     global: true,
     geographic: true,
+    categories: true,
+    gaps: true,
+    radarMatch: true,
     users: true,
     moderation: true,
-    categories: true,
-    radarMatch: true,
   });
 
   const toggleSection = (key: string) => {
@@ -673,7 +674,7 @@ export const CifrasPage: React.FC = () => {
       lines.push("--- MOTOR RADAR MATCH ---");
       lines.push(`Necesidades activas,${radarMatchStats.activeNeeds}`);
       lines.push(`Ofertas activas,${radarMatchStats.activeOffers}`);
-      lines.push(`Necesidades con match,${radarMatchStats.needsWithMatch}`);
+      lines.push(`Necesidades conectadas con una oferta compatible,${radarMatchStats.needsWithMatch}`);
       lines.push(`Cobertura potencial (%),${radarMatchStats.coverageRate.toFixed(1)}%`);
       lines.push(`Score promedio (%),${radarMatchStats.avgScore.toFixed(0)}%`);
       lines.push(`Capacidad de respuesta (%),${radarMatchStats.responseCapacity.toFixed(1)}%`);
@@ -992,75 +993,36 @@ export const CifrasPage: React.FC = () => {
               toggle={toggleSection}
             >
               {/* Department table */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 overflow-x-auto">
+              <div>
                 <h4 className="text-sm font-extrabold text-slate-800 mb-3">Por Departamento</h4>
-                {geoStats.length === 0 ? (
-                  <p className="text-xs text-slate-500">No hay datos geográficos disponibles.</p>
-                ) : (
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-2 px-2 font-bold text-slate-600">Departamento</th>
-                        <th className="text-right py-2 px-2 font-bold text-slate-600">Necesidades</th>
-                        <th className="text-right py-2 px-2 font-bold text-slate-600">Ofertas</th>
-                        <th className="text-right py-2 px-2 font-bold text-slate-600">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {geoStats.map((row) => (
-                        <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                          <td className="py-2 px-2 font-semibold text-slate-800">{row.name}</td>
-                          <td className="py-2 px-2 text-right text-[#CE3B3B] font-bold">{row.needs}</td>
-                          <td className="py-2 px-2 text-right text-emerald-600 font-bold">{row.offers}</td>
-                          <td className="py-2 px-2 text-right font-black text-slate-900">{row.total}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                <UnifiedProportionTable
+                  labelHeader="Departamento"
+                  data={geoStats.map((row) => ({
+                    id: row.id,
+                    label: row.name,
+                    needs: row.needs,
+                    offers: row.offers,
+                    total: row.total,
+                  }))}
+                  emptyMessage="No hay datos geográficos disponibles."
+                />
               </div>
 
               {/* City ranking */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 mt-4">
+              <div className="mt-5">
                 <h4 className="text-sm font-extrabold text-slate-800 mb-3">Top 15 Ciudades</h4>
-                {cityStats.length === 0 ? (
-                  <p className="text-xs text-slate-500">No hay datos de ciudades disponibles.</p>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {cityStats.map((city, idx) => (
-                      <div key={city.id} className="flex items-center gap-3 py-2 border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/60 px-1 rounded-lg transition-colors">
-                        <span className="text-[10px] font-black text-slate-400 w-5 text-right">{idx + 1}</span>
-                        <span className="text-xs font-semibold text-slate-800 flex-1 truncate">{city.name}</span>
-                        <span className="text-[10px] font-bold text-[#CE3B3B] bg-red-50 px-1.5 py-0.5 rounded">
-                          {city.needs} <span className="hidden sm:inline">necesidades</span><span className="sm:hidden">nec.</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                          {city.offers} <span className="hidden sm:inline">ofertas</span><span className="sm:hidden">of.</span>
-                        </span>
-                        <div className="w-20 sm:w-36 md:w-56 h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
-                          <div
-                            className="h-full bg-[#CE3B3B] transition-all"
-                            title={`${city.needs} necesidades`}
-                            style={{ width: `${city.total > 0 ? (city.needs / city.total) * 100 : 0}%` }}
-                          />
-                          <div
-                            className="h-full bg-emerald-500 transition-all"
-                            title={`${city.offers} ofertas`}
-                            style={{ width: `${city.total > 0 ? (city.offers / city.total) * 100 : 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-                      <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                        <span className="w-3 h-2 bg-[#CE3B3B] rounded-sm" /> Necesidades
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                        <span className="w-3 h-2 bg-emerald-500 rounded-sm" /> Ofertas
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <UnifiedProportionTable
+                  labelHeader="Ciudad"
+                  showRank={true}
+                  data={cityStats.map((city) => ({
+                    id: city.id,
+                    label: city.name,
+                    needs: city.needs,
+                    offers: city.offers,
+                    total: city.total,
+                  }))}
+                  emptyMessage="No hay datos de ciudades disponibles."
+                />
               </div>
             </SectionWrapper>
 
@@ -1072,56 +1034,79 @@ export const CifrasPage: React.FC = () => {
               expanded={expandedSections.categories}
               toggle={toggleSection}
             >
-              {categoryStats.length === 0 ? (
-                <p className="text-xs text-slate-500">No hay datos de categorías disponibles.</p>
+              <UnifiedProportionTable
+                labelHeader="Categoría"
+                data={categoryStats.map((cat) => ({
+                  id: cat.category,
+                  label: cat.label,
+                  needs: cat.needs,
+                  offers: cat.offers,
+                  total: cat.total,
+                }))}
+                emptyMessage="No hay datos de categorías disponibles."
+              />
+            </SectionWrapper>
+
+            {/* =========== SECTION 4: GAP ANALYSIS =========== */}
+            <SectionWrapper
+              title="Brecha Oferta vs Demanda por Categoría"
+              icon={<Target className="w-5 h-5 text-[#CE3B3B]" />}
+              sectionKey="gaps"
+              expanded={expandedSections.gaps}
+              toggle={toggleSection}
+            >
+              {radarMatchStats.gaps.length === 0 ? (
+                <p className="text-xs text-slate-500">No hay datos de brecha disponibles.</p>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="text-left py-2 px-2 font-bold text-slate-600">Categoría</th>
-                        <th className="text-right py-2 px-2 font-bold text-[#CE3B3B]">Necesidades</th>
-                        <th className="text-right py-2 px-2 font-bold text-emerald-600">Ofertas</th>
-                        <th className="text-right py-2 px-2 font-bold text-slate-800">Total</th>
-                        <th className="text-left py-2 px-3 font-bold text-slate-600 w-32 sm:w-48 md:w-64">Proporción</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categoryStats.map((cat) => (
-                        <tr key={cat.category} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                          <td className="py-2 px-2 font-semibold text-slate-800">{cat.label}</td>
-                          <td className="py-2 px-2 text-right text-[#CE3B3B] font-bold">{cat.needs}</td>
-                          <td className="py-2 px-2 text-right text-emerald-600 font-bold">{cat.offers}</td>
-                          <td className="py-2 px-2 text-right font-black text-slate-900">{cat.total}</td>
-                          <td className="py-2 px-3">
-                            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
-                              <div
-                                className="h-full bg-[#CE3B3B]"
-                                style={{ width: `${cat.total ? (cat.needs / cat.total) * 100 : 0}%` }}
-                              />
-                              <div
-                                className="h-full bg-emerald-500"
-                                style={{ width: `${cat.total ? (cat.offers / cat.total) * 100 : 0}%` }}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                      <span className="w-3 h-2 bg-[#CE3B3B] rounded-sm" /> Necesidades
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                      <span className="w-3 h-2 bg-emerald-500 rounded-sm" /> Ofertas
-                    </span>
+                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 sm:p-5 overflow-x-auto">
+                  <p className="text-[10px] sm:text-xs text-slate-500 mb-3">Categorías donde la demanda supera la oferta disponible.</p>
+                  <div className="divide-y divide-slate-100">
+                    {radarMatchStats.gaps.slice(0, 10).map((item) => (
+                      <div key={item.category} className="flex items-center justify-between py-2 border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/60 px-2 rounded-lg transition-colors gap-3">
+                        {/* 1. Category Name */}
+                        <span className="text-xs font-bold text-slate-800 w-28 sm:w-36 shrink-0 truncate">{item.label}</span>
+
+                        {/* 2. Proportion Balance Bar */}
+                        <div className="flex-1 max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                          <div
+                            className="h-full bg-[#CE3B3B] transition-all"
+                            title={`${item.needs} demanda`}
+                            style={{ width: `${item.needs + item.offers > 0 ? (item.needs / (item.needs + item.offers)) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="h-full bg-emerald-500 transition-all"
+                            title={`${item.offers} oferta`}
+                            style={{ width: `${item.needs + item.offers > 0 ? (item.offers / (item.needs + item.offers)) * 100 : 0}%` }}
+                          />
+                        </div>
+
+                        {/* 3. Numerical Demanda vs Oferta */}
+                        <div className="flex items-center gap-1.5 text-xs shrink-0">
+                          <span className="font-semibold text-slate-700">
+                            <strong className="text-[#CE3B3B] font-extrabold">{item.needs}</strong> <span className="hidden sm:inline">demanda</span><span className="sm:hidden">dem.</span>
+                          </span>
+                          <span className="text-slate-300">|</span>
+                          <span className="font-semibold text-slate-700">
+                            <strong className="text-emerald-600 font-extrabold">{item.offers}</strong> <span className="hidden sm:inline">oferta</span><span className="sm:hidden">of.</span>
+                          </span>
+                        </div>
+
+                        {/* 4. Single Result Badge at far right */}
+                        <div className="text-right min-w-[85px] shrink-0">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${
+                            item.gap > 0 ? 'bg-red-50 text-[#CE3B3B] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {item.gap > 0 ? `Falta ${item.gap}` : `Sobran ${Math.abs(item.gap)}`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
             </SectionWrapper>
 
-            {/* =========== SECTION 4: RADAR MATCH =========== */}
+            {/* =========== SECTION 5: RADAR MATCH =========== */}
             <SectionWrapper
               title="Motor Radar Match"
               icon={<Zap className="w-5 h-5 text-emerald-500" />}
@@ -1129,12 +1114,13 @@ export const CifrasPage: React.FC = () => {
               expanded={expandedSections.radarMatch}
               toggle={toggleSection}
             >
+
               {/* Coverage cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <StatCard label="Necesidades activas" value={radarMatchStats.activeNeeds} icon={<AlertTriangle className="w-5 h-5" />} color="red" />
                 <StatCard label="Ofertas activas" value={radarMatchStats.activeOffers} icon={<Heart className="w-5 h-5" />} color="green" />
-                <StatCard label="Necesidades con match" value={radarMatchStats.needsWithMatch} icon={<Target className="w-5 h-5" />} color="blue" />
-                <StatCard label="Ofertas conectadas" value={radarMatchStats.offersWithMatch} icon={<Zap className="w-5 h-5" />} color="yellow" />
+                <StatCard label="Necesidades conectadas con una oferta compatible" value={radarMatchStats.needsWithMatch} icon={<Target className="w-5 h-5" />} color="blue" />
+                <StatCard label="Ofertas conectadas con una necesidad compatible" value={radarMatchStats.offersWithMatch} icon={<Zap className="w-5 h-5" />} color="yellow" />
               </div>
 
               {/* Key metrics */}
@@ -1189,59 +1175,6 @@ export const CifrasPage: React.FC = () => {
                   />
                 </div>
               </div>
-
-              {/* Category gap analysis */}
-              {radarMatchStats.gaps.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 mt-4 overflow-x-auto">
-                  <h4 className="text-sm font-extrabold text-slate-800 mb-1 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-[#CE3B3B]" />
-                    Brecha oferta vs demanda por categoría
-                  </h4>
-                  <p className="text-[10px] text-slate-500 mb-3">Categorías donde la demanda supera la oferta disponible.</p>
-                  <div className="divide-y divide-slate-100">
-                    {radarMatchStats.gaps.slice(0, 10).map((item) => (
-                      <div key={item.category} className="flex items-center justify-between py-2 border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/60 px-2 rounded-lg transition-colors gap-3">
-                        {/* 1. Category Name */}
-                        <span className="text-xs font-bold text-slate-800 w-28 sm:w-36 shrink-0 truncate">{item.label}</span>
-
-                        {/* 2. Proportion Balance Bar */}
-                        <div className="flex-1 max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                          <div
-                            className="h-full bg-[#CE3B3B] transition-all"
-                            title={`${item.needs} demanda`}
-                            style={{ width: `${item.needs + item.offers > 0 ? (item.needs / (item.needs + item.offers)) * 100 : 0}%` }}
-                          />
-                          <div
-                            className="h-full bg-emerald-500 transition-all"
-                            title={`${item.offers} oferta`}
-                            style={{ width: `${item.needs + item.offers > 0 ? (item.offers / (item.needs + item.offers)) * 100 : 0}%` }}
-                          />
-                        </div>
-
-                        {/* 3. Numerical Demanda vs Oferta */}
-                        <div className="flex items-center gap-1.5 text-xs shrink-0">
-                          <span className="font-semibold text-slate-700">
-                            <strong className="text-[#CE3B3B] font-extrabold">{item.needs}</strong> <span className="hidden sm:inline">demanda</span><span className="sm:hidden">dem.</span>
-                          </span>
-                          <span className="text-slate-300">|</span>
-                          <span className="font-semibold text-slate-700">
-                            <strong className="text-emerald-600 font-extrabold">{item.offers}</strong> <span className="hidden sm:inline">oferta</span><span className="sm:hidden">of.</span>
-                          </span>
-                        </div>
-
-                        {/* 4. Single Result Badge at far right */}
-                        <div className="text-right min-w-[85px] shrink-0">
-                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${
-                            item.gap > 0 ? 'bg-red-50 text-[#CE3B3B] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}>
-                            {item.gap > 0 ? `Falta ${item.gap}` : `Sobran ${Math.abs(item.gap)}`}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </SectionWrapper>
 
             {/* =========== GLOBAL PLATFORM METRICS HEADER =========== */}
@@ -1891,7 +1824,7 @@ function SectionWrapper({ title, icon, sectionKey, expanded, toggle, children }:
         )}
       </button>
       {expanded && (
-        <div className="px-5 pb-5">
+        <div className="px-3 sm:px-5 pb-3 sm:pb-5">
           {children}
         </div>
       )}
@@ -1948,3 +1881,103 @@ function ProgressRow({ label, value, total, color }: ProgressRowProps) {
     </div>
   );
 }
+
+interface UnifiedProportionTableRow {
+  id: string;
+  label: string;
+  needs: number;
+  offers: number;
+  total: number;
+}
+
+interface UnifiedProportionTableProps {
+  labelHeader: string;
+  data: UnifiedProportionTableRow[];
+  emptyMessage: string;
+  showRank?: boolean;
+}
+
+function UnifiedProportionTable({
+  labelHeader,
+  data,
+  emptyMessage,
+  showRank = false,
+}: UnifiedProportionTableProps) {
+  if (data.length === 0) {
+    return <p className="text-xs text-slate-500">{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-2.5 sm:p-5 overflow-x-auto">
+      <table className="w-full text-[11px] sm:text-xs border-collapse">
+        <thead>
+          <tr className="border-b border-slate-200">
+            {showRank && (
+              <th className="text-center py-2 sm:py-2.5 px-0.5 sm:px-2 font-bold text-slate-400 w-5 sm:w-8">#</th>
+            )}
+            <th className="text-left py-2 sm:py-2.5 px-1.5 sm:px-3 font-bold text-slate-600 truncate max-w-[90px] sm:max-w-none">{labelHeader}</th>
+            <th className="text-right py-2 sm:py-2.5 px-1 sm:px-4 font-bold text-[#CE3B3B] whitespace-nowrap">
+              <span className="hidden sm:inline">Necesidades</span>
+              <span className="sm:hidden">Nec.</span>
+            </th>
+            <th className="text-right py-2 sm:py-2.5 px-1 sm:px-4 font-bold text-emerald-600 whitespace-nowrap">
+              <span className="hidden sm:inline">Ofertas</span>
+              <span className="sm:hidden">Of.</span>
+            </th>
+            <th className="text-right py-2 sm:py-2.5 px-1 sm:px-5 font-bold text-slate-800 whitespace-nowrap">Total</th>
+            <th className="text-left py-2 sm:py-2.5 pl-2 sm:pl-8 pr-1 sm:pr-3 font-bold text-slate-600">
+              <span className="hidden sm:inline">Proporción</span>
+              <span className="sm:hidden">Prop.</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, idx) => (
+            <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+              {showRank && (
+                <td className="py-2 sm:py-2.5 px-0.5 sm:px-2 text-center text-[10px] sm:text-xs font-black text-slate-400">
+                  {idx + 1}
+                </td>
+              )}
+              <td className="py-2 sm:py-2.5 px-1.5 sm:px-3 font-semibold text-slate-800 truncate max-w-[90px] xs:max-w-[120px] sm:max-w-[260px]" title={row.label}>
+                {row.label}
+              </td>
+              <td className="py-2 sm:py-2.5 px-1 sm:px-4 text-right text-[#CE3B3B] font-bold whitespace-nowrap">
+                {row.needs.toLocaleString('es-CO')}
+              </td>
+              <td className="py-2 sm:py-2.5 px-1 sm:px-4 text-right text-emerald-600 font-bold whitespace-nowrap">
+                {row.offers.toLocaleString('es-CO')}
+              </td>
+              <td className="py-2 sm:py-2.5 px-1 sm:px-5 text-right font-black text-slate-900 whitespace-nowrap">
+                {row.total.toLocaleString('es-CO')}
+              </td>
+              <td className="py-2 sm:py-2.5 pl-2 sm:pl-8 pr-1 sm:pr-3">
+                <div className="w-full h-2.5 sm:h-3 bg-slate-100 rounded-full overflow-hidden flex shadow-xs min-w-[45px] sm:min-w-0">
+                  <div
+                    className="h-full bg-[#CE3B3B] transition-all"
+                    title={`${row.needs} necesidades (${row.total ? ((row.needs / row.total) * 100).toFixed(0) : 0}%)`}
+                    style={{ width: `${row.total ? (row.needs / row.total) * 100 : 0}%` }}
+                  />
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    title={`${row.offers} ofertas (${row.total ? ((row.offers / row.total) * 100).toFixed(0) : 0}%)`}
+                    style={{ width: `${row.total ? (row.offers / row.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+        <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+          <span className="w-3 h-2 bg-[#CE3B3B] rounded-sm" /> Necesidades
+        </span>
+        <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+          <span className="w-3 h-2 bg-emerald-500 rounded-sm" /> Ofertas
+        </span>
+      </div>
+    </div>
+  );
+}
+
