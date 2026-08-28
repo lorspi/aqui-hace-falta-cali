@@ -22,6 +22,12 @@ import {
   MessageCircle,
   Zap,
   Target,
+  Calendar,
+  Download,
+  CheckSquare,
+  Square,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { DEPARTMENTS, findDepartmentByCityId, getCityDisplayName } from '../data/colombiaCities';
@@ -152,6 +158,30 @@ export const CifrasPage: React.FC = () => {
   // Filters
   const [selectedDepartment, setSelectedDepartment] = useState<string>('ALL');
   const [selectedCity, setSelectedCity] = useState<string>('ALL');
+  const [dateFilterType, setDateFilterType] = useState<'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM'>('ALL');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+
+  // Export Modal State
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [exportFormat, setExportFormat] = useState<'PDF' | 'CSV'>('PDF');
+  const [exportModules, setExportModules] = useState<{
+    global: boolean;
+    geographic: boolean;
+    categories: boolean;
+    radarMatch: boolean;
+    usersAndModeration: boolean;
+  }>({
+    global: true,
+    geographic: true,
+    categories: true,
+    radarMatch: true,
+    usersAndModeration: true,
+  });
+
+  const toggleExportModule = (key: keyof typeof exportModules) => {
+    setExportModules((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -165,6 +195,45 @@ export const CifrasPage: React.FC = () => {
 
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Date Filter Helper
+  const isWithinDateRange = (createdAt: string | undefined): boolean => {
+    if (!createdAt || dateFilterType === 'ALL') return true;
+    const itemTime = new Date(createdAt).getTime();
+    if (isNaN(itemTime)) return true;
+
+    const now = new Date();
+
+    if (dateFilterType === 'TODAY') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      return itemTime >= startOfToday;
+    }
+
+    if (dateFilterType === 'WEEK') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
+      return itemTime >= sevenDaysAgo;
+    }
+
+    if (dateFilterType === 'MONTH') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).getTime();
+      return itemTime >= thirtyDaysAgo;
+    }
+
+    if (dateFilterType === 'CUSTOM') {
+      let valid = true;
+      if (customStartDate) {
+        const start = new Date(`${customStartDate}T00:00:00`).getTime();
+        if (!isNaN(start)) valid = valid && itemTime >= start;
+      }
+      if (customEndDate) {
+        const end = new Date(`${customEndDate}T23:59:59.999`).getTime();
+        if (!isNaN(end)) valid = valid && itemTime <= end;
+      }
+      return valid;
+    }
+
+    return true;
   };
 
   // ==========================================
@@ -218,8 +287,9 @@ export const CifrasPage: React.FC = () => {
     if (selectedCity !== 'ALL') {
       data = data.filter((n) => n.city_id === selectedCity);
     }
+    data = data.filter((n) => isWithinDateRange(n.created_at));
     return data;
-  }, [needs, selectedDepartment, selectedCity]);
+  }, [needs, selectedDepartment, selectedCity, dateFilterType, customStartDate, customEndDate]);
 
   const filteredOffers = useMemo(() => {
     let data = offers;
@@ -232,8 +302,9 @@ export const CifrasPage: React.FC = () => {
     if (selectedCity !== 'ALL') {
       data = data.filter((o) => o.city_id === selectedCity);
     }
+    data = data.filter((o) => isWithinDateRange(o.created_at));
     return data;
-  }, [offers, selectedDepartment, selectedCity]);
+  }, [offers, selectedDepartment, selectedCity, dateFilterType, customStartDate, customEndDate]);
 
   // Cities available for the selected department
   const availableCities = useMemo(() => {
@@ -370,28 +441,36 @@ export const CifrasPage: React.FC = () => {
   const totalUsers = profiles.length;
 
   // Moderation stats
+  const filteredNeedLogs = useMemo(() => {
+    return needLogs.filter((l) => isWithinDateRange(l.created_at));
+  }, [needLogs, dateFilterType, customStartDate, customEndDate]);
+
+  const filteredOfferLogs = useMemo(() => {
+    return offerLogs.filter((l) => isWithinDateRange(l.created_at));
+  }, [offerLogs, dateFilterType, customStartDate, customEndDate]);
+
   const moderationStats = useMemo(() => {
-    const totalNeedLogs = needLogs.length;
-    const totalOfferLogs = offerLogs.length;
+    const totalNeedLogs = filteredNeedLogs.length;
+    const totalOfferLogs = filteredOfferLogs.length;
     const totalLogs = totalNeedLogs + totalOfferLogs;
 
     // Status transitions
     const transitions: Record<string, number> = {};
-    [...needLogs, ...offerLogs].forEach((log) => {
+    [...filteredNeedLogs, ...filteredOfferLogs].forEach((log) => {
       const key = `${log.previous_status || '?'} → ${log.new_status || '?'}`;
       transitions[key] = (transitions[key] || 0) + 1;
     });
 
     // Logs by month
     const logsByMonth: Record<string, number> = {};
-    [...needLogs, ...offerLogs].forEach((log) => {
+    [...filteredNeedLogs, ...filteredOfferLogs].forEach((log) => {
       const month = log.created_at?.substring(0, 7) || 'desconocido';
       logsByMonth[month] = (logsByMonth[month] || 0) + 1;
     });
 
     // Unique moderators (just count, no personal data)
-    const uniqueNeedIds = new Set(needLogs.map((l) => l.need_id).filter(Boolean));
-    const uniqueOfferIds = new Set(offerLogs.map((l) => l.offer_id).filter(Boolean));
+    const uniqueNeedIds = new Set(filteredNeedLogs.map((l) => l.need_id).filter(Boolean));
+    const uniqueOfferIds = new Set(filteredOfferLogs.map((l) => l.offer_id).filter(Boolean));
 
     return {
       totalLogs,
@@ -402,7 +481,7 @@ export const CifrasPage: React.FC = () => {
       uniqueNeedsModerated: uniqueNeedIds.size,
       uniqueOffersModerated: uniqueOfferIds.size,
     };
-  }, [needLogs, offerLogs]);
+  }, [filteredNeedLogs, filteredOfferLogs]);
 
   // Category stats
   const categoryStats = useMemo(() => {
@@ -533,13 +612,120 @@ export const CifrasPage: React.FC = () => {
   }, [filteredNeeds, filteredOffers]);
 
   // ==========================================
+  // EXPORT HANDLERS
+  // ==========================================
+
+  const handleExportCSV = () => {
+    const lines: string[] = [];
+    lines.push("REPORTE DE CIFRAS Y ALCANCE - RADAR DE AYUDA");
+    lines.push(`Fecha de generación,"${new Date().toLocaleString('es-CO')}"`);
+    lines.push(`Filtro de departamento,"${selectedDepartment === 'ALL' ? 'Todos los departamentos' : (DEPARTMENTS.find(d => d.id === selectedDepartment)?.name || selectedDepartment)}"`);
+    lines.push(`Filtro de ciudad,"${selectedCity === 'ALL' ? 'Todas las ciudades' : getCityDisplayName(selectedCity)}"`);
+    lines.push(`Filtro de fecha,"${dateFilterType === 'ALL' ? 'Todo el tiempo' : dateFilterType === 'TODAY' ? 'Hoy' : dateFilterType === 'WEEK' ? 'Últimos 7 días' : dateFilterType === 'MONTH' ? 'Últimos 30 días' : `Personalizado (${customStartDate} a ${customEndDate})`}"`);
+    lines.push("");
+
+    if (exportModules.global) {
+      lines.push("--- RESUMEN GENERAL ---");
+      lines.push(`Total Publicaciones,${totalPublications}`);
+      lines.push(`Necesidades,${totalNeeds}`);
+      lines.push(`Ofertas de ayuda,${totalOffers}`);
+      lines.push(`Usuarios registrados,${totalUsers}`);
+      lines.push("");
+      lines.push("NECESIDADES POR PRIORIDAD");
+      lines.push("Prioridad,Cantidad");
+      Object.entries(priorityStats).forEach(([pri, count]) => {
+        lines.push(`"${PRIORITY_LABELS[pri] || pri}",${count}`);
+      });
+      lines.push("");
+      lines.push("ESTADO DE VERIFICACION");
+      lines.push("Estado,Cantidad");
+      Object.entries(verificationStats).forEach(([ver, count]) => {
+        lines.push(`"${VERIFICATION_LABELS[ver] || ver}",${count}`);
+      });
+      lines.push("");
+    }
+
+    if (exportModules.geographic) {
+      lines.push("--- DESGLOSE GEOGRAFICO ---");
+      lines.push("Departamento,Necesidades,Ofertas,Total");
+      geoStats.forEach((g) => {
+        lines.push(`"${g.name}",${g.needs},${g.offers},${g.total}`);
+      });
+      lines.push("");
+      lines.push("TOP CIUDADES");
+      lines.push("Ciudad,Necesidades,Ofertas,Total");
+      cityStats.forEach((c) => {
+        lines.push(`"${c.name}",${c.needs},${c.offers},${c.total}`);
+      });
+      lines.push("");
+    }
+
+    if (exportModules.categories) {
+      lines.push("--- CATEGORIAS DE AYUDA ---");
+      lines.push("Categoria,Necesidades,Ofertas,Total");
+      categoryStats.forEach((cat) => {
+        lines.push(`"${cat.label}",${cat.needs},${cat.offers},${cat.total}`);
+      });
+      lines.push("");
+    }
+
+    if (exportModules.radarMatch) {
+      lines.push("--- MOTOR RADAR MATCH ---");
+      lines.push(`Necesidades activas,${radarMatchStats.activeNeeds}`);
+      lines.push(`Ofertas activas,${radarMatchStats.activeOffers}`);
+      lines.push(`Necesidades con match,${radarMatchStats.needsWithMatch}`);
+      lines.push(`Cobertura potencial (%),${radarMatchStats.coverageRate.toFixed(1)}%`);
+      lines.push(`Score promedio (%),${radarMatchStats.avgScore.toFixed(0)}%`);
+      lines.push(`Capacidad de respuesta (%),${radarMatchStats.responseCapacity.toFixed(1)}%`);
+      lines.push("");
+      lines.push("BRECHA DEMANDA VS OFERTA POR CATEGORIA");
+      lines.push("Categoria,Demanda (Necesidades),Oferta (Ofertas),Brecha");
+      radarMatchStats.gaps.forEach((g) => {
+        lines.push(`"${g.label}",${g.needs},${g.offers},${g.gap}`);
+      });
+      lines.push("");
+    }
+
+    if (exportModules.usersAndModeration) {
+      lines.push("--- USUARIOS Y MODERACION ---");
+      lines.push(`Usuarios totales registrados,${totalUsers}`);
+      Object.entries(userRoleStats).forEach(([role, count]) => {
+        lines.push(`"${ROLE_LABELS[role] || role}",${count}`);
+      });
+      lines.push("");
+      lines.push(`Acciones de moderación totales,${moderationStats.totalLogs}`);
+      lines.push(`Acciones en necesidades,${moderationStats.totalNeedLogs}`);
+      lines.push(`Acciones en ofertas,${moderationStats.totalOfferLogs}`);
+      lines.push("");
+    }
+
+    const csvContent = '\uFEFF' + lines.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_cifras_radar_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsExportModalOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    setIsExportModalOpen(false);
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
+
+  // ==========================================
   // RENDER
   // ==========================================
 
   return (
     <div className="min-h-screen bg-[#F5F6F9] text-[#1F1C1A] font-sans selection:bg-[#1B3A93] selection:text-white overflow-x-hidden">
       {/* Background accents */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden no-print">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#F2C33D]/15 rounded-full blur-3xl" />
         <div className="absolute top-1/3 -right-32 w-96 h-96 bg-[#1B3A93]/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-[#CE3B3B]/05 rounded-full blur-3xl" />
@@ -638,15 +824,68 @@ export const CifrasPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+
+                {/* Date range filter */}
+                <div className="flex items-center gap-1.5 border border-slate-300 rounded-lg px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-[#1B3A93]/20 focus-within:border-[#1B3A93]">
+                  <Calendar className="w-3.5 h-3.5 text-[#1B3A93]" />
+                  <select
+                    value={dateFilterType}
+                    onChange={(e) => setDateFilterType(e.target.value as any)}
+                    className="text-xs bg-transparent outline-none border-none pr-1 cursor-pointer"
+                  >
+                    <option value="ALL">Todo el tiempo</option>
+                    <option value="TODAY">Hoy</option>
+                    <option value="WEEK">Últimos 7 días</option>
+                    <option value="MONTH">Últimos 30 días</option>
+                    <option value="CUSTOM">Rango personalizado</option>
+                  </select>
+                </div>
+
+                {/* Custom Date Inputs if CUSTOM is selected */}
+                {dateFilterType === 'CUSTOM' && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      placeholder="Desde"
+                      className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:ring-2 focus:ring-[#1B3A93]/20 focus:border-[#1B3A93] outline-none text-slate-700"
+                    />
+                    <span className="text-xs text-slate-400 font-semibold">a</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      placeholder="Hasta"
+                      className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:ring-2 focus:ring-[#1B3A93]/20 focus:border-[#1B3A93] outline-none text-slate-700"
+                    />
+                  </div>
+                )}
               </div>
-              {(selectedDepartment !== 'ALL' || selectedCity !== 'ALL') && (
+              <div className="sm:ml-auto flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                {(selectedDepartment !== 'ALL' || selectedCity !== 'ALL' || dateFilterType !== 'ALL' || customStartDate !== '' || customEndDate !== '') && (
+                  <button
+                    onClick={() => {
+                      setSelectedDepartment('ALL');
+                      setSelectedCity('ALL');
+                      setDateFilterType('ALL');
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }}
+                    className="text-xs text-[#CE3B3B] font-bold hover:underline"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
                 <button
-                  onClick={() => { setSelectedDepartment('ALL'); setSelectedCity('ALL'); }}
-                  className="text-xs text-[#CE3B3B] font-bold hover:underline ml-auto"
+                  type="button"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-[#1B3A93] hover:bg-[#1B3A93]/90 text-white shadow-sm shadow-[#1B3A93]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  Limpiar filtros
+                  <Download className="w-4 h-4" />
+                  <span>Descargar Reporte</span>
                 </button>
-              )}
+              </div>
             </div>
 
             {/* =========== SECTION 1: GLOBAL OVERVIEW =========== */}
@@ -787,21 +1026,39 @@ export const CifrasPage: React.FC = () => {
                 {cityStats.length === 0 ? (
                   <p className="text-xs text-slate-500">No hay datos de ciudades disponibles.</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="divide-y divide-slate-100">
                     {cityStats.map((city, idx) => (
-                      <div key={city.id} className="flex items-center gap-3">
+                      <div key={city.id} className="flex items-center gap-3 py-2 border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/60 px-1 rounded-lg transition-colors">
                         <span className="text-[10px] font-black text-slate-400 w-5 text-right">{idx + 1}</span>
                         <span className="text-xs font-semibold text-slate-800 flex-1 truncate">{city.name}</span>
-                        <span className="text-[10px] font-bold text-[#CE3B3B] bg-red-50 px-1.5 py-0.5 rounded">{city.needs} nec.</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{city.offers} of.</span>
-                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <span className="text-[10px] font-bold text-[#CE3B3B] bg-red-50 px-1.5 py-0.5 rounded">
+                          {city.needs} <span className="hidden sm:inline">necesidades</span><span className="sm:hidden">nec.</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          {city.offers} <span className="hidden sm:inline">ofertas</span><span className="sm:hidden">of.</span>
+                        </span>
+                        <div className="w-20 sm:w-36 md:w-56 h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
                           <div
-                            className="h-full bg-[#1B3A93] rounded-full"
-                            style={{ width: `${cityStats[0]?.total ? (city.total / cityStats[0].total) * 100 : 0}%` }}
+                            className="h-full bg-[#CE3B3B] transition-all"
+                            title={`${city.needs} necesidades`}
+                            style={{ width: `${city.total > 0 ? (city.needs / city.total) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="h-full bg-emerald-500 transition-all"
+                            title={`${city.offers} ofertas`}
+                            style={{ width: `${city.total > 0 ? (city.offers / city.total) * 100 : 0}%` }}
                           />
                         </div>
                       </div>
                     ))}
+                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+                      <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                        <span className="w-3 h-2 bg-[#CE3B3B] rounded-sm" /> Necesidades
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                        <span className="w-3 h-2 bg-emerald-500 rounded-sm" /> Ofertas
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -826,7 +1083,7 @@ export const CifrasPage: React.FC = () => {
                         <th className="text-right py-2 px-2 font-bold text-[#CE3B3B]">Necesidades</th>
                         <th className="text-right py-2 px-2 font-bold text-emerald-600">Ofertas</th>
                         <th className="text-right py-2 px-2 font-bold text-slate-800">Total</th>
-                        <th className="text-left py-2 px-3 font-bold text-slate-600 w-32">Proporción</th>
+                        <th className="text-left py-2 px-3 font-bold text-slate-600 w-32 sm:w-48 md:w-64">Proporción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -941,15 +1198,45 @@ export const CifrasPage: React.FC = () => {
                     Brecha oferta vs demanda por categoría
                   </h4>
                   <p className="text-[10px] text-slate-500 mb-3">Categorías donde la demanda supera la oferta disponible.</p>
-                  <div className="space-y-2">
+                  <div className="divide-y divide-slate-100">
                     {radarMatchStats.gaps.slice(0, 10).map((item) => (
-                      <div key={item.category} className="flex items-center gap-3">
-                        <span className="text-xs text-slate-700 flex-1 truncate">{item.label}</span>
-                        <span className="text-[10px] font-bold text-[#CE3B3B] bg-red-50 px-1.5 py-0.5 rounded">{item.needs} nec.</span>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{item.offers} of.</span>
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${item.gap > 0 ? 'text-red-700 bg-red-100' : 'text-emerald-700 bg-emerald-100'}`}>
-                          {item.gap > 0 ? `−${item.gap}` : `+${Math.abs(item.gap)}`}
-                        </span>
+                      <div key={item.category} className="flex items-center justify-between py-2 border-b border-slate-100/80 last:border-b-0 hover:bg-slate-50/60 px-2 rounded-lg transition-colors gap-3">
+                        {/* 1. Category Name */}
+                        <span className="text-xs font-bold text-slate-800 w-28 sm:w-36 shrink-0 truncate">{item.label}</span>
+
+                        {/* 2. Proportion Balance Bar */}
+                        <div className="flex-1 max-w-xs h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                          <div
+                            className="h-full bg-[#CE3B3B] transition-all"
+                            title={`${item.needs} demanda`}
+                            style={{ width: `${item.needs + item.offers > 0 ? (item.needs / (item.needs + item.offers)) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="h-full bg-emerald-500 transition-all"
+                            title={`${item.offers} oferta`}
+                            style={{ width: `${item.needs + item.offers > 0 ? (item.offers / (item.needs + item.offers)) * 100 : 0}%` }}
+                          />
+                        </div>
+
+                        {/* 3. Numerical Demanda vs Oferta */}
+                        <div className="flex items-center gap-1.5 text-xs shrink-0">
+                          <span className="font-semibold text-slate-700">
+                            <strong className="text-[#CE3B3B] font-extrabold">{item.needs}</strong> <span className="hidden sm:inline">demanda</span><span className="sm:hidden">dem.</span>
+                          </span>
+                          <span className="text-slate-300">|</span>
+                          <span className="font-semibold text-slate-700">
+                            <strong className="text-emerald-600 font-extrabold">{item.offers}</strong> <span className="hidden sm:inline">oferta</span><span className="sm:hidden">of.</span>
+                          </span>
+                        </div>
+
+                        {/* 4. Single Result Badge at far right */}
+                        <div className="text-right min-w-[85px] shrink-0">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${
+                            item.gap > 0 ? 'bg-red-50 text-[#CE3B3B] border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {item.gap > 0 ? `Falta ${item.gap}` : `Sobran ${Math.abs(item.gap)}`}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1070,6 +1357,507 @@ export const CifrasPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* =========== EXPORT MODAL =========== */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-lg w-full shadow-2xl relative space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#1B3A93]/10 text-[#1B3A93] flex items-center justify-center border border-[#1B3A93]/20">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Exportar Reporte de Cifras</h3>
+                  <p className="text-xs text-slate-500">Selecciona el formato y los módulos a incluir</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExportModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Active Filter Info Badge */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 flex flex-wrap gap-2 items-center">
+              <span className="font-bold text-slate-800">Filtros activos:</span>
+              <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-semibold text-[#1B3A93]">
+                {selectedDepartment === 'ALL' ? 'Todos los dptos' : (DEPARTMENTS.find(d => d.id === selectedDepartment)?.name || selectedDepartment)}
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-semibold text-[#1B3A93]">
+                {selectedCity === 'ALL' ? 'Todas las ciudades' : getCityDisplayName(selectedCity)}
+              </span>
+              <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-semibold text-[#1B3A93]">
+                {dateFilterType === 'ALL' ? 'Todo el tiempo' : dateFilterType === 'TODAY' ? 'Hoy' : dateFilterType === 'WEEK' ? 'Últimos 7 días' : dateFilterType === 'MONTH' ? 'Últimos 30 días' : 'Rango personalizado'}
+              </span>
+            </div>
+
+            {/* Format Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-extrabold text-slate-700 block">Formato de Exportación</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExportFormat('PDF')}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border text-xs font-extrabold transition-all cursor-pointer ${
+                    exportFormat === 'PDF'
+                      ? 'bg-[#1B3A93] text-white border-[#1B3A93] shadow-md shadow-[#1B3A93]/20'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <FileText className="w-5 h-5" />
+                  <div className="text-left">
+                    <div>PDF (Informe Visual)</div>
+                    <div className={`text-[10px] font-normal ${exportFormat === 'PDF' ? 'text-blue-100' : 'text-slate-400'}`}>Formato gráfico oficial</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportFormat('CSV')}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border text-xs font-extrabold transition-all cursor-pointer ${
+                    exportFormat === 'CSV'
+                      ? 'bg-[#1B3A93] text-white border-[#1B3A93] shadow-md shadow-[#1B3A93]/20'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  <div className="text-left">
+                    <div>CSV (Hoja de Datos)</div>
+                    <div className={`text-[10px] font-normal ${exportFormat === 'CSV' ? 'text-blue-100' : 'text-slate-400'}`}>Para Excel o Sheets</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Module Selection Checkboxes */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-700">Módulos a incluir en el reporte</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allChecked = Object.values(exportModules).every(Boolean);
+                    setExportModules({
+                      global: !allChecked,
+                      geographic: !allChecked,
+                      categories: !allChecked,
+                      radarMatch: !allChecked,
+                      usersAndModeration: !allChecked,
+                    });
+                  }}
+                  className="text-[11px] font-bold text-[#1B3A93] hover:underline cursor-pointer"
+                >
+                  {Object.values(exportModules).every(Boolean) ? 'Desmarcar todos' : 'Marcar todos'}
+                </button>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5">
+                <label className="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportModules.global}
+                    onChange={() => toggleExportModule('global')}
+                    className="w-4 h-4 rounded text-[#1B3A93] focus:ring-[#1B3A93]/20 accent-[#1B3A93]"
+                  />
+                  <span>Resumen General (Total publicaciones, prioridades y verificación)</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportModules.geographic}
+                    onChange={() => toggleExportModule('geographic')}
+                    className="w-4 h-4 rounded text-[#1B3A93] focus:ring-[#1B3A93]/20 accent-[#1B3A93]"
+                  />
+                  <span>Desglose Geográfico (Departamentos y Top Ciudades)</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportModules.categories}
+                    onChange={() => toggleExportModule('categories')}
+                    className="w-4 h-4 rounded text-[#1B3A93] focus:ring-[#1B3A93]/20 accent-[#1B3A93]"
+                  />
+                  <span>Categorías de Ayuda (Demanda vs Oferta por categoría)</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportModules.radarMatch}
+                    onChange={() => toggleExportModule('radarMatch')}
+                    className="w-4 h-4 rounded text-[#1B3A93] focus:ring-[#1B3A93]/20 accent-[#1B3A93]"
+                  />
+                  <span>Motor Radar Match (Cobertura, scores y análisis de brecha)</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 text-xs text-slate-800 font-semibold cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={exportModules.usersAndModeration}
+                    onChange={() => toggleExportModule('usersAndModeration')}
+                    className="w-4 h-4 rounded text-[#1B3A93] focus:ring-[#1B3A93]/20 accent-[#1B3A93]"
+                  />
+                  <span>Usuarios y Moderación (Métricas globales y registros)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-extrabold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!Object.values(exportModules).some(Boolean)}
+                onClick={exportFormat === 'PDF' ? handleExportPDF : handleExportCSV}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold bg-[#1B3A93] hover:bg-[#1B3A93]/90 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md shadow-[#1B3A93]/20 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>{exportFormat === 'PDF' ? 'Generar PDF' : 'Descargar CSV'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========== PRINT-ONLY REPORT CONTAINER =========== */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          header,
+          footer,
+          section,
+          main,
+          .no-print,
+          div[class*="fixed"],
+          div[class*="blur"] {
+            display: none !important;
+          }
+          body {
+            background-color: white !important;
+            color: #0F172A !important;
+          }
+          #printable-report {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: #0F172A !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #printable-report * {
+            opacity: 1 !important;
+            filter: none !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #printable-report h1,
+          #printable-report h2,
+          #printable-report h3 {
+            color: #1B3A93 !important;
+            opacity: 1 !important;
+          }
+          #printable-report p,
+          #printable-report span,
+          #printable-report td,
+          #printable-report th {
+            color: #0F172A !important;
+            opacity: 1 !important;
+          }
+          #printable-report .text-[#1B3A93] {
+            color: #1B3A93 !important;
+          }
+          #printable-report .text-red-600,
+          #printable-report .text-[#CE3B3B] {
+            color: #DC2626 !important;
+          }
+          #printable-report .text-emerald-600,
+          #printable-report .text-emerald-700 {
+            color: #047857 !important;
+          }
+          #printable-report table th,
+          #printable-report table td {
+            border-bottom: 1px solid #CBD5E1 !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+          }
+          #printable-report .print-row {
+            border-bottom: 1px solid #CBD5E1 !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+          }
+          @page {
+            margin: 10mm 12mm;
+            size: A4 portrait;
+          }
+          .print-card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            border: 1px solid #CBD5E1 !important;
+          }
+        }
+      ` }} />
+
+      <div id="printable-report" className="hidden print:block p-6 max-w-4xl mx-auto bg-white text-slate-900 font-sans space-y-6">
+        {/* Printable Header */}
+        <div className="flex items-center justify-between border-b-2 border-[#1B3A93] pb-4">
+          <div className="flex items-center gap-3">
+            <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-10 w-auto" />
+            <div>
+              <h1 className="text-xl font-black text-[#1F1C1A]">RaDAR de Ayuda</h1>
+              <p className="text-xs font-bold text-[#1B3A93]">Informe Oficial de Cifras y Alcance</p>
+            </div>
+          </div>
+          <div className="text-right text-[11px] text-slate-600">
+            <p className="font-bold text-slate-900">Fecha de emisión: {new Date().toLocaleDateString('es-CO')}</p>
+            <p>Hora: {new Date().toLocaleTimeString('es-CO')}</p>
+          </div>
+        </div>
+
+        {/* Filter Summary Badge */}
+        <div className="bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs flex flex-wrap gap-3">
+          <span className="font-bold text-slate-900">Filtros aplicados en el informe:</span>
+          <span><strong>Dpto:</strong> {selectedDepartment === 'ALL' ? 'Todos los departamentos' : selectedDepartment}</span>
+          <span>•</span>
+          <span><strong>Ciudad:</strong> {selectedCity === 'ALL' ? 'Todas las ciudades' : getCityDisplayName(selectedCity)}</span>
+          <span>•</span>
+          <span><strong>Período:</strong> {dateFilterType === 'ALL' ? 'Todo el tiempo' : dateFilterType === 'TODAY' ? 'Hoy' : dateFilterType === 'WEEK' ? 'Últimos 7 días' : dateFilterType === 'MONTH' ? 'Últimos 30 días' : 'Rango personalizado'}</span>
+        </div>
+
+        {/* MODULE 1: GLOBAL OVERVIEW */}
+        {exportModules.global && (
+          <div className="print-card border border-slate-300 rounded-2xl p-4 space-y-4">
+            <h2 className="text-sm font-black text-[#1B3A93] border-b border-slate-200 pb-2">1. Resumen General de Publicaciones</h2>
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div className="bg-blue-50 p-3 rounded-xl border border-blue-200">
+                <p className="text-xl font-black text-[#1B3A93]">{totalPublications}</p>
+                <p className="text-[10px] font-bold text-slate-700">Total Publicaciones</p>
+              </div>
+              <div className="bg-red-50 p-3 rounded-xl border border-red-200">
+                <p className="text-xl font-black text-[#CE3B3B]">{totalNeeds}</p>
+                <p className="text-[10px] font-bold text-slate-700">Necesidades</p>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                <p className="text-xl font-black text-emerald-700">{totalOffers}</p>
+                <p className="text-[10px] font-bold text-slate-700">Ofertas</p>
+              </div>
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                <p className="text-xl font-black text-amber-800">{totalUsers}</p>
+                <p className="text-[10px] font-bold text-slate-700">Usuarios Registrados</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Necesidades por Prioridad</h3>
+                <div className="space-y-1">
+                  {Object.entries(priorityStats).map(([pri, count]) => (
+                    <div key={pri} className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                      <span className="font-semibold text-slate-800">{PRIORITY_LABELS[pri] || pri}</span>
+                      <span className="font-bold text-slate-900">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Estado de Verificación</h3>
+                <div className="space-y-1">
+                  {Object.entries(verificationStats).map(([ver, count]) => (
+                    <div key={ver} className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                      <span className="font-semibold text-slate-800">{VERIFICATION_LABELS[ver] || ver}</span>
+                      <span className="font-bold text-slate-900">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODULE 2: GEOGRAPHIC */}
+        {exportModules.geographic && (
+          <div className="print-card border border-slate-300 rounded-2xl p-4 space-y-4">
+            <h2 className="text-sm font-black text-[#1B3A93] border-b border-slate-200 pb-2">2. Desglose Geográfico</h2>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Por Departamento</h3>
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b-2 border-slate-300 font-bold text-slate-900 bg-slate-50">
+                      <th className="py-1.5 px-1">Dpto</th>
+                      <th className="text-right py-1.5 px-1">Nec.</th>
+                      <th className="text-right py-1.5 px-1">Ofer.</th>
+                      <th className="text-right py-1.5 px-1">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {geoStats.map((g) => (
+                      <tr key={g.id} className="border-b border-slate-300">
+                        <td className="py-1.5 px-1 font-semibold text-slate-800">{g.name}</td>
+                        <td className="text-right py-1.5 px-1 text-red-600 font-bold">{g.needs}</td>
+                        <td className="text-right py-1.5 px-1 text-emerald-600 font-bold">{g.offers}</td>
+                        <td className="text-right py-1.5 px-1 font-bold text-slate-900">{g.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Top Ciudades</h3>
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b-2 border-slate-300 font-bold text-slate-900 bg-slate-50">
+                      <th className="py-1.5 px-1">Ciudad</th>
+                      <th className="text-right py-1.5 px-1">Nec.</th>
+                      <th className="text-right py-1.5 px-1">Ofer.</th>
+                      <th className="text-right py-1.5 px-1">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cityStats.map((c) => (
+                      <tr key={c.id} className="border-b border-slate-300">
+                        <td className="py-1.5 px-1 font-semibold text-slate-800">{c.name}</td>
+                        <td className="text-right py-1.5 px-1 text-red-600 font-bold">{c.needs}</td>
+                        <td className="text-right py-1.5 px-1 text-emerald-600 font-bold">{c.offers}</td>
+                        <td className="text-right py-1.5 px-1 font-bold text-slate-900">{c.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODULE 3: CATEGORIES */}
+        {exportModules.categories && (
+          <div className="print-card border border-slate-300 rounded-2xl p-4 space-y-3 text-xs">
+            <h2 className="text-sm font-black text-[#1B3A93] border-b border-slate-200 pb-2">3. Categorías de Ayuda (Oferta vs Demanda)</h2>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b-2 border-slate-300 font-bold text-slate-900 bg-slate-50">
+                  <th className="py-2 px-2">Categoría</th>
+                  <th className="text-right py-2 px-2 text-red-600">Necesidades</th>
+                  <th className="text-right py-2 px-2 text-emerald-600">Ofertas</th>
+                  <th className="text-right py-2 px-2">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryStats.map((cat) => (
+                  <tr key={cat.category} className="border-b border-slate-300 hover:bg-slate-50">
+                    <td className="py-2 px-2 font-bold text-slate-900">{cat.label}</td>
+                    <td className="text-right py-2 px-2 text-red-600 font-bold">{cat.needs}</td>
+                    <td className="text-right py-2 px-2 text-emerald-600 font-bold">{cat.offers}</td>
+                    <td className="text-right py-2 px-2 font-black text-slate-900">{cat.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* MODULE 4: RADAR MATCH */}
+        {exportModules.radarMatch && (
+          <div className="print-card border border-slate-300 rounded-2xl p-4 space-y-3 text-xs">
+            <h2 className="text-sm font-black text-[#1B3A93] border-b border-slate-200 pb-2">4. Rendimiento Motor Radar Match</h2>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                <p className="text-lg font-black text-emerald-700">{radarMatchStats.coverageRate.toFixed(1)}%</p>
+                <p className="text-[10px] font-bold text-slate-700">Cobertura Potencial</p>
+              </div>
+              <div className="bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                <p className="text-lg font-black text-[#1B3A93]">{radarMatchStats.avgScore.toFixed(0)}%</p>
+                <p className="text-[10px] font-bold text-slate-700">Score Promedio</p>
+              </div>
+              <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                <p className="text-lg font-black text-amber-700">{radarMatchStats.responseCapacity.toFixed(1)}%</p>
+                <p className="text-[10px] font-bold text-slate-700">Capacidad de Respuesta</p>
+              </div>
+            </div>
+            
+            {radarMatchStats.gaps.length > 0 && (
+              <div className="mt-3">
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Brecha Oferta vs Demanda por Categoría</h3>
+                <div className="space-y-1 text-xs">
+                  {radarMatchStats.gaps.map((g) => (
+                    <div key={g.category} className="print-row flex items-center justify-between py-1.5 px-2 border-b border-slate-300 bg-slate-50/60">
+                      <span className="font-semibold text-slate-800">{g.label}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-red-600 font-bold">Demanda: {g.needs}</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-emerald-600 font-bold">Oferta: {g.offers}</span>
+                        <span className="text-slate-400">•</span>
+                        <span className={`font-black px-1.5 py-0.5 rounded text-[10px] ${g.gap > 0 ? 'text-red-700 bg-red-100' : 'text-emerald-700 bg-emerald-100'}`}>
+                          {g.gap > 0 ? `Falta ${g.gap}` : `Superávit +${Math.abs(g.gap)}`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODULE 5: USERS & MODERATION */}
+        {exportModules.usersAndModeration && (
+          <div className="print-card border border-slate-300 rounded-2xl p-4 space-y-3 text-xs">
+            <h2 className="text-sm font-black text-[#1B3A93] border-b border-slate-200 pb-2">5. Usuarios y Actividad de Moderación</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Roles de Usuario Registrados</h3>
+                <div className="space-y-1">
+                  {Object.entries(userRoleStats).map(([role, count]) => (
+                    <div key={role} className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                      <span className="font-semibold text-slate-800">{ROLE_LABELS[role] || role}</span>
+                      <span className="font-bold text-slate-900">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-900 mb-2 border-b border-slate-200 pb-1">Estadísticas de Moderación</h3>
+                <div className="space-y-1">
+                  <div className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                    <span className="font-semibold text-slate-800">Acciones totales registradas:</span>
+                    <span className="font-bold text-slate-900">{moderationStats.totalLogs}</span>
+                  </div>
+                  <div className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                    <span className="font-semibold text-slate-800">Acciones en necesidades:</span>
+                    <span className="font-bold text-red-600">{moderationStats.totalNeedLogs}</span>
+                  </div>
+                  <div className="print-row flex justify-between py-1.5 border-b border-slate-300">
+                    <span className="font-semibold text-slate-800">Acciones en ofertas:</span>
+                    <span className="font-bold text-emerald-600">{moderationStats.totalOfferLogs}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Printable Footer */}
+        <div className="pt-4 border-t-2 border-slate-300 text-center text-[10px] text-slate-600">
+          <p className="font-bold text-slate-800">RaDAR de Ayuda - Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
+          <p>Informe generado automáticamente desde radardeayuda.co • info@radardeayuda.co</p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1147,10 +1935,10 @@ interface ProgressRowProps {
 function ProgressRow({ label, value, total, color }: ProgressRowProps) {
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-700 flex-1 truncate">{label}</span>
+    <div className="flex items-center gap-3 py-1.5 border-b border-slate-100/80 last:border-b-0">
+      <span className="text-xs font-semibold text-slate-700 flex-1 truncate">{label}</span>
       <span className="text-xs font-bold text-slate-800 w-8 text-right">{value}</span>
-      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+      <div className="w-24 sm:w-36 md:w-48 h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, backgroundColor: color }}
