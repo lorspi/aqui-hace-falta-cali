@@ -5,7 +5,7 @@
 
 export type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
-export type VerificationStatus = 'VERIFIED' | 'PENDING_VERIFICATION' | 'REPORTED' | 'ARCHIVED';
+export type VerificationStatus = 'VERIFIED' | 'PENDING_VERIFICATION' | 'REPORTED' | 'REJECTED' | 'ARCHIVED';
 
 export type NeedStatus = 'NEED_HELP_NOW' | 'RECEIVING_HELP' | 'PARTIALLY_COVERED' | 'COVERED' | 'CLOSED';
 
@@ -89,9 +89,10 @@ export interface Need {
   lastUpdatedBy?: string;
   expiresAt?: string;
   isDemoData?: boolean;
-  sourceEventId?: string;
-  conversationId?: string;
-  locationEnrichmentStatus?: string;
+  // Columnas del receptor de eventos (S1/S5, trazabilidad del webhook).
+  sourceEventId?: string | null;
+  conversationId?: string | null;
+  locationEnrichmentStatus?: string | null;
 }
 
 export interface Report {

@@ -53,10 +53,9 @@ export function dbNeedToNeed(row: any): Need {
     updatedAt: row.updated_at,
     lastUpdatedBy: row.last_updated_by,
     expiresAt: row.expires_at,
-    isDemoData: row.is_demo_data,
-    sourceEventId: row.source_event_id,
-    conversationId: row.conversation_id,
-    locationEnrichmentStatus: row.location_enrichment_status,
+    sourceEventId: row.source_event_id ?? null,
+    conversationId: row.conversation_id ?? null,
+    locationEnrichmentStatus: row.location_enrichment_status ?? null,
   };
 }
 

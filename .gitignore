@@ -15,7 +15,9 @@ coverage/
 .env.production
 convex/_generated/
 
+# AI-DLC (workflow rules — not committed)
+.aidlc/
+
 # Scratch & Snapshots
 scratch/
 *.zip
-
