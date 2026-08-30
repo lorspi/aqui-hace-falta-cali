@@ -18,6 +18,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onSuccess,
 }) => {
   const { t } = useTranslation();
+  const [viewMode, setViewMode] = useState<'login' | 'forgot_password'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +37,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     } catch (err: any) {
       setServerError(t('authLoginErrorGoogle') + (err?.message || err));
       setGoogleLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setServerError(null);
+    setSuccessMessage(null);
+
+    if (!email.trim()) {
+      setServerError(t('authLoginErrorEmail'));
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccessMessage(t('authForgotPasswordSuccess'));
+    } catch (err: any) {
+      console.error('[LoginModal] Error requesting password reset:', err);
+      setServerError(err?.message || t('authLoginErrorGeneric'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -103,7 +134,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* Cabecera con Botón Cerrar */}
         <div className="px-6 sm:px-8 pt-6 pb-2 flex items-center justify-between sticky top-0 bg-white z-10">
           <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-1 rounded-full">
-            {t('authLoginBadge')}
+            {viewMode === 'login' ? t('authLoginBadge') : t('authForgotPasswordTitle')}
           </span>
           {onClose && (
             <button
@@ -120,10 +151,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         <div className="px-6 sm:px-8 py-4 space-y-5">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {t('authLoginTitle')}
+              {viewMode === 'login' ? t('authLoginTitle') : t('authForgotPasswordTitle')}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              {t('authLoginSubtitle')}
+              {viewMode === 'login' ? t('authLoginSubtitle') : t('authForgotPasswordSubtitle')}
             </p>
           </div>
 
@@ -142,72 +173,138 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
-
-
-          {/* Formulario Tradicional */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                {t('authLoginEmailLabel')}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
+          {viewMode === 'login' ? (
+            /* Formulario de Login Tradicional */
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('authLoginEmailLabel')}
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('authLoginEmailPlaceholder')}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
+                  />
                 </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('authLoginEmailPlaceholder')}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
-                />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                {t('authLoginPasswordLabel')}
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4" />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    {t('authLoginPasswordLabel')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setServerError(null);
+                      setSuccessMessage(null);
+                      setViewMode('forgot_password');
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  >
+                    {t('authForgotPasswordLink')}
+                  </button>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('authLoginPasswordPlaceholder')}
-                  className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t('authLoginPasswordPlaceholder')}
+                    className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                    title={showPassword ? t('authHidePassword') : t('authShowPassword')}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || googleLoading}
+                className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t('authLoginSubmitting')}</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>{t('authLoginSubmit')}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            /* Formulario de Olvidé mi Contraseña */
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('authLoginEmailLabel')}
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('authLoginEmailPlaceholder')}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t('authForgotPasswordSubmitting')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    <span>{t('authForgotPasswordSubmit')}</span>
+                  </>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                  title={showPassword ? t('authHidePassword') : t('authShowPassword')}
+                  onClick={() => {
+                    setServerError(null);
+                    setSuccessMessage(null);
+                    setViewMode('login');
+                  }}
+                  className="text-xs font-extrabold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  ← {t('authForgotPasswordBackToLogin')}
                 </button>
               </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || googleLoading}
-              className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t('authLoginSubmitting')}</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  <span>{t('authLoginSubmit')}</span>
-                </>
-              )}
-            </button>
-          </form>
+            </form>
+          )}
         </div>
 
         {/* Pie de Modal: ¿No tienes cuenta? Regístrate aquí */}

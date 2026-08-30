@@ -42,6 +42,7 @@ const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWiz
 const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
 const UserProfileModal = lazy(() => import("./features/auth/components/UserProfileModal").then(m => ({ default: m.UserProfileModal })));
 const VolunteerRegisterModal = lazy(() => import("./features/auth/components/VolunteerRegisterModal").then(m => ({ default: m.VolunteerRegisterModal })));
+const ResetPasswordModal = lazy(() => import("./features/auth/components/ResetPasswordModal").then(m => ({ default: m.ResetPasswordModal })));
 // Lazy-loaded pages for code-splitting
 const ModeradorPage = lazy(() => import("./components/ModeradorPage").then(m => ({ default: m.ModeradorPage })));
 const AdminPanelPage = lazy(() => import("./components/AdminPanelPage").then(m => ({ default: m.AdminPanelPage })));
@@ -183,6 +184,9 @@ function MainApp() {
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+  });
   const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.pathname === '/voluntario';
   });
@@ -198,8 +202,8 @@ function MainApp() {
       setAuthUser(immediateUserObj);
       localStorage.setItem('ahf_auth_user', JSON.stringify(immediateUserObj));
 
-      // 2. Limpiar `#` o `#access_token` de la URL una vez procesada la sesión por Supabase
-      if (typeof window !== 'undefined' && window.location.hash) {
+      // 2. Limpiar `#` o `#access_token` de la URL una vez procesada la sesión por Supabase (excepto recovery)
+      if (typeof window !== 'undefined' && window.location.hash && !window.location.hash.includes('type=recovery')) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
 
@@ -251,8 +255,11 @@ function MainApp() {
       }
     });
 
-    // 2. Escuchar cambios de estado en tiempo real (ej. cuando la hash de Google OAuth es procesada por Supabase)
+    // 2. Escuchar cambios de estado en tiempo real (Google OAuth / Password Recovery)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (typeof window !== 'undefined' && window.location.hash.includes('type=recovery'))) {
+        setIsResetPasswordModalOpen(true);
+      }
       if (session?.user) {
         handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
@@ -1508,6 +1515,11 @@ function MainApp() {
           }
           setUserProfile(updatedProfile);
         }}
+      />
+      <ResetPasswordModal
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => setIsResetPasswordModalOpen(false)}
+        onSuccess={() => setIsResetPasswordModalOpen(false)}
       />
     </div>
   );
