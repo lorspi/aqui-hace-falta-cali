@@ -45,6 +45,26 @@
         })(window, document, "clarity", "script", id);
       })();
     </script>
+
+    <!-- Google Analytics (GA4): Measurement ID is injected from VITE_GA_MEASUREMENT_ID env var with fallback -->
+    <script type="text/javascript">
+      (function(){
+        var gaId = '%VITE_GA_MEASUREMENT_ID%';
+        if (!gaId || gaId.indexOf('VITE_') === 0) {
+          gaId = 'G-L48JS2VK7Z';
+        }
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+        document.head.appendChild(s);
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){ dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', gaId);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
