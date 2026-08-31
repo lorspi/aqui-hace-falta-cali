@@ -114,9 +114,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   const handleCategoryToggle = (cat: HelpCategory) => {
     if (selectedCategories.includes(cat)) {
-      if (selectedCategories.length > 1) {
-        setSelectedCategories(selectedCategories.filter((c) => c !== cat));
-      }
+      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }

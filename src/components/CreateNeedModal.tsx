@@ -29,7 +29,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [placeType, setPlaceType] = useState<PlaceType>('EDIFICIO_AFECTADO');
-  const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>(['ESCOMBROS']);
+  const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>([]);
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
   const [cityId, setCityId] = useState('');
@@ -42,6 +42,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    setSelectedCategories([]);
     setIsManualPosition(false);
     setGeocodeStatus('IDLE');
 
@@ -148,9 +149,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
   const handleCategoryToggle = (cat: HelpCategory) => {
     if (selectedCategories.includes(cat)) {
-      if (selectedCategories.length > 1) {
-        setSelectedCategories(selectedCategories.filter((c) => c !== cat));
-      }
+      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
@@ -159,7 +158,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const handleAddResource = () => {
     setResources([
       ...resources,
-      { type: selectedCategories[0] || 'ESCOMBROS', description: '', requestedQuantity: 1, unit: '' },
+      { type: selectedCategories[0] || 'ALIMENTOS_AGUA', description: '', requestedQuantity: 1, unit: '' },
     ]);
   };
 
@@ -171,6 +170,15 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     e.preventDefault();
     if (!title || !description || !address || !neighborhood || !contactPhone.trim() || !cityId) {
       await showAlert(language === 'en' ? 'Please fill in all required fields (including department/municipality and contact phone).' : 'Por favor completa todos los campos obligatorios (incluyendo seleccionar un departamento/municipio y teléfono de contacto).');
+      return;
+    }
+
+    if (selectedCategories.length === 0) {
+      await showAlert(
+        language === 'en'
+          ? 'Please select at least one category.'
+          : 'Por favor selecciona al menos una categoría de necesidad.'
+      );
       return;
     }
 

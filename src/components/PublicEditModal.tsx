@@ -129,9 +129,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
   const handleCategoryToggle = (cat: HelpCategory) => {
     if (selectedCategories.includes(cat)) {
-      if (selectedCategories.length > 1) {
-        setSelectedCategories(selectedCategories.filter((c) => c !== cat));
-      }
+      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
