@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { VolunteerRegisterModal } from '../features/auth/components/VolunteerRegisterModal';
+import { Footer } from './Footer';
 
 export const LandingHomePage: React.FC = () => {
   const { language, t } = useTranslation();
@@ -436,45 +437,7 @@ export const LandingHomePage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 bg-[#1F1C1A] text-slate-300 py-10 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-8 w-auto brightness-0 invert opacity-90" />
-            <div className="border-l border-slate-700 pl-3">
-              <p className="text-xs font-bold text-white">RaDAR de Ayuda</p>
-              <p className="text-[11px] text-slate-400">Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
-            </div>
-          </div>
-
-          {/* Datos de contacto en el Footer */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-300">
-            <a
-              href="mailto:Info@radardeayuda.co"
-              className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-semibold bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60"
-            >
-              <Mail className="w-3.5 h-3.5 text-blue-400" />
-              <span>Info@radardeayuda.co</span>
-            </a>
-            <a
-              href="https://wa.me/573112323588"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-semibold bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>WhatsApp: +57 311 232 3588</span>
-            </a>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs text-slate-400">
-            <a href="/" className="hover:text-white transition-colors">Mapa Principal</a>
-            <span>•</span>
-            <a href="/guia" className="hover:text-white transition-colors">¿Cómo Funciona?</a>
-            <span>•</span>
-            <a href="/moderador" className="hover:text-white transition-colors">Acceso Moderadores</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Modal de Registro para Voluntarios */}
       <VolunteerRegisterModal

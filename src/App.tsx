@@ -37,6 +37,8 @@ import { PublicEditModal } from "./components/PublicEditModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
+import { Footer } from "./components/Footer";
+import { FloatingCreateNeedFAB } from "./components/FloatingCreateNeedFAB";
 // Lazy-loaded auth modals for code-splitting
 const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
 const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
@@ -1427,7 +1429,13 @@ function MainApp() {
         }}
       />
 
-      {/* Footer — temporarily removed (file preserved for future use) */}
+      {/* Footer — para escritorio / web */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+
+      {/* Botón Flotante Móvil (FAB) para Pedir Ayuda */}
+      <FloatingCreateNeedFAB onClick={() => setIsCreateModalOpen(true)} />
 
       {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden">
