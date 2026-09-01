@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   BookOpen,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { Need, Offer, Priority, VerificationStatus } from "../types";
 import {
@@ -49,6 +50,7 @@ import {
   fetchUserProfile,
   fetchAdminReports,
   resolveReport,
+  deleteReport,
   fetchAuditLogs,
   fetchUsersList,
   adminLogin,
@@ -141,6 +143,10 @@ export const AdminPanelPage: React.FC = () => {
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<string>("ALL");
   const [adminVerificationFilter, setAdminVerificationFilter] = useState<string>("ALL");
   const [adminTypeFilter, setAdminTypeFilter] = useState<string>("ALL");
+
+  // Reports tab filters
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>("ALL");
+  const [reportTypeFilter, setReportTypeFilter] = useState<string>("ALL");
 
   // User management state
   const [usersList, setUsersList] = useState<AdminUser[]>([]);
@@ -391,13 +397,70 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  const handleResolveReportItem = async (reportId: string, status: 'RESOLVED' | 'DISMISSED', isOffer = false) => {
+  // Marca el reporte como RESUELTO (no toca la publicación).
+  const handleResolveReportItem = async (reportId: string, isOffer = false) => {
     try {
-      await resolveReport(reportId, status, currentUser?.email || 'moderador@lorspi.com', isOffer);
+      await resolveReport(reportId, 'RESOLVED', currentUser?.email || 'moderador@lorspi.com', isOffer);
       loadData();
-      showAlert(status === 'RESOLVED' ? 'Reporte resuelto.' : 'Reporte desestimado.', { title: 'Éxito', variant: 'success' });
+      showAlert('Reporte marcado como resuelto.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
       showAlert(err.message || 'Error al actualizar reporte', { title: 'Error', variant: 'error' });
+    }
+  };
+
+  // Desestima el reporte eliminándolo por completo (no toca la publicación).
+  const handleDismissReportItem = async (reportId: string, isOffer = false) => {
+    if (!(await showConfirm('¿Eliminar este reporte? Esta acción no se puede deshacer.', { title: 'Desestimar reporte' }))) return;
+    try {
+      await deleteReport(reportId, currentUser?.email || 'moderador@lorspi.com', isOffer);
+      loadData();
+      showAlert('Reporte eliminado.', { title: 'Éxito', variant: 'success' });
+    } catch (err: any) {
+      showAlert(err.message || 'Error al eliminar reporte', { title: 'Error', variant: 'error' });
+    }
+  };
+
+  // Marca el reporte como RESUELTO y archiva la publicación asociada para que deje de mostrarse.
+  const handleResolveAndArchiveReportItem = async (
+    reportId: string,
+    entryId: string | undefined,
+    isOffer: boolean,
+    entryTitle?: string
+  ) => {
+    if (!entryId) {
+      showAlert('No se encontró la publicación asociada al reporte.', { title: 'Error', variant: 'error' });
+      return;
+    }
+    const kind = isOffer ? 'oferta' : 'necesidad';
+    if (!(await showConfirm(
+      `¿Marcar el reporte como resuelto y archivar la ${kind}${entryTitle ? ` "${entryTitle}"` : ''}? Dejará de mostrarse públicamente.`,
+      { title: 'Resolver y archivar' }
+    ))) return;
+
+    try {
+      const moderatorEmail = currentUser?.email || 'moderador@lorspi.com';
+
+      // 1. Archivar la publicación asociada.
+      if (isOffer) {
+        await updateOffer(entryId, {
+          verificationStatus: 'ARCHIVED',
+          lastUpdatedBy: currentUser?.name ? `[MOD] ${currentUser.name}` : '[MOD] Moderador',
+        });
+        await logAudit('ARCHIVE_OFFER', moderatorEmail, `Oferta ID ${entryId} archivada tras resolver reporte ${reportId}.`);
+      } else {
+        await updateNeed(entryId, { verificationStatus: 'ARCHIVED' });
+        await logAudit('ARCHIVE_NEED', moderatorEmail, `Necesidad ID ${entryId} archivada tras resolver reporte ${reportId}.`);
+      }
+
+      // 2. Marcar el reporte como resuelto.
+      await resolveReport(reportId, 'RESOLVED', moderatorEmail, isOffer);
+
+      loadData();
+      refetchNeeds();
+      refetchOffers();
+      showAlert('Reporte resuelto y publicación archivada.', { title: 'Éxito', variant: 'success' });
+    } catch (err: any) {
+      showAlert(err.message || 'Error al resolver y archivar', { title: 'Error', variant: 'error' });
     }
   };
 
@@ -853,56 +916,159 @@ export const AdminPanelPage: React.FC = () => {
         )}
 
         {/* TAB 2: REPORTS */}
-        {activeTab === 'REPORTS' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-              <Flag className="w-4 h-4 text-red-500" />
-              {t('pendingReports')} ({reports.length})
-            </h3>
+        {activeTab === 'REPORTS' && (() => {
+          const filteredReports = reports.filter((rep) => {
+            const repIsOffer = !!rep.offerId;
+            if (reportStatusFilter !== 'ALL' && rep.status !== reportStatusFilter) return false;
+            if (reportTypeFilter === 'NEEDS' && repIsOffer) return false;
+            if (reportTypeFilter === 'OFFERS' && !repIsOffer) return false;
+            return true;
+          });
+          const hasActiveFilters = reportStatusFilter !== 'ALL' || reportTypeFilter !== 'ALL';
 
-            {reports.length === 0 ? (
+          return (
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                <Flag className="w-4 h-4 text-red-500" />
+                {t('pendingReports')} ({filteredReports.length}{hasActiveFilters ? ` de ${reports.length}` : ''})
+              </h3>
+
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                {/* Filtro por estado */}
+                <CustomSelect
+                  value={reportStatusFilter}
+                  onChange={setReportStatusFilter}
+                  className="w-44"
+                  icon={<Flag className="w-3.5 h-3.5 text-slate-400" />}
+                  options={[
+                    { value: 'ALL', label: 'Todos los estados' },
+                    { value: 'PENDING', label: '◷ Pendientes' },
+                    { value: 'RESOLVED', label: '✓ Resueltos' },
+                    { value: 'DISMISSED', label: '📁 Desestimados' },
+                  ]}
+                />
+
+                {/* Filtro por tipo */}
+                <CustomSelect
+                  value={reportTypeFilter}
+                  onChange={setReportTypeFilter}
+                  className="w-52"
+                  icon={<List className="w-3.5 h-3.5 text-slate-400" />}
+                  options={[
+                    { value: 'ALL', label: 'Necesidades y ofertas' },
+                    { value: 'NEEDS', label: 'Solo necesidades' },
+                    { value: 'OFFERS', label: 'Solo ofertas' },
+                  ]}
+                />
+
+                {hasActiveFilters && (
+                  <button
+                    onClick={() => {
+                      setReportStatusFilter('ALL');
+                      setReportTypeFilter('ALL');
+                    }}
+                    className="text-xs text-rose-600 font-bold hover:underline ml-1"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {filteredReports.length === 0 ? (
               <p className="text-slate-500 italic text-center py-6">
-                No hay reportes registrados por los usuarios.
+                {reports.length === 0
+                  ? 'No hay reportes registrados por los usuarios.'
+                  : 'No hay reportes que coincidan con los filtros seleccionados.'}
               </p>
             ) : (
               <div className="space-y-3">
-                {reports.map((rep) => (
+                {filteredReports.map((rep) => {
+                  const isOffer = !!rep.offerId;
+                  const relatedNeed = rep.needId ? needs.find((n) => n.id === rep.needId) : undefined;
+                  const relatedOffer = rep.offerId ? offers.find((o) => o.id === rep.offerId) : undefined;
+                  const entryTitle = isOffer
+                    ? (rep.offerTitle || relatedOffer?.title)
+                    : (rep.needTitle || relatedNeed?.title);
+                  const canOpen = isOffer ? !!relatedOffer : !!relatedNeed;
+
+                  const handleOpenEntry = () => {
+                    if (isOffer && relatedOffer) {
+                      setViewingOffer(relatedOffer);
+                    } else if (!isOffer && relatedNeed) {
+                      setViewingNeed(relatedNeed);
+                    }
+                  };
+
+                  return (
                   <div key={rep.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${rep.status === 'PENDING' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {rep.status}
                         </span>
                         <span className="font-bold text-slate-900">{rep.reason}</span>
                       </div>
+
+                      {/* Entrada relacionada con el reporte */}
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${isOffer ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {isOffer ? 'Oferta' : 'Necesidad'}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 truncate">
+                          {entryTitle || 'Entrada no disponible'}
+                        </span>
+                      </div>
+
                       <p className="text-xs text-slate-600">{rep.description}</p>
                       {rep.reporterContact && (
                         <p className="text-[11px] text-slate-400">Contacto: {rep.reporterContact}</p>
                       )}
                     </div>
 
-                    {rep.status === 'PENDING' && (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleResolveReportItem(rep.id, 'RESOLVED', !!rep.offerId)}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg"
-                        >
-                          {t('resolveReport')}
-                        </button>
-                        <button
-                          onClick={() => handleResolveReportItem(rep.id, 'DISMISSED', !!rep.offerId)}
-                          className="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold px-3 py-1.5 rounded-lg"
-                        >
-                          {t('dismissReport')}
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={handleOpenEntry}
+                        disabled={!canOpen}
+                        title={canOpen ? 'Abrir la entrada reportada' : 'La entrada ya no está disponible'}
+                        className="bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Abrir
+                      </button>
+
+                      {rep.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleResolveReportItem(rep.id, isOffer)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg"
+                          >
+                            {t('resolveReport')}
+                          </button>
+                          <button
+                            onClick={() => handleResolveAndArchiveReportItem(rep.id, isOffer ? rep.offerId : rep.needId, isOffer, entryTitle)}
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg"
+                          >
+                            Resolver y archivar
+                          </button>
+                          <button
+                            onClick={() => handleDismissReportItem(rep.id, isOffer)}
+                            className="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold px-3 py-1.5 rounded-lg"
+                          >
+                            {t('dismissReport')}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* TAB 2.5: CHATBOT REPORTS (US-5) */}
         {activeTab === 'CHATBOT' && (

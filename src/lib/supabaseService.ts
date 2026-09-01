@@ -783,6 +783,14 @@ export async function resolveReport(reportId: string, status: 'RESOLVED' | 'DISM
   await logAudit('RESOLVE_REPORT', resolvedBy, `Reporte ${reportId} marcado como ${status}`);
 }
 
+export async function deleteReport(reportId: string, deletedBy: string, isOffer = false): Promise<void> {
+  const table = isOffer ? 'offer_reports' : 'reports';
+  const { error } = await supabase.from(table).delete().eq('id', reportId);
+
+  if (error) throw error;
+  await logAudit('DELETE_REPORT', deletedBy, `Reporte ${reportId} eliminado (desestimado)`);
+}
+
 export async function fetchAuditLogs(): Promise<AdminAuditLog[]> {
   const { data, error } = await supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(100);
   if (error || !data) return [];
