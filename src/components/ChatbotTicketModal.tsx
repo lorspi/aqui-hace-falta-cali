@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Bot, User, CheckCircle2, Loader2, Sparkles, Phone, MapPin, MessageSquarePlus } from 'lucide-react';
+import { X, Send, HeartHandshake, User, CheckCircle2, Loader2, Clock, Phone, MapPin } from 'lucide-react';
 import { createQuickTicket } from '../lib/supabaseService';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -29,7 +29,44 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
   const [additionalDetails, setAdditionalDetails] = useState('');
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [viewportState, setViewportState] = useState<{ height: number; offsetTop: number } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportState({
+          height: window.visualViewport.height,
+          offsetTop: window.visualViewport.offsetTop,
+        });
+      } else {
+        setViewportState({
+          height: window.innerHeight,
+          offsetTop: 0,
+        });
+      }
+    };
+
+    handleResize();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    } else {
+      window.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -49,9 +86,16 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
       {
         id: 'msg-1',
         sender: 'bot',
-        text: '¡Hola! 👋 Te ayudaré a registrar tu necesidad de forma muy rápida. ¿Qué ayuda o recurso necesitas? (Ej: Alimentos y agua para 3 familias).',
+        text: '¡Hola! Estamos aquí para apoyarte. 🤝 Cuéntanos brevemente qué situación o necesidad urgente tienes (Ej: Alimentos y agua para 3 familias).',
       },
     ]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+      return () => document.body.classList.remove('modal-open');
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -93,7 +137,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
       {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: 'Perfecto. 📞 Por favor ingresa tu número de teléfono de contacto para que el equipo te pueda llamar o escribir por WhatsApp:',
+        text: 'Perfecto. 📞 Por favor ingresa tu número de teléfono de contacto para que el equipo pueda comunicarse contigo:',
       },
     ]);
 
@@ -152,7 +196,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
         {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          text: '¡Muchas gracias! 💚 Recibimos tus datos correctamente en el sistema. Un integrante de nuestro equipo de moderación te contactará a la brevedad para coordinar la solicitud.',
+          text: '¡Muchas gracias! 🧡 Recibimos tus datos correctamente en el sistema. Un integrante de nuestro equipo de apoyo te contactará a la brevedad para coordinar la solicitud.',
         },
       ]);
 
@@ -164,7 +208,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
         {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          text: 'Ocurrió un inconveniente al guardar el ticket. Por favor inténtalo de nuevo.',
+          text: 'Ocurrió un inconveniente al guardar el reporte. Por favor inténtalo de nuevo.',
         },
       ]);
     } finally {
@@ -172,57 +216,92 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
     }
   };
 
+  const isKeyboardOpen = Boolean(viewportState && viewportState.height < 520);
+  const dynamicHeight = viewportState
+    ? Math.min(viewportState.height - (isKeyboardOpen ? 12 : 32), 580)
+    : undefined;
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#0b1329]/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-lg h-[600px] max-h-[90vh] shadow-2xl border border-slate-200 flex flex-col justify-between overflow-hidden animate-in zoom-in-95 duration-200">
+    <div
+      className={`fixed inset-x-0 z-50 bg-slate-900/70 backdrop-blur-xs flex ${
+        isKeyboardOpen ? 'items-start pt-2 px-2' : 'items-center justify-center p-3 sm:p-6'
+      } overflow-hidden`}
+      style={{
+        top: viewportState ? `${viewportState.offsetTop}px` : 0,
+        height: viewportState ? `${viewportState.height}px` : '100vh',
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-200 flex flex-col justify-between overflow-hidden animate-in zoom-in-95 duration-150 transition-[height,max-height]"
+        style={{
+          height: dynamicHeight ? `${dynamicHeight}px` : undefined,
+          maxHeight: dynamicHeight ? `${dynamicHeight}px` : undefined,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         
-        {/* Cabecera del Chatbot */}
-        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
-              <Bot className="w-5 h-5 text-white" />
+        {/* Cabecera del Asistente */}
+        <div className={`px-4 ${isKeyboardOpen ? 'py-2' : 'py-3 sm:py-3.5'} bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md space-y-1.5 shrink-0 transition-all`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`${isKeyboardOpen ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/30 text-white shadow-xs shrink-0 transition-all`}>
+                <HeartHandshake className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-xs sm:text-sm font-black text-white tracking-tight truncate">
+                    Pedir Ayuda Inmediata
+                  </h3>
+                  <span className="text-[9px] font-bold bg-white/20 text-white border border-white/30 px-1.5 py-0.2 rounded-full flex items-center gap-1 shrink-0">
+                    <Clock className="w-2.5 h-2.5" /> En 1 min
+                  </span>
+                </div>
+                {!isKeyboardOpen && (
+                  <p className="text-[10px] sm:text-[11px] text-blue-100 font-medium truncate">Red comunitaria de ayuda</p>
+                )}
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-black flex items-center gap-1.5">
-                <span>Asistente raDAR</span>
-                <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
-                  Ticket Rápido
-                </span>
-              </h3>
-              <p className="text-[11px] text-slate-300">Responde 4 preguntas breves</p>
-            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 text-white/80 hover:text-white rounded-full hover:bg-white/20 transition-colors cursor-pointer shrink-0 ml-1"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Barra de Progreso de 4 Pasos */}
+          <div className="grid grid-cols-4 gap-1 pt-0.5">
+            <div className={`h-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-white' : 'bg-white/30'}`} />
+            <div className={`h-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-white' : 'bg-white/30'}`} />
+            <div className={`h-1 rounded-full transition-all duration-300 ${step >= 3 ? 'bg-white' : 'bg-white/30'}`} />
+            <div className={`h-1 rounded-full transition-all duration-300 ${step >= 4 ? 'bg-white' : 'bg-white/30'}`} />
+          </div>
         </div>
 
         {/* Área de Mensajes Conversacionales */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/60">
+        <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto space-y-2.5 bg-slate-50/60">
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex items-start gap-2.5 ${
+              className={`flex items-start gap-2 ${
                 msg.sender === 'user' ? 'flex-row-reverse' : ''
               }`}
             >
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow-xs ${
                   msg.sender === 'bot'
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-800 text-white'
                 }`}
               >
-                {msg.sender === 'bot' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                {msg.sender === 'bot' ? <HeartHandshake className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
               </div>
 
               <div
-                className={`max-w-[82%] px-4 py-3 rounded-2xl text-xs leading-relaxed ${
+                className={`max-w-[85%] px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs leading-relaxed ${
                   msg.sender === 'bot'
                     ? 'bg-white text-slate-800 border border-slate-200/80 shadow-xs rounded-tl-none font-medium'
                     : 'bg-blue-600 text-white shadow-md shadow-blue-600/20 rounded-tr-none font-semibold'
@@ -233,10 +312,26 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
             </div>
           ))}
 
+          {/* Tarjeta de Resumen en Paso 5 */}
+          {step === 5 && (
+            <div className="bg-blue-50/90 border border-blue-200 rounded-xl p-3 space-y-1.5 text-xs text-slate-800 animate-in fade-in duration-300">
+              <div className="flex items-center gap-1.5 font-bold text-blue-950 text-[11px] sm:text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Resumen de tu reporte de ayuda:</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-slate-700 pl-1 border-t border-blue-200/60 pt-1.5">
+                <div><span className="font-bold text-slate-900">📌 Necesidad:</span> {needSummary}</div>
+                <div><span className="font-bold text-slate-900">📍 Lugar:</span> {locationText}</div>
+                <div><span className="font-bold text-slate-900">📞 Contacto:</span> {contactPhone} {contactName ? `(${contactName})` : ''}</div>
+                {additionalDetails && <div><span className="font-bold text-slate-900">📝 Detalles:</span> {additionalDetails}</div>}
+              </div>
+            </div>
+          )}
+
           {isSubmitting && (
             <div className="flex items-center gap-2 text-xs text-blue-600 font-semibold p-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Guardando ticket en el sistema...</span>
+              <span>Guardando tu solicitud en el sistema...</span>
             </div>
           )}
 
@@ -244,7 +339,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
         </div>
 
         {/* Entrada de Formulario / Respuesta según el paso */}
-        <div className="p-3.5 bg-white border-t border-slate-200">
+        <div className="p-2.5 sm:p-3.5 bg-white border-t border-slate-200 shrink-0">
           {step === 1 && (
             <form
               onSubmit={(e) => {
@@ -259,13 +354,13 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Escribe tu necesidad (máx 280 car)..."
-                className="flex-1 py-2.5 px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 rounded-xl text-xs font-semibold text-slate-900"
+                className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-semibold text-slate-900 outline-hidden transition-all"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl cursor-pointer transition-all"
+                className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl cursor-pointer transition-all shadow-md shadow-blue-600/20 shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -285,13 +380,13 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Escribe tu barrio, dirección o municipio..."
-                className="flex-1 py-2.5 px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 rounded-xl text-xs font-semibold text-slate-900"
+                className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-semibold text-slate-900 outline-hidden transition-all"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl cursor-pointer transition-all"
+                className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl cursor-pointer transition-all shadow-md shadow-blue-600/20 shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -314,7 +409,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value.replace(/[^0-9+]/g, ''))}
                   placeholder="Teléfono (obligatorio) *"
-                  className="py-2.5 px-3 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 rounded-xl text-xs font-semibold text-slate-900"
+                  className="py-2 sm:py-2.5 px-3 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-semibold text-slate-900 outline-hidden transition-all"
                   autoFocus
                 />
                 <input
@@ -322,13 +417,13 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                   value={contactNameInput}
                   onChange={(e) => setContactNameInput(e.target.value)}
                   placeholder="Tu nombre (opcional)"
-                  className="py-2.5 px-3 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 rounded-xl text-xs font-semibold text-slate-900"
+                  className="py-2 sm:py-2.5 px-3 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-semibold text-slate-900 outline-hidden transition-all"
                 />
               </div>
               <button
                 type="submit"
                 disabled={!inputText.trim() || inputText.replace(/[^0-9+]/g, '').length < 7}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md shadow-blue-600/20"
               >
                 <span>Continuar</span>
                 <Send className="w-3.5 h-3.5" />
@@ -350,13 +445,13 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Detalles adicionales (opcional)..."
-                  className="flex-1 py-2.5 px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 rounded-xl text-xs font-semibold text-slate-900"
+                  className="flex-1 py-2 sm:py-2.5 px-3 sm:px-4 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-semibold text-slate-900 outline-hidden transition-all"
                   autoFocus
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl cursor-pointer transition-all"
+                  className="p-2 sm:p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl cursor-pointer transition-all shadow-md shadow-blue-600/20 shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -365,7 +460,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                 type="button"
                 onClick={() => handleSendStep4(true)}
                 disabled={isSubmitting}
-                className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer text-center"
+                className="w-full py-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer text-center transition-colors"
               >
                 Omitir este paso
               </button>
@@ -376,10 +471,10 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
+              className="w-full py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Entendido, Cerrar</span>
+              <span>Entendido, Volver al Mapa</span>
             </button>
           )}
         </div>

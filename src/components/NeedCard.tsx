@@ -3,6 +3,7 @@ import { MapPin, Clock, CheckCircle2, AlertCircle, HelpCircle, HeartHandshake, C
 import { Need } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, VERIFICATION_CONFIG, getCategoryLabel, formatTimeAgo } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
+import { getCityDisplayName, ALL_COLOMBIA_ID } from '../data/colombiaCities';
 
 interface NeedCardProps {
   need: Need;
@@ -47,6 +48,21 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   const priorityInfo = PRIORITY_CONFIG[need.priority] || PRIORITY_CONFIG.MEDIUM;
   const verificationInfo = VERIFICATION_CONFIG[need.verificationStatus] || VERIFICATION_CONFIG.PENDING_VERIFICATION;
 
+  const cityName =
+    need.cityId &&
+    need.cityId !== ALL_COLOMBIA_ID &&
+    need.cityId !== 'ALL_COLOMBIA' &&
+    need.cityId !== 'todo-colombia'
+      ? getCityDisplayName(need.cityId, need.departmentId)
+      : null;
+
+  const baseLocation = need.address || need.neighborhood;
+  const fullLocationText = baseLocation
+    ? cityName && !baseLocation.toLowerCase().includes(cityName.toLowerCase())
+      ? `${baseLocation} • ${cityName}`
+      : baseLocation
+    : cityName || (language === 'en' ? 'Location pending' : 'Ubicación por confirmar');
+
   const distanceText =
     userLat && userLng && need.latitude && need.longitude
       ? calculateDistance(userLat, userLng, need.latitude, need.longitude)
@@ -67,28 +83,27 @@ export const NeedCard: React.FC<NeedCardProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs mb-1">
           {isCollectionCenter ? (
             <span className="px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-              {language === 'en' ? 'Collection Center' : 'Centro de Acopio'}
+              {language === 'en' ? '📦 Collection Center' : '📦 Centro de Acopio'}
             </span>
           ) : (
             <span
               className={`px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
             >
               {language === 'en'
-                ? need.priority === 'CRITICAL'
-                  ? t('priorityCritical')
-                  : need.priority === 'HIGH'
-                  ? t('priorityHigh')
-                  : need.priority === 'MEDIUM'
-                  ? t('priorityMedium')
-                  : t('priorityLow')
-                : priorityInfo.label}
+                ? `📢 Needed • ${
+                    need.priority === 'CRITICAL'
+                      ? t('priorityCritical')
+                      : need.priority === 'HIGH'
+                      ? t('priorityHigh')
+                      : need.priority === 'MEDIUM'
+                      ? t('priorityMedium')
+                      : t('priorityLow')
+                  }`
+                : `📢 Se necesita • ${priorityInfo.label}`}
             </span>
           )}
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-              {need.neighborhood}
-            </span>
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] sm:text-[10px] font-bold uppercase tracking-wider border ${verificationInfo.badgeClass}`}
             >
@@ -180,13 +195,15 @@ export const NeedCard: React.FC<NeedCardProps> = ({
 
       {/* Card Footer */}
       <div className="bg-slate-50/60 border-t border-slate-200 p-3.5 flex items-center justify-between gap-2 text-xs">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-1 font-semibold text-slate-900">
-            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span>{need.address || need.neighborhood}</span>
-            {distanceText && (
-              <span className="text-slate-400 font-normal">({distanceText})</span>
-            )}
+        <div className="space-y-0.5 min-w-0 flex-1">
+          <div className="flex items-start gap-1 font-semibold text-slate-900 text-xs leading-snug">
+            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+            <span className="line-clamp-2 break-words">
+              {fullLocationText}
+              {distanceText && (
+                <span className="text-slate-400 font-normal ml-1 shrink-0">({distanceText})</span>
+              )}
+            </span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase italic">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />

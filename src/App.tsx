@@ -323,7 +323,7 @@ function MainApp() {
     distanceKm: null,
     userLat: null,
     userLng: null,
-    sortBy: "PRIORITY",
+    sortBy: "RECENT",
     viewMode: "ALL",
   });
 
@@ -588,6 +588,69 @@ function MainApp() {
 
     return copy;
   }, [offers, selectedCityId, filters.sortBy, filters.userLat, filters.userLng, routeInfo.departmentId]);
+
+  // Unified Feed for "ALL" viewMode (interleaved Needs and Offers according to active sortBy)
+  type UnifiedFeedItem =
+    | { type: 'NEED'; data: Need }
+    | { type: 'OFFER'; data: Offer };
+
+  const displayedUnifiedItems = useMemo<UnifiedFeedItem[]>(() => {
+    const items: UnifiedFeedItem[] = [
+      ...displayedNeeds.map((need): UnifiedFeedItem => ({ type: 'NEED', data: need })),
+      ...displayedOffers.map((offer): UnifiedFeedItem => ({ type: 'OFFER', data: offer })),
+    ];
+
+    const refLat = filters.userLat ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lat : null);
+    const refLng = filters.userLng ?? (selectedCityId && selectedCityId !== ALL_COLOMBIA_ID ? getCityCoordinates(selectedCityId, routeInfo.departmentId).lng : null);
+
+    const calculateKm = (lat: number, lng: number) => {
+      if (refLat == null || refLng == null) return Infinity;
+      const R = 6371;
+      const dLat = ((lat - refLat) * Math.PI) / 180;
+      const dLon = ((lng - refLng) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos((refLat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    const getItemTimestamp = (item: UnifiedFeedItem) => {
+      const raw = item.data.createdAt;
+      const t = raw ? new Date(raw).getTime() : 0;
+      return isNaN(t) ? 0 : t;
+    };
+
+    if (filters.sortBy === 'RECENT') {
+      items.sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
+    } else if (filters.sortBy === 'DISTANCE') {
+      items.sort((a, b) => {
+        const distA = typeof a.data.latitude === 'number' && typeof a.data.longitude === 'number' ? calculateKm(a.data.latitude, a.data.longitude) : Infinity;
+        const distB = typeof b.data.latitude === 'number' && typeof b.data.longitude === 'number' ? calculateKm(b.data.latitude, b.data.longitude) : Infinity;
+        if (distA !== distB) return distA - distB;
+        return getItemTimestamp(b) - getItemTimestamp(a);
+      });
+    } else if (filters.sortBy === 'PRIORITY') {
+      // Priority scoring:
+      // CRITICAL Need: 4
+      // HIGH Need: 3
+      // OFFER: 2.5 (Offers are shown as available help right after urgent needs)
+      // MEDIUM Need: 2
+      // LOW Need: 1
+      const getPriorityScore = (item: UnifiedFeedItem) => {
+        if (item.type === 'NEED') {
+          return PRIORITY_ORDER[item.data.priority] || 0;
+        }
+        return 2.5;
+      };
+
+      items.sort((a, b) => {
+        const scoreA = getPriorityScore(a);
+        const scoreB = getPriorityScore(b);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return getItemTimestamp(b) - getItemTimestamp(a);
+      });
+    }
+
+    return items;
+  }, [displayedNeeds, displayedOffers, filters.sortBy, filters.userLat, filters.userLng, selectedCityId, routeInfo.departmentId]);
 
   const totalNeedsCount = displayedNeeds.length;
   const totalOffersCount = displayedOffers.length;
@@ -1004,7 +1067,7 @@ function MainApp() {
             distanceKm: null,
             userLat: null,
             userLng: null,
-            sortBy: "PRIORITY",
+            sortBy: "RECENT",
             viewMode: "ALL",
           })
         }
@@ -1192,7 +1255,7 @@ function MainApp() {
                         distanceKm: null,
                         userLat: null,
                         userLng: null,
-                        sortBy: "PRIORITY",
+                        sortBy: "RECENT",
                         viewMode: "ALL",
                       })
                     }
@@ -1273,43 +1336,32 @@ function MainApp() {
                   />
                 ))}
 
-                {/* ViewMode: ALL — sectioned: needs then offers */}
-                {filters.viewMode === "ALL" && (
-                  <>
-                    {displayedNeeds.length > 0 && (
-                      <>
-                        {displayedNeeds.map((need) => (
-                          <NeedCard
-                            key={need.id}
-                            need={need}
-                            onSelect={(item) => handleSelectNeed(item)}
-                            onHelp={(item) => setSelectedForHelp(item)}
-                            onViewOnMap={(item) => handleViewOnMap(item)}
-                            userLat={filters.userLat}
-                            userLng={filters.userLng}
-                            isSelected={selectedNeed?.id === need.id}
-                            isHighlighted={!isGridExpanded && hoveredItemId === need.id}
-                            onHover={isGridExpanded ? undefined : setHoveredItemId}
-                          />
-                        ))}
-                      </>
-                    )}
-                    {displayedOffers.length > 0 && (
-                      <>
-                        {displayedOffers.map((offer) => (
-                          <OfferCard
-                            key={offer.id}
-                            offer={offer}
-                            onClick={() => handleSelectOffer(offer)}
-                            onViewOnMap={(item) => handleViewOnMap(item)}
-                            isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
-                            onHover={isGridExpanded ? undefined : setHoveredItemId}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </>
-                )}
+                {/* ViewMode: ALL — unified feed with interleaved needs and offers */}
+                {filters.viewMode === "ALL" && displayedUnifiedItems.map((item) => (
+                  item.type === 'NEED' ? (
+                    <NeedCard
+                      key={item.data.id}
+                      need={item.data}
+                      onSelect={(n) => handleSelectNeed(n)}
+                      onHelp={(n) => setSelectedForHelp(n)}
+                      onViewOnMap={(n) => handleViewOnMap(n)}
+                      userLat={filters.userLat}
+                      userLng={filters.userLng}
+                      isSelected={selectedNeed?.id === item.data.id}
+                      isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
+                      onHover={isGridExpanded ? undefined : setHoveredItemId}
+                    />
+                  ) : (
+                    <OfferCard
+                      key={item.data.id}
+                      offer={item.data}
+                      onClick={() => handleSelectOffer(item.data)}
+                      onViewOnMap={(o) => handleViewOnMap(o)}
+                      isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
+                      onHover={isGridExpanded ? undefined : setHoveredItemId}
+                    />
+                  )
+                ))}
               </>
             )}
           </div>
@@ -1437,7 +1489,10 @@ function MainApp() {
       </div>
 
       {/* Botón Flotante (FAB) para Pedir Ayuda Rápida con Chatbot (Web y Móvil) */}
-      <FloatingCreateNeedFAB onClick={() => setIsChatbotModalOpen(true)} />
+      <FloatingCreateNeedFAB
+        onClick={() => setIsChatbotModalOpen(true)}
+        isLegendExpanded={isLegendExpanded}
+      />
       <ChatbotTicketModal
         isOpen={isChatbotModalOpen}
         onClose={() => setIsChatbotModalOpen(false)}

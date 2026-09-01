@@ -313,7 +313,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               </span>
               <h2 className="text-xl font-black text-slate-900 mt-1">
                 {currentStep === 1 && '1. Detalle de la Solicitud'}
-                {currentStep === 2 && '2. Ubicación & Recursos'}
+                {currentStep === 2 && '2. Ubicación'}
                 {currentStep === 3 && '3. Descripción & Contacto'}
               </h2>
             </div>
@@ -454,10 +454,94 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* Desglose de Recursos Requeridos */}
+              <div className="space-y-2 pt-2 border-t border-slate-200/80">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700">{t('sectionNeedResources')}</label>
+                  <button
+                    type="button"
+                    onClick={handleAddResource}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> {t('addResource')}
+                  </button>
+                </div>
+
+                {resources.map((res, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <select
+                      value={res.type}
+                      onChange={(e) => {
+                        const updated = [...resources];
+                        updated[idx].type = e.target.value as HelpCategory;
+                        setResources(updated);
+                      }}
+                      className="select-inline shrink-0"
+                    >
+                      {categoriesList.map((c) => {
+                        const item = getCategoryLabel(c, language);
+                        return (
+                          <option key={c} value={c}>
+                            {item?.label}
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={res.description}
+                      onChange={(e) => {
+                        const updated = [...resources];
+                        updated[idx].description = e.target.value;
+                        setResources(updated);
+                      }}
+                      placeholder={t('resourceDescPlaceholder')}
+                      className="input-inline flex-1 min-w-[140px]"
+                    />
+
+                    <input
+                      type="number"
+                      min="1"
+                      value={res.requestedQuantity}
+                      onChange={(e) => {
+                        const updated = [...resources];
+                        updated[idx].requestedQuantity = Number(e.target.value);
+                        setResources(updated);
+                      }}
+                      placeholder={t('resourceQty')}
+                      className="input-inline w-16"
+                    />
+
+                    <input
+                      type="text"
+                      value={res.unit}
+                      onChange={(e) => {
+                        const updated = [...resources];
+                        updated[idx].unit = e.target.value;
+                        setResources(updated);
+                      }}
+                      placeholder={t('resourceUnitPlaceholder')}
+                      className="input-inline w-20"
+                    />
+
+                    {resources.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveResource(idx)}
+                        className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* ================= PASO 2: Ubicación & Recursos ================= */}
+          {/* ================= PASO 2: Ubicación ================= */}
           {currentStep === 2 && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <h3 className="form-section-title">
@@ -557,90 +641,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   />
                 </div>
               )}
-
-              {/* Desglose de Recursos Requeridos */}
-              <div className="space-y-2 pt-2 border-t border-slate-200/80">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700">{t('sectionNeedResources')}</label>
-                  <button
-                    type="button"
-                    onClick={handleAddResource}
-                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> {t('addResource')}
-                  </button>
-                </div>
-
-                {resources.map((res, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <select
-                      value={res.type}
-                      onChange={(e) => {
-                        const updated = [...resources];
-                        updated[idx].type = e.target.value as HelpCategory;
-                        setResources(updated);
-                      }}
-                      className="select-inline shrink-0"
-                    >
-                      {categoriesList.map((c) => {
-                        const item = getCategoryLabel(c, language);
-                        return (
-                          <option key={c} value={c}>
-                            {item?.label}
-                          </option>
-                        );
-                      })}
-                    </select>
-
-                    <input
-                      type="text"
-                      value={res.description}
-                      onChange={(e) => {
-                        const updated = [...resources];
-                        updated[idx].description = e.target.value;
-                        setResources(updated);
-                      }}
-                      placeholder={t('resourceDescPlaceholder')}
-                      className="input-inline flex-1 min-w-[140px]"
-                    />
-
-                    <input
-                      type="number"
-                      min="1"
-                      value={res.requestedQuantity}
-                      onChange={(e) => {
-                        const updated = [...resources];
-                        updated[idx].requestedQuantity = Number(e.target.value);
-                        setResources(updated);
-                      }}
-                      placeholder={t('resourceQty')}
-                      className="input-inline w-16"
-                    />
-
-                    <input
-                      type="text"
-                      value={res.unit}
-                      onChange={(e) => {
-                        const updated = [...resources];
-                        updated[idx].unit = e.target.value;
-                        setResources(updated);
-                      }}
-                      placeholder={t('resourceUnitPlaceholder')}
-                      className="input-inline w-20"
-                    />
-
-                    {resources.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveResource(idx)}
-                        className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 

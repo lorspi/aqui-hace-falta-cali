@@ -1,4 +1,4 @@
-# Reglas del Proyecto (Aquí Hace Falta)
+# Reglas del Proyecto (Radar de Ayuda)
 
 ## 🛡️ Reglas Generales de Antigravity (Surgical Modification Protocol)
 1. NO reescribas ni modifiques componentes o estilos existentes que no hayan sido expresamente mencionados en la tarea.
