@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Lock, ChevronDown, HeartHandshake, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck, Info } from 'lucide-react';
+import { PlusCircle, Lock, ChevronDown, HeartHandshake, Hand, User, LogOut, LayoutDashboard, UserPlus, ShieldCheck, Info } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -287,7 +287,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="btn-secondary text-[13px] font-bold px-4 py-2 h-[40px] shrink-0"
               id="btn-create-need"
             >
-              <PlusCircle className="w-4.5 h-4.5 text-slate-600" />
+              <Hand className="w-4.5 h-4.5 text-slate-600" />
               <span>{t('publishNeed')}</span>
             </button>
 

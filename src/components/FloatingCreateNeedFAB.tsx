@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartHandshake, Clock } from 'lucide-react';
+import { Hand, Clock } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface FloatingCreateNeedFABProps {
@@ -20,7 +20,7 @@ export const FloatingCreateNeedFAB: React.FC<FloatingCreateNeedFABProps> = ({ on
       id="btn-floating-chatbot-fab"
     >
       <div className="relative flex items-center justify-center">
-        <HeartHandshake className="w-5 h-5 text-white group-hover:scale-110 transition-transform shrink-0" />
+        <Hand className="w-5 h-5 text-white group-hover:scale-110 transition-transform shrink-0" />
         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80"></span>
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
