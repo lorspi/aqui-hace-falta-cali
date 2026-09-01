@@ -426,11 +426,11 @@ export const LandingHomePage: React.FC = () => {
 
             {/* Correo */}
             <a
-              href="mailto:Info@radardeayuda.co"
+              href="mailto:info@radardeayuda.co"
               className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-extrabold text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105 backdrop-blur-xs"
             >
               <Mail className="w-5 h-5 shrink-0 text-blue-200" />
-              <span>Info@radardeayuda.co</span>
+              <span>info@radardeayuda.co</span>
             </a>
           </div>
         </div>

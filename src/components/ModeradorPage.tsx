@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
 import { RegisterWizard } from '../features/auth/components/RegisterWizard';
 import { LoginModal } from '../features/auth/components/LoginModal';
+import { Footer } from './Footer';
 
 const PendingOffersSection: React.FC = () => {
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
@@ -494,6 +495,9 @@ export const ModeradorPage: React.FC<{ onOpenRegisterModal?: () => void }> = ({ 
           </div>
         </section>
       </div>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Register Wizard Modal (local fallback) */}
       <RegisterWizard

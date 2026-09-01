@@ -534,6 +534,13 @@ export const translations = {
     reviewAlreadyReviewed: 'Reporte ya revisado',
     reviewSuccessApproved: 'Reporte aprobado',
     reviewSuccessRejected: 'Reporte rechazado',
+
+    // Footer
+    footerMap: 'Mapa',
+    footerHowItWorks: '¿Cómo Funciona?',
+    footerModeration: 'Moderación',
+    footerTerms: 'Términos y Condiciones',
+    footerPrivacy: 'Política de Privacidad',
   },
 
   en: {
@@ -1069,6 +1076,13 @@ export const translations = {
     reviewAlreadyReviewed: 'Report already reviewed',
     reviewSuccessApproved: 'Report approved',
     reviewSuccessRejected: 'Report rejected',
+
+    // Footer
+    footerMap: 'Map',
+    footerHowItWorks: 'How It Works?',
+    footerModeration: 'Moderation',
+    footerTerms: 'Terms and Conditions',
+    footerPrivacy: 'Privacy Policy',
   },
 
   pt: {
@@ -1604,6 +1618,13 @@ export const translations = {
     reviewAlreadyReviewed: 'Relatório já revisado',
     reviewSuccessApproved: 'Relatório aprovado',
     reviewSuccessRejected: 'Relatório rejeitado',
+
+    // Footer
+    footerMap: 'Mapa',
+    footerHowItWorks: 'Como Funciona?',
+    footerModeration: 'Moderação',
+    footerTerms: 'Termos e Condições',
+    footerPrivacy: 'Política de Privacidade',
   },
 
   fr: {
@@ -2139,6 +2160,13 @@ export const translations = {
     reviewAlreadyReviewed: 'Rapport déjà révisé',
     reviewSuccessApproved: 'Rapport approuvé',
     reviewSuccessRejected: 'Rapport rejeté',
+
+    // Footer
+    footerMap: 'Carte',
+    footerHowItWorks: 'Comment ça marche ?',
+    footerModeration: 'Modération',
+    footerTerms: 'Conditions Générales',
+    footerPrivacy: 'Politique de Confidentialité',
   },
 };
 
