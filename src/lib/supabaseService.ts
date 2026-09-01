@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase, dbNeedToNeed, dbOfferToOffer, needToDbNeed, offerToDbOffer } from './supabaseClient';
-import { FilterState, HelpCategory, Need, NeedStatus, Offer, OfferStatus, PlaceType, Priority } from '../types';
+import { FilterState, HelpCategory, Need, NeedStatus, Offer, OfferStatus, PlaceType, Priority, QuickTicket } from '../types';
 import { ALL_COLOMBIA_ID, getCityCoordinates, findDepartmentByCityId } from '../data/colombiaCities';
 import {
   filterChatbotReports,
@@ -598,6 +598,86 @@ export async function addOfferUpdateNote(params: {
       created_at: new Date().toISOString(),
     },
   ]);
+  if (error) throw error;
+}
+
+export async function createQuickTicket(data: {
+  needSummary: string;
+  locationText: string;
+  contactPhone: string;
+  contactName?: string;
+  additionalDetails?: string;
+}): Promise<QuickTicket> {
+  const payload = {
+    need_summary: data.needSummary,
+    location_text: data.locationText,
+    contact_phone: data.contactPhone,
+    contact_name: data.contactName || null,
+    additional_details: data.additionalDetails || null,
+    status: 'PENDING',
+  };
+
+  const { data: inserted, error } = await supabase
+    .from('quick_tickets')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[supabaseService] createQuickTicket error:', error);
+    throw error;
+  }
+
+  return {
+    id: inserted.id,
+    needSummary: inserted.need_summary,
+    locationText: inserted.location_text,
+    contactPhone: inserted.contact_phone,
+    contactName: inserted.contact_name,
+    additionalDetails: inserted.additional_details,
+    status: inserted.status,
+    notes: inserted.notes,
+    createdAt: inserted.created_at,
+    updatedAt: inserted.updated_at,
+  };
+}
+
+export async function fetchQuickTickets(statusFilter?: string): Promise<QuickTicket[]> {
+  let query = supabase.from('quick_tickets').select('*').order('created_at', { ascending: false });
+
+  if (statusFilter && statusFilter !== 'ALL') {
+    query = query.eq('status', statusFilter);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('[supabaseService] fetchQuickTickets note:', error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    needSummary: row.need_summary,
+    locationText: row.location_text,
+    contactPhone: row.contact_phone,
+    contactName: row.contact_name,
+    additionalDetails: row.additional_details,
+    status: row.status,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function updateQuickTicketStatus(id: string, status: string, notes?: string): Promise<void> {
+  const updates: any = { status, updated_at: new Date().toISOString() };
+  if (notes !== undefined) updates.notes = notes;
+
+  const { error } = await supabase
+    .from('quick_tickets')
+    .update(updates)
+    .eq('id', id);
+
   if (error) throw error;
 }
 

@@ -39,6 +39,7 @@ import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
 import { Footer } from "./components/Footer";
 import { FloatingCreateNeedFAB } from "./components/FloatingCreateNeedFAB";
+import { ChatbotTicketModal } from "./components/ChatbotTicketModal";
 // Lazy-loaded auth modals for code-splitting
 const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
 const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
@@ -192,6 +193,7 @@ function MainApp() {
   const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.pathname === '/voluntario';
   });
+  const [isChatbotModalOpen, setIsChatbotModalOpen] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -1434,8 +1436,12 @@ function MainApp() {
         <Footer />
       </div>
 
-      {/* Botón Flotante Móvil (FAB) para Pedir Ayuda */}
-      <FloatingCreateNeedFAB onClick={() => setIsCreateModalOpen(true)} />
+      {/* Botón Flotante (FAB) para Pedir Ayuda Rápida con Chatbot (Web y Móvil) */}
+      <FloatingCreateNeedFAB onClick={() => setIsChatbotModalOpen(true)} />
+      <ChatbotTicketModal
+        isOpen={isChatbotModalOpen}
+        onClose={() => setIsChatbotModalOpen(false)}
+      />
 
       {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden">

@@ -203,3 +203,16 @@ export interface FilterState {
   viewMode: ViewMode;
   includeArchived?: boolean;
 }
+
+export interface QuickTicket {
+  id: string;
+  needSummary: string;
+  locationText: string;
+  contactPhone: string;
+  contactName?: string;
+  additionalDetails?: string;
+  status: 'PENDING' | 'IN_REVIEW' | 'CONVERTED' | 'ARCHIVED';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
