@@ -81,7 +81,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <button
           key={option.value}
           onClick={() => onFilterChange({ viewMode: option.value })}
-          className={`flex-1 md:flex-initial px-2 md:px-3.5 py-1.5 md:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5 text-center ${
+          className={`flex-1 md:flex-initial px-2 md:px-3.5 py-1.5 md:py-1.5 rounded-lg text-[11px] md:text-xs font-bold transition-all flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5 text-center cursor-pointer ${
             currentViewMode === option.value
               ? 'bg-white text-slate-900 shadow-sm'
               : 'text-slate-600 hover:text-slate-800 hover:bg-slate-200/50'
@@ -127,7 +127,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const renderFiltersButton = () => (
     <button
       onClick={() => setShowMoreFilters(!showMoreFilters)}
-      className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all h-[42px] md:h-[38px] shrink-0 ${
+      className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all h-[42px] md:h-[38px] shrink-0 cursor-pointer ${
         showMoreFilters || hasActiveFilters
           ? 'bg-slate-900 text-white border-slate-900'
           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
@@ -275,7 +275,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 {filters.categories.length > 0 && (
                   <button
                     onClick={() => onFilterChange({ categories: [] })}
-                    className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                    className="text-[11px] text-indigo-600 hover:underline font-semibold cursor-pointer"
                   >
                     {t('clearFilters')}
                   </button>
@@ -289,7 +289,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     <button
                       key={cat}
                       onClick={() => handleCategoryToggle(cat)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap text-xs font-semibold transition-all border ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full whitespace-nowrap text-xs font-semibold transition-all border cursor-pointer ${
                         isSelected
                           ? 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold shadow-2xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -310,7 +310,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               {hasActiveFilters && (
                 <button
                   onClick={onClearFilters}
-                  className="text-red-700 hover:text-red-900 font-semibold hover:underline flex items-center gap-1"
+                  className="text-red-700 hover:text-red-900 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>{t('clearFilters')}</span>

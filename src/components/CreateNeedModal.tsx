@@ -341,10 +341,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* ================= PASO 1: Detalle y Categorías ================= */}
           {currentStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              <h3 className="form-section-title">
-                {t('sectionWhatYouNeed')}
-              </h3>
-
               {/* Título de la Solicitud */}
               <div>
                 <label className="form-label">
@@ -544,10 +540,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* ================= PASO 2: Ubicación ================= */}
           {currentStep === 2 && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              <h3 className="form-section-title">
-                {t('sectionNeedLocation')}
-              </h3>
-
               {/* Departamento y Municipio */}
               <div>
                 <label className="form-label">{t('cityLabel')} <span className="text-red-500">*</span></label>
@@ -647,10 +639,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
           {/* ================= PASO 3: Descripción, Contacto & Envío ================= */}
           {currentStep === 3 && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              <h3 className="form-section-title">
-                {t('sectionContact')}
-              </h3>
-
               {/* Descripción Detallada */}
               <div>
                 <label className="form-label">
