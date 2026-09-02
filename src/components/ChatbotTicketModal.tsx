@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, HeartHandshake, User, CheckCircle2, Loader2, Clock, Phone, MapPin } from 'lucide-react';
+import { X, Send, HeartHandshake, User, CheckCircle2, Loader2, Clock } from 'lucide-react';
 import { createQuickTicket } from '../lib/supabaseService';
-import { useTranslation } from '../i18n/LanguageContext';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface ChatbotTicketModalProps {
@@ -16,7 +15,6 @@ interface ChatMessage {
 }
 
 export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, onClose }) => {
-  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [inputText, setInputText] = useState('');
   const [contactNameInput, setContactNameInput] = useState('');
@@ -295,7 +293,8 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
     : undefined;
 
   return (
-    <div
+    <>
+      <div
       className={`fixed z-50 bg-slate-900/70 backdrop-blur-xs flex ${
         isKeyboardOpen ? 'items-start pt-2 px-2 sm:px-4' : 'items-center justify-center p-2.5 sm:p-6'
       } overflow-hidden`}
@@ -318,7 +317,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
       >
         
         {/* Cabecera del Asistente */}
-        <div className={`px-3.5 sm:px-4 ${isKeyboardOpen ? 'py-2' : 'py-3 sm:py-3.5'} bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md space-y-1.5 shrink-0 transition-all`}>
+        <div className={`px-3.5 sm:px-4 ${isKeyboardOpen ? 'py-2' : 'py-3 sm:py-3.5'} bg-linear-to-r from-blue-600 to-indigo-700 text-white shadow-md space-y-1.5 shrink-0 transition-all`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className={`${isKeyboardOpen ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/30 text-white shadow-xs shrink-0 transition-all`}>
@@ -435,7 +434,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => handleTextareaKeyDown(e, handleSendStep1)}
                     placeholder="Escribe tu necesidad urgente (Ej: Alimentos y agua)..."
-                    className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-[115px] overflow-y-auto"
+                    className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-115px overflow-y-auto"
                     autoFocus
                   />
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 mt-1">
@@ -477,7 +476,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => handleTextareaKeyDown(e, handleSendStep2)}
                     placeholder="Escribe tu barrio, dirección o punto de referencia..."
-                    className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-[115px] overflow-y-auto"
+                    className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-115px overflow-y-auto"
                     autoFocus
                   />
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 mt-1">
@@ -522,7 +521,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                       maxLength={16}
                       value={inputText}
                       onChange={(e) => setInputText(formatPhoneInput(e.target.value))}
-                      placeholder="Teléfono (Ej: 3001234567) *"
+                      placeholder="Teléfono * (Ej: 3001234567)"
                       className="w-full py-2 sm:py-2.5 px-3 pr-12 bg-slate-100 border border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-base sm:text-xs font-semibold text-slate-900 outline-hidden transition-all"
                       autoFocus
                     />
@@ -583,7 +582,7 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyDown={(e) => handleTextareaKeyDown(e, () => handleSendStep4(false))}
                       placeholder="Detalles adicionales (opcional)..."
-                      className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-[115px] overflow-y-auto"
+                      className="w-full bg-transparent border-0 resize-none text-base sm:text-xs font-semibold text-slate-900 outline-hidden leading-relaxed block max-h-115px overflow-y-auto"
                       autoFocus
                     />
                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 mt-1">
@@ -629,20 +628,21 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
         </div>
 
       </div>
-
-      <ConfirmDialog
-        isOpen={showExitConfirm}
-        title="¿Deseas salir del asistente?"
-        message="Tienes información ingresada. Si sales ahora, se perderá tu progreso y la solicitud de ayuda no se registrará."
-        variant="confirm"
-        confirmLabel="Salir y perder datos"
-        cancelLabel="Continuar en el chat"
-        onConfirm={() => {
-          setShowExitConfirm(false);
-          onClose();
-        }}
-        onCancel={() => setShowExitConfirm(false)}
-      />
     </div>
-  );
+
+    <ConfirmDialog
+      isOpen={showExitConfirm}
+      title="¿Deseas salir del asistente?"
+      message="Tienes información ingresada. Si sales ahora, se perderá tu progreso y la solicitud de ayuda no se registrará."
+      variant="confirm"
+      confirmLabel="Salir y perder datos"
+      cancelLabel="Continuar en el chat"
+      onConfirm={() => {
+        setShowExitConfirm(false);
+        onClose();
+      }}
+      onCancel={() => setShowExitConfirm(false)}
+    />
+  </>
+);
 };
