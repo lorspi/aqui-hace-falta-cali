@@ -233,6 +233,10 @@
 }
 
 /* Base: Hanken Grotesk para cuerpo de texto, Figtree se aplica con font-sans en títulos/interfaz */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 body {
   font-family: var(--font-body);
 }

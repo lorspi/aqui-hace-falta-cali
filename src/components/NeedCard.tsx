@@ -15,6 +15,7 @@ interface NeedCardProps {
   isSelected?: boolean;
   isHighlighted?: boolean;
   onHover?: (id: string | null) => void;
+  layout?: 'card' | 'row';
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -42,6 +43,7 @@ export const NeedCard: React.FC<NeedCardProps> = ({
   isSelected = false,
   isHighlighted = false,
   onHover,
+  layout = 'card',
 }) => {
   const { language, t } = useTranslation();
   const isCollectionCenter = need.placeType === 'CENTRO_ACOPIO';
@@ -67,6 +69,164 @@ export const NeedCard: React.FC<NeedCardProps> = ({
     userLat && userLng && need.latitude && need.longitude
       ? calculateDistance(userLat, userLng, need.latitude, need.longitude)
       : null;
+
+  if (layout === 'row') {
+    return (
+      <div
+        onClick={() => onSelect(need)}
+        onMouseEnter={() => onHover?.(need.id)}
+        onMouseLeave={() => onHover?.(null)}
+        className={`bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden p-5 sm:p-6 hover:shadow-md hover:border-slate-300 ${
+          isCollectionCenter ? 'border-l-4 border-l-purple-500 border-slate-200' : priorityInfo.borderClass
+        } ${isSelected ? 'ring-2 ring-slate-900 border-slate-900 shadow-md' : isHighlighted ? 'ring-2 ring-indigo-400 shadow-lg' : 'border-slate-200'} flex flex-col md:flex-row md:items-center justify-between gap-6`}
+        id={`need-card-${need.id}`}
+      >
+        {/* Left / Main Column: Status, Title, Description, Tags */}
+        <div className="flex-1 min-w-0 space-y-2.5">
+          {/* Top Status Bar: Priority & Verification & Time */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {isCollectionCenter ? (
+              <span className="px-2.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                {language === 'en' ? '📦 Collection Center' : '📦 Centro de Acopio'}
+              </span>
+            ) : (
+              <span
+                className={`px-2.5 py-0.5 rounded text-[11px] font-black uppercase tracking-wider italic ${priorityInfo.badgeClass}`}
+              >
+                {language === 'en' ? `📢 Needed • ${priorityInfo.label}` : `📢 Se necesita • ${priorityInfo.label}`}
+              </span>
+            )}
+
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${verificationInfo.badgeClass}`}
+            >
+              <span>
+                {need.verificationStatus === 'VERIFIED'
+                  ? `✓ ${t('cardVerifiedBy')}`
+                  : need.verificationStatus === 'PENDING_VERIFICATION'
+                  ? t('cardPendingVerification')
+                  : need.verificationStatus === 'REPORTED'
+                  ? t('cardReported')
+                  : t('cardArchived')}
+              </span>
+            </span>
+
+            <div className="flex items-center gap-1 text-xs text-slate-400 font-medium">
+              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>{formatTimeAgo(need.updatedAt, language)}</span>
+              {need.lastUpdatedBy?.startsWith('[MOD]') && (
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0 ml-1" />
+              )}
+            </div>
+          </div>
+
+          {/* Title */}
+          <h3 className="font-bold text-slate-900 text-base sm:text-lg leading-snug hover:text-indigo-600 transition-colors">
+            {need.title}
+          </h3>
+
+          {/* Description */}
+          {need.description && (
+            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+              {need.description}
+            </p>
+          )}
+
+          {/* Dedicated Category Pills & Resources Row */}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            {need.categories.map((c) => {
+              const item = getCategoryLabel(c, language);
+              return (
+                <span
+                  key={c}
+                  className="category-pill text-xs py-0.5 px-2.5"
+                >
+                  <span>{item?.icon || '🔹'}</span>
+                  <span>{item?.label || c}</span>
+                </span>
+              );
+            })}
+
+            {/* Resources Needed summary */}
+            {need.resources && need.resources.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 ml-0.5">
+                {need.resources.map((r) => {
+                  const requested = r.requestedQuantity || 0;
+                  const fulfilled = r.fulfilledQuantity || 0;
+                  const catLabel = getCategoryLabel(r.type, language)?.label || r.type;
+                  return (
+                    <span
+                      key={r.id}
+                      className="inline-flex items-center gap-1 text-xs bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg text-slate-600 font-medium"
+                    >
+                      <span>• {r.description || catLabel}</span>
+                      {requested > 0 && (
+                        <span className="text-slate-400 font-semibold text-[11px]">
+                          ({fulfilled}/{requested} {r.unit || ''})
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Location Context + Stacked Action Buttons */}
+        <div className="shrink-0 flex flex-col md:items-end justify-between gap-3.5 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-52">
+          {/* Location & Distance */}
+          <div className="space-y-0.5 md:text-right w-full min-w-0">
+            <div className="flex items-center md:justify-end gap-1.5 text-sm font-bold text-slate-900 leading-snug">
+              <MapPin className="w-4 h-4 text-indigo-600 shrink-0 md:hidden" />
+              <span className="truncate">{cityName || 'Colombia'}</span>
+              <MapPin className="w-4 h-4 text-indigo-600 shrink-0 hidden md:inline" />
+            </div>
+            {baseLocation && (
+              <div className="text-xs text-slate-600 font-medium truncate" title={baseLocation}>
+                {baseLocation}
+              </div>
+            )}
+            {distanceText && (
+              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100/80 mt-0.5">
+                A {distanceText}
+              </div>
+            )}
+          </div>
+
+          {/* Stacked Action buttons */}
+          <div className="flex flex-col gap-2 w-full">
+            {onViewOnMap && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewOnMap(need);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-xl text-xs border border-indigo-200/80 transition-colors cursor-pointer shadow-2xs"
+                id={`btn-view-map-${need.id}`}
+                title="Ver ubicación en el mapa"
+              >
+                <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Ver en mapa</span>
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onHelp(need);
+              }}
+              className="w-full btn-primary-blue btn-sm font-bold flex items-center justify-center gap-1.5 px-4 py-2 text-xs shadow-2xs"
+              id={`btn-help-${need.id}`}
+            >
+              <HeartHandshake className="w-4 h-4 text-indigo-200 shrink-0" />
+              <span>{t('cardHowToHelp')}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

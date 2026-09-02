@@ -804,8 +804,22 @@ function MainApp() {
     setIsLoadingLocation(false);
   };
 
-  // Handle map center change — detect city
-  const handleMapCenterChanged = (lat: number, lng: number) => {
+  // Handle map center change — detect city or revert to Toda Colombia on zoom-out
+  const handleMapCenterChanged = (lat: number, lng: number, zoom?: number) => {
+    // If zoomed out to macro/national level (zoom < 9.0), revert to Toda Colombia
+    if (zoom !== undefined && zoom < 9.0) {
+      if (selectedCityId !== ALL_COLOMBIA_ID && selectedCityId !== 'ALL_COLOMBIA' && selectedCityId !== 'todo-colombia') {
+        setCityChangeSource('map');
+        setSelectedCityId(ALL_COLOMBIA_ID);
+        document.title = 'Aquí Hace Falta — Toda Colombia';
+        if (!selectedNeedRef.current) {
+          window.history.replaceState(null, '', getCityPath(ALL_COLOMBIA_ID));
+        }
+      }
+      return;
+    }
+
+    // When zoomed in (zoom >= 9.0), detect specific city from center coordinates
     const detectedCity = detectCityFromCoords(lat, lng);
     if (detectedCity && detectedCity.id !== selectedCityId) {
       setCityChangeSource('map');
@@ -1008,10 +1022,27 @@ function MainApp() {
   ).length;
   const hasDemoData = needs.some((n) => n.isDemoData);
 
+  // Lock page scrolling on mobile when in MAP view so map fits viewport 100%
+  useEffect(() => {
+    if (mobileView === 'MAP') {
+      document.body.classList.add('overflow-hidden');
+      document.documentElement.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+      document.documentElement.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+      document.documentElement.classList.remove('overflow-hidden');
+    };
+  }, [mobileView]);
+
   return (
-    <div className={`min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-brand-surface flex flex-col text-brand-text antialiased ${
-      mobileView === 'MAP' ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''
-    }`}>
+    <div className={`bg-brand-surface flex flex-col text-brand-text antialiased ${
+      mobileView === 'MAP'
+        ? 'h-[100dvh] max-h-[100dvh] overflow-hidden'
+        : 'min-h-[100dvh]'
+    } md:h-screen md:max-h-screen md:overflow-hidden`}>
       {/* Platform Header */}
       <Header
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
@@ -1178,54 +1209,89 @@ function MainApp() {
           } ${isGridExpanded ? "md:border-l-0" : ""}`}
         >
           {/* Panel header */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white shrink-0">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 leading-none">
-              <span>
-                {filters.viewMode === "OFFERS"
-                  ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                  : filters.viewMode === "ALL"
-                  ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                  : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                }
-              </span>
-              <span className="bg-slate-800 text-white text-[11px] px-2 py-0.5 rounded-full font-bold leading-none">
-                {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
-              </span>
-            </h3>
-            {/* Expand/Collapse button — desktop only */}
-            <button
-              onClick={() => setIsGridExpanded((v) => !v)}
-              className="hidden md:flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              title={isGridExpanded ? "Volver a vista dividida" : "Expandir lista"}
-            >
-              {isGridExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
+          <div className={`flex items-center justify-between ${isGridExpanded ? "px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200" : "px-4 py-2.5 border-b border-slate-200 bg-white"} shrink-0`}>
+            <div className={`flex items-center justify-between w-full ${isGridExpanded ? "max-w-7xl mx-auto" : ""}`}>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2.5 leading-none">
+                <span>
+                  {filters.viewMode === "OFFERS"
+                    ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                    : filters.viewMode === "ALL"
+                    ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                    : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
+                  }
+                </span>
+                <span className="bg-slate-800 text-white text-xs px-2.5 py-0.5 rounded-full font-bold leading-none">
+                  {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
+                </span>
+              </h3>
+              {/* Expand/Collapse button — desktop only */}
+              <button
+                onClick={() => setIsGridExpanded((v) => !v)}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                  isGridExpanded
+                    ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title={isGridExpanded ? "Volver a vista dividida con mapa" : "Expandir lista"}
+              >
+                {isGridExpanded ? (
+                  <>
+                    <Minimize2 className="w-4 h-4 text-slate-600" />
+                    <span>Volver al mapa</span>
+                  </>
+                ) : (
+                  <Maximize2 className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Distance sort prompt when no geolocation */}
           {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
-            <div className="mx-3 mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2 shrink-0">
+            <div className={`mx-3 mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2 shrink-0 ${isGridExpanded ? "max-w-7xl mx-auto w-full" : ""}`}>
               <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
               <span>Para ordenar por distancia, activa tu ubicación desde el selector de ciudad.</span>
             </div>
           )}
 
           {/* Cards list — scrollable */}
-          <div className={`flex-1 overflow-y-auto p-3 pb-20 md:pb-3 cards-scroll ${isGridExpanded ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max" : "space-y-3"}`}>
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-white p-4 rounded-xl border border-slate-200 space-y-3 animate-pulse shadow-sm"
-                  >
-                    <div className="h-4 bg-slate-200 rounded w-1/3" />
-                    <div className="h-5 bg-slate-200 rounded w-3/4" />
-                    <div className="h-12 bg-slate-100 rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
+          <div className={`flex-1 overflow-y-auto ${isGridExpanded ? "p-4 sm:p-6 lg:p-8 bg-slate-100/70" : "p-3 pb-20 md:pb-3 bg-white md:bg-slate-50"} cards-scroll`}>
+            <div className={isGridExpanded ? "w-full max-w-7xl mx-auto space-y-3.5" : "space-y-3"}>
+              {isLoading ? (
+                <div className="space-y-3.5">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className={`bg-white rounded-2xl border border-slate-200 animate-pulse shadow-xs ${
+                        isGridExpanded
+                          ? "p-5 sm:p-6 h-32 flex items-center justify-between gap-6"
+                          : "p-4 space-y-3"
+                      }`}
+                    >
+                      {isGridExpanded ? (
+                        <>
+                          <div className="space-y-2.5 flex-1">
+                            <div className="flex gap-2">
+                              <div className="h-4 bg-slate-200 rounded w-28" />
+                              <div className="h-4 bg-slate-200 rounded w-24" />
+                            </div>
+                            <div className="h-6 bg-slate-200 rounded w-2/3" />
+                            <div className="h-4 bg-slate-100 rounded w-1/2" />
+                          </div>
+                          <div className="h-16 bg-slate-100 rounded-xl w-48 shrink-0 hidden lg:block" />
+                          <div className="h-10 bg-slate-200 rounded-xl w-32 shrink-0" />
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-4 bg-slate-200 rounded w-1/3" />
+                          <div className="h-5 bg-slate-200 rounded w-3/4" />
+                          <div className="h-12 bg-slate-100 rounded" />
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
                 (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
                 (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0) ? (
               <div className="space-y-4">
@@ -1274,7 +1340,7 @@ function MainApp() {
                       </h4>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className={isGridExpanded ? "space-y-2.5" : "space-y-3"}>
                       {closestItems.map(({ type, item, distanceKm }) => {
                         const cityCoords = getCityCoordinates(selectedCityId, routeInfo.departmentId);
                         return type === 'need' ? (
@@ -1289,6 +1355,7 @@ function MainApp() {
                             isSelected={selectedNeed?.id === item.id}
                             isHighlighted={!isGridExpanded && hoveredItemId === item.id}
                             onHover={isGridExpanded ? undefined : setHoveredItemId}
+                            layout={isGridExpanded ? "row" : "card"}
                           />
                         ) : (
                           <OfferCard
@@ -1299,6 +1366,7 @@ function MainApp() {
                             isHighlighted={!isGridExpanded && hoveredItemId === item.id}
                             onHover={isGridExpanded ? undefined : setHoveredItemId}
                             distanceKm={distanceKm}
+                            layout={isGridExpanded ? "row" : "card"}
                           />
                         );
                       })}
@@ -1321,6 +1389,7 @@ function MainApp() {
                     isSelected={selectedNeed?.id === need.id}
                     isHighlighted={!isGridExpanded && hoveredItemId === need.id}
                     onHover={isGridExpanded ? undefined : setHoveredItemId}
+                    layout={isGridExpanded ? "row" : "card"}
                   />
                 ))}
 
@@ -1333,6 +1402,7 @@ function MainApp() {
                     onViewOnMap={(item) => handleViewOnMap(item)}
                     isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
                     onHover={isGridExpanded ? undefined : setHoveredItemId}
+                    layout={isGridExpanded ? "row" : "card"}
                   />
                 ))}
 
@@ -1350,6 +1420,7 @@ function MainApp() {
                       isSelected={selectedNeed?.id === item.data.id}
                       isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
                       onHover={isGridExpanded ? undefined : setHoveredItemId}
+                      layout={isGridExpanded ? "row" : "card"}
                     />
                   ) : (
                     <OfferCard
@@ -1359,11 +1430,13 @@ function MainApp() {
                       onViewOnMap={(o) => handleViewOnMap(o)}
                       isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
                       onHover={isGridExpanded ? undefined : setHoveredItemId}
+                      layout={isGridExpanded ? "row" : "card"}
                     />
                   )
                 ))}
               </>
             )}
+            </div>
           </div>
         </div>
       </main>

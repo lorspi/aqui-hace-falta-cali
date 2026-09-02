@@ -15,7 +15,7 @@ interface MapViewProps {
   selectedCityId?: string;
   /** Indicates whether the city change came from the selector (user intent) or from map panning */
   cityChangeSource?: 'selector' | 'map' | 'init';
-  onMapCenterChanged?: (lat: number, lng: number) => void;
+  onMapCenterChanged?: (lat: number, lng: number, zoom?: number) => void;
   // Location picker mode
   isPickerMode?: boolean;
   pickerPosition?: { lat: number; lng: number } | null;
@@ -531,7 +531,8 @@ export const MapView: React.FC<MapViewProps> = ({
       userPannedRef.current = true;
       if (onMapCenterChanged) {
         const center = map.getCenter();
-        onMapCenterChanged(center.lat, center.lng);
+        const zoom = map.getZoom();
+        onMapCenterChanged(center.lat, center.lng, zoom);
       }
       debouncedUpdateClusters();
     });
@@ -774,7 +775,7 @@ export const MapView: React.FC<MapViewProps> = ({
   }, [isPickerMode, pickerPosition, onPickPosition]);
 
   return (
-    <div className="relative w-full h-full min-h-[300px] bg-slate-100 overflow-hidden">
+    <div className="relative w-full h-full min-h-0 bg-slate-100 overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full z-10" />
 
       {/* Map Legend Overlay */}

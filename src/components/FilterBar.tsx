@@ -142,7 +142,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   );
 
   return (
-    <div className="bg-white border-b border-slate-200 shadow-xs">
+    <div className="bg-white border-b border-slate-200 shadow-xs shrink-0">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 space-y-2.5">
         
         {/* MOBILE NAVIGATION LAYOUT (< md) */}
