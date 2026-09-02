@@ -275,6 +275,16 @@ header {
 /* Prevent body scroll when modal open */
 body.modal-open {
   overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Evitar zoom automático en iOS Safari al enfocar inputs */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* Horizontal scrollbar for category chips */
