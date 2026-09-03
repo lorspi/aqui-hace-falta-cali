@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía de Pruebas E2E — Bot de WhatsApp (RaDAR de Ayuda)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1f2328; }
+  h1 { font-size: 1.9em; border-bottom: 2px solid #eaecef; padding-bottom: .3em; }
+  h2 { font-size: 1.4em; margin-top: 1.8em; border-bottom: 1px solid #eaecef; padding-bottom: .2em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 12px; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; }
+  pre { background: #f6f8fa; padding: 14px; border-radius: 6px; overflow-x: auto; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; }
+  p code, li code, td code { background: #f0f0f1; padding: 1px 5px; border-radius: 4px; }
+  blockquote { border-left: 4px solid #d0d7de; margin: 0 0 1em 0; padding: 4px 16px; color: #57606a; }
+</style>
+</head>
+<body>
+
+<h1>Guía de Pruebas End-to-End — Integración Bot de WhatsApp (RaDAR de Ayuda)</h1>
+
+<p><strong>Instancia verificada:</strong> <code>https://etylcnafubtljlzbzkhz.supabase.co</code> (Backend Dev - Radar de ayudas)</p>
+
+<h2>Qué valida esta guía</h2>
+<table>
+  <thead><tr><th>#</th><th>Flujo</th><th>Historia</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Recepción y persistencia idempotente de eventos del webhook</td><td>S2 / S4 / S6 / S7</td></tr>
+    <tr><td>2</td><td>Creación automática del incidente al completar la conversación</td><td>S5</td></tr>
+    <tr><td>3</td><td>Reconstrucción de la conversación para el frontend</td><td>US-3</td></tr>
+    <tr><td>4</td><td>Revisión (aprobar / rechazar)</td><td>US-4</td></tr>
+    <tr><td>5</td><td>Pantalla del panel de moderación (listado + detalle + acciones)</td><td>US-5 / US-6 / US-7</td></tr>
+  </tbody>
+</table>
+
+<h2>Endpoints (instancia dev)</h2>
+<table>
+  <thead><tr><th>Función</th><th>Método / Ruta</th><th>Auth</th></tr></thead>
+  <tbody>
+    <tr><td><code>webhook</code></td><td><code>POST {URL}/functions/v1/webhook</code></td><td>Bearer service role key</td></tr>
+    <tr><td><code>conversation</code></td><td><code>GET {URL}/functions/v1/conversation/needs/{id}/conversation</code></td><td>anon key</td></tr>
+    <tr><td><code>review</code></td><td><code>POST {URL}/functions/v1/review</code></td><td>anon key</td></tr>
+  </tbody>
+</table>
+
+<p>Donde <code>{URL} = https://etylcnafubtljlzbzkhz.supabase.co</code>.</p>
+
+<blockquote>Para el <code>webhook</code>, usa la <strong>service role key</strong> del proyecto receptor (server-to-server), no la anon key. Guárdala como secreto en el proyecto del bot y envíala como <code>Authorization: Bearer &lt;key&gt;</code>.</blockquote>
+
+<p><strong>Anon key (pública):</strong></p>
+<pre><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0eWxjbmFmdWJ0bGpsemJ6a2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDA5ODUsImV4cCI6MjEwMjgxNjk4NX0.9n05cJe6AXyEJNWHASS2_kCy5xu-pFD0EmdsazbjxE4</code></pre>
+
+<h2>1) Webhook — mensaje entrante (<code>message.received</code>)</h2>
+<pre><code>SRV="SERVICE_ROLE_KEY_DEL_PROYECTO_RECEPTOR"
+curl -X POST https://etylcnafubtljlzbzkhz.supabase.co/functions/v1/webhook \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $SRV" \
+  -d '{
+    "id": "evt_prueba_001",
+    "type": "message.received",
+    "conversation_id": "conv_prueba_001",
+    "data": {
+      "body": "Necesito agua potable en mi barrio",
+      "from": "573001234567",
+      "message_type": "text",
+      "workflow": { "step": "awaiting_location" }
+    }
+  }'</code></pre>
+
+<p><strong>Esperado (HTTP 200):</strong> <code>{ "ok": true, "status": "accepted", "persisted": true, "mapping": {...} }</code></p>
+<blockquote>El <code>id</code> debe ser <strong>único</strong>. Reenviar el mismo <code>id</code> → <code>409 duplicate_event</code>.</blockquote>
+<h2>2) Webhook — completar conversación (<code>conversation_completed</code>) → crea el incidente</h2>
+<pre><code>SRV="SERVICE_ROLE_KEY_DEL_PROYECTO_RECEPTOR"
+curl -X POST https://etylcnafubtljlzbzkhz.supabase.co/functions/v1/webhook \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $SRV" \
+  -d '{
+    "id": "evt_prueba_002",
+    "type": "conversation_completed",
+    "conversation_id": "conv_prueba_001",
+    "data": {
+      "body": "Gracias, eso es todo",
+      "from": "573001234567",
+      "address": "Calle 5 # 10-20",
+      "neighborhood": "San Antonio"
+    }
+  }'</code></pre>
+
+<p><strong>Esperado (HTTP 200):</strong> <code>"incident": { "outcome": "created", "id": "...", ... }</code>.<br>
+El incidente se crea en <code>needs</code> con <code>source=WhatsApp</code>, <code>verification_status=PENDING_VERIFICATION</code>, <code>priority=MEDIUM</code>, <code>status=NEED_HELP_NOW</code>.</p>
+<blockquote>El completado también requiere <code>body</code>. Tipos reconocidos: <code>conversation_completed</code>, <code>conversation.completed</code> o <code>data.workflow.step = "COMPLETED"</code>.</blockquote>
+
+<h2>3) Reconstrucción de conversación (US-3)</h2>
+<p>Usa el <code>need.id</code> del paso 2.</p>
+<pre><code>ANON="&lt;ANON_KEY_DE_ARRIBA&gt;"
+curl -s "https://etylcnafubtljlzbzkhz.supabase.co/functions/v1/conversation/needs/{need_id}/conversation" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON"</code></pre>
+
+<p><strong>Esperado (HTTP 200):</strong> <code>{ "conversation_id", "has_need": true, "need": {...}, "messages": [{ "event_id", "sender", "content", "type", "attachments", "received_at" }] }</code></p>
+
+<h2>4) Revisión — aprobar / rechazar (US-4)</h2>
+<pre><code>ANON="&lt;ANON_KEY_DE_ARRIBA&gt;"
+# Aprobar
+curl -X POST "https://etylcnafubtljlzbzkhz.supabase.co/functions/v1/review" \
+  -H "Content-Type: application/json" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \
+  -d '{"need_id": "{need_id}", "decision": "aprobar", "verified_by": "operador@radar.local", "notes": "Verificado en prueba"}'
+
+# Rechazar
+curl -X POST "https://etylcnafubtljlzbzkhz.supabase.co/functions/v1/review" \
+  -H "Content-Type: application/json" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \
+  -d '{"need_id": "{need_id}", "decision": "rechazar", "verified_by": "operador@radar.local", "notes": "Datos no confirmados"}'</code></pre>
+
+<p><strong>Esperado (HTTP 200):</strong> <code>{ "ok": true, "status": "reviewed", "decision": "approve|reject", "need": { "verification_status": "VERIFIED|REJECTED", "verified_by": "...", "verified_at": "..." } }</code></p>
+<h2>5) Pantalla del panel (frontend)</h2>
+<ol>
+  <li>Levantar el frontend: <code>npm run dev</code> (con <code>.env.local</code> apuntando a <code>https://etylcnafubtljlzbzkhz.supabase.co</code>).</li>
+  <li>Abrir <strong>http://localhost:8080/panel</strong>.</li>
+  <li>Login rápido: usuario cualquiera + contraseña <code>moderador123</code> (o <code>admin123</code>).</li>
+  <li>Ver la sección <strong>"Reportes del chatbot"</strong> (needs con <code>source = 'WhatsApp'</code>).</li>
+  <li>Abrir el <strong>detalle</strong> de un reporte → conversación formateada + datos del incidente.</li>
+  <li>Usar <strong>Aprobar</strong> / <strong>Rechazar</strong> → llama a la función <code>review</code> (US-4).</li>
+</ol>
+
+<h2>Códigos de respuesta</h2>
+<table>
+  <thead><tr><th>HTTP</th><th>Código</th><th>Significado</th></tr></thead>
+  <tbody>
+    <tr><td>200</td><td>—</td><td>Evento aceptado / incidente creado / revisión aplicada</td></tr>
+    <tr><td>400</td><td><code>validation_failed</code></td><td>Campos mínimos faltantes o inválidos</td></tr>
+    <tr><td>400</td><td><code>invalid_json</code></td><td>Body no es JSON válido</td></tr>
+    <tr><td>400</td><td><code>invalid_from</code></td><td><code>data.from</code> no es un WhatsApp válido (E.164)</td></tr>
+    <tr><td>400</td><td><code>invalid_decision</code> / <code>missing_operator</code></td><td>Revisión inválida</td></tr>
+    <tr><td>404</td><td><code>need_not_found</code></td><td><code>need_id</code> inexistente</td></tr>
+    <tr><td>409</td><td><code>duplicate_event</code></td><td>Reenvío del mismo <code>event.id</code></td></tr>
+    <tr><td>409</td><td><code>no_messages</code></td><td>Completado sin mensajes previos</td></tr>
+    <tr><td>409</td><td><code>invalid_verification_status</code></td><td>El need ya no está <code>PENDING_VERIFICATION</code></td></tr>
+    <tr><td>415</td><td><code>invalid_content_type</code></td><td>Content-Type distinto de JSON</td></tr>
+    <tr><td>405</td><td><code>method_not_allowed</code></td><td>Método distinto del esperado</td></tr>
+    <tr><td>500</td><td><code>persistence_failed</code> / <code>incident_creation_failed</code> / <code>review_failed</code></td><td>Error interno (genérico)</td></tr>
+  </tbody>
+</table>
+
+<h2>Modelo de datos relevante</h2>
+<ul>
+  <li><strong><code>ingest_responses</code></strong>: auditoría de eventos crudos. Clave <code>event_id</code> UNIQUE (idempotencia). <code>raw_payload</code> (jsonb) con el evento completo.</li>
+  <li><strong><code>needs</code></strong>: incidente. Columnas clave: <code>conversation_id</code>, <code>source_event_id</code>, <code>source</code>, <code>contact_whatsapp</code>, <code>address</code>, <code>neighborhood</code>, <code>priority</code>, <code>status</code>, <code>verification_status</code>, <code>verified_by</code>, <code>verified_at</code>, <code>verification_notes</code>, <code>latitude</code>, <code>longitude</code>, <code>city_id</code>, <code>location_enrichment_status</code>.</li>
+  <li><strong>Un incidente por conversación</strong> (idempotencia por <code>source_event_id</code> y <code>conversation_id</code>).</li>
+</ul>
+
+</body>
+</html>
+

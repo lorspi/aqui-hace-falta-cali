@@ -50,6 +50,12 @@ Deno.serve((req: Request) =>
     ingestStore,
     incidentService: { needsStore },
     geocoder,
+    // S8: el handler exige que `Authorization: Bearer <token>` coincida con la
+    // service role key del proyecto receptor (server-to-server). El gateway
+    // (`verify_jwt = true` en config.toml) ya rechaza requests sin JWT válido;
+    // esta comparación añade defensa en profundidad si el despliegue ignorara
+    // esa configuración.
+    expectedBearerToken: serviceRoleKey,
     // S7: los errores internos (500) se registran server-side para
     // trazabilidad sin exponer los detalles en la respuesta al remitente.
     logError: (code, err) => {

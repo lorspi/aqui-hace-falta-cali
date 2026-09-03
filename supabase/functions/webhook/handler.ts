@@ -16,7 +16,11 @@
 //   - Acepta eventos de cualquier `type` (incluido el de completado).
 //   - Body vacío o no parseable como JSON → 400 con detalle.
 //   - Campos mínimos faltantes o con formato inválido → 400 con detalle.
-//   - Sin autenticación (deuda de seguridad, ver S8).
+//   - Autenticación (S8 — cierre de la deuda de seguridad): requiere
+//     `Authorization: Bearer <service role key del proyecto receptor>`. El
+//     gateway (`verify_jwt = true`) exige un JWT Supabase válido y, además, el
+//     handler compara el token en tiempo constante contra la key esperada
+//     (ver `expectedBearerToken`).
 //   - Sin coordenadas → 200 (el geocoding es S5).
 //
 // Mapeo (escenarios Gherkin S3):
@@ -135,6 +139,35 @@ function jsonResponse(
   });
 }
 
+/**
+ * Extrae el token de una cabecera `Authorization: Bearer <token>`. Devuelve
+ * `null` si la cabecera está ausente, no usa el esquema Bearer o el token es
+ * vacío. El esquema es case-insensitive (RFC 7235); el token es case-sensitive.
+ */
+function extractBearerToken(req: Request): string | null {
+  const header = req.headers.get("authorization");
+  if (!header) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  if (!match) return null;
+  const token = match[1].trim();
+  return token.length > 0 ? token : null;
+}
+
+/**
+ * Comparación en tiempo constante de dos strings para validar el token sin
+ * exponerlo a un timing attack (funciona como secreto compartido
+ * server-to-server). La diferencia de longitud se revela a propósito para
+ * devolver `false` temprano; la comparación de contenido no hace short-circuit.
+ */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 /** Serializa el resumen del mapeo (S3) para el ACK del endpoint. */
 function serializeMapping(mapping: MappingResult) {
   if (!mapping.draft) return undefined;
@@ -187,6 +220,15 @@ export interface WebhookDeps {
   /** Geocoder para enriquecer la ubicación del incidente (S5). */
   geocoder?: Geocoder;
   /**
+   * Token Bearer esperado en `Authorization` (S8). Cuando se inyecta, el
+   * handler rechaza con 401 cualquier request sin cabecera o con un token
+   * distinto (comparación en tiempo constante). En producción `index.ts` lo
+   * inyecta con la service role key del proyecto receptor; en los tests
+   * S2–S7 (que no configuran auth) permanece indefinido y el check queda
+   * desactivado.
+   */
+  expectedBearerToken?: string;
+  /**
    * Logger opcional de errores internos (S7). Se invoca en los fallos
    * internos (500) para permitir trazabilidad SERVER-SIDE sin exponer los
    * detalles en la respuesta al remitente. En la Edge Function real se enlaza
@@ -216,6 +258,37 @@ export async function handleWebhookEvent(
       405,
       { Allow: "POST" },
     );
+  }
+
+  // Autenticación (S8 — cierre de la deuda de seguridad). Defensa en
+  // profundidad: el gateway (`verify_jwt = true` en config.toml) ya rechaza
+  // requests sin JWT Supabase válido; aquí además se exige que el token sea
+  // EXACTAMENTE la service role key del proyecto receptor (server-to-server).
+  // Solo se aplica cuando se inyecta `deps.expectedBearerToken` (en la Edge
+  // Function real siempre; en los tests S2–S7 sin auth queda inactivo).
+  if (deps.expectedBearerToken) {
+    const authToken = extractBearerToken(req);
+    if (!authToken) {
+      return jsonResponse(
+        {
+          code: "missing_authorization",
+          message:
+            "Falta la cabecera Authorization: Bearer <token>. Este endpoint es server-to-server.",
+        },
+        401,
+        { "WWW-Authenticate": 'Bearer realm="webhook"' },
+      );
+    }
+    if (!safeEqual(authToken, deps.expectedBearerToken)) {
+      return jsonResponse(
+        {
+          code: "unauthorized",
+          message: "Token de autorización inválido.",
+        },
+        401,
+        { "WWW-Authenticate": 'Bearer realm="webhook"' },
+      );
+    }
   }
 
   // El body debe llegar como JSON.
