@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquarePlus, Map, Menu, X, ExternalLink } from 'lucide-react';
+import { HeartHandshake, Map, Menu, X, ExternalLink } from 'lucide-react';
 
 interface LandingHeaderProps {
   onOpenChat: () => void;
@@ -52,10 +52,9 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
           <button
             type="button"
             onClick={onOpenChat}
-            className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-blue-900 active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
+            className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-[#B83232] active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
           >
-            <span className="w-2 h-2 rounded-full bg-brand-yellow animate-pulse" />
-            <MessageSquarePlus className="w-3.5 h-3.5" />
+            <HeartHandshake className="w-4 h-4 text-white" />
             <span>Pedir ayuda</span>
           </button>
 
@@ -198,7 +197,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
               }}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-[#B83232] active:scale-98 shadow-sm transition-all font-sans"
             >
-              <MessageSquarePlus className="w-4 h-4" />
+              <HeartHandshake className="w-4 h-4 text-white" />
               <span>Pedir ayuda</span>
             </button>
           </div>

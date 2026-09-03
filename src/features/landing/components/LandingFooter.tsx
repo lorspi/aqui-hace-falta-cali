@@ -103,9 +103,6 @@ export const LandingFooter: React.FC = () => {
               </a>{' '}
               vía Wikimedia Commons.
             </p>
-            <p className="text-[11px] text-slate-500 mt-2 font-body">
-              Fotografía real de lugares y respuesta; sin ilustraciones genéricas de catástrofe.
-            </p>
           </div>
         </div>
 

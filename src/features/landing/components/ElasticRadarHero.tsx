@@ -1,5 +1,6 @@
 import React from 'react';
 import { RadarAnimatedLogo } from './RadarAnimatedLogo';
+import { RadarMapBackground } from './RadarMapBackground';
 
 interface ElasticRadarHeroProps {
   onOpenChat: () => void;
@@ -14,10 +15,13 @@ export const ElasticRadarHero: React.FC<ElasticRadarHeroProps> = ({ onOpenChat }
   };
 
   return (
-    <section className="relative w-full h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-4.5rem)] min-h-[480px] sm:min-h-[560px] flex flex-col items-center justify-between px-4 pt-2 pb-4 select-none">
+    <section className="relative w-full min-h-[calc(100svh-4rem)] sm:min-h-[calc(100vh-4.5rem)] flex flex-col items-center justify-between px-4 pt-2 pb-4 overflow-hidden">
+      {/* 0. MAPA SOLIDARIO DE FONDO: Latinoamérica, Colombia, pines de ayuda y conexiones sutiles */}
+      <RadarMapBackground />
+
       {/* 1. RADAR MONUMENTAL: Centrado puro, sereno y diáfano */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-full">
-        <div className="relative flex items-center justify-center w-[min(62dvh,86vw,350px)] h-[min(62dvh,86vw,350px)] sm:w-[min(74vh,800px,90vw)] sm:h-[min(74vh,800px,90vw)] max-w-full">
+      <div className="flex-1 flex items-center justify-center w-full max-w-full z-10">
+        <div className="relative flex items-center justify-center w-[min(68dvh,94vw,420px)] h-[min(68dvh,94vw,420px)] sm:w-[min(74vh,800px,90vw)] sm:h-[min(74vh,800px,90vw)] max-w-full">
           <RadarAnimatedLogo
             onOpenChat={onOpenChat}
             className="w-full h-full aspect-square mx-auto"

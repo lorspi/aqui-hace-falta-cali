@@ -6,9 +6,14 @@ interface RadarAnimatedLogoProps {
 }
 
 export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat, className = '' }) => {
+  const [isInteracting, setIsInteracting] = React.useState(false);
+
+  const handleStart = () => setIsInteracting(true);
+  const handleEnd = () => setIsInteracting(false);
+
   return (
     <div className={`relative w-full aspect-square mx-auto flex items-center justify-center ${className}`}>
-      {/* Estilos para palpitación profunda y ondas lentas */}
+      {/* Estilos para palpitación profunda, expansión suave como suspiro y ondas inmediatas */}
       <style>{`
         @keyframes svgHeartbeat {
           0%, 100% {
@@ -34,53 +39,110 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
           0% {
             transform: scale(1);
             opacity: 0;
-            filter: drop-shadow(0 0 8px rgba(255, 77, 77, 0.95));
           }
           2% {
             opacity: 0.95;
-            filter: drop-shadow(0 0 8px rgba(255, 77, 77, 0.95));
           }
           10% {
-            opacity: 0.85;
-            filter: drop-shadow(0 0 7px rgba(255, 77, 77, 0.85));
+            opacity: 0.82;
           }
           30% {
-            opacity: 0.55;
-            filter: drop-shadow(0 0 5px rgba(255, 77, 77, 0.5));
+            opacity: 0.52;
           }
           55% {
-            opacity: 0.28;
-            filter: drop-shadow(0 0 3px rgba(255, 77, 77, 0.25));
+            opacity: 0.26;
           }
           80% {
-            opacity: 0.10;
-            filter: drop-shadow(0 0 1px rgba(255, 77, 77, 0.1));
+            opacity: 0.09;
           }
           100% {
-            transform: scale(5.5);
+            transform: scale(6.0);
             opacity: 0;
-            filter: drop-shadow(0 0 0px transparent);
           }
+        }
+
+        /* Ondas emitidas inmediatamente al pararse sobre el botón ("ahí mismo") */
+        @keyframes radarInstantSignal {
+          0% {
+            transform: scale(1);
+            opacity: 0.95;
+            stroke-width: 3.2;
+          }
+          35% {
+            opacity: 0.75;
+          }
+          70% {
+            opacity: 0.25;
+          }
+          100% {
+            transform: scale(4.8);
+            opacity: 0;
+            stroke-width: 0.8;
+          }
+        }
+
+        .radar-instant-signal-1 {
+          animation: radarInstantSignal 2.4s cubic-bezier(0.15, 0.7, 0.3, 1) infinite;
+          will-change: transform, opacity;
+          transform-origin: 612.823px 515.77px;
+        }
+        .radar-instant-signal-2 {
+          animation: radarInstantSignal 2.4s cubic-bezier(0.15, 0.7, 0.3, 1) infinite 1.2s;
+          will-change: transform, opacity;
+          transform-origin: 612.823px 515.77px;
         }
 
         .animate-svg-heartbeat {
           animation: svgHeartbeat 3.667s ease-in-out infinite;
+          will-change: transform;
         }
         .animate-svg-text {
           animation: svgTextFadeWithWave 3.667s ease-in-out infinite;
+          will-change: opacity;
         }
 
         .animate-svg-ripple-1 {
           opacity: 0;
           animation: svgRadarRippleWide 11s cubic-bezier(0.15, 0.7, 0.3, 1) infinite;
+          will-change: transform, opacity;
         }
         .animate-svg-ripple-2 {
           opacity: 0;
           animation: svgRadarRippleWide 11s cubic-bezier(0.15, 0.7, 0.3, 1) infinite 3.66s;
+          will-change: transform, opacity;
         }
         .animate-svg-ripple-3 {
           opacity: 0;
           animation: svgRadarRippleWide 11s cubic-bezier(0.15, 0.7, 0.3, 1) infinite 7.33s;
+          will-change: transform, opacity;
+        }
+
+        /* Inflado suave y sereno como un suspiro (0.85s con cubic-bezier orgánico) */
+        .radar-center-button {
+          transform: scale(1);
+          transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s ease;
+          transform-origin: 612.823px 515.77px;
+          cursor: pointer;
+          will-change: transform;
+        }
+        .radar-center-button.is-active,
+        .radar-center-button:hover,
+        .radar-center-button:focus-visible {
+          transform: scale(1.24);
+          filter: drop-shadow(0 0 28px rgba(206, 59, 59, 0.75));
+        }
+        .radar-center-button:active {
+          transform: scale(1.18);
+          transition-duration: 0.2s;
+        }
+
+        /* Al interactuar, se remueve la atenuación de opacidad del texto y queda 100% nítido */
+        .radar-center-button.is-active .animate-svg-text,
+        .radar-center-button:hover .animate-svg-text,
+        .radar-center-button:focus-visible .animate-svg-text {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: scale(1) !important;
         }
       `}</style>
 
@@ -127,6 +189,34 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
           />
         </g>
 
+        {/* Ondas emitidas inmediatamente al pararse o hacer clic en el botón ("ahí mismo") */}
+        {isInteracting && (
+          <g className="pointer-events-none">
+            <circle
+              cx="612.823"
+              cy="515.77"
+              r="80.658"
+              fill="none"
+              stroke="#FF4D4D"
+              strokeWidth="2.8"
+              vectorEffect="non-scaling-stroke"
+              className="radar-instant-signal-1"
+              style={{ transformOrigin: '612.823px 515.77px' }}
+            />
+            <circle
+              cx="612.823"
+              cy="515.77"
+              r="80.658"
+              fill="none"
+              stroke="#FF4D4D"
+              strokeWidth="2.2"
+              vectorEffect="non-scaling-stroke"
+              className="radar-instant-signal-2"
+              style={{ transformOrigin: '612.823px 515.77px' }}
+            />
+          </g>
+        )}
+
         {/* 2. ARCOS OFICIALES DEL LOGO (Pasan por encima de las ondas) */}
         <g clipPath="url(#clip0_huge_radar_bulletproof)">
           {/* Capa Amarilla Oficial - Arco Exterior */}
@@ -145,23 +235,33 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
           <g
             role="button"
             tabIndex={0}
-            onClick={onOpenChat}
+            onClick={() => {
+              handleStart();
+              onOpenChat();
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
+                handleStart();
                 onOpenChat();
               }
             }}
-            className="cursor-pointer group select-none focus:outline-none"
+            onMouseEnter={handleStart}
+            onMouseLeave={handleEnd}
+            onFocus={handleStart}
+            onBlur={handleEnd}
+            onTouchStart={handleStart}
+            onTouchEnd={handleEnd}
+            className={`radar-center-button select-none focus:outline-none ${isInteracting ? 'is-active' : ''}`}
             aria-label="Pedir ayuda"
           >
-            {/* Círculo Rojo Oficial con respiración profunda (8s) */}
+            {/* Círculo Rojo Oficial con respiración profunda */}
             <circle
               cx="612.823"
               cy="515.77"
               r="80.658"
               fill="#CE3B3B"
-              className="animate-svg-heartbeat transition-transform duration-300 group-hover:scale-105"
+              className="animate-svg-heartbeat"
               style={{ transformOrigin: '612.823px 515.77px' }}
             />
 

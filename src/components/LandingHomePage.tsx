@@ -34,6 +34,7 @@ import {
 import { useTranslation } from '../i18n/LanguageContext';
 import { VolunteerRegisterModal } from '../features/auth/components/VolunteerRegisterModal';
 import { Footer } from './Footer';
+import { InteractiveRadarSymbolGuide } from './InteractiveRadarSymbolGuide';
 
 export const LandingHomePage: React.FC = () => {
   const { language, t } = useTranslation();
@@ -272,68 +273,8 @@ export const LandingHomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Brand Identity & Symbol Section */}
-      <section className="relative z-10 py-16 bg-white border-y border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Visual Symbol Illustration */}
-            <div className="lg:col-span-5 flex justify-center">
-              <div className="relative p-8 bg-[#F5F6F9] rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center max-w-sm w-full">
-                <img
-                  src="/simbolo-radar.svg"
-                  alt="El Símbolo de RaDAR"
-                  className="w-48 h-48 object-contain drop-shadow-md"
-                />
-                <div className="mt-4 text-center">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-800">El Símbolo de RaDAR</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">La señal que se propaga y el abrazo que acoge</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Manual Color & Meaning Explanation */}
-            <div className="lg:col-span-7 space-y-5">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
-                  ¿Por qué el símbolo y los tres colores?
-                </h2>
-                <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
-                  Dos arcos abiertos alrededor de un punto. Se lee como una señal que se propaga desde un punto detectado, y como un abrazo que rodea a quien está en el centro. Los tres colores provienen de la bandera de Colombia y cuentan cómo funciona la red:
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {/* Red */}
-                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#CE3B3B] border border-slate-200/80 flex items-start gap-3">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#CE3B3B] shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Rojo — El centro y la emergencia</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">Es el punto exacto donde algo está pasando y alguien necesita ayuda. Es lo primero que se detecta y lo primero que se ve.</p>
-                  </div>
-                </div>
-
-                {/* Blue */}
-                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#1B3A93] border border-slate-200/80 flex items-start gap-3">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#1B3A93] shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Azul — El arco interior y el apoyo cercano</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">El vecino, la cuadra, el voluntario que ya está ahí. Rodea la emergencia de primero porque es el que llega de primero.</p>
-                  </div>
-                </div>
-
-                {/* Yellow */}
-                <div className="bg-[#F5F6F9] p-3.5 rounded-2xl border-l-4 border-l-[#F2C33D] border border-slate-200/80 flex items-start gap-3">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#F2C33D] shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-extrabold text-[#1F1C1A]">Amarillo — El arco exterior y la solidaridad amplia</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">El apoyo que abraza desde más lejos: las organizaciones, las donaciones, la ciudad entera. La chispa de luz alrededor de lo que está pasando.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Brand Identity & Symbol Section: Interactivo y Bidireccional */}
+      <InteractiveRadarSymbolGuide />
 
       {/* FAQ Section */}
       <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">

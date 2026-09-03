@@ -14,12 +14,23 @@ import {
 import { LandingHeader } from './components/LandingHeader';
 import { ElasticRadarHero } from './components/ElasticRadarHero';
 import { HowItWorksHeroCard } from './components/HowItWorksHeroCard';
-import { RadarSymbolInteractive } from './components/RadarSymbolInteractive';
 import { LandingFooter } from './components/LandingFooter';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
 
 export const LandingPage: React.FC = () => {
   const [isChatbotModalOpen, setIsChatbotModalOpen] = useState(false);
+
+  // Asegurar scroll nativo fluido en móviles sin rebotes ni bloqueos elásticos de overscroll
+  React.useEffect(() => {
+    const prevHtml = document.documentElement.style.overscrollBehaviorY;
+    const prevBody = document.body.style.overscrollBehaviorY;
+    document.documentElement.style.overscrollBehaviorY = 'auto';
+    document.body.style.overscrollBehaviorY = 'auto';
+    return () => {
+      document.documentElement.style.overscrollBehaviorY = prevHtml;
+      document.body.style.overscrollBehaviorY = prevBody;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-brand-surface text-brand-text font-sans selection:bg-brand-blue selection:text-white">
@@ -28,8 +39,7 @@ export const LandingPage: React.FC = () => {
 
       <main className="space-y-16 sm:space-y-24">
         {/* ========================================================
-            0. ENTRADA MONUMENTAL ELÁSTICA: EL RADAR EN SOLITARIO
-            Sin tarjeta (una sola hoja pura) con carga elástica de scroll
+            0. ENTRADA MONUMENTAL DEL RADAR EN SOLITARIO
            ======================================================== */}
         <ElasticRadarHero onOpenChat={() => setIsChatbotModalOpen(true)} />
 
@@ -39,7 +49,7 @@ export const LandingPage: React.FC = () => {
            ======================================================== */}
         <section
           id="contenido-principal"
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-36"
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20 sm:scroll-mt-24"
         >
           <div className="relative rounded-3xl sm:rounded-4xl overflow-hidden shadow-2xl border border-slate-800/60 p-6 sm:p-12 lg:p-16 transition-all min-h-[540px] flex items-center">
             {/* Foto de fondo real: Cadena de personas ayudando (baldes de escombros) */}
@@ -107,7 +117,7 @@ export const LandingPage: React.FC = () => {
             3. PARA ORGANIZACIONES & BRIGADAS (ORDEN 3)
             Compacto, con colores raDAR y aviso de desarrollo activo
            ======================================================== */}
-        <section id="organizaciones" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 sm:scroll-mt-28">
+        <section id="organizaciones" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 sm:scroll-mt-28 mb-16 sm:mb-24 lg:mb-32">
           <div className="relative rounded-2xl sm:rounded-4xl bg-white text-slate-900 overflow-hidden p-4 sm:p-8 lg:p-10 border border-slate-200/90 shadow-md sm:shadow-lg shadow-slate-900/5">
             {/* Auras luminosas sutiles con los colores oficiales de raDAR */}
             <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-brand-blue/10 blur-3xl pointer-events-none" />
@@ -232,13 +242,6 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </section>
-
-        {/* ========================================================
-            4. EL SÍMBOLO RADAR (Anatomía del radar y animación interactiva)
-           ======================================================== */}
-        <section id="simbolo" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 sm:mb-24 lg:mb-32">
-          <RadarSymbolInteractive />
         </section>
       </main>
 
