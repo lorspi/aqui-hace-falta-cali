@@ -34,7 +34,9 @@ El transporte es un **POST HTTP con JSON** al endpoint del receptor:
 - El endpoint acepta **cualquier `type`** de evento (string no vacío): el `type`
   no condiciona la recepción.
 
-> ⚠️ **Autenticación abierta (deuda de seguridad)** — ver [sección 9](#9-autenticación-deuda-de-seguridad).
+> 🔐 **Autenticación**: el endpoint requiere `Authorization: Bearer <service
+> role key del proyecto receptor>` (server-to-server). Ver
+> [sección 9](#9-autenticación).
 
 ---
 
@@ -439,21 +441,44 @@ opcionalmente, `verification_notes` (motivo). **Rechazar sin motivo es válido**
 
 ---
 
-## 9. Autenticación (deuda de seguridad)
+## 9. Autenticación
 
-> ⚠️ **NOTA EXPLÍCITA**: actualmente la autenticación del webhook está
-> **ABIERTA** — el endpoint acepta eventos sin verificar la identidad del
-> remitente.
+El endpoint `webhook` es **server-to-server** (bot de WhatsApp → RADAR) y exige
+autenticación con **JWT nativo de Supabase**:
 
-Esto es una **deuda de seguridad pendiente de resolver**. El plan es autenticar
-al remitente con **API key / HMAC** (firma de los payloads) en una fase
-posterior (FR-2 / NFR-5 del plan). Mientras tanto:
+- El gateway (`verify_jwt = true`) rechaza automáticamente cualquier request sin
+  un JWT válido de Supabase.
+- Además, el handler compara el token en tiempo constante contra las keys
+  privilegiadas del proyecto receptor: la **service role key** legacy
+  (`SUPABASE_SERVICE_ROLE_KEY`) y las **secret keys** (`sb_secret_*`,
+  `SUPABASE_SECRET_KEYS`). Las publishable keys y la anon key (públicas) NO se
+  aceptan.
 
-- El endpoint **no exige** headers de autorización.
-- Cualquiera que conozca la URL puede enviar eventos.
-- Ambos equipos deben coordinarse para migrar a API key/HMAC sin romper la
-  integración (el cambio será **aditivo**: se exigirá la firma sin dejar de
-  aceptar el formato de eventos de este contrato).
+**El remitente debe enviar en cada POST:**
+
+```http
+Authorization: Bearer <service_role_key_o_secret_key_del_proyecto_receptor>
+Content-Type: application/json
+```
+
+La key elegida (service role key o secret key) debe guardarse como secreto en
+el proyecto del bot (`supabase secrets set WEBHOOK_TARGET_KEY=...`) y leerse
+con `Deno.env.get("WEBHOOK_TARGET_KEY")`. Nunca debe quedar expuesta en
+frontend ni hardcodeada.
+
+**Respuestas de autenticación:**
+
+| HTTP | `code` | Condición |
+|------|--------|-----------|
+| `401` | `missing_authorization` | Cabecera `Authorization` ausente o sin esquema `Bearer`. |
+| `401` | `unauthorized` | Token presente pero distinto a las keys privilegiadas esperadas. |
+
+> ⚠️ **Limitación conocida**: las keys privilegiadas (service role / secret) son
+> secretos de proyecto. Si se filtran, cualquiera puede invocar el webhook. Para
+> cerrar esa brecha en una
+> fase posterior, la **firma HMAC** de los payloads (además del acceso) protege
+> la integridad del body. La migración debe ser **aditiva**: exigir la firma sin
+> dejar de aceptar el formato de eventos de este contrato.
 
 ---
 

@@ -53,7 +53,11 @@ documentado del contrato S8), idéntico al criterio de `body`:
   o en `body` (shape plano).
 - `type` no condiciona la aceptación: cualquier string no vacío.
 - No se requieren coordenadas (el geocoding es la historia S5).
-- Autenticación abierta por ahora (deuda de seguridad, ver S8).
+- Autenticación (S8): `Authorization: Bearer <service role key o secret key
+  del proyecto receptor>` (server-to-server). El gateway exige JWT válido
+  (`verify_jwt = true`) y el handler compara el token en tiempo constante
+  contra las keys privilegiadas inyectadas (`expectedBearerTokens`). Las
+  publishable keys y la anon key (públicas) se rechazan.
 
 ## Respuestas
 
@@ -67,6 +71,8 @@ documentado del contrato S8), idéntico al criterio de `body`:
 | Error al crear el incidente (interno) | `500` | `{ "code": "incident_creation_failed", "message": "Error interno al crear el incidente. Inténtalo de nuevo." }` |
 | Content-Type no es JSON | `415` | `{ "code": "invalid_content_type", ... }` |
 | Método distinto de POST | `405` | `{ "code": "method_not_allowed", ... }` |
+| Sin `Authorization: Bearer <token>` | `401` | `{ "code": "missing_authorization", ... }` |
+| Token distinto a la service role key | `401` | `{ "code": "unauthorized", ... }` |
 
 ## Confirmación al remitente — ACK (S7 / DEV-37)
 
