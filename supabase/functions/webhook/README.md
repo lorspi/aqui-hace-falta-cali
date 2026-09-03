@@ -53,10 +53,11 @@ documentado del contrato S8), idéntico al criterio de `body`:
   o en `body` (shape plano).
 - `type` no condiciona la aceptación: cualquier string no vacío.
 - No se requieren coordenadas (el geocoding es la historia S5).
-- Autenticación (S8): `Authorization: Bearer <service role key del proyecto
-  receptor>` (server-to-server). El gateway exige JWT válido
+- Autenticación (S8): `Authorization: Bearer <service role key o secret key
+  del proyecto receptor>` (server-to-server). El gateway exige JWT válido
   (`verify_jwt = true`) y el handler compara el token en tiempo constante
-  contra la service role key inyectada (`expectedBearerToken`).
+  contra las keys privilegiadas inyectadas (`expectedBearerTokens`). Las
+  publishable keys y la anon key (públicas) se rechazan.
 
 ## Respuestas
 

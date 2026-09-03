@@ -47,7 +47,7 @@
 
 <p>Donde <code>{URL} = https://etylcnafubtljlzbzkhz.supabase.co</code>.</p>
 
-<blockquote>Para el <code>webhook</code>, usa la <strong>service role key</strong> del proyecto receptor (server-to-server), no la anon key. Guárdala como secreto en el proyecto del bot y envíala como <code>Authorization: Bearer &lt;key&gt;</code>.</blockquote>
+<blockquote>Para el <code>webhook</code>, usa una <strong>key privilegiada</strong> del proyecto receptor (service role key o secret key <code>sb_secret_*</code>), <strong>no</strong> una publishable key ni la anon key. Guárdala como secreto en el proyecto del bot y envíala como <code>Authorization: Bearer &lt;key&gt;</code>.</blockquote>
 
 <p><strong>Anon key (pública):</strong></p>
 <pre><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0eWxjbmFmdWJ0bGpsemJ6a2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNDA5ODUsImV4cCI6MjEwMjgxNjk4NX0.9n05cJe6AXyEJNWHASS2_kCy5xu-pFD0EmdsazbjxE4</code></pre>

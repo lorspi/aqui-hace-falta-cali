@@ -45,17 +45,49 @@ const needsStore = createPostgrestNeedsStore({
 
 const geocoder = createNominatimGeocoder();
 
+/**
+ * S8: tokens Bearer válidos para el webhook. Se aceptan la service role key
+ * legacy y las secret keys (`sb_secret_*`) del proyecto receptor, que son las
+ * keys privilegiadas (bypass RLS). NO se aceptan publishable keys ni la anon
+ * key (públicas, RLS-scoped): cualquiera podría leerlas del frontend.
+ */
+function resolveExpectedBearerTokens(): string[] {
+  const tokens = new Set<string>();
+  if (serviceRoleKey) tokens.add(serviceRoleKey);
+
+  const secretKeysRaw = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (secretKeysRaw) {
+    try {
+      const parsed = JSON.parse(secretKeysRaw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const value of Object.values(parsed as Record<string, unknown>)) {
+          if (typeof value === "string" && value.length > 0) {
+            tokens.add(value);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[webhook] SUPABASE_SECRET_KEYS no es JSON válido; solo se usará la service role key legacy.",
+        err,
+      );
+    }
+  }
+
+  return Array.from(tokens);
+}
+
 Deno.serve((req: Request) =>
   handleWebhookEvent(req, {
     ingestStore,
     incidentService: { needsStore },
     geocoder,
-    // S8: el handler exige que `Authorization: Bearer <token>` coincida con la
-    // service role key del proyecto receptor (server-to-server). El gateway
-    // (`verify_jwt = true` en config.toml) ya rechaza requests sin JWT válido;
-    // esta comparación añade defensa en profundidad si el despliegue ignorara
-    // esa configuración.
-    expectedBearerToken: serviceRoleKey,
+    // S8: el handler exige que `Authorization: Bearer <token>` coincida con una
+    // key privilegiada del proyecto receptor (service role key legacy o secret
+    // key `sb_secret_*`). El gateway (`verify_jwt = true` en config.toml) ya
+    // rechaza requests sin JWT válido; esta comparación añade defensa en
+    // profundidad si el despliegue ignorara esa configuración.
+    expectedBearerTokens: resolveExpectedBearerTokens(),
     // S7: los errores internos (500) se registran server-side para
     // trazabilidad sin exponer los detalles en la respuesta al remitente.
     logError: (code, err) => {

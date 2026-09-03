@@ -448,30 +448,34 @@ autenticación con **JWT nativo de Supabase**:
 
 - El gateway (`verify_jwt = true`) rechaza automáticamente cualquier request sin
   un JWT válido de Supabase.
-- Además, el handler compara el token en tiempo constante contra la
-  **service role key del proyecto receptor** (`SUPABASE_SERVICE_ROLE_KEY`).
+- Además, el handler compara el token en tiempo constante contra las keys
+  privilegiadas del proyecto receptor: la **service role key** legacy
+  (`SUPABASE_SERVICE_ROLE_KEY`) y las **secret keys** (`sb_secret_*`,
+  `SUPABASE_SECRET_KEYS`). Las publishable keys y la anon key (públicas) NO se
+  aceptan.
 
 **El remitente debe enviar en cada POST:**
 
 ```http
-Authorization: Bearer <service_role_key_del_proyecto_receptor>
+Authorization: Bearer <service_role_key_o_secret_key_del_proyecto_receptor>
 Content-Type: application/json
 ```
 
-La service role key debe guardarse como secreto en el proyecto del bot
-(`supabase secrets set WEBHOOK_TARGET_KEY=...`) y leerse con
-`Deno.env.get("WEBHOOK_TARGET_KEY")`. Nunca debe quedar expuesta en frontend ni
-hardcodeada.
+La key elegida (service role key o secret key) debe guardarse como secreto en
+el proyecto del bot (`supabase secrets set WEBHOOK_TARGET_KEY=...`) y leerse
+con `Deno.env.get("WEBHOOK_TARGET_KEY")`. Nunca debe quedar expuesta en
+frontend ni hardcodeada.
 
 **Respuestas de autenticación:**
 
 | HTTP | `code` | Condición |
 |------|--------|-----------|
 | `401` | `missing_authorization` | Cabecera `Authorization` ausente o sin esquema `Bearer`. |
-| `401` | `unauthorized` | Token presente pero distinto a la service role key esperada. |
+| `401` | `unauthorized` | Token presente pero distinto a las keys privilegiadas esperadas. |
 
-> ⚠️ **Limitación conocida**: la service role key es un secreto de proyecto. Si
-> se filtra, cualquiera puede invocar el webhook. Para cerrar esa brecha en una
+> ⚠️ **Limitación conocida**: las keys privilegiadas (service role / secret) son
+> secretos de proyecto. Si se filtran, cualquiera puede invocar el webhook. Para
+> cerrar esa brecha en una
 > fase posterior, la **firma HMAC** de los payloads (además del acceso) protege
 > la integridad del body. La migración debe ser **aditiva**: exigir la firma sin
 > dejar de aceptar el formato de eventos de este contrato.

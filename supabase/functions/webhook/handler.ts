@@ -17,10 +17,11 @@
 //   - Body vacío o no parseable como JSON → 400 con detalle.
 //   - Campos mínimos faltantes o con formato inválido → 400 con detalle.
 //   - Autenticación (S8 — cierre de la deuda de seguridad): requiere
-//     `Authorization: Bearer <service role key del proyecto receptor>`. El
-//     gateway (`verify_jwt = true`) exige un JWT Supabase válido y, además, el
-//     handler compara el token en tiempo constante contra la key esperada
-//     (ver `expectedBearerToken`).
+//     `Authorization: Bearer <key privilegiada del proyecto receptor>`
+//     (service role key legacy o secret key `sb_secret_*`). El gateway
+//     (`verify_jwt = true`) exige un JWT Supabase válido y, además, el handler
+//     compara el token en tiempo constante contra las keys esperadas (ver
+//     `expectedBearerTokens`).
 //   - Sin coordenadas → 200 (el geocoding es S5).
 //
 // Mapeo (escenarios Gherkin S3):
@@ -220,14 +221,14 @@ export interface WebhookDeps {
   /** Geocoder para enriquecer la ubicación del incidente (S5). */
   geocoder?: Geocoder;
   /**
-   * Token Bearer esperado en `Authorization` (S8). Cuando se inyecta, el
-   * handler rechaza con 401 cualquier request sin cabecera o con un token
-   * distinto (comparación en tiempo constante). En producción `index.ts` lo
-   * inyecta con la service role key del proyecto receptor; en los tests
-   * S2–S7 (que no configuran auth) permanece indefinido y el check queda
-   * desactivado.
+   * Tokens Bearer aceptados en `Authorization` (S8). Cuando se inyecta una
+   * lista no vacía, el handler rechaza con 401 cualquier request sin cabecera
+   * o cuyo token no coincida con ninguno de la lista (comparación en tiempo
+   * constante). En producción `index.ts` inyecta la service role key legacy y
+   * las secret keys (`sb_secret_*`) del proyecto receptor; en los tests S2–S7
+   * (que no configuran auth) permanece indefinido y el check queda desactivado.
    */
-  expectedBearerToken?: string;
+  expectedBearerTokens?: readonly string[];
   /**
    * Logger opcional de errores internos (S7). Se invoca en los fallos
    * internos (500) para permitir trazabilidad SERVER-SIDE sin exponer los
@@ -263,10 +264,12 @@ export async function handleWebhookEvent(
   // Autenticación (S8 — cierre de la deuda de seguridad). Defensa en
   // profundidad: el gateway (`verify_jwt = true` en config.toml) ya rechaza
   // requests sin JWT Supabase válido; aquí además se exige que el token sea
-  // EXACTAMENTE la service role key del proyecto receptor (server-to-server).
-  // Solo se aplica cuando se inyecta `deps.expectedBearerToken` (en la Edge
+  // una de las keys privilegiadas del proyecto receptor (service role key
+  // legacy o secret key `sb_secret_*`) — server-to-server. Las publishable
+  // keys y la anon key (públicas) quedan rechazadas.
+  // Solo se aplica cuando se inyecta `deps.expectedBearerTokens` (en la Edge
   // Function real siempre; en los tests S2–S7 sin auth queda inactivo).
-  if (deps.expectedBearerToken) {
+  if (deps.expectedBearerTokens && deps.expectedBearerTokens.length > 0) {
     const authToken = extractBearerToken(req);
     if (!authToken) {
       return jsonResponse(
@@ -279,7 +282,10 @@ export async function handleWebhookEvent(
         { "WWW-Authenticate": 'Bearer realm="webhook"' },
       );
     }
-    if (!safeEqual(authToken, deps.expectedBearerToken)) {
+    const isAllowed = deps.expectedBearerTokens.some((expected) =>
+      safeEqual(authToken, expected),
+    );
+    if (!isAllowed) {
       return jsonResponse(
         {
           code: "unauthorized",

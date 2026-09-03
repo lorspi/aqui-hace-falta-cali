@@ -6,11 +6,12 @@ import { handleWebhookEvent } from "../../supabase/functions/webhook/handler.ts"
 //
 // Cubren la capa de autenticación en-código del handler (defensa en
 // profundidad, además del gateway `verify_jwt = true`). El check se activa
-// SOLO cuando se inyecta `deps.expectedBearerToken`; en producción `index.ts`
-// lo inyecta con la service role key del proyecto receptor.
+// SOLO cuando se inyecta `deps.expectedBearerTokens`; en producción `index.ts`
+// inyecta la service role key legacy y las secret keys (`sb_secret_*`).
 // ============================================================================
 
 const EXPECTED_TOKEN = "service-role-key-del-proyecto-receptor";
+const SECOND_TOKEN = "sb_secret_otra-key-del-receptor";
 
 function buildValidEvent(overrides: Record<string, unknown> = {}) {
   return {
@@ -44,7 +45,7 @@ function makeRequest(
 describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
   it("sin cabecera Authorization devuelve 401 missing_authorization cuando se inyecta expectedBearerToken", async () => {
     const res = await handleWebhookEvent(makeRequest(), {
-      expectedBearerToken: EXPECTED_TOKEN,
+      expectedBearerTokens: [EXPECTED_TOKEN],
     });
 
     expect(res.status).toBe(401);
@@ -56,7 +57,7 @@ describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
   it("con un token distinto al esperado devuelve 401 unauthorized", async () => {
     const res = await handleWebhookEvent(
       makeRequest({ authorization: "Bearer token-incorrecto" }),
-      { expectedBearerToken: EXPECTED_TOKEN },
+      { expectedBearerTokens: [EXPECTED_TOKEN] },
     );
 
     expect(res.status).toBe(401);
@@ -67,7 +68,7 @@ describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
   it("con un esquema distinto de Bearer devuelve 401 missing_authorization", async () => {
     const res = await handleWebhookEvent(
       makeRequest({ authorization: `Basic ${EXPECTED_TOKEN}` }),
-      { expectedBearerToken: EXPECTED_TOKEN },
+      { expectedBearerTokens: [EXPECTED_TOKEN] },
     );
 
     expect(res.status).toBe(401);
@@ -78,7 +79,7 @@ describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
   it("con el token esperado acepta el evento y responde 200", async () => {
     const res = await handleWebhookEvent(
       makeRequest({ authorization: `Bearer ${EXPECTED_TOKEN}` }),
-      { expectedBearerToken: EXPECTED_TOKEN },
+      { expectedBearerTokens: [EXPECTED_TOKEN] },
     );
 
     expect(res.status).toBe(200);
@@ -88,7 +89,31 @@ describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
     expect(body.event_id).toBe("evt_auth_001");
   });
 
-  it("preflight OPTIONS no exige token aunque se inyecte expectedBearerToken", async () => {
+  it("rechaza una publishable key (pública) aunque sea un token JWT válido", async () => {
+    const res = await handleWebhookEvent(
+      makeRequest({
+        authorization: "Bearer sb_publishable_FeQodv4DPvsesNZmAjwBvw_I1zMQKH1",
+      }),
+      { expectedBearerTokens: [EXPECTED_TOKEN] },
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.code).toBe("unauthorized");
+  });
+
+  it("acepta cualquiera de las keys privilegiadas de la lista (p. ej. secret key)", async () => {
+    const res = await handleWebhookEvent(
+      makeRequest({ authorization: `Bearer ${SECOND_TOKEN}` }),
+      { expectedBearerTokens: [EXPECTED_TOKEN, SECOND_TOKEN] },
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("preflight OPTIONS no exige token aunque se inyecte expectedBearerTokens", async () => {
     const res = await handleWebhookEvent(
       makeRequest(
         {
@@ -97,13 +122,13 @@ describe("S8 — Autenticación del webhook (Authorization: Bearer)", () => {
         },
         "OPTIONS",
       ),
-      { expectedBearerToken: EXPECTED_TOKEN },
+      { expectedBearerTokens: [EXPECTED_TOKEN] },
     );
 
     expect(res.status).toBe(204);
   });
 
-  it("sin expectedBearerToken inyectado conserva el comportamiento abierto previo (200)", async () => {
+  it("sin expectedBearerTokens inyectado conserva el comportamiento abierto previo (200)", async () => {
     const res = await handleWebhookEvent(makeRequest());
 
     expect(res.status).toBe(200);
