@@ -51,6 +51,7 @@ const ModeradorPage = lazy(() => import("./components/ModeradorPage").then(m => 
 const AdminPanelPage = lazy(() => import("./components/AdminPanelPage").then(m => ({ default: m.AdminPanelPage })));
 const SocialCardView = lazy(() => import("./components/SocialCardView").then(m => ({ default: m.SocialCardView })));
 const LandingHomePage = lazy(() => import("./components/LandingHomePage").then(m => ({ default: m.LandingHomePage })));
+const LandingPage = lazy(() => import("./features/landing/LandingPage").then(m => ({ default: m.LandingPage })));
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const SimulatedRegisterPage = lazy(() => import("./components/SimulatedRegisterPage").then(m => ({ default: m.SimulatedRegisterPage })));
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
@@ -113,8 +114,9 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+  if (path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
@@ -135,7 +137,9 @@ export default function App() {
   const specialRoute = getSpecialRoute();
 
   let content = <MainApp />;
-  if (specialRoute?.type === 'guia') {
+  if (specialRoute?.type === 'landing') {
+    content = <LandingPage />;
+  } else if (specialRoute?.type === 'guia') {
     content = <LandingHomePage />;
   } else if (specialRoute?.type === 'moderador') {
     content = <ModeradorPage />;
@@ -367,7 +371,13 @@ function MainApp() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [showCreateOffer, setShowCreateOffer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
+    }
+    return false;
+  });
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [radarMatchState, setRadarMatchState] = useState<{
     isOpen: boolean;
