@@ -54,18 +54,26 @@ export const LandingPage: React.FC = () => {
             {/* Nuevo Header editorial conectado con la animación */}
             <section
               id="contenido-principal"
-              className="max-w-4xl mx-auto px-6 sm:px-6 lg:px-8 text-center scroll-mt-20 sm:scroll-mt-24 pb-14 sm:pb-20 space-y-6 sm:space-y-8"
+              className="max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center scroll-mt-20 sm:scroll-mt-24 pb-14 sm:pb-20 space-y-6 sm:space-y-8"
             >
-              {/* Titular Editorial Puro sin tarjeta ni pill */}
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-extrabold text-slate-900 font-sans tracking-tight leading-snug sm:leading-[1.28] max-w-2xl mx-auto">
-                Un solo punto de encuentro para articular la ayuda en emergencias, asegurando que{' '}
-                <span className="text-brand-blue">los tuyos, los míos y los nuestros</span>{' '}
-                estemos en el{' '}
-                <span className="relative inline-block text-slate-900 font-black">
-                  radar
-                  <span className="absolute -bottom-1 left-0 right-0 h-1 bg-brand-yellow rounded-full" />
+              {/* Titular Editorial Puro en 3 filas imponentes y equitativas */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.4rem] xl:text-[2.75rem] 2xl:text-[3.15rem] font-extrabold text-slate-900 font-sans tracking-tight leading-tight sm:leading-[1.2] lg:leading-[1.22] max-w-3xl sm:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto">
+                <span className="lg:block lg:whitespace-nowrap">
+                  Un solo punto de encuentro para articular la ayuda
+                </span>{' '}
+                <span className="lg:block lg:whitespace-nowrap">
+                  en emergencias, asegurando que{' '}
+                  <span className="text-brand-blue">los tuyos,</span>
+                </span>{' '}
+                <span className="lg:block lg:whitespace-nowrap">
+                  <span className="text-brand-blue">los míos y los nuestros</span>{' '}
+                  estemos en el{' '}
+                  <span className="relative inline-block text-slate-900 font-black">
+                    radar
+                    <span className="absolute -bottom-1 left-0 right-0 h-1 sm:h-1.5 bg-brand-yellow rounded-full" />
+                  </span>
+                  .
                 </span>
-                .
               </h2>
 
               {/* Botones de Acción directos y confortables */}
