@@ -1,6 +1,5 @@
 import React from 'react';
 import { RadarAnimatedLogo } from './RadarAnimatedLogo';
-import { RadarMapBackground } from './RadarMapBackground';
 
 interface ElasticRadarHeroProps {
   onOpenChat: () => void;
@@ -8,17 +7,14 @@ interface ElasticRadarHeroProps {
 
 export const ElasticRadarHero: React.FC<ElasticRadarHeroProps> = ({ onOpenChat }) => {
   const scrollToContent = () => {
-    const target = document.getElementById('contenido-principal');
+    const target = document.getElementById('contenido-principal') || document.getElementById('como-funciona');
     if (target) {
       target.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   return (
-    <section className="relative w-full min-h-[calc(100svh-4rem)] sm:min-h-[calc(100vh-4.5rem)] flex flex-col items-center justify-between px-4 pt-2 pb-4 overflow-hidden">
-      {/* 0. MAPA SOLIDARIO DE FONDO: Latinoamérica, Colombia, pines de ayuda y conexiones sutiles */}
-      <RadarMapBackground />
-
+    <section className="relative w-full min-h-[calc(100svh-4rem)] sm:min-h-[calc(100vh-4.5rem)] flex flex-col items-center justify-between px-4 pt-2 pb-4">
       {/* 1. RADAR MONUMENTAL: Centrado puro, sereno y diáfano */}
       <div className="flex-1 flex items-center justify-center w-full max-w-full z-10">
         <div className="relative flex items-center justify-center w-[min(68dvh,94vw,420px)] h-[min(68dvh,94vw,420px)] sm:w-[min(74vh,800px,90vw)] sm:h-[min(74vh,800px,90vw)] max-w-full">
@@ -62,7 +58,7 @@ export const ElasticRadarHero: React.FC<ElasticRadarHeroProps> = ({ onOpenChat }
         </button>
 
         {/* Línea divisoria translúcida sutil */}
-        <div className="w-36 h-px bg-gradient-to-r from-transparent via-slate-300/70 to-transparent mt-2.5" />
+        <div className="w-36 h-px bg-linear-to-r from-transparent via-slate-300/70 to-transparent mt-2.5" />
       </div>
     </section>
   );

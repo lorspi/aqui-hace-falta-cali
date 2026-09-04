@@ -28,8 +28,8 @@ const COLOR_ITEMS: ColorItem[] = [
     activeBorderClass: 'border-red-300',
     activeRingClass: 'ring-2 ring-red-500/40',
     activeTextClass: 'text-red-700',
-    accentBarClass: 'border-l-[#CE3B3B]',
-    dotBgClass: 'bg-[#CE3B3B]',
+    accentBarClass: 'border-l-brand-red',
+    dotBgClass: 'bg-brand-red',
   },
   {
     key: 'blue',
@@ -42,8 +42,8 @@ const COLOR_ITEMS: ColorItem[] = [
     activeBorderClass: 'border-blue-300',
     activeRingClass: 'ring-2 ring-blue-600/40',
     activeTextClass: 'text-blue-800',
-    accentBarClass: 'border-l-[#1B3A93]',
-    dotBgClass: 'bg-[#1B3A93]',
+    accentBarClass: 'border-l-brand-blue',
+    dotBgClass: 'bg-brand-blue',
   },
   {
     key: 'yellow',
@@ -56,8 +56,8 @@ const COLOR_ITEMS: ColorItem[] = [
     activeBorderClass: 'border-amber-300',
     activeRingClass: 'ring-2 ring-amber-400/50',
     activeTextClass: 'text-amber-800',
-    accentBarClass: 'border-l-[#F2C33D]',
-    dotBgClass: 'bg-[#F2C33D]',
+    accentBarClass: 'border-l-brand-yellow',
+    dotBgClass: 'bg-brand-yellow',
   },
 ];
 
@@ -153,7 +153,7 @@ export const InteractiveRadarSymbolGuide: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
           <div className="lg:col-span-5 flex items-center justify-center">
-            <div className="relative flex items-center justify-center w-60 h-60 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-[340px] lg:h-[340px]">
+            <div className="relative flex items-center justify-center w-60 h-60 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-85 lg:h-85">
               <svg
                 viewBox="40 0 980 1024"
                 className="w-full h-full drop-shadow-sm overflow-visible select-none"
@@ -276,7 +276,7 @@ export const InteractiveRadarSymbolGuide: React.FC = () => {
 
           <div className="lg:col-span-7 space-y-3.5">
             <div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#1F1C1A] tracking-tight font-sans">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-brand-text tracking-tight font-sans">
                 ¿Por qué el símbolo y los tres colores?
               </h2>
               <p className="text-slate-600 text-xs sm:text-sm mt-1 sm:mt-1.5 leading-relaxed font-body">
@@ -301,8 +301,8 @@ export const InteractiveRadarSymbolGuide: React.FC = () => {
                       isSelected
                         ? `${item.activeBgClass} ${item.activeBorderClass} ${item.activeRingClass} shadow-md translate-x-1`
                         : isDimmed
-                        ? 'bg-[#F5F6F9]/60 border-slate-200/50 opacity-60'
-                        : 'bg-[#F5F6F9] border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 shadow-2xs'
+                        ? 'bg-brand-surface/60 border-slate-200/50 opacity-60'
+                        : 'bg-brand-surface border-slate-200/80 hover:bg-slate-100/80 hover:border-slate-300 shadow-2xs'
                     }`}
                   >
                     <span
@@ -314,7 +314,7 @@ export const InteractiveRadarSymbolGuide: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h4
                         className={`text-xs sm:text-sm font-extrabold tracking-tight transition-colors duration-200 ${
-                          isSelected ? item.activeTextClass : 'text-[#1F1C1A]'
+                          isSelected ? item.activeTextClass : 'text-brand-text'
                         }`}
                       >
                         {item.title} — {item.label}

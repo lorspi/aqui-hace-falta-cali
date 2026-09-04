@@ -46,12 +46,12 @@ export const LandingHomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F6F9] text-[#1F1C1A] font-sans selection:bg-[#1B3A93] selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-brand-surface text-brand-text font-sans selection:bg-brand-blue selection:text-white overflow-x-hidden">
       {/* Background Micro-glow accents */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#F2C33D]/15 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-[#1B3A93]/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-[#CE3B3B]/05 rounded-full blur-3xl" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-brand-yellow/15 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-brand-red/5 rounded-full blur-3xl" />
       </div>
 
       {/* Navigation Header */}
@@ -64,7 +64,7 @@ export const LandingHomePage: React.FC = () => {
               className="h-9 sm:h-10 w-auto group-hover:scale-105 transition-transform"
             />
             <div className="hidden sm:block border-l border-slate-200 pl-3">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#1B3A93]/10 text-[#1B3A93] border border-[#1B3A93]/20">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
                 Colombia
               </span>
             </div>
@@ -73,7 +73,7 @@ export const LandingHomePage: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <a
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-[#1B3A93] hover:bg-[#1B3A93]/90 text-white shadow-md shadow-[#1B3A93]/20 hover:scale-[1.02] transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold bg-brand-blue hover:bg-brand-blue/90 text-white shadow-md shadow-brand-blue/20 hover:scale-102 transition-all"
             >
               <span>Ir a la App</span>
               <ArrowRight className="w-4 h-4" />
@@ -130,24 +130,24 @@ export const LandingHomePage: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative z-10 pt-12 pb-16 md:pt-16 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.15] text-[#1F1C1A] max-w-4xl mx-auto">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.15] text-brand-text max-w-4xl mx-auto">
           Conectando a quienes{' '}
-          <span className="text-[#1B3A93] underline decoration-[#F2C33D] decoration-4 underline-offset-4">
+          <span className="text-brand-blue underline decoration-brand-yellow decoration-4 underline-offset-4">
             necesitan
           </span>{' '}
           con quienes pueden{' '}
-          <span className="text-[#CE3B3B]">
+          <span className="text-brand-red">
             ayudar
           </span>.
         </h1>
 
         <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-3xl mx-auto font-normal leading-relaxed">
-          <strong className="text-[#1F1C1A] font-bold">RaDAR de Ayuda</strong> es una plataforma abierta que permite a ciudadanos, voluntarios y organizaciones encontrar, reportar y coordinar necesidades y recursos de forma rápida, geolocalizada y organizada en un solo lugar.
+          <strong className="text-brand-text font-bold">RaDAR de Ayuda</strong> es una plataforma abierta que permite a ciudadanos, voluntarios y organizaciones encontrar, reportar y coordinar necesidades y recursos de forma rápida, geolocalizada y organizada en un solo lugar.
         </p>
 
         {/* Step by Step Section (¿Cómo funciona la plataforma?) */}
         <div id="como-funciona" className="mt-12 pt-10 border-t border-slate-200/80 text-center">
-          <h2 className="text-3xl sm:text-4xl font-black text-[#1F1C1A] tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-brand-text tracking-tight">
             ¿Cómo funciona la plataforma?
           </h2>
           <p className="text-slate-600 text-xs sm:text-sm mt-2">
@@ -157,12 +157,12 @@ export const LandingHomePage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 text-left">
             {/* Step 1 */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-[#F2C33D]/20 border border-[#F2C33D]/40 flex items-center justify-center text-slate-900 font-black text-base mb-5 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-brand-yellow/20 border border-brand-yellow/40 flex items-center justify-center text-slate-900 font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 1
               </div>
-              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-brand-text mb-2 flex items-center gap-2">
                 <span>Ubica en el Mapa</span>
-                <MapPin className="w-4 h-4 text-[#1B3A93]" />
+                <MapPin className="w-4 h-4 text-brand-blue" />
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
                 Selecciona tu municipio o permite que el GPS de tu celular detecte tu posición. Explora los puntos de necesidad e insumos en el mapa interactivo.
@@ -171,12 +171,12 @@ export const LandingHomePage: React.FC = () => {
 
             {/* Step 2 */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-[#1B3A93]/15 border border-[#1B3A93]/30 flex items-center justify-center text-[#1B3A93] font-black text-base mb-5 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-brand-blue/15 border border-brand-blue/30 flex items-center justify-center text-brand-blue font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 2
               </div>
-              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-brand-text mb-2 flex items-center gap-2">
                 <span>Publica Necesidad u Oferta</span>
-                <HeartHandshake className="w-4 h-4 text-[#1B3A93]" />
+                <HeartHandshake className="w-4 h-4 text-brand-blue" />
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
                 Dinos qué hace falta (alimentos, medicina, refugio, herramientas) o qué puedes ofrecer. El selector ubica el punto exacto con dirección y contacto.
@@ -185,12 +185,12 @@ export const LandingHomePage: React.FC = () => {
 
             {/* Step 3 */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 relative shadow-sm hover:shadow-md transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-[#CE3B3B]/15 border border-[#CE3B3B]/30 flex items-center justify-center text-[#CE3B3B] font-black text-base mb-5 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-brand-red/15 border border-brand-red/30 flex items-center justify-center text-brand-red font-black text-base mb-5 group-hover:scale-110 transition-transform">
                 3
               </div>
-              <h3 className="text-lg font-extrabold text-[#1F1C1A] mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-brand-text mb-2 flex items-center gap-2">
                 <span>Conecta & Coordina</span>
-                <MessageSquare className="w-4 h-4 text-[#CE3B3B]" />
+                <MessageSquare className="w-4 h-4 text-brand-red" />
               </h3>
               <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
                 El motor Radar Match encuentra coincidencias cercanas. Comunícate en 1-clic por WhatsApp o comparte el enlace directo para movilizar ayuda.
@@ -200,11 +200,11 @@ export const LandingHomePage: React.FC = () => {
 
           {/* Radar Match Section */}
           <div className="mt-14 bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-md relative overflow-hidden text-left">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-[#1B3A93]/05 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-80 h-80 bg-brand-blue/5 rounded-full blur-2xl pointer-events-none" />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
               <div className="lg:col-span-7 space-y-4">
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-brand-text tracking-tight">
                   Motor de Coincidencias Radar Match
                 </h2>
                 <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
@@ -212,24 +212,24 @@ export const LandingHomePage: React.FC = () => {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1B3A93]">
+                  <div className="bg-brand-surface p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-blue">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
                       <span>Score % Match</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">Por coincidencia de categoría y cercanía.</p>
                   </div>
 
-                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1B3A93]">
-                      <MapPin className="w-4 h-4 shrink-0 text-[#F2C33D]" />
+                  <div className="bg-brand-surface p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-blue">
+                      <MapPin className="w-4 h-4 shrink-0 text-brand-yellow" />
                       <span>Distancia en km</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">Proximidad Haversine precisa en tiempo real.</p>
                   </div>
 
-                  <div className="bg-[#F5F6F9] p-3 rounded-xl border border-slate-200">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#CE3B3B]">
+                  <div className="bg-brand-surface p-3 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-red">
                       <PhoneCall className="w-4 h-4 shrink-0" />
                       <span>Contacto 1-Clic</span>
                     </div>
@@ -239,21 +239,21 @@ export const LandingHomePage: React.FC = () => {
               </div>
 
               {/* Visual Match Demo Card */}
-              <div className="lg:col-span-5 bg-[#F5F6F9] border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
+              <div className="lg:col-span-5 bg-brand-surface border border-slate-200 p-4 rounded-2xl space-y-3 shadow-xs">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#CE3B3B] animate-ping" />
-                    <span className="text-xs font-bold text-[#1F1C1A]">Coincidencia Detectada</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-red animate-ping" />
+                    <span className="text-xs font-bold text-brand-text">Coincidencia Detectada</span>
                   </div>
-                  <span className="text-[10px] font-black bg-[#1B3A93] text-white px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-black bg-brand-blue text-white px-2 py-0.5 rounded-md">
                     95% Match
                   </span>
                 </div>
 
                 {/* Need item */}
                 <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
-                  <span className="text-[10px] font-extrabold uppercase text-[#CE3B3B]">Necesidad Activa</span>
-                  <p className="text-xs font-bold text-[#1F1C1A]">Agua Potable y Cobijas</p>
+                  <span className="text-[10px] font-extrabold uppercase text-brand-red">Necesidad Activa</span>
+                  <p className="text-xs font-bold text-brand-text">Agua Potable y Cobijas</p>
                   <p className="text-[11px] text-slate-500">Se requieren botellones de agua para familias afectadas.</p>
                 </div>
 
@@ -263,7 +263,7 @@ export const LandingHomePage: React.FC = () => {
                     <span className="text-[10px] font-extrabold uppercase text-emerald-700">Oferta Cercana (a 1.2 km)</span>
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">Disponible</span>
                   </div>
-                  <p className="text-xs font-bold text-[#1F1C1A]">Donación de 50 botellones de agua</p>
+                  <p className="text-xs font-bold text-brand-text">Donación de 50 botellones de agua</p>
                 </div>
               </div>
             </div>
@@ -279,7 +279,7 @@ export const LandingHomePage: React.FC = () => {
       {/* FAQ Section */}
       <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-black text-[#1F1C1A] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-brand-text tracking-tight">
             Resuelve tus dudas sobre la plataforma
           </h2>
         </div>
@@ -309,12 +309,12 @@ export const LandingHomePage: React.FC = () => {
             >
               <button
                 onClick={() => toggleFaq(idx)}
-                className="w-full p-4 text-left font-bold text-[#1F1C1A] text-xs sm:text-sm flex items-center justify-between gap-3 hover:text-[#1B3A93] transition-colors cursor-pointer"
+                className="w-full p-4 text-left font-bold text-brand-text text-xs sm:text-sm flex items-center justify-between gap-3 hover:text-brand-blue transition-colors cursor-pointer"
               >
                 <span>{faq.q}</span>
                 <ChevronRight
                   className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-                    activeFaq === idx ? 'rotate-90 text-[#1B3A93]' : ''
+                    activeFaq === idx ? 'rotate-90 text-brand-blue' : ''
                   }`}
                 />
               </button>
@@ -329,10 +329,10 @@ export const LandingHomePage: React.FC = () => {
       </section>
 
       {/* Seccion de Contacto para Voluntarios y Aliados */}
-      <section className="relative z-10 bg-gradient-to-br from-[#1B3A93] to-[#0f2461] text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-blue-900/50">
+      <section className="relative z-10 bg-linear-to-br from-brand-blue to-slate-900 text-white py-12 px-4 sm:px-6 lg:px-8 border-t border-blue-900/50">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 bg-white/10 text-blue-200 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
-            <Users className="w-4 h-4 text-[#F2C33D]" />
+            <Users className="w-4 h-4 text-brand-yellow" />
             <span>Voluntarios y Aliados</span>
           </div>
 
@@ -348,9 +348,9 @@ export const LandingHomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsVolunteerModalOpen(true)}
-              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-[#F2C33D] hover:bg-[#e0b232] text-[#1F1C1A] font-black text-sm transition-all shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-brand-yellow hover:bg-brand-yellow/90 text-brand-text font-black text-sm transition-all shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105"
             >
-              <HeartHandshake className="w-5 h-5 shrink-0 text-[#1B3A93]" />
+              <HeartHandshake className="w-5 h-5 shrink-0 text-brand-blue" />
               <span>🧑‍🌾 Registrarme como Voluntario RaDAR</span>
             </button>
 

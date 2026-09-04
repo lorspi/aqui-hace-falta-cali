@@ -34,13 +34,13 @@ export const LandingFooter: React.FC = () => {
             </h5>
             <ul className="space-y-2 text-xs font-body">
               <li>
-                <a href="/" className="hover:text-white transition-colors">
-                  Ver mapa
+                <a href="/?pedir=true" className="hover:text-white transition-colors">
+                  Pedir ayuda
                 </a>
               </li>
               <li>
-                <a href="/guia" className="hover:text-white transition-colors">
-                  Cómo funciona
+                <a href="/?ofrecer=true" className="hover:text-white transition-colors">
+                  Ofrecer ayuda
                 </a>
               </li>
               <li>

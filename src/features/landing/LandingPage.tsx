@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import {
+  Hand,
   MessageSquarePlus,
   HeartHandshake,
-  Map,
-  ArrowRight,
   ShieldCheck,
   CheckCircle2,
   Building2,
@@ -13,6 +12,7 @@ import {
 } from 'lucide-react';
 import { LandingHeader } from './components/LandingHeader';
 import { ElasticRadarHero } from './components/ElasticRadarHero';
+import { RadarMapBackground } from './components/RadarMapBackground';
 import { HowItWorksHeroCard } from './components/HowItWorksHeroCard';
 import { LandingFooter } from './components/LandingFooter';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
@@ -39,71 +39,59 @@ export const LandingPage: React.FC = () => {
 
       <main className="space-y-16 sm:space-y-24">
         {/* ========================================================
-            0. ENTRADA MONUMENTAL DEL RADAR EN SOLITARIO
+            ENTRADA MONUMENTAL DEL RADAR & NUEVO HEADER ARTICULADO
+            Fondo continuo extendido de mapa satelital, nodos y rutas 
+            animadas que cubren desde el radar hasta el inicio de "¿Cómo funciona?"
            ======================================================== */}
-        <ElasticRadarHero onOpenChat={() => setIsChatbotModalOpen(true)} />
+        <div className="relative w-full overflow-hidden">
+          {/* Fondo animado interactivo unificado */}
+          <RadarMapBackground />
 
-        {/* ========================================================
-            1. HERO PRINCIPAL (ORDEN 1)
-            Gran tarjeta con foto de la cadena humana, título tricolor en 3 filas y CTAs equilibrados
-           ======================================================== */}
-        <section
-          id="contenido-principal"
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20 sm:scroll-mt-24"
-        >
-          <div className="relative rounded-3xl sm:rounded-4xl overflow-hidden shadow-2xl border border-slate-800/60 p-6 sm:p-12 lg:p-16 transition-all min-h-[540px] flex items-center">
-            {/* Foto de fondo real: Cadena de personas ayudando (baldes de escombros) */}
-            <img
-              src="/images/landing/baldes-escombros.jpg"
-              alt="Cadena humana de personas cooperando y ayudando en terreno"
-              className="absolute inset-0 w-full h-full object-cover object-center scale-102 brightness-105 contrast-95"
-            />
+          <div className="relative z-10 space-y-10 sm:space-y-14">
+            {/* Radar interactivo */}
+            <ElasticRadarHero onOpenChat={() => setIsChatbotModalOpen(true)} />
 
-            {/* Capas de gradiente direccional más luminosas y diáfanas */}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/50 to-slate-950/15" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/15" />
-            <div className="absolute inset-0 bg-brand-blue/10 mix-blend-multiply pointer-events-none" />
-
-            {/* Contenido del Hero con balance vertical óptimo */}
-            <div className="relative z-10 max-w-3xl space-y-8">
-              {/* Título Principal: Conectamos la ayuda (blanco) / donde realmente (amarillo) / hace falta. (azul) */}
-              <h1 className="text-[2.6rem] xs:text-5xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-extrabold font-sans tracking-tight leading-[1.03]">
-                <span className="block lg:whitespace-nowrap text-white">
-                  Conectamos la ayuda
+            {/* Nuevo Header editorial conectado con la animación */}
+            <section
+              id="contenido-principal"
+              className="max-w-4xl mx-auto px-6 sm:px-6 lg:px-8 text-center scroll-mt-20 sm:scroll-mt-24 pb-14 sm:pb-20 space-y-6 sm:space-y-8"
+            >
+              {/* Titular Editorial Puro sin tarjeta ni pill */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-extrabold text-slate-900 font-sans tracking-tight leading-snug sm:leading-[1.28] max-w-2xl mx-auto">
+                Un solo punto de encuentro para articular la ayuda en emergencias, asegurando que{' '}
+                <span className="text-brand-blue">los tuyos, los míos y los nuestros</span>{' '}
+                estemos en el{' '}
+                <span className="relative inline-block text-slate-900 font-black">
+                  radar
+                  <span className="absolute -bottom-1 left-0 right-0 h-1 bg-brand-yellow rounded-full" />
                 </span>
-                <span className="block mt-1 sm:mt-2 lg:whitespace-nowrap text-brand-yellow drop-shadow-sm">
-                  donde realmente
-                </span>
-                <span className="block mt-1 sm:mt-2 lg:whitespace-nowrap text-brand-blue-light drop-shadow-sm">
-                  hace falta.
-                </span>
-              </h1>
+                .
+              </h2>
 
-              {/* Botones de Acción: en móvil más chicos y ligeros, en escritorio tamaño normal */}
-              <div className="pt-1 sm:pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5">
+              {/* Botones de Acción directos y confortables */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto w-full">
                 {/* Botón Primario: Pedir ayuda */}
                 <button
                   type="button"
                   onClick={() => setIsChatbotModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-4.5 py-2.5 sm:px-6 sm:py-3.5 rounded-xl text-xs sm:text-base font-semibold sm:font-bold text-white bg-brand-red hover:bg-[#B83232] active:scale-98 shadow-xs sm:shadow-md shadow-brand-red/30 transition-all cursor-pointer font-sans"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-red hover:bg-brand-red-hover active:scale-98 shadow-md shadow-brand-red/25 hover:shadow-lg transition-all cursor-pointer font-sans"
                 >
-                  <HeartHandshake className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
+                  <Hand className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
                   <span>Pedir ayuda</span>
                 </button>
 
-                {/* Botón Secundario: Ir al Mapa */}
+                {/* Botón Secundario: Ofrecer Ayuda */}
                 <a
-                  href="/"
-                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-xl text-[11px] sm:text-sm font-normal sm:font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 active:scale-98 transition-all cursor-pointer font-sans"
+                  href="/?ofrecer=true"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-md shadow-brand-blue/25 hover:shadow-lg transition-all cursor-pointer font-sans"
                 >
-                  <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                  <span>Ver mapa en vivo</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-white/60" />
+                  <HeartHandshake className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
+                  <span>Ofrecer ayuda</span>
                 </a>
               </div>
-            </div>
+            </section>
           </div>
-        </section>
+        </div>
 
         {/* ========================================================
             2. CÓMO FUNCIONA CON IMAGEN DE FONDO (ORDEN 2)
@@ -114,8 +102,8 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ========================================================
-            3. PARA ORGANIZACIONES & BRIGADAS (ORDEN 3)
-            Compacto, con colores raDAR y aviso de desarrollo activo
+            3. PARA ORGANIZACIONES, FUNDACIONES & LÍDERES COMUNITARIOS (ORDEN 3)
+            Mensaje unificado: articula capacidad de respuesta con conocimiento en territorio
            ======================================================== */}
         <section id="organizaciones" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24 sm:scroll-mt-28 mb-16 sm:mb-24 lg:mb-32">
           <div className="relative rounded-2xl sm:rounded-4xl bg-white text-slate-900 overflow-hidden p-4 sm:p-8 lg:p-10 border border-slate-200/90 shadow-md sm:shadow-lg shadow-slate-900/5">
@@ -132,43 +120,45 @@ export const LandingPage: React.FC = () => {
             />
 
             <div className="relative z-10 space-y-4 sm:space-y-8">
-              {/* Encabezado compacto */}
-              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6 border-b border-slate-100 pb-3.5 sm:pb-5">
-                <div className="max-w-3xl space-y-1.5 sm:space-y-2.5">
+              {/* Encabezado: en escritorio el CTA se centra en el espacio libre disponible alineado con las tarjetas */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center border-b border-slate-100 pb-4 sm:pb-6">
+                <div className="lg:col-span-2 space-y-1.5 sm:space-y-2.5">
                   <h3 className="text-xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug sm:leading-[1.12]">
                     ¿Lideras una{' '}
                     <span className="text-brand-blue relative inline-block">
                       organización
                       <span className="absolute -bottom-1 left-0 right-0 h-1 bg-brand-yellow rounded-full" />
                     </span>
-                    , fundación o brigada en terreno?
+                    , fundación o representas a tu comunidad?
                   </h3>
 
-                  <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl font-body">
-                    <strong className="text-slate-900 font-semibold">raDAR articula la fuerza solidaria de un país.</strong> Actualmente
-                    nos encontramos en desarrollo de herramientas dedicadas para que fundaciones y brigadas comunitarias se conecten
-                    directamente con las necesidades verificadas en tiempo real.
+                  <p className="text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed font-body">
+                    <strong className="text-slate-900 font-semibold">raDAR une la capacidad de respuesta con la verdad en territorio.</strong> Conectamos
+                    directamente a organizaciones y fundaciones que canalizan recursos con los líderes comunitarios que censan las necesidades reales de cada barrio o vereda,
+                    asegurando que la ayuda llegue a tiempo y sin duplicidades.
                   </p>
                 </div>
 
-                {/* Botón CTA en azul oficial raDAR */}
-                <div className="flex flex-col items-start lg:items-end justify-center shrink-0 w-full sm:w-auto">
+                {/* Botón CTA en escritorio: centrado en el espacio libre disponible y con mayor presencia */}
+                <div className="hidden lg:flex items-center justify-center p-2">
                   <a
-                    href="https://wa.me/573112323588?text=Hola%20raDAR,%20somos%20de%20la%20organizaci%C3%B3n%20[Nombre]%20y%20nos%20gustar%C3%ADa%20sumarnos%20a%20la%20red%20de%20ayuda."
+                    href="https://wa.me/573112323588?text=Hola%20raDAR,%20represento%20a%20una%20organizaci%C3%B3n/comunidad%20y%20nos%20gustar%C3%ADa%20sumarnos%20a%20la%20red%20de%20ayuda."
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3.5 sm:px-6 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-sm sm:shadow-md shadow-brand-blue/25 hover:shadow-lg transition-all cursor-pointer font-sans group"
+                    className="inline-flex items-center justify-center gap-2.5 sm:gap-3 px-7 py-4 lg:px-8 lg:py-4.5 rounded-xl lg:rounded-2xl text-sm lg:text-base font-extrabold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-md shadow-brand-blue/25 hover:shadow-xl hover:shadow-brand-blue/35 hover:-translate-y-0.5 transition-all cursor-pointer font-sans whitespace-nowrap group"
                   >
-                    <MessageSquarePlus className="w-4 h-4 text-brand-yellow shrink-0 group-hover:scale-110 transition-transform" />
-                    <span>Vincular mi organización</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80 group-hover:text-white transition-colors" />
+                    <MessageSquarePlus className="w-4 h-4 lg:w-5 lg:h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                    <span>
+                      Sumarme a RADA<span className="inline-block -scale-x-100">R</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white/90 group-hover:text-white transition-colors" />
                   </a>
                 </div>
               </div>
 
-              {/* 3 Pilares ultra-condensados en móvil (layout horizontal fluido) y columnas en escritorio */}
+              {/* 3 Pilares ultra-condensados en móvil y columnas en escritorio */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-5">
-                {/* Pilar 1: Azul (Asignación) */}
+                {/* Pilar 1: Azul (Coordinación Georreferenciada) */}
                 <div className="group relative rounded-xl p-3 sm:p-5 bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-brand-blue/50 shadow-2xs hover:shadow-sm transition-all flex flex-row sm:flex-col items-start gap-3 sm:gap-0">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0 sm:mb-3 group-hover:scale-108 transition-transform">
                     <ShieldCheck className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -176,14 +166,14 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Asignación Georreferenciada
+                        Coordinación Georreferenciada
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-brand-blue shrink-0">
                         Cero duplicidad
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Ubicación satelital precisa de cada reporte verificado para que tus unidades acudan sin cruzarse con otros equipos.
+                      Mapeo satelital preciso de cada reporte para que las brigadas y fundaciones atiendan los puntos censados por líderes barriales sin cruzarse entre sí.
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-brand-blue">
                       <Check className="w-3.5 h-3.5 shrink-0" />
@@ -192,7 +182,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Pilar 2: Amarillo (Gestión de Roles y Brigadas) */}
+                {/* Pilar 2: Amarillo (Canalización de Recursos & Voluntarios) */}
                 <div className="group relative rounded-xl p-3 sm:p-5 bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-amber-400/60 shadow-2xs hover:shadow-sm transition-all flex flex-row sm:flex-col items-start gap-3 sm:gap-0">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand-yellow/20 flex items-center justify-center text-amber-700 shrink-0 sm:mb-3 group-hover:scale-108 transition-transform">
                     <Users className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -200,23 +190,23 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Voluntarios & Especialistas
+                        Canalización de Ayuda & Manos
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-amber-700 shrink-0">
-                        Perfiles activos
+                        Impacto directo
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Canaliza médicos, rescatistas y transporte especializado según el tipo de incidente reportado en terreno.
+                      Canaliza donaciones, brigadas médicas, rescatistas y transporte directamente según las prioridades validadas por los voceros en territorio.
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-amber-700">
                       <Check className="w-3.5 h-3.5 shrink-0" />
-                      <span>Perfiles técnicos activos</span>
+                      <span>Articulación de capacidades</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Pilar 3: Rojo (Trazabilidad y Métricas Abiertas) */}
+                {/* Pilar 3: Rojo (Cierre en Mapa y Cuentas Claras) */}
                 <div className="group relative rounded-xl p-3 sm:p-5 bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-brand-red/50 shadow-2xs hover:shadow-sm transition-all flex flex-row sm:flex-col items-start gap-3 sm:gap-0">
                   <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-brand-red/10 flex items-center justify-center text-brand-red shrink-0 sm:mb-3 group-hover:scale-108 transition-transform">
                     <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -224,21 +214,37 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Trazabilidad & Cierre Real
+                        Cierre en Mapa y Cuentas Claras
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-brand-red shrink-0">
-                        Auditables
+                        Datos auditables
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Actualiza entregas en mapa vivo, libera recursos para otras zonas y genera métricas transparentes.
+                      Confirmación conjunta de entregas para liberar recursos hacia otras zonas y brindar reportes transparentes y abiertos a la comunidad.
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-brand-red">
                       <Check className="w-3.5 h-3.5 shrink-0" />
-                      <span>Datos auditables</span>
+                      <span>Datos transparentes</span>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Botón CTA en móvil: ubicado al final, después de las pastillas/bullets */}
+              <div className="lg:hidden pt-2 flex justify-center w-full">
+                <a
+                  href="https://wa.me/573112323588?text=Hola%20raDAR,%20represento%20a%20una%20organizaci%C3%B3n/comunidad%20y%20nos%20gustar%C3%ADa%20sumarnos%20a%20la%20red%20de%20ayuda."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 sm:px-6 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-sm sm:shadow-md shadow-brand-blue/25 hover:shadow-lg transition-all cursor-pointer font-sans group"
+                >
+                  <MessageSquarePlus className="w-4 h-4 text-white shrink-0 group-hover:scale-110 transition-transform" />
+                  <span>
+                    Sumarme a RADA<span className="inline-block -scale-x-100">R</span>
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-white/90 group-hover:text-white transition-colors" />
+                </a>
               </div>
             </div>
           </div>

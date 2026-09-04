@@ -6,6 +6,7 @@
 3. Mantén fidelidad visual de 100% con las imágenes de referencia provistas.
 4. Aplica tipado estricto TypeScript y separación clara entre capa de presentación (UI) y validación de datos (Zod).
 5. Toda modificación debe ser mínima, limpia y quirúrgica.
+6. **Uso Canónico de Tailwind CSS:** Usa siempre las clases canónicas y los tokens del sistema de diseño definidos en `src/index.css` (ej. `bg-brand-surface`, `border-brand-blue`, `h-14`, `h-dvh`). Prohibido usar valores arbitrarios con corchetes (`bg-[#...]`, `h-[...px]`) cuando exista una clase estándar o un token equivalente.
 
 ## 🚫 Regla de Despliegues y Entornos (Deployment Protocol)
 1. **ENTORNO DE DESARROLLO Y PRUEBAS:** Todo desarrollo y prueba debe correr únicamente en el servidor local de desarrollo (`npx vite --mode development`) apuntando al ambiente de pruebas / desarrollo.

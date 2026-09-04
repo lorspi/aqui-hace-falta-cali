@@ -23,7 +23,7 @@ export const BigRadarCtaSection: React.FC<BigRadarCtaSectionProps> = ({ onOpenCh
         {/* Logo Monumental reutilizable 100% SVG puro */}
         <RadarAnimatedLogo
           onOpenChat={onOpenChat}
-          className="max-w-[380px] sm:max-w-[500px] md:max-w-[580px] lg:max-w-[620px]"
+          className="max-w-95 sm:max-w-125 md:max-w-145 lg:max-w-155"
         />
       </div>
     </section>

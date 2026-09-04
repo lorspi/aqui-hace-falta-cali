@@ -219,13 +219,13 @@ export const HowItWorksPills: React.FC<HowItWorksPillsProps> = ({ onOpenChat }) 
 
           {/* Columna Derecha: Fotografía real con ficha de estado */}
           <div className="lg:col-span-6 relative">
-            <div className="relative rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[16/10] shadow-lg border border-slate-200 group">
+            <div className="relative rounded-2xl overflow-hidden aspect-4/3 sm:aspect-16/10 shadow-lg border border-slate-200 group">
               <img
                 src={step.imageSrc}
                 alt={step.imageAlt}
                 className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
 
               {/* Ficha flotante de estado en terreno */}
               <div className="absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-white/40 shadow-xl flex items-center justify-between gap-3">

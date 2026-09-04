@@ -58,6 +58,7 @@ const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ def
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
+import { LandingOfferActionModal } from "./components/LandingOfferActionModal";
 import { RadarMatchModal } from "./components/RadarMatchModal";
 import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
@@ -159,7 +160,7 @@ export default function App() {
 
   return (
     <>
-      <Suspense fallback={<div className="min-h-screen bg-[#F5F6F9] flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#1B3A93] border-t-transparent rounded-full animate-spin" /></div>}>
+      <Suspense fallback={<div className="min-h-screen bg-brand-surface flex items-center justify-center"><div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" /></div>}>
         {content}
       </Suspense>
       <DevEnvironmentBanner />
@@ -366,12 +367,24 @@ function MainApp() {
     useState<Need | null>(null);
 
   // Modals state
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return (
+        params.get('pedir') === 'true' ||
+        params.get('reportar') === 'true' ||
+        params.get('accion') === 'pedir' ||
+        params.get('accion') === 'reportar'
+      );
+    }
+    return false;
+  });
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [showCreateOffer, setShowCreateOffer] = useState(() => {
+  const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [isLandingOfferModalOpen, setIsLandingOfferModalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
@@ -410,12 +423,28 @@ function MainApp() {
     }
   };
 
-  // Auto-open welcome onboarding modal on first-time visit
+  // Auto-open welcome onboarding modal on first-time visit (suppressed if arriving via landing offer/pedir CTA)
   useEffect(() => {
     try {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const isOfrecer = params?.get('ofrecer') === 'true' || params?.get('accion') === 'ofrecer';
+      const isPedir =
+        params?.get('pedir') === 'true' ||
+        params?.get('reportar') === 'true' ||
+        params?.get('accion') === 'pedir' ||
+        params?.get('accion') === 'reportar';
       const hasSeen = localStorage.getItem('radar_has_seen_onboarding');
-      if (!hasSeen) {
+      if (!hasSeen && !isOfrecer && !isPedir) {
         setIsWelcomeModalOpen(true);
+      }
+      // Clean query params from URL so modal doesn't re-trigger upon refresh
+      if ((isOfrecer || isPedir) && typeof window !== 'undefined') {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('ofrecer');
+        newUrl.searchParams.delete('pedir');
+        newUrl.searchParams.delete('reportar');
+        newUrl.searchParams.delete('accion');
+        window.history.replaceState({}, '', newUrl.pathname + (newUrl.search || ''));
       }
     } catch (e) {
       console.warn('LocalStorage not available', e);
@@ -1050,8 +1079,8 @@ function MainApp() {
   return (
     <div className={`bg-brand-surface flex flex-col text-brand-text antialiased ${
       mobileView === 'MAP'
-        ? 'h-[100dvh] max-h-[100dvh] overflow-hidden'
-        : 'min-h-[100dvh]'
+        ? 'h-dvh max-h-dvh overflow-hidden'
+        : 'min-h-dvh'
     } md:h-screen md:max-h-screen md:overflow-hidden`}>
       {/* Platform Header */}
       <Header
@@ -1089,7 +1118,7 @@ function MainApp() {
         }}
       />
       {/* Spacer for fixed header */}
-      <div className="h-[56px] md:h-[64px] shrink-0" />
+      <div className="h-14 md:h-16 shrink-0" />
 
       {/* Filter Bar */}
       <FilterBar
@@ -1551,6 +1580,18 @@ function MainApp() {
         onClose={() => setIsWelcomeModalOpen(false)}
         onOpenCreateNeed={() => setIsCreateModalOpen(true)}
         onOpenCreateOffer={() => setShowCreateOffer(true)}
+      />
+
+      <LandingOfferActionModal
+        isOpen={isLandingOfferModalOpen}
+        onClose={() => setIsLandingOfferModalOpen(false)}
+        onRegisterOffer={() => setShowCreateOffer(true)}
+        onViewNeeds={() => {
+          setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
+          if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setMobileView('MAP');
+          }
+        }}
       />
 
       <RadarMatchModal
