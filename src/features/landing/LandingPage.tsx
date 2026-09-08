@@ -134,7 +134,7 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const target = document.getElementById('portal-en-vivo');
+                  const target = document.getElementById('como-funciona');
                   if (target) {
                     const nav = document.querySelector('header');
                     const navHeight = nav ? nav.getBoundingClientRect().height : 72;
@@ -164,21 +164,21 @@ export const LandingPage: React.FC = () => {
 
         {/* ========================================================
             TARJETAS DE CONTENIDO PRINCIPALES DE LA PLATAFORMA
-            Espaciado aumentado y uniforme entre tarjetas (Portal, Cómo funciona y Organizaciones)
+            Espaciado aumentado y uniforme entre tarjetas (Cómo funciona, Split Portal y Organizaciones)
            ======================================================== */}
         <div className="space-y-16 sm:space-y-20 lg:space-y-24">
           {/* ========================================================
-              1. VENTANA / PORTAL EN VIVO DE LA APP (SPLIT-PORTAL)
-             ======================================================== */}
-          <LandingSplitPortal />
-
-          {/* ========================================================
-              2. CÓMO FUNCIONA CON IMAGEN DE FONDO (ORDEN 2)
+              1. CÓMO FUNCIONA CON IMAGEN DE FONDO (ORDEN 1)
               Versión fotográfica High-Key Luminous interactiva
              ======================================================== */}
-          <section id="como-funciona">
+          <section id="como-funciona" className="scroll-mt-20 sm:scroll-mt-24 lg:scroll-mt-28">
             <HowItWorksHeroCard onOpenChat={() => setIsChatbotModalOpen(true)} />
           </section>
+
+          {/* ========================================================
+              2. VENTANA / PORTAL EN VIVO DE LA APP (SPLIT-PORTAL) (ORDEN 2)
+             ======================================================== */}
+          <LandingSplitPortal />
 
           {/* ========================================================
               3. PARA ORGANIZACIONES, FUNDACIONES & LÍDERES COMUNITARIOS (ORDEN 3)
