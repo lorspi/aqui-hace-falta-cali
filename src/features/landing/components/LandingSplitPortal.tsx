@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../../lib/supabaseClient';
 import { getCategoryLabel, formatTimeAgo } from '../../../utils/formatters';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 // Fallback curado y realista para garantizar que la interfaz siempre luzca impecable
 const FALLBACK_NEEDS = [
@@ -86,6 +87,7 @@ const FALLBACK_OFFERS = [
 ];
 
 export const LandingSplitPortal: React.FC = () => {
+  const { t } = useTranslation();
   const [mobileTab, setMobileTab] = useState<'needs' | 'offers'>('needs');
   const [needs, setNeeds] = useState<any[]>(FALLBACK_NEEDS);
   const [offers, setOffers] = useState<any[]>(FALLBACK_OFFERS);
@@ -212,11 +214,11 @@ export const LandingSplitPortal: React.FC = () => {
         {/* Encabezado General Compacto */}
         <div className="text-center max-w-4xl mx-auto space-y-2 mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-            La realidad del territorio, minuto a minuto
+            {t('landingPortalTitle')}
           </h2>
 
           <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto">
-            Un panorama actualizado con las solicitudes comunitarias recientes y las ofertas de voluntariado activas.
+            {t('landingPortalSubtitle')}
           </p>
 
           {/* Selector de Pestaña Móvil */}
@@ -232,7 +234,7 @@ export const LandingSplitPortal: React.FC = () => {
                 }`}
               >
                 <Hand className={`w-4 h-4 shrink-0 ${mobileTab === 'needs' ? 'text-white' : 'text-brand-red'}`} />
-                <span>Necesidades ({needs.length})</span>
+                <span>{t('landingPortalNeedsTab')} ({needs.length})</span>
               </button>
               <button
                 type="button"
@@ -244,7 +246,7 @@ export const LandingSplitPortal: React.FC = () => {
                 }`}
               >
                 <HeartHandshake className={`w-4 h-4 shrink-0 ${mobileTab === 'offers' ? 'text-white' : 'text-brand-blue'}`} />
-                <span>Ofertas ({offers.length})</span>
+                <span>{t('landingPortalOffersTab')} ({offers.length})</span>
               </button>
             </div>
           </div>
@@ -273,11 +275,11 @@ export const LandingSplitPortal: React.FC = () => {
                   </div>
 
                   <h3 className="text-sm sm:text-base font-black text-slate-900">
-                    Necesidades de la comunidad
+                    {t('landingPortalNeedsHeading')}
                   </h3>
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-brand-red text-white">
-                  Necesidades
+                  {t('landingPortalNeedsTab')}
                 </span>
               </div>
 
@@ -333,7 +335,7 @@ export const LandingSplitPortal: React.FC = () => {
                 href="/?vista=necesidades"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl bg-brand-red hover:bg-brand-red/90 active:scale-98 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-brand-red/20 hover:shadow-lg cursor-pointer"
               >
-                <span>Ver todas las necesidades en el mapa →</span>
+                <span>{t('landingPortalViewAllNeeds')} →</span>
               </a>
             </div>
           </div>
@@ -356,11 +358,11 @@ export const LandingSplitPortal: React.FC = () => {
                   </div>
 
                   <h3 className="text-sm sm:text-base font-black text-slate-900">
-                    Ofertas de ayuda
+                    {t('landingPortalOffersHeading')}
                   </h3>
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-brand-blue text-white">
-                  Disponibles
+                  {t('landingPortalOffersTab')}
                 </span>
               </div>
 
@@ -416,7 +418,7 @@ export const LandingSplitPortal: React.FC = () => {
                 href="/?ofrecer=true"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 active:scale-98 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-brand-blue/20 hover:shadow-lg cursor-pointer"
               >
-                <span>Ver todas las ofertas y centros de acopio →</span>
+                <span>{t('landingPortalViewAllOffers')} →</span>
               </a>
             </div>
           </div>

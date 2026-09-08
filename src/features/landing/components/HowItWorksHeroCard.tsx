@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Hand,
   HeartHandshake,
@@ -17,6 +17,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface HighlightItem {
   text: string;
@@ -33,81 +34,6 @@ interface StepData {
   ctaText: string;
   ctaIcon: React.ReactNode;
 }
-
-const STEPS: StepData[] = [
-  {
-    id: 'reporta',
-    pillNumber: '01',
-    pillTitle: 'Reporta',
-    title: 'Transformamos la emergencia en datos accionables',
-    description:
-      'Centralización, estructuración y verificación de las necesidades en territorio, transformando las emergencias en datos accionables.',
-    highlights: [
-      {
-        text: 'Centralización en territorio',
-        icon: <MapPin className="w-4 h-4 text-brand-red" />,
-      },
-      {
-        text: 'Verificación comunitaria',
-        icon: <ShieldCheck className="w-4 h-4 text-brand-blue" />,
-      },
-      {
-        text: 'Datos accionables en tiempo real',
-        icon: <Zap className="w-4 h-4 text-brand-yellow-dark" />,
-      },
-    ],
-    ctaText: 'Pedir ayuda',
-    ctaIcon: <Hand className="w-4 h-4 text-white" />,
-  },
-  {
-    id: 'conecta',
-    pillNumber: '02',
-    pillTitle: 'Conecta',
-    title: 'Articulamos ayuda real con quienes la necesitan',
-    description:
-      'Articulación inteligente de respuestas de ayuda, interconectando capacidades y recursos complementarios para activar RADARes de colaboración abierta.',
-    highlights: [
-      {
-        text: 'Red de aliados e iniciativas activas',
-        icon: <Users className="w-4 h-4 text-brand-blue" />,
-      },
-      {
-        text: 'Enrutamiento inteligente de recursos',
-        icon: <Compass className="w-4 h-4 text-brand-yellow-dark" />,
-      },
-      {
-        text: 'Colaboración abierta y crowdsourcing',
-        icon: <HeartHandshake className="w-4 h-4 text-brand-red" />,
-      },
-    ],
-    ctaText: 'Ofrecer ayuda',
-    ctaIcon: <HeartHandshake className="w-4 h-4 text-white" />,
-  },
-  {
-    id: 'monitorea',
-    pillNumber: '03',
-    pillTitle: 'Monitorea',
-    title: 'Trazabilidad total del impacto en cada comunidad',
-    description:
-      'Seguimiento y trazabilidad de la destinación de los recursos y su impacto real en las comunidades atendidas, consolidando un reporte vivo de impacto.',
-    highlights: [
-      {
-        text: 'Seguimiento a la entrega de recursos',
-        icon: <Clock className="w-4 h-4 text-brand-blue" />,
-      },
-      {
-        text: 'Métricas de impacto verificadas',
-        icon: <BarChart3 className="w-4 h-4 text-brand-yellow-dark" />,
-      },
-      {
-        text: 'Transparencia y rendición de cuentas',
-        icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
-      },
-    ],
-    ctaText: 'Ver mapa',
-    ctaIcon: <Map className="w-4 h-4 text-white" />,
-  },
-];
 
 const STEP_COLORS = [
   {
@@ -141,11 +67,87 @@ interface HowItWorksHeroCardProps {
 }
 
 export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenChat }) => {
+  const { t } = useTranslation();
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isFading, setIsFading] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const STEPS: StepData[] = useMemo(
+    () => [
+      {
+        id: 'reporta',
+        pillNumber: '01',
+        pillTitle: t('landingHowStep1Pill'),
+        title: t('landingHowStep1Title'),
+        description: t('landingHowStep1Desc'),
+        highlights: [
+          {
+            text: t('landingHowStep1H1'),
+            icon: <MapPin className="w-4 h-4 text-brand-red" />,
+          },
+          {
+            text: t('landingHowStep1H2'),
+            icon: <ShieldCheck className="w-4 h-4 text-brand-blue" />,
+          },
+          {
+            text: t('landingHowStep1H3'),
+            icon: <Zap className="w-4 h-4 text-brand-yellow-dark" />,
+          },
+        ],
+        ctaText: t('landingHeroCtaNeed'),
+        ctaIcon: <Hand className="w-4 h-4 text-white" />,
+      },
+      {
+        id: 'conecta',
+        pillNumber: '02',
+        pillTitle: t('landingHowStep2Pill'),
+        title: t('landingHowStep2Title'),
+        description: t('landingHowStep2Desc'),
+        highlights: [
+          {
+            text: t('landingHowStep2H1'),
+            icon: <Users className="w-4 h-4 text-brand-blue" />,
+          },
+          {
+            text: t('landingHowStep2H2'),
+            icon: <Compass className="w-4 h-4 text-brand-yellow-dark" />,
+          },
+          {
+            text: t('landingHowStep2H3'),
+            icon: <HeartHandshake className="w-4 h-4 text-brand-red" />,
+          },
+        ],
+        ctaText: t('landingHeroCtaOffer'),
+        ctaIcon: <HeartHandshake className="w-4 h-4 text-white" />,
+      },
+      {
+        id: 'monitorea',
+        pillNumber: '03',
+        pillTitle: t('landingHowStep3Pill'),
+        title: t('landingHowStep3Title'),
+        description: t('landingHowStep3Desc'),
+        highlights: [
+          {
+            text: t('landingHowStep3H1'),
+            icon: <Clock className="w-4 h-4 text-brand-blue" />,
+          },
+          {
+            text: t('landingHowStep3H2'),
+            icon: <BarChart3 className="w-4 h-4 text-brand-yellow-dark" />,
+          },
+          {
+            text: t('landingHowStep3H3'),
+            icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
+          },
+        ],
+        ctaText: t('landingNavGoToApp'),
+        ctaIcon: <Map className="w-4 h-4 text-white" />,
+      },
+    ],
+    [t]
+  );
 
   const step = STEPS[activeStepIndex];
 
@@ -262,7 +264,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
         {/* Encabezado editorial con símbolo raDAR y R volteada DENTRO de la tarjeta */}
         <div className="relative z-10 text-center max-w-3xl mx-auto mb-6 sm:mb-8 lg:mb-10">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-text font-sans tracking-tight">
-            ¿Cómo funciona RADA<span className="inline-block -scale-x-100">R</span>?
+            {t('landingHowTitleBefore')}RADA<span className="inline-block -scale-x-100">R</span>{t('landingHowTitleAfter')}
           </h2>
         </div>
 
@@ -371,7 +373,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                   className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-brand-red/25 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <Hand className="w-4 h-4 text-white" />
-                  <span>Pedir ayuda</span>
+                  <span>{t('landingHeroCtaNeed')}</span>
                 </button>
               ) : activeStepIndex === 1 ? (
                 <a
@@ -379,7 +381,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                   className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-blue/20 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <HeartHandshake className="w-4 h-4 text-white" />
-                  <span>Ofrecer ayuda</span>
+                  <span>{t('landingHeroCtaOffer')}</span>
                 </a>
               ) : (
                 <a
@@ -387,7 +389,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                   className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-yellow hover:bg-brand-yellow/90 text-slate-900 text-xs sm:text-sm font-extrabold shadow-md shadow-brand-yellow/30 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <Map className="w-4 h-4 text-slate-900" />
-                  <span>Ver mapa</span>
+                  <span>{t('landingNavGoToApp')}</span>
                 </a>
               )}
             </div>

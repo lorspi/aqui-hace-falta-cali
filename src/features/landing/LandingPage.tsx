@@ -18,8 +18,10 @@ import { HowItWorksHeroCard } from './components/HowItWorksHeroCard';
 import { LandingSplitPortal } from './components/LandingSplitPortal';
 import { LandingFooter } from './components/LandingFooter';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export const LandingPage: React.FC = () => {
+  const { t } = useTranslation();
   const [isChatbotModalOpen, setIsChatbotModalOpen] = useState(false);
 
   // Asegurar aislamiento de scroll y comportamiento responsivo idéntico al de la app principal
@@ -82,13 +84,13 @@ export const LandingPage: React.FC = () => {
                 
                 <h1 className="font-sans tracking-tight font-extrabold lg:font-black text-slate-900 text-[1.65rem] sm:text-2xl md:text-3xl lg:text-[2.1rem] xl:text-[2.55rem] 2xl:text-[2.9rem] leading-[1.22] sm:leading-[1.2] lg:leading-[1.15]">
                   <span className="lg:block lg:whitespace-nowrap">
-                    <span className="text-brand-blue">Un solo punto</span>{' '}
-                    de encuentro digital
+                    <span className="text-brand-blue">{t('landingHeroTitlePart1')}</span>{' '}
+                    {t('landingHeroTitlePart2')}
                   </span>{' '}
                   <span className="lg:block lg:whitespace-nowrap">
-                    para articular la{' '}
+                    {t('landingHeroTitlePart3')}{' '}
                     <span className="relative inline-block text-slate-900">
-                      ayuda en emergencias
+                      {t('landingHeroTitlePart4')}
                       <span className="absolute -bottom-1 left-0 right-0 h-1 sm:h-1.5 bg-brand-yellow rounded-full" />
                     </span>
                     .
@@ -104,7 +106,7 @@ export const LandingPage: React.FC = () => {
                     className="flex-1 inline-flex items-center justify-center gap-3 px-7 sm:px-9 py-4 sm:py-5 rounded-2xl text-base sm:text-lg lg:text-xl font-black text-white bg-brand-red hover:bg-brand-red-hover active:scale-98 shadow-xl shadow-brand-red/30 hover:shadow-2xl hover:shadow-brand-red/45 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer font-sans"
                   >
                     <Hand className="w-6 h-6 text-white shrink-0" />
-                    <span>Pedir ayuda</span>
+                    <span>{t('landingHeroCtaNeed')}</span>
                   </button>
 
                   {/* Botón Secundario: Ofrecer Ayuda */}
@@ -113,7 +115,7 @@ export const LandingPage: React.FC = () => {
                     className="flex-1 inline-flex items-center justify-center gap-3 px-7 sm:px-9 py-4 sm:py-5 rounded-2xl text-base sm:text-lg lg:text-xl font-black text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-xl shadow-brand-blue/30 hover:shadow-2xl hover:shadow-brand-blue/45 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer font-sans"
                   >
                     <HeartHandshake className="w-6 h-6 text-white shrink-0" />
-                    <span>Ofrecer ayuda</span>
+                    <span>{t('landingHeroCtaOffer')}</span>
                   </a>
                 </div>
               </div>
@@ -153,7 +155,7 @@ export const LandingPage: React.FC = () => {
                 </span>
 
                 <span className="tracking-tight font-sans">
-                  Conoce RADA<span className="inline-block -scale-x-100">R</span>
+                  {t('landingHeroPill')}<span className="inline-block -scale-x-100">R</span>
                 </span>
 
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-800 transition-transform duration-200 group-hover:translate-y-0.5" />
@@ -204,22 +206,22 @@ export const LandingPage: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center border-b border-slate-100 pb-4 sm:pb-6">
                 <div className="lg:col-span-2 space-y-1.5 sm:space-y-2.5 text-center lg:text-left">
                   <h3 className="text-xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug sm:leading-[1.12]">
-                    ¿Quieres actuar? Súmate como{' '}
+                    {t('landingOrgsTitle')}{' '}
                     <span className="text-brand-blue relative inline-block">
-                      organización
+                      {t('landingOrgsTitleOrg')}
                       <span className="absolute -bottom-1 left-0 right-0 h-1 bg-brand-yellow rounded-full" />
                     </span>
-                    , líder comunitario o voluntario
+                    {t('landingOrgsTitleRest')}
                   </h3>
 
                   {/* Descripción en desktop */}
                   <p className="hidden md:block text-slate-600 text-xs sm:text-sm md:text-base leading-relaxed font-body">
-                    <strong className="text-slate-900 font-semibold">raDAR conecta la capacidad de respuesta con la verdad en territorio.</strong> Articulamos a organizaciones que movilizan recursos, líderes comunitarios que censan las necesidades reales de su sector y voluntarios listos para aportar tiempo o habilidades técnicas. Todo coordinado en tiempo real, sin duplicidades ni esfuerzos aislados.
+                    {t('landingOrgsDescDesktop')}
                   </p>
 
                   {/* Descripción concisa y legible exclusiva para móvil */}
                   <p className="md:hidden text-slate-600 text-sm leading-relaxed font-body max-w-xl mx-auto">
-                    <strong className="text-slate-900 font-semibold">Conectamos la respuesta con el territorio:</strong> articulamos organizaciones, líderes y voluntarios en tiempo real, sin duplicidades ni esfuerzos aislados.
+                    {t('landingOrgsDescMobile')}
                   </p>
                 </div>
 
@@ -233,7 +235,7 @@ export const LandingPage: React.FC = () => {
                   >
                     <MessageSquarePlus className="w-4 h-4 lg:w-5 lg:h-5 text-white shrink-0 group-hover:scale-110 transition-transform" />
                     <span>
-                      Sumarme a RADA<span className="inline-block -scale-x-100">R</span>
+                      {t('landingOrgsCta')}<span className="inline-block -scale-x-100">R</span>
                     </span>
                     <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white/90 group-hover:text-white transition-colors" />
                   </a>
@@ -250,14 +252,14 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <h4 className="text-sm font-bold text-slate-900 font-sans">
-                        Coordinación Georreferenciada
+                        {t('landingOrgsPillar1Title')}
                       </h4>
                       <span className="text-[11px] font-bold text-brand-blue bg-blue-50/90 border border-blue-100 px-2 py-0.5 rounded-full shrink-0">
-                        Cero duplicidad
+                        {t('landingOrgsPillar1Badge')}
                       </span>
                     </div>
                     <p className="text-[13px] text-slate-600 font-body leading-snug">
-                      Mapeo satelital preciso para atender puntos censados por líderes sin cruzarse entre brigadas.
+                      {t('landingOrgsPillar1DescMobile')}
                     </p>
                   </div>
                 </div>
@@ -270,14 +272,14 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <h4 className="text-sm font-bold text-slate-900 font-sans">
-                        Articulación de Recursos
+                        {t('landingOrgsPillar2Title')}
                       </h4>
                       <span className="text-[11px] font-bold text-amber-800 bg-amber-50/90 border border-amber-200/60 px-2 py-0.5 rounded-full shrink-0">
-                        Tus habilidades
+                        {t('landingOrgsPillar2Badge')}
                       </span>
                     </div>
                     <p className="text-[13px] text-slate-600 font-body leading-snug">
-                      Canaliza donaciones, transporte, brigadas y voluntariado hacia prioridades validadas.
+                      {t('landingOrgsPillar2DescMobile')}
                     </p>
                   </div>
                 </div>
@@ -290,14 +292,14 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <h4 className="text-sm font-bold text-slate-900 font-sans">
-                        Cuentas Claras en Mapa
+                        {t('landingOrgsPillar3Title')}
                       </h4>
                       <span className="text-[11px] font-bold text-brand-red bg-rose-50/90 border border-rose-100 px-2 py-0.5 rounded-full shrink-0">
-                        Datos abiertos
+                        {t('landingOrgsPillar3Badge')}
                       </span>
                     </div>
                     <p className="text-[13px] text-slate-600 font-body leading-snug">
-                      Confirmación de entregas para liberar recursos a otras zonas con transparencia auditable.
+                      {t('landingOrgsPillar3DescMobile')}
                     </p>
                   </div>
                 </div>
@@ -313,18 +315,18 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Coordinación Georreferenciada
+                        {t('landingOrgsPillar1Title')}
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-brand-blue shrink-0">
-                        Cero duplicidad
+                        {t('landingOrgsPillar1Badge')}
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Mapeo satelital preciso de cada reporte para que brigadas y fundaciones atiendan los puntos censados por los líderes comunitarios sin cruzarse entre sí.
+                      {t('landingOrgsPillar1Desc')}
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-brand-blue">
                       <Check className="w-3.5 h-3.5 shrink-0" />
-                      <span>Cero duplicidad de esfuerzos</span>
+                      <span>{t('landingOrgsPillar1Foot')}</span>
                     </div>
                   </div>
                 </div>
@@ -337,18 +339,18 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Articulación de Manos y Recursos
+                        {t('landingOrgsPillar2Title')}
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-amber-700 shrink-0">
-                        Tus habilidades
+                        {t('landingOrgsPillar2Badge')}
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Canaliza donaciones, transporte, brigadas médicas y el talento de voluntarios directamente hacia las prioridades validadas por los líderes comunitarios.
+                      {t('landingOrgsPillar2Desc')}
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-amber-700">
                       <Check className="w-3.5 h-3.5 shrink-0" />
-                      <span>Ayuda según tus habilidades</span>
+                      <span>{t('landingOrgsPillar2Foot')}</span>
                     </div>
                   </div>
                 </div>
@@ -361,18 +363,18 @@ export const LandingPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1.5 mb-0.5 sm:mb-1.5">
                       <h4 className="text-xs sm:text-base font-extrabold text-slate-900 font-sans tracking-tight">
-                        Cuentas Claras y Cierre en Mapa
+                        {t('landingOrgsPillar3Title')}
                       </h4>
                       <span className="sm:hidden text-[10px] font-bold text-brand-red shrink-0">
-                        Datos abiertos
+                        {t('landingOrgsPillar3Badge')}
                       </span>
                     </div>
                     <p className="text-[11px] sm:text-[13px] text-slate-600 font-body leading-snug sm:leading-relaxed">
-                      Confirmación conjunta de entregas para liberar recursos hacia otras zonas y brindar reportes transparentes y abiertos a toda la comunidad.
+                      {t('landingOrgsPillar3Desc')}
                     </p>
                     <div className="hidden sm:flex mt-3.5 pt-2.5 border-t border-slate-200/60 items-center gap-1.5 text-[11px] font-bold text-brand-red">
                       <Check className="w-3.5 h-3.5 shrink-0" />
-                      <span>Datos abiertos y auditables</span>
+                      <span>{t('landingOrgsPillar3Foot')}</span>
                     </div>
                   </div>
                 </div>
@@ -388,7 +390,7 @@ export const LandingPage: React.FC = () => {
                 >
                   <MessageSquarePlus className="w-4 h-4 text-white shrink-0 group-hover:scale-110 transition-transform" />
                   <span>
-                    Sumarme a RADA<span className="inline-block -scale-x-100">R</span>
+                    {t('landingOrgsCta')}<span className="inline-block -scale-x-100">R</span>
                   </span>
                   <ExternalLink className="w-3.5 h-3.5 text-white/90 group-hover:text-white transition-colors" />
                 </a>

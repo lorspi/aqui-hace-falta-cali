@@ -1,7 +1,10 @@
 import React from 'react';
 import { Heart, Mail, MessageCircle } from 'lucide-react';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 export const LandingFooter: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <footer id="contacto" className="bg-slate-900 text-slate-300 pt-12 pb-10 border-t border-slate-800 scroll-mt-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -20,37 +23,37 @@ export const LandingFooter: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed font-body max-w-sm">
-              Un solo punto de encuentro digital para articular la ayuda. Para que los tuyos, los míos y los nuestros estemos bien y en el radar.
+              {t('landingFooterTagline')}
             </p>
             <p className="text-[11px] text-slate-500 font-mono pt-1">
-              Hecho con <Heart className="w-3 h-3 inline text-brand-red" /> por voluntarios en Colombia.
+              {t('landingFooterMadeWith')} <Heart className="w-3 h-3 inline text-brand-red" /> {t('landingFooterByVolunteers')}
             </p>
           </div>
 
           {/* Columna 2: Plataforma & Legal */}
           <div className="md:col-span-3 lg:col-span-3 md:col-start-7 lg:col-start-7">
             <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
-              Plataforma
+              {t('landingFooterPlatform')}
             </h5>
             <ul className="space-y-2 text-xs font-body">
               <li>
                 <a href="/?pedir=true" className="hover:text-white transition-colors">
-                  Pedir ayuda
+                  {t('landingHeroCtaNeed')}
                 </a>
               </li>
               <li>
                 <a href="/?ofrecer=true" className="hover:text-white transition-colors">
-                  Ofrecer ayuda
+                  {t('landingHeroCtaOffer')}
                 </a>
               </li>
               <li>
                 <a href="/terminos" className="hover:text-white transition-colors">
-                  Términos y Condiciones
+                  {t('footerTerms')}
                 </a>
               </li>
               <li>
                 <a href="/privacidad" className="hover:text-white transition-colors">
-                  Política de Privacidad
+                  {t('footerPrivacy')}
                 </a>
               </li>
             </ul>
@@ -59,7 +62,7 @@ export const LandingFooter: React.FC = () => {
           {/* Columna 3: Canales de Contacto Directo */}
           <div className="md:col-span-3 lg:col-span-3">
             <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
-              Contacto
+              {t('landingFooterContact')}
             </h5>
             <ul className="space-y-2.5 text-xs font-body">
               <li>
@@ -88,7 +91,7 @@ export const LandingFooter: React.FC = () => {
 
         {/* Barra inferior */}
         <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 font-body">
-          <p>© 2026 raDAR de Ayuda. Iniciativa abierta y comunitaria.</p>
+          <p>{t('landingFooterCopyright')}</p>
           <div className="flex items-center gap-4">
             <a href="https://instagram.com/radardeayuda" target="_blank" rel="noopener noreferrer" className="hover:text-white">
               @radardeayuda
