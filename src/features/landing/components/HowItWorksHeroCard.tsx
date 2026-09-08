@@ -213,25 +213,58 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
     }
   };
 
-  return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Encabezado editorial con símbolo raDAR y R volteada */}
-      <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-10">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-text font-sans tracking-tight">
-          ¿Cómo funciona RADA<span className="inline-block -scale-x-100">R</span>?
-        </h2>
-      </div>
+  // Soporte de gesto swipe en móvil para avanzar o retroceder entre pasos
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+    // Solo activar si el desplazamiento horizontal es al menos 40px y predomina sobre el vertical
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      setIsPaused(true);
+      if (deltaX < 0) {
+        // Swipe izquierda -> siguiente paso
+        changeStepSmoothly((activeStepIndex + 1) % STEPS.length);
+      } else if (deltaX > 0) {
+        // Swipe derecha -> paso anterior
+        changeStepSmoothly((activeStepIndex - 1 + STEPS.length) % STEPS.length);
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  return (
+    <section className="w-full max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-8">
       {/* Tarjeta contenedora principal: al pasar el mouse por encima se pausa el temporizador de lectura */}
       <div
         ref={cardRef}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative w-full max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto rounded-3xl sm:rounded-4xl overflow-hidden shadow-sm border border-slate-200/90 bg-white p-5 sm:p-8 lg:p-12 transition-all min-h-[600px] sm:min-h-[550px] lg:min-h-[570px] flex flex-col justify-center"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative w-full mx-auto rounded-3xl sm:rounded-4xl overflow-hidden shadow-sm border border-slate-200/90 bg-white p-5 sm:p-8 lg:p-12 transition-all min-h-0 sm:min-h-[500px] lg:min-h-[520px] flex flex-col justify-center"
       >
         {/* Auras luminosas sutiles de fondo institucional */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-brand-blue/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Encabezado editorial con símbolo raDAR y R volteada DENTRO de la tarjeta */}
+        <div className="relative z-10 text-center max-w-3xl mx-auto mb-6 sm:mb-8 lg:mb-10">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-text font-sans tracking-tight">
+            ¿Cómo funciona RADA<span className="inline-block -scale-x-100">R</span>?
+          </h2>
+        </div>
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* ========================================================
@@ -295,24 +328,24 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
 
             {/* 2. Bloque de Textos e Iconos con Transición Ultra-Smooth de Opacidad y Altura Estandarizada */}
             <div
-              className={`transition-opacity duration-300 ease-in-out w-full h-[345px] sm:h-[310px] lg:h-[310px] flex flex-col justify-between ${
+              className={`transition-opacity duration-300 ease-in-out w-full h-auto sm:h-[310px] lg:h-[310px] flex flex-col justify-start sm:justify-between gap-4 sm:gap-0 ${
                 isFading ? 'opacity-0' : 'opacity-100'
               }`}
             >
               <div>
                 {/* Título principal: centrado en móvil, alineado a la izquierda en desktop */}
-                <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug text-center lg:text-left max-w-xl mx-auto lg:mx-0 min-h-[56px] sm:min-h-[64px] lg:min-h-[84px] flex items-center lg:items-start">
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug text-center lg:text-left max-w-xl mx-auto lg:mx-0 min-h-0 sm:min-h-[64px] lg:min-h-[84px] flex items-center lg:items-start">
                   {step.title}
                 </h3>
 
-                {/* Párrafo explicativo: centrado en móvil, alineado a la izquierda en desktop */}
-                <p className="text-slate-600 text-xs sm:text-sm md:text-base font-body leading-relaxed max-w-xl mx-auto lg:mx-0 text-center lg:text-left min-h-[84px] sm:min-h-[76px] lg:min-h-[80px] mt-2 flex items-center lg:items-start">
+                {/* Párrafo explicativo: centrado en móvil, alineado a la izquierda en desktop con margen lateral en móvil */}
+                <p className="text-slate-600 text-sm sm:text-sm md:text-base font-body leading-relaxed max-w-xl mx-auto lg:mx-0 text-center lg:text-left px-3 sm:px-0 min-h-0 sm:min-h-[76px] lg:min-h-[80px] mt-2 flex items-center lg:items-start">
                   {step.description}
                 </p>
               </div>
 
               {/* Lista de tres puntos con iconos minimalistas personalizados: centrados en móvil */}
-              <div className="space-y-2 sm:space-y-2.5 pt-1 w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-start h-[135px] sm:h-[116px] lg:h-[116px] justify-between">
+              <div className="space-y-2 sm:space-y-2.5 pt-1 w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-start sm:h-[116px] lg:h-[116px] sm:justify-between">
                 {step.highlights.map((item) => (
                   <div
                     key={item.text}
@@ -476,7 +509,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                       <span className="text-[10px] text-slate-500 font-medium">Siloé, Cali</span>
                     </div>
                     <p className="text-xs sm:text-sm font-bold text-slate-900">
-                      Atención médica y medicamentos
+                      Agua potable & remoción de escombros
                     </p>
                   </div>
 
@@ -502,7 +535,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                       Brigada Voluntarios Valle & Aliados
                     </p>
                     <p className="text-[11px] text-slate-600">
-                      4 brigadistas equipados · Despacho coordinado
+                      4 brigadistas equipados · 35 L de agua
                     </p>
                   </div>
                 </div>

@@ -37,12 +37,12 @@ export const RadarMapBackground: React.FC = () => {
     // CERO CIRCUITO PERIMETRAL: ramas dendríticas y hubs con 4, 3 y 2 conexiones.
     const desktopPathsData = [
       // Constelación Occidental (Izquierda) - 4 partículas
-      // Ruta 1: Desde extremo superior izquierdo cruzando el hub hacia la rama este
-      { d: 'M 90 160 L 210 260 L 320 100 L 640 130 L 320 100 L 210 260 L 90 160', dur: 16000, phase: 0.05 },
-      // Ruta 2: Hub central izquierdo conectando con flanco medio y nodo inferior
-      { d: 'M 70 420 L 210 260 L 280 580 L 100 680 L 70 420', dur: 17000, phase: 0.55 },
-      // Ruta 3: Rama inferior izquierda recorriendo hacia la antena sur
-      { d: 'M 100 680 L 280 580 L 380 780 L 660 810 L 380 780 L 280 580 L 100 680', dur: 18000, phase: 0.3 },
+      // Ruta 1: Desde extremo superior izquierdo cruzando hacia la nueva rama sobre 'encuentro digital' y hacia N_L3
+      { d: 'M 90 160 L 210 260 L 320 100 L 520 200 L 640 130 L 520 200 L 320 100 L 210 260 L 90 160', dur: 18000, phase: 0.05 },
+      // Ruta 2: Hub central izquierdo recorriendo el flanco exterior despejado del texto
+      { d: 'M 90 160 L 210 260 L 70 420 L 100 680 L 70 420 L 210 260 L 90 160', dur: 17000, phase: 0.55 },
+      // Ruta 3: Rama inferior izquierda recorriendo hacia la antena sur pasando bajo 'Ofrecer ayuda'
+      { d: 'M 100 680 L 280 580 L 380 780 L 510 690 L 660 810 L 510 690 L 380 780 L 280 580 L 100 680', dur: 19000, phase: 0.3 },
       // Ruta 4: Bucle triangular local entre N_L1, N_L4 y el hub N_L5
       { d: 'M 90 160 L 70 420 L 210 260 L 90 160', dur: 14000, phase: 0.8 },
 
@@ -242,18 +242,24 @@ export const RadarMapBackground: React.FC = () => {
         {/* LÍNEAS DE INTERCONEXIÓN DEL GRAFO TERRITORIAL */}
         <g className="pointer-events-none">
           {/* --- CONSTELACIÓN OCCIDENTAL (IZQUIERDA) --- */}
-          {/* N_L5 es un HUB con 4 conexiones hacia N_L1, N_L2, N_L4, N_L9 */}
+          {/* N_L5 es un HUB con conexiones hacia N_L1, N_L2, N_L4 */}
           <path d="M 90 160 L 210 260" stroke="#3B82F6" strokeWidth="1.3" strokeOpacity="0.45" />
           <path d="M 210 260 L 320 100" stroke="#F59E0B" strokeWidth="1.2" strokeOpacity="0.4" strokeDasharray="4,5" />
           <path d="M 210 260 L 70 420" stroke="#EF4444" strokeWidth="1.2" strokeOpacity="0.42" />
-          <path d="M 210 260 L 280 580" stroke="#3B82F6" strokeWidth="1.2" strokeOpacity="0.38" />
 
           {/* Ramas adicionales occidentales (3 y 2 puntas, y hojas abiertas) */}
           <path d="M 90 160 L 70 420" stroke="#3B82F6" strokeWidth="1.1" strokeOpacity="0.35" strokeDasharray="3,4" />
           <path d="M 320 100 L 640 130" stroke="#F59E0B" strokeWidth="1.3" strokeOpacity="0.45" />
+          {/* Nueva rama para poblar el espacio diáfano arriba de 'de encuentro digital' */}
+          <path d="M 320 100 L 520 200" stroke="#F59E0B" strokeWidth="1.2" strokeOpacity="0.38" strokeDasharray="4,5" />
+          <path d="M 520 200 L 640 130" stroke="#3B82F6" strokeWidth="1.2" strokeOpacity="0.4" />
+
           <path d="M 70 420 L 100 680" stroke="#94A3B8" strokeWidth="1.1" strokeOpacity="0.4" />
           <path d="M 100 680 L 280 580" stroke="#F59E0B" strokeWidth="1.2" strokeOpacity="0.4" strokeDasharray="4,5" />
           <path d="M 280 580 L 380 780" stroke="#EF4444" strokeWidth="1.3" strokeOpacity="0.45" />
+          {/* Nueva rama para poblar el espacio diáfano debajo del botón 'Ofrecer ayuda' */}
+          <path d="M 380 780 L 510 690" stroke="#F59E0B" strokeWidth="1.2" strokeOpacity="0.4" strokeDasharray="3,4" />
+          <path d="M 510 690 L 660 810" stroke="#3B82F6" strokeWidth="1.2" strokeOpacity="0.4" />
           <path d="M 380 780 L 660 810" stroke="#3B82F6" strokeWidth="1.2" strokeOpacity="0.4" strokeDasharray="4,5" />
 
 
@@ -281,8 +287,10 @@ export const RadarMapBackground: React.FC = () => {
           {/* Nodos Occidente */}
           <circle cx="210" cy="260" r="4.0" fill="#3B82F6" fillOpacity="0.6" />
           <circle cx="320" cy="100" r="3.5" fill="#F59E0B" fillOpacity="0.6" />
+          <circle cx="520" cy="200" r="3.5" fill="#3B82F6" fillOpacity="0.55" />
           <circle cx="70" cy="420" r="3.5" fill="#3B82F6" fillOpacity="0.5" />
           <circle cx="280" cy="580" r="3.8" fill="#EF4444" fillOpacity="0.6" />
+          <circle cx="510" cy="690" r="3.5" fill="#EF4444" fillOpacity="0.55" />
           <circle cx="380" cy="780" r="3.5" fill="#3B82F6" fillOpacity="0.6" />
 
           {/* Nodos Oriente */}
