@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, HeartHandshake, User, CheckCircle2, Loader2, Clock } from 'lucide-react';
+import { X, Send, HeartHandshake, User, CheckCircle2, Loader2, Clock, MapPin } from 'lucide-react';
 import { createQuickTicket } from '../lib/supabaseService';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface ChatbotTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onGoToMap?: () => void;
 }
 
 interface ChatMessage {
@@ -14,7 +15,7 @@ interface ChatMessage {
   text: string;
 }
 
-export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, onClose }) => {
+export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, onClose, onGoToMap }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [inputText, setInputText] = useState('');
   const [contactNameInput, setContactNameInput] = useState('');
@@ -616,14 +617,37 @@ export const ChatbotTicketModal: React.FC<ChatbotTicketModalProps> = ({ isOpen, 
           )}
 
           {step === 5 && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Entendido, Volver al Mapa</span>
-            </button>
+            onGoToMap ? (
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full sm:flex-1 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer order-2 sm:order-1"
+                >
+                  <span>Cerrar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onGoToMap();
+                  }}
+                  className="w-full sm:flex-1 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer order-1 sm:order-2"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>Ir al mapa</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Entendido, Volver al Mapa</span>
+              </button>
+            )
           )}
         </div>
 

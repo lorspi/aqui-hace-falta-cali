@@ -41,7 +41,7 @@ const STEPS: StepData[] = [
     pillTitle: 'Reporta',
     title: 'Transformamos la emergencia en datos accionables',
     description:
-      'Centralización, estructuración y verificación de las necesidades en territorio, transformando la emergencia en datos accionables.',
+      'Centralización, estructuración y verificación de las necesidades en territorio, transformando las emergencias en datos accionables.',
     highlights: [
       {
         text: 'Centralización en territorio',
@@ -65,7 +65,7 @@ const STEPS: StepData[] = [
     pillTitle: 'Conecta',
     title: 'Articulamos ayuda real con quienes la necesitan',
     description:
-      'Articulación de las respuestas de ayuda alineando la capacidad de distintas iniciativas humanitarias, mediante raDARes crowdsourcing.',
+      'Articulación inteligente de respuestas de ayuda, interconectando capacidades y recursos complementarios para activar RADARes de colaboración abierta.',
     highlights: [
       {
         text: 'Red de aliados e iniciativas activas',
@@ -73,7 +73,7 @@ const STEPS: StepData[] = [
       },
       {
         text: 'Enrutamiento inteligente de recursos',
-        icon: <Compass className="w-4 h-4 text-brand-blue" />,
+        icon: <Compass className="w-4 h-4 text-brand-yellow-dark" />,
       },
       {
         text: 'Colaboración abierta y crowdsourcing',
@@ -89,7 +89,7 @@ const STEPS: StepData[] = [
     pillTitle: 'Monitorea',
     title: 'Trazabilidad total del impacto en cada comunidad',
     description:
-      'Seguimiento y trazabilidad de la destinación de los recursos y su impacto real en las comunidades atendidas.',
+      'Seguimiento y trazabilidad de la destinación de los recursos y su impacto real en las comunidades atendidas, consolidando un reporte vivo de impacto.',
     highlights: [
       {
         text: 'Seguimiento a la entrega de recursos',
@@ -227,7 +227,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
         ref={cardRef}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative w-full max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto rounded-3xl sm:rounded-4xl overflow-hidden shadow-sm border border-slate-200/90 bg-white p-5 sm:p-8 lg:p-12 transition-all"
+        className="relative w-full max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto rounded-3xl sm:rounded-4xl overflow-hidden shadow-sm border border-slate-200/90 bg-white p-5 sm:p-8 lg:p-12 transition-all min-h-[600px] sm:min-h-[550px] lg:min-h-[570px] flex flex-col justify-center"
       >
         {/* Auras luminosas sutiles de fondo institucional */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-brand-blue/5 rounded-full blur-3xl pointer-events-none" />
@@ -238,9 +238,9 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
               COLUMNA IZQUIERDA: Stepper Conectado, Textos y CTA
               Optimizado: centrado armónico en móvil y alineado a la izquierda en desktop
              ======================================================== */}
-          <div className="w-full lg:col-span-6 flex flex-col justify-between space-y-6 sm:space-y-8 text-center lg:text-left items-center lg:items-start">
+          <div className="w-full lg:col-span-6 flex flex-col justify-between h-auto lg:h-[460px] gap-6 sm:gap-8 lg:gap-0 text-center lg:text-left items-center lg:items-start">
             {/* 1. Stepper Conectado Horizontal: 1 Rojo, 2 Azul, 3 Amarillo */}
-            <div className="flex items-center justify-between sm:justify-start w-full max-w-[290px] sm:max-w-sm mx-auto lg:mx-0">
+            <div className="flex items-center justify-between sm:justify-start w-full max-w-[290px] sm:max-w-sm mx-auto lg:mx-0 h-14 shrink-0">
               {STEPS.map((s, index) => {
                 const isActive = activeStepIndex === index;
                 const colors = STEP_COLORS[index];
@@ -293,28 +293,30 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
               })}
             </div>
 
-            {/* 2. Bloque de Textos e Iconos con Transición Ultra-Smooth de Opacidad */}
+            {/* 2. Bloque de Textos e Iconos con Transición Ultra-Smooth de Opacidad y Altura Estandarizada */}
             <div
-              className={`space-y-4 sm:space-y-5 transition-opacity duration-300 ease-in-out w-full ${
+              className={`transition-opacity duration-300 ease-in-out w-full h-[345px] sm:h-[310px] lg:h-[310px] flex flex-col justify-between ${
                 isFading ? 'opacity-0' : 'opacity-100'
               }`}
             >
-              {/* Título principal: centrado en móvil, alineado a la izquierda en desktop */}
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug text-center lg:text-left max-w-xl mx-auto lg:mx-0">
-                {step.title}
-              </h3>
+              <div>
+                {/* Título principal: centrado en móvil, alineado a la izquierda en desktop */}
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 font-sans tracking-tight leading-snug text-center lg:text-left max-w-xl mx-auto lg:mx-0 min-h-[56px] sm:min-h-[64px] lg:min-h-[84px] flex items-center lg:items-start">
+                  {step.title}
+                </h3>
 
-              {/* Párrafo explicativo: centrado en móvil, alineado a la izquierda en desktop */}
-              <p className="text-slate-600 text-xs sm:text-sm md:text-base font-body leading-relaxed max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
-                {step.description}
-              </p>
+                {/* Párrafo explicativo: centrado en móvil, alineado a la izquierda en desktop */}
+                <p className="text-slate-600 text-xs sm:text-sm md:text-base font-body leading-relaxed max-w-xl mx-auto lg:mx-0 text-center lg:text-left min-h-[84px] sm:min-h-[76px] lg:min-h-[80px] mt-2 flex items-center lg:items-start">
+                  {step.description}
+                </p>
+              </div>
 
               {/* Lista de tres puntos con iconos minimalistas personalizados: centrados en móvil */}
-              <div className="space-y-2 sm:space-y-2.5 pt-1 w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-start">
+              <div className="space-y-2 sm:space-y-2.5 pt-1 w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-start h-[135px] sm:h-[116px] lg:h-[116px] justify-between">
                 {step.highlights.map((item) => (
                   <div
                     key={item.text}
-                    className="w-full flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 p-2 sm:p-0 rounded-xl bg-slate-50/80 sm:bg-transparent border border-slate-100/90 sm:border-0"
+                    className="w-full flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 p-2 sm:p-0 rounded-xl bg-slate-50/80 sm:bg-transparent border border-slate-100/90 sm:border-0 h-9 sm:h-8"
                   >
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center shrink-0 shadow-2xs">
                       {item.icon}
@@ -327,13 +329,13 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
               </div>
             </div>
 
-            {/* 3. Botón de Acción Contextual Anclado */}
-            <div className="pt-2 w-full flex justify-center lg:justify-start">
+            {/* 3. Botón de Acción Contextual Anclado con Posición y Altura Fija */}
+            <div className="w-full flex items-center justify-center lg:justify-start h-12 shrink-0">
               {activeStepIndex === 0 ? (
                 <button
                   type="button"
                   onClick={onOpenChat}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3.5 sm:py-3 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-brand-red/25 active:scale-98 transition-all cursor-pointer font-sans"
+                  className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-red hover:bg-brand-red/90 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-brand-red/25 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <Hand className="w-4 h-4 text-white" />
                   <span>Pedir ayuda</span>
@@ -341,7 +343,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
               ) : activeStepIndex === 1 ? (
                 <a
                   href="/?ofrecer=true"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3.5 sm:py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-blue/20 active:scale-98 transition-all cursor-pointer font-sans"
+                  className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-blue/20 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <HeartHandshake className="w-4 h-4 text-white" />
                   <span>Ofrecer ayuda</span>
@@ -349,7 +351,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
               ) : (
                 <a
                   href="/"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3.5 sm:py-3 rounded-xl bg-brand-yellow hover:bg-brand-yellow/90 text-slate-900 text-xs sm:text-sm font-extrabold shadow-md shadow-brand-yellow/30 active:scale-98 transition-all cursor-pointer font-sans"
+                  className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-yellow hover:bg-brand-yellow/90 text-slate-900 text-xs sm:text-sm font-extrabold shadow-md shadow-brand-yellow/30 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <Map className="w-4 h-4 text-slate-900" />
                   <span>Ver mapa</span>
@@ -361,7 +363,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
           {/* ========================================================
               COLUMNA DERECHA: Visual Dinámico en Modo Claro (Visible únicamente en escritorio / pantallas grandes)
              ======================================================== */}
-          <div className="hidden lg:flex lg:col-span-6 items-center justify-center relative min-h-95 sm:min-h-110">
+          <div className="hidden lg:flex lg:col-span-6 items-center justify-center relative h-[460px]">
             <div
               className={`w-full transition-opacity duration-300 ease-in-out flex items-center justify-center ${
                 isFading ? 'opacity-0' : 'opacity-100'
@@ -369,9 +371,9 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
             >
               {activeStepIndex === 0 ? (
                 /* PASO 01: Mockup móvil de reporte en territorio (Modo Claro Oficial) */
-                <div className="relative w-full max-w-[290px] sm:max-w-[315px] rounded-[2.5rem] bg-slate-100 p-2.5 shadow-xl border border-slate-300/80">
+                <div className="relative w-full max-w-[290px] sm:max-w-[315px] rounded-[2.5rem] bg-slate-100 p-2.5 shadow-xl border border-slate-300/80 h-[460px] flex flex-col justify-between">
                   {/* Pantalla del dispositivo móvil */}
-                  <div className="rounded-[2rem] bg-white text-slate-900 overflow-hidden p-4 sm:p-5 flex flex-col justify-between border border-slate-200 min-h-100 sm:min-h-105 shadow-xs">
+                  <div className="rounded-[2rem] bg-white text-slate-900 overflow-hidden p-4 sm:p-5 flex flex-col justify-between border border-slate-200 h-full shadow-xs">
                     {/* Barra de estado superior */}
                     <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pb-2 border-b border-slate-100">
                       <span>9:41</span>
@@ -452,7 +454,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                 </div>
               ) : activeStepIndex === 1 ? (
                 /* PASO 02: Mockup de Articulación y Enrutamiento (Modo Claro) */
-                <div className="w-full max-w-sm sm:max-w-md rounded-3xl bg-slate-50 text-slate-900 p-5 sm:p-7 shadow-lg border border-slate-200 space-y-4">
+                <div className="w-full max-w-sm sm:max-w-md rounded-3xl bg-slate-50 text-slate-900 p-5 sm:p-7 shadow-lg border border-slate-200 space-y-4 h-[460px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <div className="flex items-center gap-2">
                       <Compass className="w-4 h-4 text-brand-blue" />
@@ -482,7 +484,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                   <div className="flex items-center justify-center py-0.5">
                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[10px] text-brand-blue font-mono font-bold border border-slate-200 shadow-2xs">
                       <ArrowRight className="w-3 h-3 text-brand-blue rotate-90" />
-                      <span>Conexión directa sin intermediarios</span>
+                      <span>Radar Match</span>
                     </div>
                   </div>
 
@@ -506,7 +508,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                 </div>
               ) : (
                 /* PASO 03: Mockup de Trazabilidad Total y Métricas (Modo Claro) */
-                <div className="w-full max-w-sm sm:max-w-md rounded-3xl bg-slate-50 text-slate-900 p-5 sm:p-7 shadow-lg border border-slate-200 space-y-4">
+                <div className="w-full max-w-sm sm:max-w-md rounded-3xl bg-slate-50 text-slate-900 p-5 sm:p-7 shadow-lg border border-slate-200 space-y-4 h-[460px] flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <div className="flex items-center gap-2">
                       <BarChart3 className="w-4 h-4 text-brand-yellow-dark" />

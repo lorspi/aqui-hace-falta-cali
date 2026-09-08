@@ -22,8 +22,8 @@ const STEPS: StepData[] = [
     id: 'reporta',
     pillNumber: '01',
     pillTitle: 'Reporta',
-    title: 'Comparte qué hace falta o qué puedes dar en 1 minuto',
-    description: 'Cualquier persona, líder barrial o brigadista puede levantar la mano a través de nuestro módulo de chat rápido. Preguntas concretas para capturar la ubicación exacta y la necesidad real.',
+    title: 'Reporta',
+    description: 'Centralización, estructuración y verificación de las necesidades en territorio, transformando las emergencias en datos accionables.',
     features: [
       {
         icon: <MessageSquarePlus className="w-4 h-4 text-brand-blue" />,
@@ -53,8 +53,8 @@ const STEPS: StepData[] = [
     id: 'conecta',
     pillNumber: '02',
     pillTitle: 'Conecta',
-    title: 'Cruzamos la necesidad real con quien puede resolverla',
-    description: 'En emergencias, las cadenas de WhatsApp confunden y saturan. raDAR centraliza los reportes y permite que fundaciones, brigadas y voluntarios sepan exactamente a dónde dirigirse sin chocar entre sí.',
+    title: 'Conecta',
+    description: 'Articulación inteligente de las respuestas de ayuda, interconectando capacidades y recursos complementarios, activando raDARes de colaboración abierta.',
     features: [
       {
         icon: <ShieldAlert className="w-4 h-4 text-brand-blue" />,
@@ -81,11 +81,11 @@ const STEPS: StepData[] = [
     },
   },
   {
-    id: 'rastrea',
+    id: 'monitorea',
     pillNumber: '03',
-    pillTitle: 'Rastrea',
-    title: 'Confirmamos que la ayuda llegó a quien la necesita',
-    description: 'Cada necesidad tiene trazabilidad en el mapa. Una vez que la entrega se concreta o el problema se atiende en terreno, el reporte se actualiza para no enviar más recursos innecesarios al mismo punto.',
+    pillTitle: 'Monitorea',
+    title: 'Monitorea',
+    description: 'Seguimiento y trazabilidad de la destinación de los recursos y su impacto real en las comunidades atendidas, consolidando un reporte vivo de impacto.',
     features: [
       {
         icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,

@@ -5,11 +5,11 @@ export const LandingFooter: React.FC = () => {
   return (
     <footer id="contacto" className="bg-slate-900 text-slate-300 pt-12 pb-10 border-t border-slate-800 scroll-mt-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Enlaces, Contacto y Atribución */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-xs text-slate-400">
-          {/* Columna 1: raDAR */}
-          <div className="space-y-3 sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2">
+        {/* Enlaces y Contacto */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 text-xs text-slate-400">
+          {/* Columna 1: raDAR Identidad */}
+          <div className="space-y-3 md:col-span-6 lg:col-span-5">
+            <div className="flex items-center gap-2.5">
               <img
                 src="/simbolo-radar.svg"
                 alt="Símbolo raDAR"
@@ -19,16 +19,16 @@ export const LandingFooter: React.FC = () => {
                 raDAR DE AYUDA
               </span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed font-body">
+            <p className="text-xs text-slate-400 leading-relaxed font-body max-w-sm">
               Un solo punto de encuentro digital para articular la ayuda. Para que los tuyos, los míos y los nuestros estemos bien y en el radar.
             </p>
-            <p className="text-[11px] text-slate-500 font-mono">
+            <p className="text-[11px] text-slate-500 font-mono pt-1">
               Hecho con <Heart className="w-3 h-3 inline text-brand-red" /> por voluntarios en Colombia.
             </p>
           </div>
 
           {/* Columna 2: Plataforma & Legal */}
-          <div>
+          <div className="md:col-span-3 lg:col-span-3 md:col-start-7 lg:col-start-7">
             <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
               Plataforma
             </h5>
@@ -57,7 +57,7 @@ export const LandingFooter: React.FC = () => {
           </div>
 
           {/* Columna 3: Canales de Contacto Directo */}
-          <div>
+          <div className="md:col-span-3 lg:col-span-3">
             <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
               Contacto
             </h5>
@@ -83,26 +83,6 @@ export const LandingFooter: React.FC = () => {
                 </a>
               </li>
             </ul>
-          </div>
-
-          {/* Columna 4: Atribución de Medios (Obligatorio CC BY 4.0) */}
-          <div>
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
-              Atribución de Medios
-            </h5>
-            <p className="text-[11px] text-slate-400 leading-relaxed font-body">
-              Fotografías de respuesta comunitaria:{' '}
-              <span className="text-slate-200 font-medium">World Central Kitchen</span>, bajo licencia{' '}
-              <a
-                href="https://creativecommons.org/licenses/by/4.0/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-white"
-              >
-                CC BY 4.0
-              </a>{' '}
-              vía Wikimedia Commons.
-            </p>
           </div>
         </div>
 
