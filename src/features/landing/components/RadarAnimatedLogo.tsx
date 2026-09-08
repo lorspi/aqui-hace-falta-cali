@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../../i18n/LanguageContext';
 
 interface RadarAnimatedLogoProps {
   onOpenChat: () => void;
@@ -6,6 +7,7 @@ interface RadarAnimatedLogoProps {
 }
 
 export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat, className = '' }) => {
+  const { t } = useTranslation();
   const [isInteracting, setIsInteracting] = React.useState(false);
 
   const handleStart = () => setIsInteracting(true);
@@ -21,17 +23,6 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
           }
           50% {
             transform: scale(1);
-          }
-        }
-
-        @keyframes svgTextFadeWithWave {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.32;
-            transform: scale(0.975);
           }
         }
 
@@ -96,10 +87,6 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
           animation: svgHeartbeat 3.667s ease-in-out infinite;
           will-change: transform;
         }
-        .animate-svg-text {
-          animation: svgTextFadeWithWave 3.667s ease-in-out infinite;
-          will-change: opacity;
-        }
 
         .animate-svg-ripple-1 {
           opacity: 0;
@@ -134,15 +121,6 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
         .radar-center-button:active {
           transform: scale(1.18);
           transition-duration: 0.2s;
-        }
-
-        /* Al interactuar, se remueve la atenuación de opacidad del texto y queda 100% nítido */
-        .radar-center-button.is-active .animate-svg-text,
-        .radar-center-button:hover .animate-svg-text,
-        .radar-center-button:focus-visible .animate-svg-text {
-          animation: none !important;
-          opacity: 1 !important;
-          transform: scale(1) !important;
         }
       `}</style>
 
@@ -253,7 +231,7 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
             onTouchStart={handleStart}
             onTouchEnd={handleEnd}
             className={`radar-center-button select-none focus:outline-none ${isInteracting ? 'is-active' : ''}`}
-            aria-label="Pedir ayuda"
+            aria-label={t('landingHeroCtaNeed')}
           >
             {/* Círculo Rojo Oficial con respiración profunda */}
             <circle
@@ -264,62 +242,6 @@ export const RadarAnimatedLogo: React.FC<RadarAnimatedLogoProps> = ({ onOpenChat
               className="animate-svg-heartbeat"
               style={{ transformOrigin: '612.823px 515.77px' }}
             />
-
-            {/* Contenido interior vectorizado con fade suave (8s) */}
-            <g
-              className="animate-svg-text pointer-events-none"
-              style={{ transformOrigin: '612.823px 515.77px' }}
-            >
-              {/* Ícono HeartHandshake nativo */}
-              <g transform="translate(590.823, 470) scale(1.83)">
-                <path
-                  d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08v0c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="m18 15-2-2"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="m15 18-2-2"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </g>
-
-              {/* Texto PEDIR AYUDA exactamente centrado en el círculo */}
-              <text
-                x="612.823"
-                y="538"
-                textAnchor="middle"
-                fill="white"
-                fontSize="17"
-                fontWeight="900"
-                fontFamily="Figtree, system-ui, sans-serif"
-                letterSpacing="0.8"
-              >
-                PEDIR AYUDA
-              </text>
-            </g>
           </g>
         </g>
         <defs>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import {
   Hand,
   MessageSquarePlus,
@@ -24,40 +24,81 @@ export const LandingPage: React.FC = () => {
   const { t } = useTranslation();
   const [isChatbotModalOpen, setIsChatbotModalOpen] = useState(false);
 
-  // Asegurar aislamiento de scroll y comportamiento responsivo idéntico al de la app principal
-  React.useEffect(() => {
+  // Referencias para detección adaptativa de espacio vertical en el primer pantallazo
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const ctaContainerRef = useRef<HTMLDivElement>(null);
+  const [hasSpaceForPill, setHasSpaceForPill] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !(window.innerWidth < 1024 && window.innerHeight < 760);
+  });
+
+  // Asegurar aislamiento de scroll y fondo continuo idéntico al footer para evitar rebote a espacio en blanco
+  useEffect(() => {
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehaviorY;
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY;
+
+    // Bloquear overscroll a nivel de documento para evitar rebote elástico hacia espacio en blanco
+    document.documentElement.style.overscrollBehaviorY = 'none';
+    document.body.style.overscrollBehaviorY = 'none';
+    // Sincronizar el canvas del navegador con el color oscuro del footer (#0f172a)
+    document.documentElement.style.backgroundColor = '#0f172a';
+
     if (isChatbotModalOpen) {
       const prevHtmlOverflow = document.documentElement.style.overflow;
       const prevBodyOverflow = document.body.style.overflow;
-      const prevBodyOverscroll = document.body.style.overscrollBehaviorY;
-      const prevHtmlOverscroll = document.documentElement.style.overscrollBehaviorY;
 
       document.documentElement.classList.add('overflow-hidden');
       document.body.classList.add('overflow-hidden');
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
-      document.documentElement.style.overscrollBehaviorY = 'none';
-      document.body.style.overscrollBehaviorY = 'none';
 
       return () => {
         document.documentElement.classList.remove('overflow-hidden');
         document.body.classList.remove('overflow-hidden');
         document.documentElement.style.overflow = prevHtmlOverflow;
         document.body.style.overflow = prevBodyOverflow;
+        document.documentElement.style.backgroundColor = prevHtmlBg;
         document.documentElement.style.overscrollBehaviorY = prevHtmlOverscroll;
         document.body.style.overscrollBehaviorY = prevBodyOverscroll;
       };
-    } else {
-      const prevHtml = document.documentElement.style.overscrollBehaviorY;
-      const prevBody = document.body.style.overscrollBehaviorY;
-      document.documentElement.style.overscrollBehaviorY = 'auto';
-      document.body.style.overscrollBehaviorY = 'auto';
-      return () => {
-        document.documentElement.style.overscrollBehaviorY = prevHtml;
-        document.body.style.overscrollBehaviorY = prevBody;
-      };
     }
+
+    return () => {
+      document.documentElement.style.backgroundColor = prevHtmlBg;
+      document.documentElement.style.overscrollBehaviorY = prevHtmlOverscroll;
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll;
+    };
   }, [isChatbotModalOpen]);
+
+  // Medición reactiva del espacio disponible para la pastilla 'Conoce raDAR'
+  useLayoutEffect(() => {
+    const checkSpace = () => {
+      if (!heroSectionRef.current || !ctaContainerRef.current) return;
+      const heroRect = heroSectionRef.current.getBoundingClientRect();
+      const ctaRect = ctaContainerRef.current.getBoundingClientRect();
+      // Holgura necesaria: píldora (~36px) + offset inferior (16px) + margen de resguardo (24px) = 76px
+      const availableSpaceBelow = heroRect.bottom - ctaRect.bottom;
+      setHasSpaceForPill(availableSpaceBelow >= 76);
+    };
+
+    checkSpace();
+    window.addEventListener('resize', checkSpace);
+    window.addEventListener('orientationchange', checkSpace);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(checkSpace);
+      if (heroSectionRef.current) resizeObserver.observe(heroSectionRef.current);
+      if (ctaContainerRef.current) resizeObserver.observe(ctaContainerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkSpace);
+      window.removeEventListener('orientationchange', checkSpace);
+      resizeObserver?.disconnect();
+    };
+  }, [t]);
 
   return (
     <div className="min-h-screen bg-brand-surface text-brand-text font-sans selection:bg-brand-blue selection:text-white">
@@ -75,6 +116,7 @@ export const LandingPage: React.FC = () => {
           <RadarMapBackground />
 
           <section
+            ref={heroSectionRef}
             id="hero"
             className="relative z-10 w-full min-h-[calc(100svh-4rem)] sm:min-h-[calc(100vh-4.5rem)] flex flex-col justify-start sm:justify-center items-center px-5 sm:px-6 lg:px-8 xl:px-12 pt-7 pb-8 sm:py-12 lg:py-14"
           >
@@ -98,7 +140,10 @@ export const LandingPage: React.FC = () => {
                 </h1>
 
                 {/* Botones de Acción Centrados (Fila 5 de CTAs) */}
-                <div className="pt-4 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-5 w-full max-w-xs sm:max-w-xl mx-auto">
+                <div
+                  ref={ctaContainerRef}
+                  className="pt-4 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-5 w-full max-w-xs sm:max-w-xl mx-auto"
+                >
                   {/* Botón Primario: Pedir ayuda */}
                   <button
                     type="button"
@@ -131,36 +176,38 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Píldora interactiva 'Conoce raDAR' al fondo del primer pantallazo */}
-            <div className="absolute bottom-4 sm:bottom-6 lg:bottom-7 inset-x-0 z-20 flex justify-center pointer-events-none">
-              <button
-                type="button"
-                onClick={() => {
-                  const target = document.getElementById('como-funciona');
-                  if (target) {
-                    const nav = document.querySelector('header');
-                    const navHeight = nav ? nav.getBoundingClientRect().height : 72;
-                    const targetTop = target.getBoundingClientRect().top + window.scrollY - navHeight - 16;
-                    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
-                  }
-                }}
-                className="pointer-events-auto group relative inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-white/95 hover:bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs text-slate-700 hover:text-slate-950 transition-all duration-300 cursor-pointer text-xs font-semibold backdrop-blur-md"
-                aria-label="Conoce raDAR"
-              >
-                {/* Micro-puntos tricolor representativos del radar */}
-                <span className="flex items-center gap-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow animate-pulse" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-red" />
-                </span>
+            {/* Píldora interactiva 'Conoce raDAR' al fondo del primer pantallazo (oculta dinámicamente si no hay espacio) */}
+            {hasSpaceForPill && (
+              <div className="absolute bottom-4 sm:bottom-6 lg:bottom-7 inset-x-0 z-20 flex justify-center pointer-events-none transition-opacity duration-300">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = document.getElementById('como-funciona');
+                    if (target) {
+                      const nav = document.querySelector('header');
+                      const navHeight = nav ? nav.getBoundingClientRect().height : 72;
+                      const targetTop = target.getBoundingClientRect().top + window.scrollY - navHeight - 16;
+                      window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                    }
+                  }}
+                  className="pointer-events-auto group relative inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-white/95 hover:bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs text-slate-700 hover:text-slate-950 transition-all duration-300 cursor-pointer text-xs font-semibold backdrop-blur-md"
+                  aria-label="Conoce raDAR"
+                >
+                  {/* Micro-puntos tricolor representativos del radar */}
+                  <span className="flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-red" />
+                  </span>
 
-                <span className="tracking-tight font-sans">
-                  {t('landingHeroPill')}<span className="inline-block -scale-x-100">R</span>
-                </span>
+                  <span className="tracking-tight font-sans">
+                    {t('landingHeroPill')}<span className="inline-block -scale-x-100">R</span>
+                  </span>
 
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-800 transition-transform duration-200 group-hover:translate-y-0.5" />
-              </button>
-            </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-800 transition-transform duration-200 group-hover:translate-y-0.5" />
+                </button>
+              </div>
+            )}
           </section>
         </div>
 

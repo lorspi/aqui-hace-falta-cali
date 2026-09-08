@@ -6,7 +6,13 @@ export const LandingFooter: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <footer id="contacto" className="bg-slate-900 text-slate-300 pt-12 pb-10 border-t border-slate-800 scroll-mt-12">
+    <footer
+      id="contacto"
+      className="bg-slate-900 text-slate-300 pt-12 pb-10 border-t border-slate-800 scroll-mt-12"
+      style={{
+        paddingBottom: 'max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom, 0px)))',
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Enlaces y Contacto */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 text-xs text-slate-400">
