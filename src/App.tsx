@@ -74,7 +74,11 @@ interface ParsedRoute {
 }
 
 function parseUrlPath(pathname: string): ParsedRoute {
-  const parts = pathname.replace(/^\//, '').replace(/\/$/, '').split('/').filter(Boolean);
+  let cleanPath = pathname.replace(/^\//, '').replace(/\/$/, '');
+  if (cleanPath.startsWith('mapa-ayudas-necesidades')) {
+    cleanPath = cleanPath.replace(/^mapa-ayudas-necesidades\/?/, '');
+  }
+  const parts = cleanPath.split('/').filter(Boolean);
   if (parts.length === 0) {
     return { cityId: ALL_COLOMBIA_ID };
   }
@@ -117,7 +121,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 // Check if current path is a static page or special view
 function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-  if (path === 'landing') return { type: 'landing' };
+  if (path === '' || path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
   if (path === 'panel') return { type: 'panel' };
@@ -293,12 +297,12 @@ function MainApp() {
 
   // Build current URL base for the city (includes department context for homonymous/non-default cities)
   const getCityPath = (cityId: string) => {
-    if (cityId === ALL_COLOMBIA_ID) return '/';
+    if (cityId === ALL_COLOMBIA_ID) return '/mapa-ayudas-necesidades';
     const city = findCityById(cityId);
     if (city && city.departmentId && (city.departmentId === 'quindio' || city.departmentId === 'antioquia')) {
-      return `/${city.departmentId}/${city.id}`;
+      return `/mapa-ayudas-necesidades/${city.departmentId}/${city.id}`;
     }
-    return `/${cityId}`;
+    return `/mapa-ayudas-necesidades/${cityId}`;
   };
 
   // Sync URL when city changes
@@ -774,9 +778,9 @@ function MainApp() {
   const getItemUrlPrefix = (cityId: string, departmentId?: string) => {
     const city = findCityById(cityId, departmentId);
     if (city && city.departmentId && (city.departmentId === 'quindio' || city.departmentId === 'antioquia')) {
-      return `${city.departmentId}/${city.id}`;
+      return `mapa-ayudas-necesidades/${city.departmentId}/${city.id}`;
     }
-    return cityId || selectedCityId;
+    return `mapa-ayudas-necesidades/${cityId || selectedCityId}`;
   };
 
   // Build shareable URL for a need

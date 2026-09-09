@@ -46,7 +46,7 @@ export const RadarSplitCtaSection: React.FC<RadarSplitCtaSectionProps> = ({ onOp
 
               {/* Botón Secundario: Ofrecer ayuda */}
               <a
-                href="/?ofrecer=true"
+                href="/mapa-ayudas-necesidades?ofrecer=true"
                 className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-md shadow-brand-blue/30 transition-all cursor-pointer font-sans"
               >
                 <HeartHandshake className="w-5 h-5 text-white shrink-0" />

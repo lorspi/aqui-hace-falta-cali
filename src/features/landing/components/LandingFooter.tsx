@@ -43,12 +43,12 @@ export const LandingFooter: React.FC = () => {
             </h5>
             <ul className="space-y-2 text-xs font-body">
               <li>
-                <a href="/?pedir=true" className="hover:text-white transition-colors">
+                <a href="/mapa-ayudas-necesidades?pedir=true" className="hover:text-white transition-colors">
                   {t('landingHeroCtaNeed')}
                 </a>
               </li>
               <li>
-                <a href="/?ofrecer=true" className="hover:text-white transition-colors">
+                <a href="/mapa-ayudas-necesidades?ofrecer=true" className="hover:text-white transition-colors">
                   {t('landingHeroCtaOffer')}
                 </a>
               </li>

@@ -377,7 +377,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                 </button>
               ) : activeStepIndex === 1 ? (
                 <a
-                  href="/?ofrecer=true"
+                  href="/mapa-ayudas-necesidades?ofrecer=true"
                   className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-blue/20 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <HeartHandshake className="w-4 h-4 text-white" />
@@ -385,7 +385,7 @@ export const HowItWorksHeroCard: React.FC<HowItWorksHeroCardProps> = ({ onOpenCh
                 </a>
               ) : (
                 <a
-                  href="/"
+                  href="/mapa-ayudas-necesidades"
                   className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 rounded-xl bg-brand-yellow hover:bg-brand-yellow/90 text-slate-900 text-xs sm:text-sm font-extrabold shadow-md shadow-brand-yellow/30 active:scale-98 transition-all cursor-pointer font-sans"
                 >
                   <Map className="w-4 h-4 text-slate-900" />

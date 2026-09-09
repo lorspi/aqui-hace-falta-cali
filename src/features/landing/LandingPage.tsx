@@ -156,7 +156,7 @@ export const LandingPage: React.FC = () => {
 
                   {/* Botón Secundario: Ofrecer Ayuda */}
                   <a
-                    href="/?ofrecer=true"
+                    href="/mapa-ayudas-necesidades?ofrecer=true"
                     className="flex-1 inline-flex items-center justify-center gap-3 px-7 sm:px-9 py-4 sm:py-5 rounded-2xl text-base sm:text-lg lg:text-xl font-black text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-xl shadow-brand-blue/30 hover:shadow-2xl hover:shadow-brand-blue/45 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer font-sans"
                   >
                     <HeartHandshake className="w-6 h-6 text-white shrink-0" />

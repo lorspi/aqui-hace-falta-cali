@@ -24,7 +24,7 @@ const FALLBACK_NEEDS = [
     location: 'Comuna 20 • Siloé, Cali',
     timeAgo: 'Hace 14 min',
     priority: 'ALTA',
-    link: '/cali',
+    link: '/mapa-ayudas-necesidades/cali',
   },
   {
     id: 'n-fb-2',
@@ -35,7 +35,7 @@ const FALLBACK_NEEDS = [
     location: 'Terrón Colorado • Sector La Estatua, Cali',
     timeAgo: 'Hace 32 min',
     priority: 'ALTA',
-    link: '/cali',
+    link: '/mapa-ayudas-necesidades/cali',
   },
   {
     id: 'n-fb-3',
@@ -46,7 +46,7 @@ const FALLBACK_NEEDS = [
     location: 'Puerto Mallarino • Jarillón, Cali',
     timeAgo: 'Hace 1 h',
     priority: 'MEDIA',
-    link: '/cali',
+    link: '/mapa-ayudas-necesidades/cali',
   },
 ];
 
@@ -60,7 +60,7 @@ const FALLBACK_OFFERS = [
     location: 'Chipichape • Norte de Cali',
     timeAgo: 'Hace 8 min',
     status: 'DISPONIBLE',
-    link: '/cali/offer',
+    link: '/mapa-ayudas-necesidades/cali/offer',
   },
   {
     id: 'o-fb-2',
@@ -71,7 +71,7 @@ const FALLBACK_OFFERS = [
     location: 'Ciudad Jardín • Sur de Cali',
     timeAgo: 'Hace 25 min',
     status: 'LISTO PARA RUTA',
-    link: '/cali/offer',
+    link: '/mapa-ayudas-necesidades/cali/offer',
   },
   {
     id: 'o-fb-3',
@@ -82,7 +82,7 @@ const FALLBACK_OFFERS = [
     location: 'Prados del Norte, Cali',
     timeAgo: 'Hace 50 min',
     status: 'DISPONIBLE',
-    link: '/cali/offer',
+    link: '/mapa-ayudas-necesidades/cali/offer',
   },
 ];
 
@@ -161,7 +161,7 @@ export const LandingSplitPortal: React.FC = () => {
               location: `${locationText} (Cali)`,
               timeAgo: formatTimeAgo(need.createdAt, 'es'),
               priority: need.priority || 'MEDIA',
-              link: `/${citySlug}/${need.id}`,
+              link: `/mapa-ayudas-necesidades/${citySlug}/${need.id}`,
             };
           });
           setNeeds(mappedNeeds);
@@ -184,7 +184,7 @@ export const LandingSplitPortal: React.FC = () => {
               location: `${locationText} (Cali)`,
               timeAgo: formatTimeAgo(offer.createdAt, 'es'),
               status: offer.offerStatus || 'DISPONIBLE',
-              link: `/${citySlug}/offer/${offer.id}`,
+              link: `/mapa-ayudas-necesidades/${citySlug}/offer/${offer.id}`,
             };
           });
           setOffers(mappedOffers);
@@ -332,7 +332,7 @@ export const LandingSplitPortal: React.FC = () => {
 
             <div className="pt-1">
               <a
-                href="/?vista=necesidades"
+                href="/mapa-ayudas-necesidades?vista=necesidades"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl bg-brand-red hover:bg-brand-red/90 active:scale-98 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-brand-red/20 hover:shadow-lg cursor-pointer"
               >
                 <span>{t('landingPortalViewAllNeeds')} →</span>
@@ -415,7 +415,7 @@ export const LandingSplitPortal: React.FC = () => {
 
             <div className="pt-1">
               <a
-                href="/?ofrecer=true"
+                href="/mapa-ayudas-necesidades?ofrecer=true"
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 active:scale-98 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-brand-blue/20 hover:shadow-lg cursor-pointer"
               >
                 <span>{t('landingPortalViewAllOffers')} →</span>

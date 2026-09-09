@@ -241,7 +241,9 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Header navigation bar */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between md:gap-3">
         <div className="flex items-center justify-between w-full md:w-auto gap-2">
-          <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 sm:h-9 md:h-10 w-auto shrink-0" />
+          <a href="/" title="Ir a Inicio" className="shrink-0 transition-opacity hover:opacity-90">
+            <img src="/logo-radar.svg" alt="Aquí Hace Falta — Valle del Cauca" className="h-8 sm:h-9 md:h-10 w-auto shrink-0" />
+          </a>
 
           {/* Language selector, guide & User auth for mobile — 3 compact icon pills */}
           <div className="flex items-center gap-1.5 sm:gap-2 md:hidden shrink-0">

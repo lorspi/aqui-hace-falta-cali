@@ -207,7 +207,7 @@ export const HowItWorksPills: React.FC<HowItWorksPillsProps> = ({ onOpenChat }) 
                 </button>
               ) : (
                 <a
-                  href="/"
+                  href="/mapa-ayudas-necesidades"
                   className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold shadow-md cursor-pointer transition-all font-sans"
                 >
                   Ver mapa en vivo
