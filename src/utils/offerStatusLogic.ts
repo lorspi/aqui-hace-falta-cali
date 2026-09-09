@@ -82,3 +82,85 @@ export function computeOfferStatusFromResources(
 
   return "AVAILABLE";
 }
+
+// ============================================================================
+// Report behavior decision
+// ============================================================================
+
+export interface ReportDecision {
+  shouldCreateReport: boolean;
+  shouldUpdateVerificationStatus: boolean;
+  newVerificationStatus: VerificationStatus | null;
+}
+
+/**
+ * Determines the behavior when a report is submitted on an offer.
+ *
+ * - If verificationStatus != "VERIFIED": create report AND set status to "REPORTED"
+ * - If verificationStatus == "VERIFIED": create report but do NOT change status
+ */
+export function computeReportDecision(
+  currentVerificationStatus: string
+): ReportDecision {
+  if (currentVerificationStatus === "VERIFIED") {
+    return {
+      shouldCreateReport: true,
+      shouldUpdateVerificationStatus: false,
+      newVerificationStatus: null,
+    };
+  }
+
+  return {
+    shouldCreateReport: true,
+    shouldUpdateVerificationStatus: true,
+    newVerificationStatus: "REPORTED",
+  };
+}
+
+// ============================================================================
+// Moderation result computation
+// ============================================================================
+
+export interface ModerationResult {
+  newVerificationStatus: VerificationStatus;
+  verifiedBy: string;
+  verifiedAt: string;
+  auditAction: string;
+  auditDetails: string;
+}
+
+/**
+ * Computes the expected results of a verify action.
+ */
+export function computeVerifyResult(
+  moderatorEmail: string,
+  moderatorName: string,
+  offerTitle: string,
+  timestamp: string
+): ModerationResult {
+  return {
+    newVerificationStatus: "VERIFIED",
+    verifiedBy: moderatorEmail,
+    verifiedAt: timestamp,
+    auditAction: "MODERATE_OFFER",
+    auditDetails: `Oferta "${offerTitle}" verificada por ${moderatorName}.`,
+  };
+}
+
+/**
+ * Computes the expected results of an archive action.
+ */
+export function computeArchiveResult(
+  moderatorEmail: string,
+  moderatorName: string,
+  offerTitle: string,
+  timestamp: string
+): ModerationResult {
+  return {
+    newVerificationStatus: "ARCHIVED",
+    verifiedBy: moderatorEmail,
+    verifiedAt: timestamp,
+    auditAction: "MODERATE_OFFER",
+    auditDetails: `Oferta "${offerTitle}" archivada por ${moderatorName}.`,
+  };
+}

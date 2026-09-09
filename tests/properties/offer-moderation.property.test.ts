@@ -13,7 +13,7 @@ import {
   VALID_VERIFICATION_STATUSES,
   MODERATION_ROLES,
   type ResourceState,
-} from "../../convex/offerStatusLogic";
+} from "../../src/utils/offerStatusLogic";
 
 // ============================================================================
 // Generators

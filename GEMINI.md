@@ -1,5 +1,13 @@
 # Reglas del Proyecto (Radar de Ayuda)
 
+## 🔎 Reutilizar antes de crear (Reuse-First Protocol)
+ANTES de crear cualquier componente, hook, utilidad o servicio nuevo:
+1. Lee el inventario vivo `docs/INVENTORY.md`.
+2. Busca en `src/` por nombre y concepto (modal, select, combobox, toast, filter, format, geocod…).
+3. Reúsa lo existente; extiéndelo si es parecido pero incompleto; solo crea algo nuevo si no hay equivalente y justifícalo.
+4. No dupliques componentes/utilidades/servicios existentes. Al crear algo nuevo, añádelo a `docs/INVENTORY.md`.
+Fuente completa: `.kiro/steering/reuse-first.md`.
+
 ## 🛡️ Reglas Generales de Antigravity (Surgical Modification Protocol)
 1. NO reescribas ni modifiques componentes o estilos existentes que no hayan sido expresamente mencionados en la tarea.
 2. Sigue estrictamente la arquitectura del proyecto (TanStack Start + Tailwind CSS + Radix UI + Zod + Supabase).

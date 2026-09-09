@@ -1,6 +1,6 @@
 /**
  * Aquí Hace Falta - Plataforma Ciudadana de Coordinación de Ayuda (Cali)
- * Main Application Component — Convex Backend
+ * Main Application Component — Supabase Backend
  */
 
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";

@@ -37,7 +37,10 @@ import { CityCombobox } from "./CityCombobox";
 import { PublicEditOfferModal } from "./PublicEditOfferModal";
 import { supabase } from "../lib/supabaseClient";
 
-// Stub fallback for legacy modal declarations
+// Stubs inertes de la API de datos heredada (no-op). El panel de administración
+// aún no está migrado por completo a Supabase; estos stubs mantienen el archivo
+// compilando y con comportamiento neutro (sin efectos) hasta que se migre.
+// TODO: migrar login, gestión de usuarios y moderación de ofertas a Supabase.
 const useQuery: any = () => null;
 const useMutation: any = () => async () => {};
 const api: any = new Proxy({}, { get: () => new Proxy({}, { get: () => ({}) }) });
@@ -134,7 +137,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editLatitude, setEditLatitude] = useState(0);
   const [editLongitude, setEditLongitude] = useState(0);
 
-  // Convex mutations
+  // Data mutations (stubs inertes hasta migrar a Supabase)
   const loginMutation = useMutation(api.auth.login);
   const logoutMutation = useMutation(api.auth.logout);
   const createUserMutation = useMutation(api.auth.createUser);
