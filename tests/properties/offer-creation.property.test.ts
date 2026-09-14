@@ -5,7 +5,7 @@ import {
   createOfferDocument,
   type OfferInput,
   type OfferResourceInput,
-} from "../../convex/offerValidation";
+} from "../../src/utils/offerValidation";
 
 // ============================================================================
 // Generators

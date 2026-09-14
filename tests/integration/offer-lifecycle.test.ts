@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   validateOfferInput,
   createOfferDocument,
-} from "../../convex/offerValidation";
+} from "../../src/utils/offerValidation";
 import {
   computeVerifyResult,
   computeArchiveResult,
@@ -11,7 +11,7 @@ import {
   isValidOfferStatus,
   computeReportDecision,
   canModerate,
-} from "../../convex/offerStatusLogic";
+} from "../../src/utils/offerStatusLogic";
 import {
   isOfferVisible,
   isNeedVisible,

@@ -8,12 +8,11 @@ coverage/
 !.env.example
 .docs/
 .firebase/
-.kiro/
+.kiro/specs
 
-# Convex
+# Local env files
 .env.local
 .env.production
-convex/_generated/
 
 # AI-DLC (workflow rules — not committed)
 .aidlc/

@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   validateOfferInput,
   type OfferInput,
-} from "../../convex/offerValidation";
+} from "../../src/utils/offerValidation";
 
 // ============================================================================
 // Unit Tests for CreateOfferModal form validation
-// These test the validation logic extracted into convex/offerValidation.ts,
+// These test the validation logic extracted into src/utils/offerValidation.ts,
 // which mirrors the inline validation in CreateOfferModal's validateForm().
 //
 // **Validates: Requirements 2.2, 2.4, 2.6, 2.8**
@@ -195,7 +195,7 @@ describe("CreateOfferModal — Complete valid input acceptance", () => {
 describe("CreateOfferModal — Geocoding and form reset (behavioral documentation)", () => {
   // The geocoding trigger (address >= 5 chars) and success confirmation + form reset
   // are tested via manual verification since they depend on React component state,
-  // useEffect hooks, and the Convex useMutation hook.
+  // useEffect hooks, and the async submit handler.
   //
   // The validation logic ensures:
   // - If lat/lng is not set, validation fails (which mirrors the form preventing submission

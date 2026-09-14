@@ -1,6 +1,6 @@
 /**
  * Pure validation logic for offer creation, extracted for testability.
- * Used by both the Convex mutation and property-based tests.
+ * Used by the Supabase-backed offer creation flow and by tests.
  */
 
 export interface OfferResourceInput {
