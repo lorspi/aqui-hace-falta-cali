@@ -1,0 +1,20 @@
+# GitHub CODEOWNERS - Asignación Automática de Revisiones por Rol
+
+# 1. Regla Global por defecto (Requiere revisión general)
+* @lorspi
+
+# 2. Maquetación y Mocks (Equipo de Producto)
+src/mocks/ @lorspi
+src/components/mockups/ @lorspi
+
+# 3. Componentes UI, Formularios y Estilos (Equipo Frontend)
+src/components/ui/ @lorspi
+src/components/forms/ @lorspi
+src/pages/ @lorspi
+
+# 4. Servicios, Base de Datos y Supabase (Equipo Fullstack / Backend)
+src/services/ @jesselopez08
+supabase/ @jesselopez08
+
+# Nota: Reemplazar '@lorspi' o agregar los usuarios/equipos de GitHub de cada rol 
+# (ej. @organizacion/equipo-producto, @organizacion/equipo-frontend, @organizacion/equipo-backend).
