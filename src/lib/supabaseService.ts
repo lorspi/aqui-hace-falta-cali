@@ -1337,3 +1337,260 @@ export async function fetchMatchingNeedsForOffer(offerId: string, limit: number 
     return [];
   }
 }
+
+// ==============================================================================
+// FUNCIONES DE SERVICIO PARA LA NUEVA ESTRUCTURA RELACIONAL (ETAPA 2)
+// ==============================================================================
+
+/**
+ * Carga los eventos de emergencia activos registrados en la base de datos
+ */
+export async function fetchEmergencyEvents(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('emergency_events')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.warn('Error al cargar emergency_events:', error);
+      return [];
+    }
+    return data || [];
+  } catch (err) {
+    console.error('Error en fetchEmergencyEvents:', err);
+    return [];
+  }
+}
+
+export const DEFAULT_HELP_CATEGORIES = [
+  { id: 'viveres_bienestar', name: 'Víveres y bienestar básico', icon: 'shopping-bag', description: null },
+  { id: 'materiales_reconstruccion', name: 'Materiales y reconstrucción', icon: 'hammer', description: null },
+  { id: 'rescate_maquinaria', name: 'Rescate y maquinaria', icon: 'truck', description: null },
+  { id: 'salud_asistencia', name: 'Salud y asistencia', icon: 'heart-pulse', description: null },
+  { id: 'servicios_tecnicos', name: 'Capacidades y servicios técnicos', icon: 'briefcase', description: null },
+  { id: 'transporte_instalaciones', name: 'Transporte e instalaciones', icon: 'bus', description: null },
+  { id: 'donacion_economica', name: 'Donación económica', icon: 'dollar-sign', description: null },
+  { id: 'voluntariado_comunitario', name: 'Voluntariado y apoyo comunitario', icon: 'users', description: null }
+];
+
+export const DEFAULT_HELP_RESOURCES = [
+  { id: 'agua_potable', category_id: 'viveres_bienestar', name: 'Agua potable', unit: 'L' },
+  { id: 'alimento_animales', category_id: 'viveres_bienestar', name: 'Cuidado y alimento de animales', unit: 'kg' },
+  { id: 'alimentos', category_id: 'viveres_bienestar', name: 'Alimentos', unit: 'kits' },
+  { id: 'cobijas_colchonetas', category_id: 'viveres_bienestar', name: 'Cobijas y colchonetas', unit: 'juegos' },
+  { id: 'almacenamiento_bodegaje', category_id: 'transporte_instalaciones', name: 'Almacenamiento y bodegaje', unit: 'm²' },
+  { id: 'alojamiento_temporal', category_id: 'transporte_instalaciones', name: 'Alojamiento temporal', unit: 'cupos' },
+  { id: 'cocinas_comunitarias', category_id: 'transporte_instalaciones', name: 'Cocinas comunitarias', unit: 'raciones al día' },
+  { id: 'aporte_economico', category_id: 'donacion_economica', name: 'Aporte económico / Donación en dinero', unit: 'pesos' },
+  { id: 'asesoria_legal', category_id: 'servicios_tecnicos', name: 'Asesoría legal y jurídica', unit: 'profesionales' },
+  { id: 'auditoria_contabilidad', category_id: 'servicios_tecnicos', name: 'Auditoría, contabilidad y finanzas', unit: 'profesionales' },
+  { id: 'atencion_medica', category_id: 'salud_asistencia', name: 'Atención médica', unit: 'profesionales' },
+  { id: 'cubiertas_cerramientos', category_id: 'materiales_reconstruccion', name: 'Cubiertas y cerramientos', unit: 'tejas' },
+  { id: 'equipo_rescate', category_id: 'rescate_maquinaria', name: 'Equipo de Búsqueda y Rescate', unit: 'kits' },
+  { id: 'equipos_bombeo', category_id: 'rescate_maquinaria', name: 'Equipos de bombeo / Motobombas', unit: 'unidades' },
+  { id: 'remocion_escombros', category_id: 'rescate_maquinaria', name: 'Remoción de escombros', unit: 'cuadrillas' },
+  { id: 'herramientas_mano', category_id: 'rescate_herramientas', name: 'Herramientas de mano', unit: 'unidades' },
+  { id: 'plantas_electricas', category_id: 'rescate_maquinaria', name: 'Plantas eléctricas / Generadores', unit: 'unidades' },
+  { id: 'evaluacion_estructural', category_id: 'materiales_reconstruccion', name: 'Evaluación estructural', unit: 'visitas' },
+  { id: 'maquinaria_pesada', category_id: 'rescate_maquinaria', name: 'Maquinaria pesada', unit: 'horas' },
+  { id: 'transporte_terrestre', category_id: 'transporte_instalaciones', name: 'Transporte terrestre / Fletes', unit: 'viajes' },
+  { id: 'implementos_aseo', category_id: 'viveres_bienestar', name: 'Implementos de aseo e higiene', unit: 'kits' },
+  { id: 'salud_mental_psicosocial', category_id: 'salud_asistencia', name: 'Atención psicológica y psicosocial', unit: 'sesiones' }
+];
+
+/**
+ * Carga las categorías y recursos con sus unidades de medida.
+ * Si la base de datos no tiene políticas RLS configuradas o no retorna filas,
+ * retorna el catálogo por defecto alineado con Supabase.
+ */
+export async function fetchHelpCategoriesAndResources(): Promise<{ categories: any[]; resources: any[] }> {
+  try {
+    const [categoriesRes, resourcesRes] = await Promise.all([
+      supabase.from('help_categories').select('*'),
+      supabase.from('help_resources').select('*')
+    ]);
+
+    const categories = (categoriesRes.data && categoriesRes.data.length > 0) ? categoriesRes.data : DEFAULT_HELP_CATEGORIES;
+    const resources = (resourcesRes.data && resourcesRes.data.length > 0) ? resourcesRes.data : DEFAULT_HELP_RESOURCES;
+
+    return { categories, resources };
+  } catch (err) {
+    console.error('Error en fetchHelpCategoriesAndResources:', err);
+    return { categories: DEFAULT_HELP_CATEGORIES, resources: DEFAULT_HELP_RESOURCES };
+  }
+}
+
+
+
+/**
+ * Consulta la tabla pivote emergency_suggested_resources para retornar
+ * los IDs de los recursos sugeridos de prioridad para un evento de emergencia dado.
+ */
+export async function fetchSuggestedResourcesByEmergency(emergencyEventId: string): Promise<string[]> {
+  if (!emergencyEventId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('emergency_suggested_resources')
+      .select('resource_id, display_order')
+      .eq('emergency_event_id', emergencyEventId)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.warn('Error al cargar recursos sugeridos:', error);
+      return [];
+    }
+    return (data || []).map((row: any) => row.resource_id);
+  } catch (err) {
+    console.error('Error en fetchSuggestedResourcesByEmergency:', err);
+    return [];
+  }
+}
+
+/**
+ * Crea una Necesidad en public.needs y desglosa sus ítems en public.need_items
+ */
+export async function createNeedWithItems(needPayload: any, itemsPayload: any[]): Promise<any> {
+  // 1. Verificar autenticación
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || needPayload.userId || needPayload.user_id;
+
+  if (!userId) {
+    throw new Error('AUTH_REQUIRED');
+  }
+
+  // 2. Insertar cabecera de Necesidad
+  const needRow = {
+    user_id: userId,
+    city_id: needPayload.cityId || needPayload.city_id || 'cali',
+    emergency_id: needPayload.emergencyId || needPayload.emergency_id || 'inundacion',
+    emergency_event: needPayload.emergencyEvent || needPayload.emergency_event || 'inundacion',
+    title: needPayload.title,
+    description: needPayload.description,
+    place_type: needPayload.placeType || 'EDIFICIO_AFECTADO',
+    address: needPayload.address,
+    neighborhood: needPayload.neighborhood,
+    latitude: needPayload.latitude || 3.4516,
+    longitude: needPayload.longitude || -76.5320,
+    priority: needPayload.priority || 'MEDIUM',
+    status: needPayload.status || 'OPEN',
+    verification_status: 'PENDING_VERIFICATION',
+    contact_name: needPayload.contactName,
+    contact_phone: needPayload.contactPhone,
+    contact_whatsapp: needPayload.contactWhatsapp,
+    contact_email: needPayload.contactEmail,
+    organization_name: needPayload.organizationName,
+    requester_type: needPayload.requesterType || 'PERSONA',
+    operating_hours: needPayload.operatingHours,
+    access_instructions: needPayload.accessInstructions,
+    contact_notes: needPayload.contactNotes,
+    affected_people: Number(needPayload.affectedPeople) || 0,
+    affected_animals: Number(needPayload.affectedAnimals) || 0,
+    affected_properties: Number(needPayload.affectedProperties) || 0,
+    categories: needPayload.categories || [],
+    resources: needPayload.resources || []
+  };
+
+  const { data: createdNeed, error: needError } = await supabase
+    .from('needs')
+    .insert(needRow)
+    .select()
+    .single();
+
+  if (needError) {
+    console.error('Error insertando en needs:', needError);
+    throw needError;
+  }
+
+  // 3. Insertar ítems desglosados en public.need_items
+  if (itemsPayload && itemsPayload.length > 0) {
+    const needItemsRows = itemsPayload.map((item: any) => ({
+      need_id: createdNeed.id,
+      resource_id: item.resourceId || item.resource_id,
+      category_id: item.categoryId || item.category_id,
+      resource_name: item.resourceName || item.resource_name || item.name,
+      unit: item.unit || 'unidades',
+      target_quantity: Number(item.targetQuantity || item.requestedQuantity || 1),
+      fulfilled_quantity: 0,
+      status: 'PENDING'
+    }));
+
+    const { error: itemsError } = await supabase.from('need_items').insert(needItemsRows);
+    if (itemsError) {
+      console.warn('Error insertando ítems desglosados en need_items:', itemsError);
+    }
+  }
+
+  return createdNeed;
+}
+
+/**
+ * Crea una Oferta en public.offers y desglosa sus ítems en public.offer_items
+ */
+export async function createOfferWithItems(offerPayload: any, itemsPayload: any[]): Promise<any> {
+  // 1. Verificar autenticación
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || offerPayload.userId || offerPayload.user_id;
+
+  if (!userId) {
+    throw new Error('AUTH_REQUIRED');
+  }
+
+  // 2. Insertar cabecera de Oferta
+  const offerRow = {
+    user_id: userId,
+    city_id: offerPayload.cityId || offerPayload.city_id || 'cali',
+    title: offerPayload.title,
+    description: offerPayload.description,
+    address: offerPayload.address,
+    neighborhood: offerPayload.neighborhood,
+    latitude: offerPayload.latitude || 3.4516,
+    longitude: offerPayload.longitude || -76.5320,
+    offer_status: 'AVAILABLE',
+    verification_status: 'PENDING_VERIFICATION',
+    contact_name: offerPayload.contactName,
+    contact_phone: offerPayload.contactPhone,
+    contact_whatsapp: offerPayload.contactWhatsapp,
+    contact_email: offerPayload.contactEmail,
+    organization_name: offerPayload.organizationName,
+    delivery_mode: offerPayload.deliveryMode || 'llevamos',
+    coverage_radius: offerPayload.coverageRadius || '10 km',
+    shipping_cost: offerPayload.shippingCost || 'Gratis',
+    categories: offerPayload.categories || [],
+    resources: offerPayload.resources || []
+  };
+
+  const { data: createdOffer, error: offerError } = await supabase
+    .from('offers')
+    .insert(offerRow)
+    .select()
+    .single();
+
+  if (offerError) {
+    console.error('Error insertando en offers:', offerError);
+    throw offerError;
+  }
+
+  // 3. Insertar ítems desglosados en public.offer_items
+  if (itemsPayload && itemsPayload.length > 0) {
+    const offerItemsRows = itemsPayload.map((item: any) => ({
+      offer_id: createdOffer.id,
+      resource_id: item.resourceId || item.resource_id,
+      category_id: item.categoryId || item.category_id,
+      resource_name: item.resourceName || item.resource_name || item.name,
+      unit: item.unit || 'unidades',
+      available_quantity: Number(item.availableQuantity || item.quantity || 1),
+      fulfilled_quantity: 0,
+      status: 'AVAILABLE'
+    }));
+
+    const { error: itemsError } = await supabase.from('offer_items').insert(offerItemsRows);
+    if (itemsError) {
+      console.warn('Error insertando ítems desglosados en offer_items:', itemsError);
+    }
+  }
+
+  return createdOffer;
+}
+

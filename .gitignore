@@ -20,3 +20,6 @@ coverage/
 # Scratch & Snapshots
 scratch/
 *.zip
+pip_packages/
+test_html.pdf
+

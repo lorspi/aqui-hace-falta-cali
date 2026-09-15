@@ -1,11 +1,18 @@
-# Reutilizar antes de crear (Reuse-First Protocol)
+# REGLAS DEL PROYECTO PARA EQUIPO E IA (SURGICAL & STABLE DEVELOPMENT)
 
+# 1. Reutilizar antes de crear (Reuse-First Protocol)
 ANTES de crear cualquier archivo, componente, hook, utilidad o servicio nuevo:
+- Lee el inventario vivo: docs/INVENTORY.md
+- Consulta las guías de equipo en: docs/REGLAS_EQUIPO_Y_ROLES.md y docs/ESTANDAR_TECNICO_Y_MOCKS.md
+- Busca en src/ por nombre y concepto (modal, select, combobox, toast, filter, format, geocod...).
+- Reúsa lo existente; extiéndelo si es parecido pero incompleto; solo crea algo nuevo si no hay equivalente y justifícalo.
+- No dupliques componentes (Select, Modal, Toast, Combobox), utilidades de src/utils/, ni el cliente de datos.
 
-1. Lee el inventario vivo: docs/INVENTORY.md
-2. Busca en src/ por nombre y por concepto (modal, select, combobox, toast, filter, format, geocod...).
-3. Reúsa lo existente; extiéndelo si es parecido pero incompleto; solo crea algo nuevo si no hay equivalente y justifícalo.
-4. No dupliques componentes (Select, Modal, Toast, Combobox), utilidades de src/utils/, ni el cliente de datos (src/lib/supabaseClient.ts).
-5. Al crear algo nuevo, añádelo a docs/INVENTORY.md en el mismo cambio.
+# 2. Modificación Quirúrgica y Anti-Regresión
+- NUNCA reescribas ni modifiques componentes o estilos existentes que no hayan sido expresamente mencionados en la tarea.
+- Sigue estrictamente la arquitectura del proyecto (React 19 + TypeScript + Vite + Tailwind CSS + Zod + Supabase).
+- Toda modificación debe ser mínima, limpia y quirúrgica.
 
-Fuente de verdad completa: .kiro/steering/reuse-first.md y docs/INVENTORY.md
+# 3. Patrón Mock-First y Tipado
+- Producto y Frontend maquetan usando tipos en `src/types/` y datos simulados en `src/mocks/`.
+- Backend conecta los servicios en `src/services/` hacia Supabase.

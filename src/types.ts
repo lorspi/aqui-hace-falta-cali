@@ -216,3 +216,89 @@ export interface QuickTicket {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==============================================================================
+// NUEVA ESTRUCTURA NORMALIZADA DE SUPABASE (ETAPA 2)
+// ==============================================================================
+
+export interface EmergencyEventItem {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HelpCategoryRecord {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HelpResourceRecord {
+  id: string;
+  categoryId: string;
+  name: string;
+  unit: string;
+  unitType?: string;
+  calculationType?: string;
+  rationPerUnit?: number;
+  formulaDivisor?: number;
+  populationBase?: string;
+  multipliesDays?: boolean;
+  detailPrompt?: string;
+  isActive?: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  // Propiedad auxiliar en la UI
+  isSuggested?: boolean;
+}
+
+export interface EmergencySuggestedResource {
+  emergencyEventId: string;
+  resourceId: string;
+  displayOrder: number;
+  createdAt?: string;
+}
+
+export interface NeedItemRecord {
+  id?: string;
+  needId?: string;
+  resourceId: string;
+  categoryId: string;
+  resourceName: string;
+  unit: string;
+  targetQuantity: number;
+  fulfilledQuantity?: number;
+  calculationType?: string;
+  formulaBreakdown?: string;
+  qualitativeDetails?: string;
+  status?: 'PENDING' | 'PARTIAL' | 'FULFILLED';
+  createdAt?: string;
+}
+
+export interface OfferItemRecord {
+  id?: string;
+  offerId?: string;
+  resourceId: string;
+  categoryId: string;
+  resourceName: string;
+  unit: string;
+  availableQuantity: number;
+  fulfilledQuantity?: number;
+  timeAvailabilityType?: string;
+  untilDate?: string;
+  technicalFields?: Record<string, any>;
+  status?: 'AVAILABLE' | 'EXHAUSTED';
+  createdAt?: string;
+}
+
