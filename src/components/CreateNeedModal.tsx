@@ -4,6 +4,7 @@ import { HelpCategory, Need, PlaceType, Priority, HelpResourceRecord, NeedItemRe
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { showAlert } from './ConfirmDialog';
+import { CustomSelect } from './CustomSelect';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CityFormCombobox } from './CityFormCombobox';
 import { findDepartmentByCityId, getCityDisplayName, getCityCoordinates, detectCityFromCoords, ALL_COLOMBIA_ID } from '../data/colombiaCities';
@@ -429,32 +430,28 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="form-label font-bold">{t('placeTypeFormLabel')}</label>
-                  <select
+                  <CustomSelect
+                    className="w-full"
                     value={placeType}
-                    onChange={(e) => setPlaceType(e.target.value as PlaceType)}
-                    className="select-base"
-                  >
-                    {placeTypesList.map((pt) => (
-                      <option key={pt} value={pt}>
-                        {getPlaceTypeLabel(pt, language)}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setPlaceType(val as PlaceType)}
+                    options={placeTypesList.map((pt) => ({ value: pt, label: getPlaceTypeLabel(pt, language) }))}
+                  />
                 </div>
 
                 <div>
                   <label className="form-label font-bold">{t('requesterTypeLabel')}</label>
-                  <select
+                  <CustomSelect
+                    className="w-full"
                     value={requesterType}
-                    onChange={(e) => setRequesterType(e.target.value as any)}
-                    className="select-base"
-                  >
-                    <option value="PERSONA">Persona individual</option>
-                    <option value="COMUNIDAD">Comité comunitario / Vecinos</option>
-                    <option value="ORGANIZACION">Organización / ONG</option>
-                    <option value="FUNDACION">Fundación</option>
-                    <option value="EMPRESA">Empresa</option>
-                  </select>
+                    onChange={(val) => setRequesterType(val as any)}
+                    options={[
+                      { value: 'PERSONA', label: 'Persona individual' },
+                      { value: 'COMUNIDAD', label: 'Comité comunitario / Vecinos' },
+                      { value: 'ORGANIZACION', label: 'Organización / ONG' },
+                      { value: 'FUNDACION', label: 'Fundación' },
+                      { value: 'EMPRESA', label: 'Empresa' },
+                    ]}
+                  />
                 </div>
               </div>
             </div>

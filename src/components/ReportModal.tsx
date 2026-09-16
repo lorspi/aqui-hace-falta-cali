@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Flag, AlertTriangle, Send } from 'lucide-react';
 import { Need } from '../types';
+import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface ReportModalProps {
@@ -57,18 +58,19 @@ export const ReportModal: React.FC<ReportModalProps> = ({ need, onClose, onSubmi
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs text-slate-800">
           <div>
             <label className="form-label">{t('reportReason')}</label>
-            <select
+            <CustomSelect
+              className="w-full"
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="select-base"
-            >
-              <option value="NOT_NEEDED_ANYMORE">{t('reportReasonNotNeeded')}</option>
-              <option value="WRONG_LOCATION">{t('reportReasonWrongLocation')}</option>
-              <option value="FALSE_INFORMATION">{t('reportReasonFalseInfo')}</option>
-              <option value="BAD_CONTACT">{t('reportReasonBadContact')}</option>
-              <option value="OUTDATED">{t('reportReasonOutdated')}</option>
-              <option value="OTHER">{t('reportReasonOther')}</option>
-            </select>
+              onChange={setReason}
+              options={[
+                { value: 'NOT_NEEDED_ANYMORE', label: t('reportReasonNotNeeded') },
+                { value: 'WRONG_LOCATION', label: t('reportReasonWrongLocation') },
+                { value: 'FALSE_INFORMATION', label: t('reportReasonFalseInfo') },
+                { value: 'BAD_CONTACT', label: t('reportReasonBadContact') },
+                { value: 'OUTDATED', label: t('reportReasonOutdated') },
+                { value: 'OTHER', label: t('reportReasonOther') },
+              ]}
+            />
           </div>
 
           <div>

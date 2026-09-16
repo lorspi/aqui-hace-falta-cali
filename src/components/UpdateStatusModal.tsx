@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Need, NeedStatus } from '../types';
+import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface UpdateStatusModalProps {
@@ -67,17 +68,18 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs text-slate-800">
           <div>
             <label className="form-label">{t('coverageStatusLabel')} *</label>
-            <select
+            <CustomSelect
+              className="w-full"
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as NeedStatus)}
-              className="select-base"
-            >
-              <option value="NEED_HELP_NOW">🔴 {t('statusNeedHelpNow')}</option>
-              <option value="RECEIVING_HELP">🔵 {t('statusReceivingHelp')}</option>
-              <option value="PARTIALLY_COVERED">🟣 {t('statusPartiallyCovered')}</option>
-              <option value="COVERED">🟢 {t('statusCovered')}</option>
-              <option value="CLOSED">⚪ {t('statusClosed')}</option>
-            </select>
+              onChange={(val) => setNewStatus(val as NeedStatus)}
+              options={[
+                { value: 'NEED_HELP_NOW', label: `🔴 ${t('statusNeedHelpNow')}` },
+                { value: 'RECEIVING_HELP', label: `🔵 ${t('statusReceivingHelp')}` },
+                { value: 'PARTIALLY_COVERED', label: `🟣 ${t('statusPartiallyCovered')}` },
+                { value: 'COVERED', label: `🟢 ${t('statusCovered')}` },
+                { value: 'CLOSED', label: `⚪ ${t('statusClosed')}` },
+              ]}
+            />
           </div>
 
           {/* Section 5: Editor info */}

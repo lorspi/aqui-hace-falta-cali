@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Phone, UserPlus, Loader2, ShieldCheck } from 'lucide-react';
+import { CustomSelect } from '../../../../components/CustomSelect';
 
 interface StepOrgAccountProps {
   phoneCountryCode: string;
@@ -74,22 +75,12 @@ export const StepOrgAccount: React.FC<StepOrgAccountProps> = ({
           </label>
           <div className="flex gap-2">
             {/* Selector Código de País */}
-            <div className="relative shrink-0 w-28">
-              <select
-                value={phoneCountryCode}
-                onChange={(e) => onChangePhoneCountryCode(e.target.value)}
-                className="w-full py-3 pl-3 pr-6 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 appearance-none focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 cursor-pointer"
-              >
-                {COUNTRY_CODES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.flag} {c.code}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-400 text-xs">
-                ▼
-              </div>
-            </div>
+            <CustomSelect
+              className="shrink-0 w-28"
+              value={phoneCountryCode}
+              onChange={onChangePhoneCountryCode}
+              options={COUNTRY_CODES.map((c) => ({ value: c.code, label: `${c.flag} ${c.code}` }))}
+            />
 
             {/* Número Telefónico */}
             <div className="relative flex-1">

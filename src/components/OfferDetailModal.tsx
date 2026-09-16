@@ -32,6 +32,7 @@ import {
   buildWhatsappLink,
 } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
+import { CustomSelect } from './CustomSelect';
 import { computeOfferStatusFromResources } from '../utils/offerStatusLogic';
 
 interface OfferDetailModalProps {
@@ -585,15 +586,12 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 {(!offer.resources || offer.resources.length === 0) && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Estado</label>
-                    <select
+                    <CustomSelect
+                      className="w-full"
                       value={selectedStatus || offer.offerStatus}
-                      onChange={(e) => setSelectedStatus(e.target.value as OfferStatus)}
-                      className="select-base"
-                    >
-                      {OFFER_STATUS_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setSelectedStatus(val as OfferStatus)}
+                      options={OFFER_STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+                    />
                   </div>
                 )}
                 {offer.resources && offer.resources.length > 0 && (
@@ -606,15 +604,12 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                             <span>{CATEGORY_LABELS[res.type]?.icon || '🔹'}</span>
                             <span className="truncate">{res.description || CATEGORY_LABELS[res.type]?.label || res.type}</span>
                           </div>
-                          <select
+                          <CustomSelect
+                            className="shrink-0 w-40"
                             value={resourceStatuses[res.id] || 'PENDING'}
-                            onChange={(e) => setResourceStatuses((prev) => ({ ...prev, [res.id]: e.target.value as ResourceItemStatus }))}
-                            className="select-inline shrink-0"
-                          >
-                            {RESOURCE_STATUS_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => setResourceStatuses((prev) => ({ ...prev, [res.id]: val as ResourceItemStatus }))}
+                            options={RESOURCE_STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+                          />
                         </div>
                       ))}
                     </div>
@@ -667,9 +662,12 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">¿Cuál es el problema?</label>
-                  <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="select-base">
-                    {REPORT_REASONS.map((r) => (<option key={r.value} value={r.value}>{r.label}</option>))}
-                  </select>
+                  <CustomSelect
+                    className="w-full"
+                    value={reportReason}
+                    onChange={setReportReason}
+                    options={REPORT_REASONS.map((r) => ({ value: r.value, label: r.label }))}
+                  />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Detalle del reporte *</label>

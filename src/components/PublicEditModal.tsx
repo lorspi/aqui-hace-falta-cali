@@ -7,6 +7,7 @@ import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { CustomSelect } from './CustomSelect';
 import { Turnstile } from './Turnstile';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -369,17 +370,12 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Tipo de lugar *</label>
-                <select
+                <CustomSelect
+                  className="w-full"
                   value={placeType}
-                  onChange={(e) => setPlaceType(e.target.value as PlaceType)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
-                >
-                  {placeTypesList.map((pt) => (
-                    <option key={pt} value={pt}>
-                      {PLACE_TYPE_LABELS[pt]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPlaceType(val as PlaceType)}
+                  options={placeTypesList.map((pt) => ({ value: pt, label: PLACE_TYPE_LABELS[pt] }))}
+                />
               </div>
 
               <div>
@@ -533,21 +529,16 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
               {resources.map((res, idx) => (
                 <div key={res.id || idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2">
-                  <select
+                  <CustomSelect
+                    className="w-full sm:w-44"
                     value={res.type}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const updated = [...resources];
-                      updated[idx] = { ...updated[idx], type: e.target.value as HelpCategory };
+                      updated[idx] = { ...updated[idx], type: val as HelpCategory };
                       setResources(updated);
                     }}
-                    className="p-1.5 bg-white border border-slate-300 rounded text-xs w-full sm:w-auto"
-                  >
-                    {categoriesList.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]?.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={categoriesList.map((c) => ({ value: c, label: CATEGORY_LABELS[c]?.label ?? c }))}
+                  />
 
                   <input
                     type="text"

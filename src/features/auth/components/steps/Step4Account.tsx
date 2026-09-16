@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Phone, UserPlus, Loader2 } from 'lucide-react';
 import { UserRole } from '../../schemas/registerSchema';
 import { signInWithGoogle } from '../../../../lib/supabaseService';
+import { CustomSelect } from '../../../../components/CustomSelect';
 
 interface Step4AccountProps {
   role?: UserRole;
@@ -91,17 +92,12 @@ export const Step4Account: React.FC<Step4AccountProps> = ({
             Teléfono de contacto / WhatsApp
           </label>
           <div className="flex gap-2">
-            <select
+            <CustomSelect
+              className="w-28 shrink-0"
               value={phoneCountryCode}
-              onChange={(e) => onChangePhoneCountryCode(e.target.value)}
-              className="py-3 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer shrink-0"
-            >
-              {COUNTRY_CODES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.flag} {c.code}
-                </option>
-              ))}
-            </select>
+              onChange={onChangePhoneCountryCode}
+              options={COUNTRY_CODES.map((c) => ({ value: c.code, label: `${c.flag} ${c.code}` }))}
+            />
 
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">

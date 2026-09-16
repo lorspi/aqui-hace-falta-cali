@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from '../../../../i18n/LanguageContext';
 import { OrganizationType } from '../../schemas/registerSchema';
 import { ORGANIZATION_TYPE_CONFIG } from '../../../../constants/domainConstants';
+import { CustomSelect } from '../../../../components/CustomSelect';
 
 interface StepOrgDetailsProps {
   selectedType: OrganizationType;
@@ -50,17 +51,15 @@ export const StepOrgDetails: React.FC<StepOrgDetailsProps> = ({
           <label className="form-label font-bold text-slate-800">
             Tipo de Organización <span className="text-blue-600">*</span>
           </label>
-          <select
+          <CustomSelect
+            className="w-full"
             value={selectedType}
-            onChange={(e) => onSelectType(e.target.value as OrganizationType)}
-            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer"
-          >
-            {Object.values(ORGANIZATION_TYPE_CONFIG).map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.icon} {org.defaultLabel}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onSelectType(val as OrganizationType)}
+            options={Object.values(ORGANIZATION_TYPE_CONFIG).map((org) => ({
+              value: org.id,
+              label: `${org.icon} ${org.defaultLabel}`,
+            }))}
+          />
         </div>
 
         {/* Nombre Oficial de la Organización */}

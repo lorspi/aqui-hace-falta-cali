@@ -34,6 +34,7 @@ import {
 import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
+import { CustomSelect } from "./CustomSelect";
 import { PublicEditOfferModal } from "./PublicEditOfferModal";
 import { supabase } from "../lib/supabaseClient";
 
@@ -877,37 +878,40 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <select
+                    <CustomSelect
+                      className="min-w-[220px]"
                       value={adminTypeFilter}
-                      onChange={(e) => setAdminTypeFilter(e.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
-                    >
-                      <option value="ALL">Todas (necesidades + ofertas)</option>
-                      <option value="NEEDS">Solo necesidades</option>
-                      <option value="OFFERS">Solo ofertas</option>
-                    </select>
-                    <select
+                      onChange={setAdminTypeFilter}
+                      options={[
+                        { value: 'ALL', label: 'Todas (necesidades + ofertas)' },
+                        { value: 'NEEDS', label: 'Solo necesidades' },
+                        { value: 'OFFERS', label: 'Solo ofertas' },
+                      ]}
+                    />
+                    <CustomSelect
+                      className="min-w-[190px]"
                       value={adminPriorityFilter}
-                      onChange={(e) => setAdminPriorityFilter(e.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
-                    >
-                      <option value="ALL">Todas las prioridades</option>
-                      <option value="CRITICAL">🔴 Crítica</option>
-                      <option value="HIGH">🟠 Alta</option>
-                      <option value="MEDIUM">🟡 Media</option>
-                      <option value="LOW">🟢 Baja</option>
-                    </select>
-                    <select
+                      onChange={setAdminPriorityFilter}
+                      options={[
+                        { value: 'ALL', label: 'Todas las prioridades' },
+                        { value: 'CRITICAL', label: '🔴 Crítica' },
+                        { value: 'HIGH', label: '🟠 Alta' },
+                        { value: 'MEDIUM', label: '🟡 Media' },
+                        { value: 'LOW', label: '🟢 Baja' },
+                      ]}
+                    />
+                    <CustomSelect
+                      className="min-w-[200px]"
                       value={adminVerificationFilter}
-                      onChange={(e) => setAdminVerificationFilter(e.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold"
-                    >
-                      <option value="ALL">Todas las verificaciones</option>
-                      <option value="VERIFIED">✓ Verificadas</option>
-                      <option value="PENDING_VERIFICATION">◷ Pendientes</option>
-                      <option value="REPORTED">⚠️ Reportadas</option>
-                      <option value="ARCHIVED">📁 Archivadas</option>
-                    </select>
+                      onChange={setAdminVerificationFilter}
+                      options={[
+                        { value: 'ALL', label: 'Todas las verificaciones' },
+                        { value: 'VERIFIED', label: '✓ Verificadas' },
+                        { value: 'PENDING_VERIFICATION', label: '◷ Pendientes' },
+                        { value: 'REPORTED', label: '⚠️ Reportadas' },
+                        { value: 'ARCHIVED', label: '📁 Archivadas' },
+                      ]}
+                    />
                     {(adminSearch || adminPriorityFilter !== "ALL" || adminVerificationFilter !== "ALL" || adminTypeFilter !== "ALL") && (
                       <button
                         onClick={() => { setAdminSearch(""); setAdminPriorityFilter("ALL"); setAdminVerificationFilter("ALL"); setAdminTypeFilter("ALL"); }}
@@ -1190,14 +1194,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       placeholder="Contraseña"
                       className="p-2 border border-slate-300 rounded-lg text-xs"
                     />
-                    <select
+                    <CustomSelect
                       value={newUserRole}
-                      onChange={(e) => setNewUserRole(e.target.value as any)}
-                      className="p-2 border border-slate-300 rounded-lg text-xs font-bold"
-                    >
-                      <option value="MODERATOR">Moderador</option>
-                      <option value="ADMIN">Administrador</option>
-                    </select>
+                      onChange={(val) => setNewUserRole(val as any)}
+                      options={[
+                        { value: 'MODERATOR', label: 'Moderador' },
+                        { value: 'ADMIN', label: 'Administrador' },
+                      ]}
+                    />
                     <button
                       type="submit"
                       disabled={isCreatingUser}
@@ -1312,14 +1316,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 text-xs mb-1">Rol</label>
-                  <select
+                  <CustomSelect
+                    className="w-full"
                     value={editUserRole}
-                    onChange={(e) => setEditUserRole(e.target.value as "ADMIN" | "MODERATOR")}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold"
-                  >
-                    <option value="MODERATOR">Moderador</option>
-                    <option value="ADMIN">Administrador</option>
-                  </select>
+                    onChange={(val) => setEditUserRole(val as "ADMIN" | "MODERATOR")}
+                    options={[
+                      { value: 'MODERATOR', label: 'Moderador' },
+                      { value: 'ADMIN', label: 'Administrador' },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 text-xs mb-1">
@@ -1472,15 +1477,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block font-bold text-slate-700 mb-1">Tipo de lugar</label>
-                          <select
+                          <CustomSelect
+                            className="w-full"
                             value={editPlaceType}
-                            onChange={(e) => setEditPlaceType(e.target.value)}
-                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
-                          >
-                            {Object.entries(PLACE_TYPE_LABELS).map(([key, label]) => (
-                              <option key={key} value={key}>{label}</option>
-                            ))}
-                          </select>
+                            onChange={setEditPlaceType}
+                            options={Object.entries(PLACE_TYPE_LABELS).map(([key, label]) => ({ value: key, label: String(label) }))}
+                          />
                         </div>
 
                         <div>
@@ -1647,19 +1649,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
                         {editResources.map((res, idx) => (
                           <div key={res.id || idx} className="flex flex-wrap items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                            <select
+                            <CustomSelect
+                              className="shrink-0 w-40"
                               value={res.type}
-                              onChange={(e) => {
+                              onChange={(val) => {
                                 const updated = [...editResources];
-                                updated[idx] = { ...updated[idx], type: e.target.value };
+                                updated[idx] = { ...updated[idx], type: val };
                                 setEditResources(updated);
                               }}
-                              className="p-1.5 bg-white border border-slate-300 rounded text-xs shrink-0"
-                            >
-                              {Object.entries(CATEGORY_LABELS).map(([key, { label }]) => (
-                                <option key={key} value={key}>{label}</option>
-                              ))}
-                            </select>
+                              options={Object.entries(CATEGORY_LABELS).map(([key, { label }]) => ({ value: key, label }))}
+                            />
 
                             <input
                               type="text"

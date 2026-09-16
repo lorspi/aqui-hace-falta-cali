@@ -7,6 +7,7 @@ import { HelpCategory, Offer } from '../types';
 import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface PublicEditOfferModalProps {
@@ -451,21 +452,16 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
               {resources.map((res, idx) => (
                 <div key={res.id || idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2">
-                  <select
+                  <CustomSelect
+                    className="w-full sm:w-44"
                     value={res.type}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const updated = [...resources];
-                      updated[idx] = { ...updated[idx], type: e.target.value as HelpCategory };
+                      updated[idx] = { ...updated[idx], type: val as HelpCategory };
                       setResources(updated);
                     }}
-                    className="p-1.5 bg-white border border-slate-300 rounded text-xs w-full sm:w-auto"
-                  >
-                    {categoriesList.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]?.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={categoriesList.map((c) => ({ value: c, label: CATEGORY_LABELS[c]?.label ?? c }))}
+                  />
 
                   <input
                     type="text"
