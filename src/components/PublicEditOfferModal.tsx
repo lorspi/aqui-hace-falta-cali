@@ -52,6 +52,16 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   const [isArchived, setIsArchived] = useState(false);
 
+  // Errores de validación inline por campo (patrón estándar: borde rojo + texto rojo debajo)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (field: string) =>
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+
   // Pre-fill from offer
   useEffect(() => {
     if (offer) {
@@ -85,6 +95,7 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       setEditReason('');
       setShowPickerMap(false);
       setIsArchived(offer.verificationStatus === 'ARCHIVED');
+      setErrors({});
     }
   }, [offer, moderatorName]);
 
@@ -156,10 +167,14 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim() || !contactPhone.trim()) {
-      showAlert('Por favor completa todos los campos requeridos (*), incluyendo el teléfono de contacto.', { title: 'Campos incompletos', variant: 'error' });
-      return;
-    }
+    const fieldErrors: Record<string, string> = {};
+    if (!title.trim()) fieldErrors.title = 'El título es obligatorio';
+    if (!description.trim()) fieldErrors.description = 'La descripción es obligatoria';
+    if (!neighborhood.trim()) fieldErrors.neighborhood = 'El barrio es obligatorio';
+    if (!address.trim()) fieldErrors.address = 'La dirección o referencia es obligatoria';
+    if (!contactPhone.trim()) fieldErrors.contactPhone = 'El teléfono de contacto es obligatorio';
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
 
     setIsSubmitting(true);
     try {
@@ -294,24 +309,26 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
               </label>
               <input
                 type="text"
-                required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }}
                 placeholder="Ej: Donación de agua potable - Fundación XYZ"
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-sm"
+                className={`w-full p-2.5 bg-slate-50 border rounded-lg focus:bg-white text-sm ${errors.title ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                aria-invalid={errors.title ? true : undefined}
               />
+              {errors.title && <p className="form-error">{errors.title}</p>}
             </div>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">Descripción detallada *</label>
               <textarea
-                required
                 rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }}
                 placeholder="Explica qué ofreces, disponibilidad, condiciones..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                className={`w-full p-2.5 bg-slate-50 border rounded-lg text-xs ${errors.description ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                aria-invalid={errors.description ? true : undefined}
               />
+              {errors.description && <p className="form-error">{errors.description}</p>}
             </div>
           </div>
 
@@ -326,25 +343,27 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                 <label className="block font-bold text-slate-700 mb-1">Barrio *</label>
                 <input
                   type="text"
-                  required
                   value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
+                  onChange={(e) => { setNeighborhood(e.target.value); clearFieldError('neighborhood'); }}
                   placeholder="Ej: San Fernando, Siloé, Granada, El Peñón..."
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.neighborhood ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.neighborhood ? true : undefined}
                 />
+                {errors.neighborhood && <p className="form-error">{errors.neighborhood}</p>}
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
                 <input
                   type="text"
-                  required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => { setAddress(e.target.value); clearFieldError('address'); }}
                   onBlur={handleGeocode}
                   placeholder="Ej: Calle 5 con Carrera 44, o Calle 5 # 34-12"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.address ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.address ? true : undefined}
                 />
+                {errors.address && <p className="form-error">{errors.address}</p>}
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación...
@@ -547,12 +566,13 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
                   type="tel"
                   inputMode="numeric"
                   maxLength={15}
-                  required
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                  onChange={(e) => { setContactPhone(e.target.value.replace(/[^0-9+]/g, '')); clearFieldError('contactPhone'); }}
                   placeholder="Ej: 3124448821"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.contactPhone ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.contactPhone ? true : undefined}
                 />
+                {errors.contactPhone && <p className="form-error">{errors.contactPhone}</p>}
               </div>
 
               <div>

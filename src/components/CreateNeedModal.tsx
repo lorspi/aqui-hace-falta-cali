@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Plus, Trash2, AlertCircle, ShieldCheck, CheckCircle2, Loader2, ArrowRight, ArrowLeft, Zap, Flame, CloudRain, Waves, Wind, Activity, Stethoscope, HelpCircle } from 'lucide-react';
 import { HelpCategory, Need, PlaceType, Priority, HelpResourceRecord, NeedItemRecord } from '../types';
-import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
+import { CATEGORY_LABELS, PLACE_TYPE_LABELS, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { showAlert } from './ConfirmDialog';
 import { MiniMapPicker } from './MiniMapPicker';
@@ -48,7 +48,8 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [title, setTitle] = useState('');
   const [placeType, setPlaceType] = useState<PlaceType>('EDIFICIO_AFECTADO');
   const [requesterType, setRequesterType] = useState<Need['requesterType']>('PERSONA');
-  const [priority, setPriority] = useState<Priority>('MEDIUM');
+  // Nivel de urgencia removido del formulario; se envía un valor por defecto.
+  const priority: Priority = 'MEDIUM';
 
   // Paso 2 Fields: Recursos Necesarios e Ítems Desglosados
   const [selectedItems, setSelectedItems] = useState<NeedItemRecord[]>([]);
@@ -77,6 +78,16 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [accessInstructions, setAccessInstructions] = useState('');
   const [affectedPeople, setAffectedPeople] = useState<number>(0);
   const [affectedAnimals, setAffectedAnimals] = useState<number>(0);
+
+  // Errores de validación inline por campo (patrón estándar: borde rojo + texto rojo debajo)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (field: string) =>
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
 
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
@@ -108,6 +119,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     if (!isOpen) return;
 
     setCurrentStep(1);
+    setErrors({});
     setTitle('');
     setDescription('');
     setSelectedItems([]);
@@ -192,6 +204,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
 
   // Manejadores para agregar/remover recursos seleccionados
   const handleToggleResourceItem = (resource: any) => {
+    clearFieldError('selectedItems');
     const exists = selectedItems.find((item) => item.resourceId === resource.id);
     if (exists) {
       setSelectedItems(selectedItems.filter((item) => item.resourceId !== resource.id));
@@ -215,36 +228,40 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     );
   };
 
-  // Validaciones paso a paso
-  const handleNextStep1 = async () => {
+  // Validaciones paso a paso (errores inline: borde rojo + texto rojo debajo del campo)
+  const handleNextStep1 = () => {
+    const stepErrors: Record<string, string> = {};
     if (!title.trim()) {
-      await showAlert('Por favor ingresa un título para la necesidad.');
-      return;
+      stepErrors.title = 'El título es obligatorio';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(2);
   };
 
-  const handleNextStep2 = async () => {
+  const handleNextStep2 = () => {
+    const stepErrors: Record<string, string> = {};
     if (selectedItems.length === 0) {
-      await showAlert('Por favor selecciona al menos una necesidad o recurso requerido.');
-      return;
+      stepErrors.selectedItems = 'Selecciona al menos un recurso requerido';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(3);
   };
 
-  const handleNextStep3 = async () => {
+  const handleNextStep3 = () => {
+    const stepErrors: Record<string, string> = {};
     if (!cityId) {
-      await showAlert('Por favor selecciona el municipio o ciudad.');
-      return;
+      stepErrors.cityId = 'Selecciona el municipio o ciudad';
     }
     if (!neighborhood.trim()) {
-      await showAlert('Por favor ingresa el barrio o sector.');
-      return;
+      stepErrors.neighborhood = 'El barrio o sector es obligatorio';
     }
     if (!address.trim()) {
-      await showAlert('Por favor ingresa la dirección exacta.');
-      return;
+      stepErrors.address = 'La dirección exacta es obligatoria';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(4);
   };
 
@@ -252,15 +269,18 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const stepErrors: Record<string, string> = {};
     if (!description.trim()) {
-      await showAlert('Por favor ingresa una descripción detallada de la necesidad.');
-      return;
+      stepErrors.description = 'La descripción es obligatoria';
     }
-
+    if (!contactName.trim()) {
+      stepErrors.contactName = 'El nombre del contacto es obligatorio';
+    }
     if (!contactPhone.trim()) {
-      await showAlert('Por favor ingresa un número de teléfono celular de contacto.');
-      return;
+      stepErrors.contactPhone = 'El teléfono de contacto es obligatorio';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
 
     // Guard de Autenticación en Supabase
     const { data: authData } = await supabase.auth.getUser();
@@ -397,12 +417,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }}
                   placeholder="Ej: Familias afectadas por inundación requieren cobijas y agua potable"
-                  className="input-base"
+                  className={`input-base ${errors.title ? 'input-error' : ''}`}
+                  aria-invalid={errors.title ? true : undefined}
                 />
+                {errors.title && <p className="form-error">{errors.title}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -434,29 +455,6 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     <option value="FUNDACION">Fundación</option>
                     <option value="EMPRESA">Empresa</option>
                   </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label font-bold">{t('urgencyLevelLabel')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Priority[]).map((p) => {
-                    const config = PRIORITY_CONFIG[p];
-                    const isSelected = priority === p;
-                    return (
-                      <button
-                        type="button"
-                        key={p}
-                        onClick={() => setPriority(p)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                          isSelected ? `${config.badgeClass} ring-2 ring-offset-1 ring-slate-400` : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <span>{config.dot}</span>
-                        <span>{config.label}</span>
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             </div>
@@ -545,6 +543,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     })}
                   </div>
                 )}
+                {errors.selectedItems && <p className="form-error">{errors.selectedItems}</p>}
               </div>
 
               {/* Lista de Recursos Seleccionados con Cantidades */}
@@ -592,8 +591,10 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   onChange={(cId, dId) => {
                     setCityId(cId);
                     setDepartmentId(dId || '');
+                    clearFieldError('cityId');
                   }}
                 />
+                {errors.cityId && <p className="form-error">{errors.cityId}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -601,24 +602,26 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   <label className="form-label font-bold">{t('neighborhoodLabel')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
+                    onChange={(e) => { setNeighborhood(e.target.value); clearFieldError('neighborhood'); }}
                     placeholder={t('neighborhoodPlaceholder')}
-                    className="input-base"
+                    className={`input-base ${errors.neighborhood ? 'input-error' : ''}`}
+                    aria-invalid={errors.neighborhood ? true : undefined}
                   />
+                  {errors.neighborhood && <p className="form-error">{errors.neighborhood}</p>}
                 </div>
 
                 <div>
                   <label className="form-label font-bold">{t('addressLabel')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => { setAddress(e.target.value); clearFieldError('address'); }}
                     placeholder={t('addressPlaceholder')}
-                    className="input-base"
+                    className={`input-base ${errors.address ? 'input-error' : ''}`}
+                    aria-invalid={errors.address ? true : undefined}
                   />
+                  {errors.address && <p className="form-error">{errors.address}</p>}
                 </div>
               </div>
 
@@ -655,13 +658,14 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   Descripción Detallada de la Situación <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  required
                   rows={3}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }}
                   placeholder="Describe la situación actual, familias o viviendas afectadas y cualquier detalle relevante."
-                  className="textarea-base"
+                  className={`textarea-base ${errors.description ? 'input-error' : ''}`}
+                  aria-invalid={errors.description ? true : undefined}
                 />
+                {errors.description && <p className="form-error">{errors.description}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -669,12 +673,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                   <label className="form-label font-bold">Nombre del Contacto Responsable <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
+                    onChange={(e) => { setContactName(e.target.value); clearFieldError('contactName'); }}
                     placeholder="Ej: María López"
-                    className="input-base"
+                    className={`input-base ${errors.contactName ? 'input-error' : ''}`}
+                    aria-invalid={errors.contactName ? true : undefined}
                   />
+                  {errors.contactName && <p className="form-error">{errors.contactName}</p>}
                 </div>
 
                 <div>
@@ -683,12 +688,13 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     type="tel"
                     inputMode="numeric"
                     maxLength={15}
-                    required
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                    onChange={(e) => { setContactPhone(e.target.value.replace(/[^0-9+]/g, '')); clearFieldError('contactPhone'); }}
                     placeholder="Ej: 3155550192"
-                    className="input-base"
+                    className={`input-base ${errors.contactPhone ? 'input-error' : ''}`}
+                    aria-invalid={errors.contactPhone ? true : undefined}
                   />
+                  {errors.contactPhone && <p className="form-error">{errors.contactPhone}</p>}
                 </div>
               </div>
 

@@ -61,6 +61,16 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   const [organizationName, setOrganizationName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Errores de validación inline por campo (patrón estándar: borde rojo + texto rojo debajo)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (field: string) =>
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+
   // Cargar catálogo de recursos al abrir
   useEffect(() => {
     if (!isOpen) return;
@@ -79,6 +89,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     if (!isOpen) return;
 
     setCurrentStep(1);
+    setErrors({});
     setTitle('');
     setDescription('');
     setSelectedItems([]);
@@ -126,6 +137,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
 
   // Manejadores para agregar/remover recursos ofrecidos
   const handleToggleResourceItem = (resource: any) => {
+    clearFieldError('selectedItems');
     const exists = selectedItems.find((item) => item.resourceId === resource.id);
     if (exists) {
       setSelectedItems(selectedItems.filter((item) => item.resourceId !== resource.id));
@@ -149,50 +161,57 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
     );
   };
 
-  const handleNextStep1 = async () => {
+  const handleNextStep1 = () => {
+    const stepErrors: Record<string, string> = {};
     if (!title.trim()) {
-      await showAlert('Por favor ingresa un título descriptivo para la oferta de ayuda.');
-      return;
+      stepErrors.title = 'El título es obligatorio';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(2);
   };
 
-  const handleNextStep2 = async () => {
+  const handleNextStep2 = () => {
+    const stepErrors: Record<string, string> = {};
     if (selectedItems.length === 0) {
-      await showAlert('Por favor selecciona al menos un recurso o servicio a donar.');
-      return;
+      stepErrors.selectedItems = 'Selecciona al menos un recurso o servicio a ofrecer';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(3);
   };
 
-  const handleNextStep3 = async () => {
+  const handleNextStep3 = () => {
+    const stepErrors: Record<string, string> = {};
     if (!cityId) {
-      await showAlert('Por favor selecciona la ciudad o municipio de la oferta.');
-      return;
+      stepErrors.cityId = 'Selecciona la ciudad o municipio';
     }
     if (!neighborhood.trim()) {
-      await showAlert('Por favor ingresa el barrio o sector.');
-      return;
+      stepErrors.neighborhood = 'El barrio o sector es obligatorio';
     }
     if (!address.trim()) {
-      await showAlert('Por favor ingresa la dirección de acopio o recogida.');
-      return;
+      stepErrors.address = 'La dirección de acopio o recogida es obligatoria';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
     setCurrentStep(4);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const stepErrors: Record<string, string> = {};
     if (!description.trim()) {
-      await showAlert('Por favor ingresa una descripción detallada de lo que ofreces.');
-      return;
+      stepErrors.description = 'La descripción es obligatoria';
     }
-
+    if (!contactName.trim()) {
+      stepErrors.contactName = 'El nombre del contacto es obligatorio';
+    }
     if (!contactPhone.trim()) {
-      await showAlert('Por favor ingresa un número de teléfono de contacto.');
-      return;
+      stepErrors.contactPhone = 'El teléfono de contacto es obligatorio';
     }
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length > 0) return;
 
     // Guard de Autenticación
     const { data: authData } = await supabase.auth.getUser();
@@ -297,12 +316,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }}
                   placeholder="Ej: Donación de kits de alimentos y cobijas en buen estado"
-                  className="input-base"
+                  className={`input-base ${errors.title ? 'input-error' : ''}`}
+                  aria-invalid={errors.title ? true : undefined}
                 />
+                {errors.title && <p className="form-error">{errors.title}</p>}
               </div>
 
               <div>
@@ -409,6 +429,7 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   })}
                 </div>
               )}
+              {errors.selectedItems && <p className="form-error">{errors.selectedItems}</p>}
 
               {selectedItems.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-slate-200">
@@ -454,8 +475,10 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   onChange={(cId, dId) => {
                     setCityId(cId);
                     setDepartmentId(dId || '');
+                    clearFieldError('cityId');
                   }}
                 />
+                {errors.cityId && <p className="form-error">{errors.cityId}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -463,24 +486,26 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   <label className="form-label font-bold">{t('neighborhoodLabel')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
+                    onChange={(e) => { setNeighborhood(e.target.value); clearFieldError('neighborhood'); }}
                     placeholder="Ej: San Antonio"
-                    className="input-base"
+                    className={`input-base ${errors.neighborhood ? 'input-error' : ''}`}
+                    aria-invalid={errors.neighborhood ? true : undefined}
                   />
+                  {errors.neighborhood && <p className="form-error">{errors.neighborhood}</p>}
                 </div>
 
                 <div>
                   <label className="form-label font-bold">{t('addressLabel')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => { setAddress(e.target.value); clearFieldError('address'); }}
                     placeholder="Ej: Calle 5 # 10-20"
-                    className="input-base"
+                    className={`input-base ${errors.address ? 'input-error' : ''}`}
+                    aria-invalid={errors.address ? true : undefined}
                   />
+                  {errors.address && <p className="form-error">{errors.address}</p>}
                 </div>
               </div>
 
@@ -514,13 +539,14 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   Descripción Detallada de la Oferta <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  required
                   rows={3}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }}
                   placeholder="Detalla qué incluye tu ayuda, estado de los elementos o condiciones para la entrega."
-                  className="textarea-base"
+                  className={`textarea-base ${errors.description ? 'input-error' : ''}`}
+                  aria-invalid={errors.description ? true : undefined}
                 />
+                {errors.description && <p className="form-error">{errors.description}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -528,12 +554,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                   <label className="form-label font-bold">Nombre del Donante / Contacto <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    required
                     value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
+                    onChange={(e) => { setContactName(e.target.value); clearFieldError('contactName'); }}
                     placeholder="Ej: Carlos Gómez"
-                    className="input-base"
+                    className={`input-base ${errors.contactName ? 'input-error' : ''}`}
+                    aria-invalid={errors.contactName ? true : undefined}
                   />
+                  {errors.contactName && <p className="form-error">{errors.contactName}</p>}
                 </div>
 
                 <div>
@@ -542,12 +569,13 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
                     type="tel"
                     inputMode="numeric"
                     maxLength={15}
-                    required
                     value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                    onChange={(e) => { setContactPhone(e.target.value.replace(/[^0-9+]/g, '')); clearFieldError('contactPhone'); }}
                     placeholder="Ej: 3001234567"
-                    className="input-base"
+                    className={`input-base ${errors.contactPhone ? 'input-error' : ''}`}
+                    aria-invalid={errors.contactPhone ? true : undefined}
                   />
+                  {errors.contactPhone && <p className="form-error">{errors.contactPhone}</p>}
                 </div>
               </div>
 
