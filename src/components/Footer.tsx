@@ -21,11 +21,11 @@ export const Footer: React.FC = () => {
         {/* Canales Oficiales de Contacto */}
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-300">
           <a
-            href="mailto:info@radardeayuda.co"
+            href="mailto:info@radardeayuda.org"
             className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-medium"
           >
             <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>info@radardeayuda.co</span>
+            <span>info@radardeayuda.org</span>
           </a>
           <a
             href="https://wa.me/573112323588"

@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://radardeayuda.co/</loc>
+    <loc>https://radardeayuda.org/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://radardeayuda.co/cifras</loc>
+    <loc>https://radardeayuda.org/cifras</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://radardeayuda.co/voluntario</loc>
+    <loc>https://radardeayuda.org/voluntario</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://radardeayuda.co/privacidad</loc>
+    <loc>https://radardeayuda.org/privacidad</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://radardeayuda.co/terminos</loc>
+    <loc>https://radardeayuda.org/terminos</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

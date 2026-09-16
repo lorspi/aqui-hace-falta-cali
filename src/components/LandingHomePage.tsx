@@ -351,7 +351,7 @@ export const LandingHomePage: React.FC = () => {
               className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-brand-yellow hover:bg-brand-yellow/90 text-brand-text font-black text-sm transition-all shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105"
             >
               <HeartHandshake className="w-5 h-5 shrink-0 text-brand-blue" />
-              <span>🧑‍🌾 Registrarme como Voluntario RaDAR</span>
+              <span>Registrarme como Voluntario RaDAR</span>
             </button>
 
             {/* WhatsApp */}
@@ -367,11 +367,11 @@ export const LandingHomePage: React.FC = () => {
 
             {/* Correo */}
             <a
-              href="mailto:info@radardeayuda.co"
+              href="mailto:info@radardeayuda.org"
               className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-extrabold text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105 backdrop-blur-xs"
             >
               <Mail className="w-5 h-5 shrink-0 text-blue-200" />
-              <span>info@radardeayuda.co</span>
+              <span>info@radardeayuda.org</span>
             </a>
           </div>
         </div>

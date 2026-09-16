@@ -1754,7 +1754,7 @@ export const CifrasPage: React.FC = () => {
         {/* Printable Footer */}
         <div className="pt-4 border-t-2 border-slate-300 text-center text-[10px] text-slate-600">
           <p className="font-bold text-slate-800">RaDAR de Ayuda - Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
-          <p>Informe generado automáticamente desde radardeayuda.co • info@radardeayuda.co</p>
+          <p>Informe generado automáticamente desde radardeayuda.org • info@radardeayuda.org</p>
         </div>
       </div>
     </div>

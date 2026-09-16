@@ -8,7 +8,7 @@ Radar de Ayudas podrá adoptar adicionalmente buenas prácticas y principios int
 
 ## **1. Responsable del Tratamiento** 
 
-El Responsable del Tratamiento de los datos personales recolectados a través de Radar de Ayudas es **Marcela Salinas Murillo** , identificada con **C.C. 1.121.831.720** , con domicilio en **Ciudad de México,** correo electrónico para asuntos relacionados con protección de datos personales **admin@radardeayuda.co** y sitio web **radardeayuda.co** . 
+El Responsable del Tratamiento de los datos personales recolectados a través de Radar de Ayudas es **Marcela Salinas Murillo** , identificada con **C.C. 1.121.831.720** , con domicilio en **Ciudad de México,** correo electrónico para asuntos relacionados con protección de datos personales **admin@radardeayuda.org** y sitio web **radardeayuda.org** . 
 
 El Responsable determinará las finalidades y medios esenciales del tratamiento, sin perjuicio de que determinados proveedores tecnológicos, operadores o terceros puedan actuar como Encargados del Tratamiento en los términos de la legislación aplicable. 
 
@@ -146,7 +146,7 @@ Radar de Ayudas prestará especial atención a las solicitudes de supresión, an
 
 ## **13. Procedimiento para el ejercicio de derechos** 
 
-Los titulares podrán ejercer sus derechos mediante comunicación dirigida a **admin@radardeayuda.co** , identificando al titular, describiendo la solicitud y aportando la información razonablemente necesaria para su atención. 
+Los titulares podrán ejercer sus derechos mediante comunicación dirigida a **admin@radardeayuda.org** , identificando al titular, describiendo la solicitud y aportando la información razonablemente necesaria para su atención. 
 
 Las consultas serán atendidas dentro de los términos establecidos en la legislación colombiana. Cuando no sea posible atender una consulta dentro del término inicial legalmente previsto, se informará al interesado la razón de la demora y la fecha en que será atendida. 
 

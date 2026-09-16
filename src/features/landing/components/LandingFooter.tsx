@@ -73,11 +73,11 @@ export const LandingFooter: React.FC = () => {
             <ul className="space-y-2.5 text-xs font-body">
               <li>
                 <a
-                  href="mailto:info@radardeayuda.co"
+                  href="mailto:info@radardeayuda.org"
                   className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
                 >
                   <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span>info@radardeayuda.co</span>
+                  <span>info@radardeayuda.org</span>
                 </a>
               </li>
               <li>
@@ -103,7 +103,7 @@ export const LandingFooter: React.FC = () => {
               @radardeayuda
             </a>
             <span>·</span>
-            <span>www.radardeayuda.co</span>
+            <span>www.radardeayuda.org</span>
           </div>
         </div>
       </div>
