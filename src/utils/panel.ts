@@ -41,25 +41,24 @@ export function activarModulo(modulo: keyof ModulosCuenta): void {
   }
 }
 
-/** Las pestañas, en el orden del prototipo: lo que se pide antes que lo que se ofrece,
- *  y siempre Resumen al principio y Mi equipo · Datos al final. */
+/** Las pestañas: lo que se pide antes que lo que se ofrece, Seguimiento unificado para
+ *  ambas caras, y siempre Resumen al principio y Mi equipo al final. */
 export function pestanasDe(m: ModulosCuenta, conteos: { porConfirmarRecibidas: number; nuevas: number; porConfirmar: number }): PestanaPanel[] {
   const p: PestanaPanel[] = [{ id: 'resumen', nombre: 'Resumen' }];
   if (m.pide) {
     p.push({ id: 'necesidades', nombre: 'Mis necesidades', modulo: 'pide' });
-    p.push({ id: 'recibidas', nombre: 'Entregas recibidas', modulo: 'pide', n: conteos.porConfirmarRecibidas });
   }
   if (m.ofrece) {
     p.push({ id: 'ofertas', nombre: 'Mis ofertas', modulo: 'ofrece' });
-    p.push({ id: 'solicitudes', nombre: 'Solicitudes', modulo: 'ofrece', n: conteos.nuevas });
-    /* El tablero arranca en «Nuevas» (lógica de la rama de Fede, por decisión de Alejandro,
-       16 de septiembre de 2026): su conteo es lo que falta responder. */
-    p.push({ id: 'seguimiento', nombre: 'Seguimiento', modulo: 'ofrece', n: conteos.nuevas });
+  }
+  /* Seguimiento unificado para ambas caras (organización y líder comunitario) */
+  if (m.pide || m.ofrece) {
+    const badge = (m.ofrece ? conteos.nuevas : 0) + (m.pide ? conteos.porConfirmarRecibidas : 0);
+    p.push({ id: 'seguimiento', nombre: 'Seguimiento', n: badge });
   }
   /* Reportes solo cuando hay algo que reportar: entregas confirmadas de alguna cara. */
   if (m.pide || m.ofrece) p.push({ id: 'reportes', nombre: 'Reportes' });
   p.push({ id: 'equipo', nombre: 'Mi equipo' });
-  p.push({ id: 'datos', nombre: 'Datos' });
   return p;
 }
 

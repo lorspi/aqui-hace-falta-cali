@@ -234,8 +234,50 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
 };
 
 /** La tarjeta de una entrega recibida (lo que ME traen). */
-export const TarjetaRecibida: React.FC<{ r: EntregaRecibida; estado?: React.ReactNode; onConfirmar: (id: number) => void; onVerFotos: (r: EntregaRecibida, i: number) => void }> = ({ r, estado, onConfirmar, onVerFotos }) => {
+export const TarjetaRecibida: React.FC<{
+  r: EntregaRecibida;
+  estado?: React.ReactNode;
+  onConfirmar: (id: number) => void;
+  onVerFotos: (r: EntregaRecibida, i: number) => void;
+  onAceptar?: (id: number) => void;
+  onRechazar?: (id: number) => void;
+}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar }) => {
   const f = fotosDeRecibida(r.id);
+  const acciones = (() => {
+    if (r.estado === 'nueva') {
+      return (
+        <>
+          {onAceptar && (
+            <Button nivel="primario" tamano="sm" onClick={() => onAceptar(r.id)}>
+              Aceptar ayuda
+            </Button>
+          )}
+          {onRechazar && (
+            <Button nivel="secundario" tamano="sm" onClick={() => onRechazar(r.id)}>
+              No gracias
+            </Button>
+          )}
+        </>
+      );
+    }
+    if (r.estado === 'entregada') {
+      return (
+        <Button nivel="primario" tamano="sm" onClick={() => onConfirmar(r.id)}>
+          Confirmar recibido
+        </Button>
+      );
+    }
+    return null;
+  })();
+
+  const cierre =
+    r.estado === 'confirmada' || r.estado === 'archivada' ? (
+      <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-green">
+        <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
+        <span>Confirmada</span>
+      </span>
+    ) : null;
+
   return (
     <TarjetaEntrega
       titulo={`${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`}
@@ -246,14 +288,10 @@ export const TarjetaRecibida: React.FC<{ r: EntregaRecibida; estado?: React.Reac
       lleva={r.vol}
       detalle={r.detalle}
       estado={estado}
+      cierre={cierre}
       fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
-      acciones={
-        r.estado === 'entregada' ? (
-          <Button nivel="primario" tamano="sm" onClick={() => onConfirmar(r.id)}>
-            Confirmar recibido
-          </Button>
-        ) : null
-      }
+      acciones={acciones}
+      atenuada={r.estado === 'archivada'}
     />
   );
 };

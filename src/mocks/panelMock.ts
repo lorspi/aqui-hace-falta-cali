@@ -114,11 +114,11 @@ export const PUERTAS = {
   pedir: {
     titulo: 'Pedir ayuda',
     texto: 'Publica lo que hace falta y sigue aquí quién se compromete, qué va en camino y qué te llegó.',
-    abre: ['Mis necesidades', 'Entregas recibidas'],
+    abre: ['Mis necesidades', 'Seguimiento'],
   },
   ofrecer: {
     titulo: 'Ofrecer ayuda',
     texto: 'Publica lo que tienen disponible y sigue aquí quién te lo pide, a quién asignas cada entrega y cómo va cada una.',
-    abre: ['Mis ofertas', 'Solicitudes', 'Seguimiento'],
+    abre: ['Mis ofertas', 'Seguimiento'],
   },
 };

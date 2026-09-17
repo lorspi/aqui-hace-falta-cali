@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { BadgeCheck, Hand, HeartHandshake, Monitor, Smartphone } from 'lucide-react';
+import { BadgeCheck, Clock, Hand, HeartHandshake, Monitor, Smartphone } from 'lucide-react';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { Button } from '../../components/ui/Button';
 import { Caja, FilaDato } from '../../components/ui/Caja';
 import { Dialogo } from '../../components/ui/Dialogo';
-import { Avatar } from '../../components/ui/Etiqueta';
+import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
 import { Field } from '../../components/ui/Field';
 import { Pestanas } from '../../components/ui/Pestanas';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
-import { Switch } from '../../components/ui/Switch';
+import { FilaSwitch, Switch } from '../../components/ui/Switch';
+import { InlineNotice } from '../../components/ui/InlineNotice';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
+import { INVITADOS, ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { CANALES, SESIONES, YO } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import { nombrePanel } from '../../utils/cuenta';
@@ -117,12 +118,17 @@ const Perfil: React.FC = () => {
                   <span className="text-rd-ink-meta">En RaDAR desde {yo.desde}</span>
                 </p>
               </div>
-              <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(`${RUTAS.miOrganizacion}#datos`)}>
-                Ver la organización
+              <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(RUTAS.miOrganizacion)}>
+                Ir al panel
               </Button>
             </section>
 
-            {actual === 'datos' && <TusDatos yo={yo} onGuardar={(p) => { setYo(p); avisar('Datos guardados', { tipo: 'ok' }); }} />}
+            {actual === 'datos' && (
+              <>
+                <TusDatos yo={yo} onGuardar={(p) => { setYo(p); avisar('Datos guardados', { tipo: 'ok' }); }} />
+                <DatosOrganizacion />
+              </>
+            )}
             {actual === 'acceso' && (
               <>
                 <Caja titulo="Correo y contraseña">
@@ -271,3 +277,78 @@ const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, 
     ))}
   </Caja>
 );
+
+/* ---------- Datos de la organización / entidad ---------- */
+
+const DatosOrganizacion: React.FC = () => {
+  const [directorio, setDirectorio] = useState(ORG.directorio);
+  return (
+    <>
+      <Caja
+        titulo={`Datos de ${ORG.nombre}`}
+        accion={
+          <Button nivel="secundario" tamano="md">
+            Editar datos
+          </Button>
+        }
+      >
+        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+          {[
+            ['Nombre', ORG.nombre],
+            ['Tipo', ORG.tipo],
+            ['NIT', ORG.nit],
+            ['Dirección', ORG.dir],
+            ['Contacto público', `${ORG.contacto.tel}${ORG.contacto.wa ? ' · también WhatsApp' : ''} · ${ORG.contacto.correo}`],
+            ['Enlace con RaDAR', ORG.enlace],
+            ['Web', ORG.web],
+          ].map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
+              <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-4">
+          {ORG.verificacion === 'verificada' && (
+            <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo="Organización verificada" texto="La insignia sale en cada publicación." />
+          )}
+          {ORG.verificacion === 'revision' && (
+            <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto="Revisamos el documento en menos de 2 días hábiles." />
+          )}
+          {ORG.verificacion === 'sin' && (
+            <InlineNotice
+              variante="neutro"
+              icono={<BadgeCheck className="h-4 w-4" />}
+              titulo="Sin verificar"
+              texto="Adjunta el certificado de existencia y te ponemos la insignia."
+              accion={<Button nivel="secundario" tamano="sm">Adjuntar el certificado</Button>}
+            />
+          )}
+        </div>
+      </Caja>
+      <Caja titulo="Visibilidad y accesos">
+        <FilaSwitch
+          id="org-directorio"
+          rotulo="Aparecer en el Directorio"
+          nota={directorio ? `Tu contacto se ve en el Directorio${ORG.directorioDesde ? ` desde ${ORG.directorioDesde}` : ''}` : 'Tu contacto no se ve en el Directorio'}
+          encendido={directorio}
+          onCambiar={setDirectorio}
+        />
+        <h2 className="font-rd mt-5 mb-3 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">Quién entra a esta cuenta</h2>
+        {INVITADOS.map((p, i) => (
+          <div key={p.n} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
+            <Avatar iniciales={iniciales(p.n)} tamano="md" />
+            <div className="min-w-0 flex-1">
+              <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.n}</b>
+              <span className="text-rd-12-5 text-rd-ink-2">{p.rol}</span>
+            </div>
+            {p.estado === 'pendiente' ? <EtiquetaCiclo texto={`Invitación enviada ${p.cuando ?? ''}`} tono="inicial" /> : <EtiquetaCiclo texto="Activa" tono="completo" />}
+          </div>
+        ))}
+        <Button nivel="secundario" tamano="md" className="mt-3">
+          Invitar a alguien
+        </Button>
+      </Caja>
+    </>
+  );
+};

@@ -24,18 +24,18 @@ describe('leerModulos', () => {
 });
 
 describe('pestanasDe', () => {
-  it('sin módulos: resumen, equipo y datos', () => {
-    expect(pestanasDe({ pide: false, ofrece: false }, conteos).map((p) => p.id)).toEqual(['resumen', 'equipo', 'datos']);
+  it('sin módulos: resumen y equipo', () => {
+    expect(pestanasDe({ pide: false, ofrece: false }, conteos).map((p) => p.id)).toEqual(['resumen', 'equipo']);
   });
-  it('ofrecer abre mis ofertas, solicitudes y seguimiento, con sus conteos', () => {
+  it('ofrecer abre mis ofertas y seguimiento, con sus conteos', () => {
     const p = pestanasDe({ pide: false, ofrece: true }, conteos);
-    expect(p.map((x) => x.id)).toEqual(['resumen', 'ofertas', 'solicitudes', 'seguimiento', 'reportes', 'equipo', 'datos']);
-    expect(p.find((x) => x.id === 'solicitudes')?.n).toBe(2);
+    expect(p.map((x) => x.id)).toEqual(['resumen', 'ofertas', 'seguimiento', 'reportes', 'equipo']);
+    expect(p.find((x) => x.id === 'seguimiento')?.n).toBe(2);
   });
-  it('pedir abre mis necesidades y entregas recibidas, antes que lo que se ofrece', () => {
+  it('pedir abre mis necesidades antes que lo que se ofrece, y seguimiento unificado', () => {
     const p = pestanasDe({ pide: true, ofrece: true }, conteos).map((x) => x.id);
     expect(p.indexOf('necesidades')).toBeLessThan(p.indexOf('ofertas'));
-    expect(p).toContain('recibidas');
+    expect(p).toContain('seguimiento');
   });
   it('reportes aparece con cualquier cara abierta, nunca sin módulos', () => {
     expect(pestanasDe({ pide: true, ofrece: false }, conteos).map((x) => x.id)).toContain('reportes');

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Archive, BadgeCheck, Check, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, TriangleAlert, Truck, Users } from 'lucide-react';
+import { Archive, Check, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, TriangleAlert, Truck, Users } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
+import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
@@ -8,16 +9,14 @@ import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { Button } from '../../components/ui/Button';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
-import { InlineNotice } from '../../components/ui/InlineNotice';
 import { Pestanas } from '../../components/ui/Pestanas';
 import { Vacio } from '../../components/ui/Vacio';
-import { FilaSwitch } from '../../components/ui/Switch';
 import { Caja, Conteo } from '../../components/ui/Caja';
 import { IconoRecursoDe } from '../../components/ui/Recursos';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, INVITADOS, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
+import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Acta, BloqueResumen, EntregaRecibida, Kpi, Pendiente, Solicitud } from '../../types/panel';
 import { actasDe, archivarViejas, bloquesResumen, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoActa, textoCertificar, textoCierre } from '../../utils/panel';
@@ -146,6 +145,14 @@ const Panel: React.FC = () => {
     setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, recibe: { fotos } } } : x)));
     if (r) avisar(`Listo, quedó confirmado lo que llegó de ${r.org}.`, { tipo: 'ok' });
   };
+  const aceptarRecibida = (id: number) => {
+    setRecibidas((l) => l.map((r) => (r.id === id ? { ...r, estado: 'aceptada' } : r)));
+    avisar('Oferta de ayuda aceptada. La organización coordinará la entrega.', { tipo: 'ok' });
+  };
+  const rechazarRecibida = (id: number) => {
+    setRecibidas((l) => l.filter((r) => r.id !== id));
+    avisar('Le avisamos a la organización que no necesitas este recurso.');
+  };
   /* Todo lo que se puede hacer con una solicitud, en un solo objeto: lo usan el tablero, la tabla y las tarjetas. */
   const accionesSolicitud: AccionesSolicitud = { onAceptar: aceptar, onRechazar: rechazar, onMover: mover, onAsignar: setAsignando, onRecordar: recordar, onCertificar: setCertificando, onArchivar: archivar, onCancelar: setCancelando, onVerFotos: verFotosEntrega };
   const accion = (al: string) => {
@@ -156,6 +163,8 @@ const Panel: React.FC = () => {
     if (que === 'recordar') recordar(id);
     if (que === 'aceptar') aceptar(id);
     if (que === 'rechazar') rechazar(id);
+    if (que === 'aceptar-recibida') aceptarRecibida(id);
+    if (que === 'rechazar-recibida') rechazarRecibida(id);
     if (que === 'asignar') setAsignando(sol.find((s) => s.id === id) ?? null);
     if (que === 'certificar') setCertificando(sol.find((s) => s.id === id) ?? null);
   };
@@ -184,13 +193,21 @@ const Panel: React.FC = () => {
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
             {actual === 'necesidades' && <MisNecesidades />}
-            {actual === 'recibidas' && <EntregasRecibidas recibidas={recibidas} onConfirmar={(id) => accion(`confirmar:${id}`)} onVerFotos={verFotosRecibida} />}
             {actual === 'ofertas' && <MisOfertas sol={sol} />}
-            {actual === 'solicitudes' && <Solicitudes sol={sol} acciones={accionesSolicitud} />}
-            {actual === 'seguimiento' && <Seguimiento sol={sol} acciones={accionesSolicitud} />}
+            {actual === 'seguimiento' && (
+              <Seguimiento
+                modulos={modulos}
+                sol={sol}
+                recibidas={recibidas}
+                acciones={accionesSolicitud}
+                onConfirmarRecibido={(id) => accion(`confirmar:${id}`)}
+                onVerFotosRecibida={verFotosRecibida}
+                onAceptarRecibida={aceptarRecibida}
+                onRechazarRecibida={rechazarRecibida}
+              />
+            )}
             {actual === 'reportes' && <Reportes actas={actas} onVer={setActa} onCopiar={copiarActa} onDescargar={descargarActa} onVerFotos={verFotosActa} />}
             {actual === 'equipo' && <MiEquipo />}
-            {actual === 'datos' && <Datos />}
           </div>
         </main>
         <DialogoAsignar solicitud={asignando} onCerrar={() => setAsignando(null)} onAsignar={asignar} />
@@ -375,7 +392,7 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
   const historias = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada' && s.cierre?.historia) : [];
   const pasos = [
     { id: 'publicar', t: 'Publica lo que puedes dar o lo que te hace falta', d: 'Es lo que te pone en el mapa.', hecho: !sinModulos, accion: <Button nivel="primario" tamano="sm" onClick={() => irA(RUTAS.ofrecer)}>Ofrecer ayuda</Button> },
-    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => onAccion('#datos')}>Adjuntar el certificado</Button> },
+    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar el certificado</Button> },
     { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: EQUIPO.length > 0, accion: <Button nivel="terciario" tamano="sm" onClick={() => onAccion('#equipo')}>Ver mi equipo</Button> },
     { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm">Ver mis canales</Button> },
   ];
@@ -554,58 +571,7 @@ const MisNecesidades: React.FC = () => (
   </Caja>
 );
 
-const EntregasRecibidas: React.FC<{ recibidas: EntregaRecibida[]; onConfirmar: (id: number) => void; onVerFotos: (r: EntregaRecibida, i: number) => void }> = ({ recibidas, onConfirmar, onVerFotos }) => (
-  <Caja
-    titulo={
-      <>
-        Entregas recibidas{recibidasPorConfirmar(recibidas).length > 0 && <Conteo n={`${recibidasPorConfirmar(recibidas).length} por confirmar`} />}
-      </>
-    }
-  >
-    {recibidas.length === 0 ? (
-      <Vacio icono={<Package className="h-6.5 w-6.5" />} titulo="Nadie se ha comprometido todavía" texto="Las organizaciones cercanas ven tu necesidad en el mapa. Cuando alguna se comprometa, aparece aquí." />
-    ) : (
-      <Tabla
-        etiqueta="Entregas recibidas"
-        filas={recibidas}
-        clave={(r) => r.id}
-        tarjeta={(r) => <TarjetaRecibida r={r} onConfirmar={onConfirmar} onVerFotos={onVerFotos} estado={<EtiquetaCiclo texto={ESTADO_RECIBIDA[r.estado].texto} tono={ESTADO_RECIBIDA[r.estado].tono} enCamino={r.estado === 'camino'} />} />}
-        columnas={[
-          {
-            k: 'que',
-            etiqueta: 'Qué',
-            celda: (r) => (
-              <>
-                <b className="font-semibold">
-                  {cifra(r.cant)} {r.u} de {r.rec.toLowerCase()}
-                </b>
-                <small className="block text-rd-12 text-rd-ink-meta">
-                  {r.org} · {r.cuando}
-                  {r.dist ? ` · a ${r.dist}` : ''}
-                  {r.detalle ? ` · ${r.detalle}` : ''}
-                </small>
-              </>
-            ),
-          },
-          { k: 'estado', etiqueta: 'Estado', estado: true, celda: (r) => <EtiquetaCiclo texto={ESTADO_RECIBIDA[r.estado].texto} tono={ESTADO_RECIBIDA[r.estado].tono} enCamino={r.estado === 'camino'} /> },
-          { k: 'quienLleva', etiqueta: 'Quién lo lleva', celda: (r) => r.vol ?? <span className="text-rd-ink-meta">—</span> },
-          { k: 'cierre', etiqueta: 'Cierre', celda: (r) => (cuentaFotos(fotosDeRecibida(r.id)) > 0 ? <TiraFotos fotos={listaFotos(fotosDeRecibida(r.id))} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} /> : <span className="text-rd-ink-meta">—</span>) },
-          {
-            k: 'acc',
-            etiqueta: 'Acciones',
-            acc: true,
-            celda: (r) =>
-              r.estado === 'entregada' ? (
-                <Button nivel="primario" tamano="sm" onClick={() => onConfirmar(r.id)}>
-                  Confirmar recibido
-                </Button>
-              ) : null,
-          },
-        ]}
-      />
-    )}
-  </Caja>
-);
+
 
 
 /* ---------- reportes: las actas de entrega ---------- */
@@ -821,76 +787,6 @@ const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
 );
 
 
-const ORDEN: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, archivada: 5 };
-
-const Solicitudes: React.FC<{ sol: Solicitud[]; acciones: AccionesSolicitud }> = ({ sol, acciones }) => {
-  const lista = [...sol].sort((a, b) => ORDEN[a.estado] - ORDEN[b.estado]);
-  const chip = (s: Solicitud) => <EtiquetaCiclo texto={ESTADO_SOLICITUD[s.estado].texto} tono={ESTADO_SOLICITUD[s.estado].tono} enCamino={s.estado === 'camino'} />;
-  return (
-    <Caja
-      titulo={
-        <>
-          Solicitudes{nuevas(sol) > 0 && <Conteo n={`${nuevas(sol)} nuevas`} />}
-        </>
-      }
-    >
-      {lista.length === 0 ? (
-        <Vacio icono={<Megaphone className="h-6.5 w-6.5" />} titulo="Nadie ha pedido de tus ofertas todavía" texto="Las organizaciones cercanas ven tu oferta en el mapa. Cuando alguna la solicite, aparece aquí." />
-      ) : (
-        <Tabla
-          etiqueta="Solicitudes"
-          filas={lista}
-          clave={(s) => s.id}
-          tarjeta={(s) => <TarjetaSolicitud s={s} acciones={acciones} estado={chip(s)} />}
-          columnas={[
-            {
-              k: 'que',
-              etiqueta: 'Qué',
-              celda: (s) => (
-                <>
-                  <b className="font-semibold">
-                    {cifra(s.cant)} {s.u} de {s.rec.toLowerCase()}
-                  </b>
-                  <small className="block text-rd-12 text-rd-ink-meta">
-                    {s.quien} · {s.cuando}
-                    {s.dist ? ` · a ${s.dist}` : ''}
-                  </small>
-                </>
-              ),
-            },
-            { k: 'estado', etiqueta: 'Estado', estado: true, celda: chip },
-            { k: 'quienLleva', etiqueta: 'Quién lo lleva', celda: (s) => quienLleva(s) ?? <span className="text-rd-ink-meta">{s.estado === 'nueva' || s.estado === 'confirmada' || s.estado === 'archivada' ? '—' : 'Sin asignar'}</span> },
-            {
-              k: 'cierre',
-              etiqueta: 'Cierre',
-              celda: (s) =>
-                s.estado === 'confirmada' || s.estado === 'archivada' ? (
-                  <>
-                    <span className="block text-rd-12 text-rd-ink-2">{textoCierre(s)}</span>
-                    {cuentaFotos(fotosDeEntrega(s.id)) > 0 && <TiraFotos fotos={listaFotos(fotosDeEntrega(s.id))} tamano="sm" onAbrir={(i) => acciones.onVerFotos(s, i)} className="mt-1.5" />}
-                  </>
-                ) : (
-                  <span className="text-rd-ink-meta">—</span>
-                ),
-            },
-            /* Las mismas acciones y el mismo orden que en la tarjeta: el siguiente paso primero. */
-            { k: 'acc', etiqueta: 'Acciones', acc: true, celda: (s) => (
-              <>
-                {accionesDe(s, acciones)}
-                {menuDe(s, acciones)}
-              </>
-            ) },
-          ]}
-        />
-      )}
-    </Caja>
-  );
-};
-
-/** Las cinco columnas del tablero (la de «Nuevas» viene de la rama de Fede, por decisión de
- *  Alejandro, 16 de septiembre de 2026): lo nuevo se responde ahí mismo, y la columna solo
- *  aparece cuando hay algo nuevo (`soloConAlgo`). «Archivadas» cierra el tablero: ahí van las
- *  confirmadas al archivarlas o solas a los 30 días, para que no se acumulen. */
 const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
   { estado: 'nueva', nombre: 'Nuevas', vacia: 'Sin solicitudes por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" />, soloConAlgo: true },
   { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
@@ -898,6 +794,15 @@ const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; cl
   { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Nada por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
   { estado: 'confirmada', nombre: 'Confirmada', vacia: 'Sin entregas confirmadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
   { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las confirmadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
+];
+
+const COLUMNAS_RECIBIDAS: { estado: EntregaRecibida['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
+  { estado: 'nueva', nombre: 'Nuevas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" />, soloConAlgo: true },
+  { estado: 'aceptada', nombre: 'Comprometidas', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
+  { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
+  { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Sin entregas por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
+  { estado: 'confirmada', nombre: 'Confirmadas', vacia: 'Sin entregas confirmadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
+  { estado: 'archivada', nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
 ];
 
 const ORDEN_CICLO: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, archivada: 5 };
@@ -924,12 +829,30 @@ const MOTIVOS_CANCELAR = [
   { valor: 'otro', texto: 'Otro motivo' },
 ];
 
-/** El tablero de entregas (`rd-kanban` del prototipo, más la columna «Nuevas» de Fede): una
- *  columna por estado del ciclo, cada tarjeta con lo que se lleva, a quién, cuándo (hoy en
- *  ámbar), quién la lleva y las acciones de ese paso. Se arrastran con las reglas de
- *  `puedeMover`; devolver una tarjeta atrás pide confirmación, porque cambia lo que la otra
- *  organización cree que tiene. */
-const Seguimiento: React.FC<{ sol: Solicitud[]; acciones: AccionesSolicitud }> = ({ sol, acciones }) => {
+/** El tablero de entregas: unificado para ambas caras (ayuda que se entrega o ayuda que se recibe).
+ *  Para organizaciones permite mover y asignar equipo; para líderes comunitarios permite aceptar
+ *  ayuda ofrecida, ver lo que viene en camino y certificar/confirmar lo recibido. */
+const Seguimiento: React.FC<{
+  modulos: ModulosCuenta;
+  sol: Solicitud[];
+  recibidas: EntregaRecibida[];
+  acciones: AccionesSolicitud;
+  onConfirmarRecibido: (id: number) => void;
+  onVerFotosRecibida: (r: EntregaRecibida, i: number) => void;
+  onAceptarRecibida: (id: number) => void;
+  onRechazarRecibida: (id: number) => void;
+}> = ({
+  modulos,
+  sol,
+  recibidas,
+  acciones,
+  onConfirmarRecibido,
+  onVerFotosRecibida,
+  onAceptarRecibida,
+  onRechazarRecibida,
+}) => {
+  const tieneAmbos = modulos.pide && modulos.ofrece;
+  const [vista, setVista] = useState<'entrego' | 'recibo'>(() => (modulos.ofrece ? 'entrego' : 'recibo'));
   const { onMover } = acciones;
   const avisar = useAviso();
   const [sobre, setSobre] = useState<Solicitud['estado'] | null>(null);
@@ -943,60 +866,148 @@ const Seguimiento: React.FC<{ sol: Solicitud[]; acciones: AccionesSolicitud }> =
     if (ORDEN_CICLO[a] < ORDEN_CICLO[s.estado]) return setDevolviendo({ s, a });
     onMover(id, a);
   };
+
+  const verEntregas = !modulos.pide || (modulos.ofrece && vista === 'entrego');
+
   return (
     <section className="col-span-full min-w-0">
-      <h2 className="font-rd m-0 mb-3 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">Seguimiento de entregas</h2>
-      {/* Un tablero, como Trello: las columnas van de lado y se recorren en horizontal, nunca se
-          apilan, tampoco en escritorio (Alejandro, 16 de septiembre de 2026). Bajo 640 cada
-          columna ocupa casi todo el ancho; desde 640 mide 320, con aire para que las acciones
-          quepan en una línea. El `scroll-pl` alinea la primera columna con el margen de la
-          página al enganchar (sin él, el enganche la corría hasta el borde del relleno). */}
-      <div role="region" aria-label="Tablero de seguimiento de entregas" tabIndex={0} className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy">
-        {COLUMNAS.map((c) => {
-          const items = sol.filter((s) => s.estado === c.estado);
-          if (c.soloConAlgo && items.length === 0) return null;
-          const recibe = c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada';
-          return (
-            <div
-              key={c.estado}
-              onDragOver={(e) => {
-                if (!recibe) return;
-                e.preventDefault();
-                setSobre(c.estado);
-              }}
-              onDragLeave={() => setSobre((x) => (x === c.estado ? null : x))}
-              onDrop={(e) => {
-                e.preventDefault();
-                setSobre(null);
-                mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
-              }}
-              className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:basis-80 ${sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-sunken'} ${c.clase}`}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-rd m-0 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
+          {verEntregas ? 'Seguimiento de entregas salientes' : 'Seguimiento de ayuda recibida'}
+        </h2>
+        {tieneAmbos && (
+          <div className="inline-flex rounded-rd-md border border-rd-line bg-rd-sunken p-0.5">
+            <button
+              type="button"
+              onClick={() => setVista('entrego')}
+              className={`cursor-pointer rounded-rd-sm px-3 py-1 text-rd-12 font-medium transition-colors ${
+                vista === 'entrego'
+                  ? 'bg-rd-surface font-semibold text-rd-ink shadow-xs'
+                  : 'text-rd-ink-2 hover:text-rd-ink'
+              }`}
             >
-              <div className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}>
-                <span aria-hidden="true">{c.icono}</span>
-                {c.nombre}
-                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">{items.length}</span>
-              </div>
-              {items.map((s) => (
-                <TarjetaSolicitud
-                  key={s.id}
-                  s={s}
-                  acciones={acciones}
-                  menuFlotante
-                  arrastre={{
-                    draggable: c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada',
-                    onDragStart: (e) => {
-                      e.dataTransfer.setData('text/plain', String(s.id));
-                      e.dataTransfer.effectAllowed = 'move';
-                    },
-                  }}
-                />
-              ))}
-              {items.length === 0 && <p className="m-0 px-1 py-3 text-center text-rd-12-5 text-rd-ink-meta">{c.vacia}</p>}
-            </div>
-          );
-        })}
+              Ayuda que entrego
+              <span className="ml-1.5 rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
+                {sol.filter((s) => s.estado !== 'archivada').length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista('recibo')}
+              className={`cursor-pointer rounded-rd-sm px-3 py-1 text-rd-12 font-medium transition-colors ${
+                vista === 'recibo'
+                  ? 'bg-rd-surface font-semibold text-rd-ink shadow-xs'
+                  : 'text-rd-ink-2 hover:text-rd-ink'
+              }`}
+            >
+              Ayuda que recibo
+              <span className="ml-1.5 rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
+                {recibidas.filter((r) => r.estado !== 'archivada').length}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {verEntregas ? (
+        <div
+          role="region"
+          aria-label="Tablero de seguimiento de entregas"
+          tabIndex={0}
+          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
+        >
+          {COLUMNAS.map((c) => {
+            const items = sol.filter((s) => s.estado === c.estado);
+            if (c.soloConAlgo && items.length === 0) return null;
+            const recibe = c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada';
+            return (
+              <div
+                key={c.estado}
+                onDragOver={(e) => {
+                  if (!recibe) return;
+                  e.preventDefault();
+                  setSobre(c.estado);
+                }}
+                onDragLeave={() => setSobre((x) => (x === c.estado ? null : x))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setSobre(null);
+                  mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
+                }}
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:basis-80 ${
+                  sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-sunken'
+                } ${c.clase}`}
+              >
+                <div
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}
+                >
+                  <span aria-hidden="true">{c.icono}</span>
+                  {c.nombre}
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                    {items.length}
+                  </span>
+                </div>
+                {items.map((s) => (
+                  <TarjetaSolicitud
+                    key={s.id}
+                    s={s}
+                    acciones={acciones}
+                    menuFlotante
+                    arrastre={{
+                      draggable: c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada',
+                      onDragStart: (e) => {
+                        e.dataTransfer.setData('text/plain', String(s.id));
+                        e.dataTransfer.effectAllowed = 'move';
+                      },
+                    }}
+                  />
+                ))}
+                {items.length === 0 && <p className="m-0 px-1 py-3 text-center text-rd-12-5 text-rd-ink-meta">{c.vacia}</p>}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div
+          role="region"
+          aria-label="Tablero de seguimiento de ayuda recibida"
+          tabIndex={0}
+          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
+        >
+          {COLUMNAS_RECIBIDAS.map((c) => {
+            const items = recibidas.filter((r) => r.estado === c.estado);
+            if (c.soloConAlgo && items.length === 0) return null;
+            return (
+              <div
+                key={c.estado}
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-sunken p-2 sm:basis-80 ${c.clase}`}
+              >
+                <div
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}
+                >
+                  <span aria-hidden="true">{c.icono}</span>
+                  {c.nombre}
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                    {items.length}
+                  </span>
+                </div>
+                {items.map((r) => (
+                  <TarjetaRecibida
+                    key={r.id}
+                    r={r}
+                    onConfirmar={onConfirmarRecibido}
+                    onVerFotos={onVerFotosRecibida}
+                    onAceptar={onAceptarRecibida}
+                    onRechazar={onRechazarRecibida}
+                  />
+                ))}
+                {items.length === 0 && <p className="m-0 px-1 py-3 text-center text-rd-12-5 text-rd-ink-meta">{c.vacia}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Volver atrás cambia lo que la otra organización cree que tiene: se confirma con la
           consecuencia a la vista y se le avisa (`confirmarAtras` del prototipo). */}
       <Dialogo
@@ -1079,60 +1090,4 @@ const MiEquipo: React.FC = () => (
 );
 
 
-const Datos: React.FC = () => {
-  const [directorio, setDirectorio] = useState(ORG.directorio);
-  return (
-    <>
-      <Caja
-        titulo="Datos de mi organización"
-        className="col-span-full xl:col-span-7"
-        accion={
-          <Button nivel="secundario" tamano="md">
-            Editar datos
-          </Button>
-        }
-      >
-        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
-          {[
-            ['Nombre', ORG.nombre],
-            ['Tipo', ORG.tipo],
-            ['NIT', ORG.nit],
-            ['Dirección', ORG.dir],
-            ['Contacto público', `${ORG.contacto.tel}${ORG.contacto.wa ? ' · también WhatsApp' : ''} · ${ORG.contacto.correo}`],
-            ['Enlace con RaDAR', ORG.enlace],
-            ['Web', ORG.web],
-          ].map(([k, v]) => (
-            <div key={k} className="min-w-0">
-              <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
-              <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-4">
-          {ORG.verificacion === 'verificada' && <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo="Organización verificada" texto="La insignia sale en cada publicación." />}
-          {ORG.verificacion === 'revision' && <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto="Revisamos el documento en menos de 2 días hábiles." />}
-          {ORG.verificacion === 'sin' && <InlineNotice variante="neutro" icono={<BadgeCheck className="h-4 w-4" />} titulo="Sin verificar" texto="Adjunta el certificado de existencia y te ponemos la insignia." accion={<Button nivel="secundario" tamano="sm">Adjuntar el certificado</Button>} />}
-        </div>
-      </Caja>
-      <Caja titulo="Visibilidad y accesos" className="col-span-full xl:col-span-5">
-        {/* Un ajuste es un interruptor (Alejandro, 16 de septiembre de 2026), no una casilla en
-            una caja con texto. */}
-        <FilaSwitch id="org-directorio" rotulo="Aparecer en el Directorio" nota={directorio ? `Tu contacto se ve en el Directorio${ORG.directorioDesde ? ` desde ${ORG.directorioDesde}` : ''}` : 'Tu contacto no se ve en el Directorio'} encendido={directorio} onCambiar={setDirectorio} />
-        <h2 className="font-rd mt-5 mb-3 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">Quién entra a esta cuenta</h2>
-        {INVITADOS.map((p, i) => (
-          <div key={p.n} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-            <Avatar iniciales={iniciales(p.n)} tamano="md" />
-            <div className="min-w-0 flex-1">
-              <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.n}</b>
-              <span className="text-rd-12-5 text-rd-ink-2">{p.rol}</span>
-            </div>
-            {p.estado === 'pendiente' ? <EtiquetaCiclo texto={`Invitación enviada ${p.cuando ?? ''}`} tono="inicial" /> : <EtiquetaCiclo texto="Activa" tono="completo" />}
-          </div>
-        ))}
-        <Button nivel="secundario" tamano="md" className="mt-3">
-          Invitar a alguien
-        </Button>
-      </Caja>
-    </>
-  );
-};
+
