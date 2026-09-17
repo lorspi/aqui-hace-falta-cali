@@ -55,6 +55,7 @@ const LandingPage = lazy(() => import("./features/landing/LandingPage").then(m =
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const SimulatedRegisterPage = lazy(() => import("./components/SimulatedRegisterPage").then(m => ({ default: m.SimulatedRegisterPage })));
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
+const RegistroPage = lazy(() => import("./pages/registro/RegistroPage").then(m => ({ default: m.RegistroPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
@@ -119,7 +120,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   if (path === '' || path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
@@ -128,6 +129,7 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro') return { type: 'reg2' };
+  if (path === 'registro-v2') return { type: 'registro-v2' }; // mockup/registro-v2 (Producto)
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -156,6 +158,8 @@ export default function App() {
     content = <LegalPage markdown={privacidadMd} />;
   } else if (specialRoute?.type === 'reg2') {
     content = <SimulatedRegisterPage />;
+  } else if (specialRoute?.type === 'registro-v2') {
+    content = <RegistroPage />;
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {

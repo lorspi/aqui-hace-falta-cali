@@ -196,3 +196,63 @@ export type StepOrgDetailsData = z.infer<typeof stepOrgDetailsSchema>;
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type OrganizationFormData = z.infer<typeof organizationRegisterSchema>;
+
+/* ------------------------------------------------------------------------------------
+ * Añadido por mockup/registro-v2. Nada de lo anterior cambia.
+ * Reglas de contraseña que la pantalla muestra vivas y que el esquema valida (mínimo 8,
+ * OWASP / NIST, y mezcla para que no sea trivial). `step1AccountAuthSchema` sigue en
+ * `.min(6)`: unificar es decisión de Frontend (reporte 93, P7).
+ * ---------------------------------------------------------------------------------- */
+
+export interface ReglaContrasena {
+  id: 'largo' | 'mayus' | 'num' | 'simb' | 'correo';
+  texto: string;
+  cumple: (contrasena: string, correo: string) => boolean;
+}
+
+export const REGLAS_CONTRASENA: ReglaContrasena[] = [
+  { id: 'largo', texto: 'Al menos 8 caracteres', cumple: (p) => p.length >= 8 },
+  {
+    id: 'mayus',
+    texto: 'Una mayúscula y una minúscula',
+    cumple: (p) => /[a-záéíóúñ]/.test(p) && /[A-ZÁÉÍÓÚÑ]/.test(p),
+  },
+  { id: 'num', texto: 'Un número', cumple: (p) => /\d/.test(p) },
+  {
+    id: 'simb',
+    texto: 'Un símbolo (por ejemplo . , ! ? -)',
+    cumple: (p) => /[^\w\sáéíóúñÁÉÍÓÚÑ]/.test(p),
+  },
+  {
+    id: 'correo',
+    texto: 'Distinta de tu correo',
+    cumple: (p, c) => {
+      const usuario = (c || '').split('@')[0].toLowerCase();
+      return !usuario || usuario.length < 3 || !p.toLowerCase().includes(usuario);
+    },
+  },
+];
+
+export function contrasenaCumple(contrasena: string, correo: string): boolean {
+  return REGLAS_CONTRASENA.every((r) => r.cumple(contrasena || '', correo || ''));
+}
+
+/**
+ * Cuenta de registro-v2: correo, contraseña con las cinco reglas y repetición.
+ */
+export const cuentaSchema = z
+  .object({
+    correo: z.string().min(1, 'Necesitamos un correo para entrar y avisarte').email('Escribe un correo completo, con @ y punto'),
+    contrasena: z.string().min(1, 'Escribe una contraseña'),
+    repetir: z.string(),
+  })
+  .refine((d) => contrasenaCumple(d.contrasena, d.correo), {
+    message: 'La contraseña no cumple todas las reglas',
+    path: ['contrasena'],
+  })
+  .refine((d) => d.contrasena === d.repetir, {
+    message: 'Las dos contraseñas no coinciden',
+    path: ['repetir'],
+  });
+
+export type CuentaData = z.infer<typeof cuentaSchema>;
