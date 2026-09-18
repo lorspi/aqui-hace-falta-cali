@@ -104,23 +104,24 @@ const Pedir: React.FC = () => {
         />
       </>
     );
-  } else if (sub.id === 'dias') {
-    pantalla = (
-      <>
-        <Pregunta titulo="¿Por cuántos días?" sub="Si tienes dudas, elige menos días: siempre puedes volver a pedir." />
-        <Chips nombre="dias" opciones={DIAS_OPCIONES.map((d) => `${d} ${d === 1 ? 'día' : 'días'}`)} valor={`${e.dias} ${e.dias === 1 ? 'día' : 'días'}`} onChange={(v) => set({ dias: parseInt(v, 10) })} />
-      </>
-    );
   } else if (sub.id.startsWith('grupo:')) {
     const g = sub.id.split(':')[1];
     const base = BASES[g];
     const v = e.grupo[g];
     const etiqueta = base.unidad.charAt(0).toUpperCase() + base.unidad.slice(1);
+    const tieneDiarios = e.sel.some((it) => EQUIV[it]?.base === g && EQUIV[it]?.diario);
     pantalla = (
       <>
         <Pregunta titulo={PREGUNTA_GRUPO[g]} sub="Con esto calculamos cuánto hace falta. Un aproximado sirve." />
         <CampoNumero id="gv" etiqueta={etiqueta} unidad={base.unidad} valor={v ? cifra(v) : ''} onChange={(t) => { fijarGrupo(g, t); errores.limpiar('gv'); }} onBlur={(t) => errores.validar('gv', ['numero'], t)} error={errores.errores.gv} />
         <Sugeridos cifras={base.sugeridos ?? []} unidad={base.unidad} valor={v} onElegir={(n) => { set((p) => ({ grupo: { ...p.grupo, [g]: n } })); errores.limpiar('gv'); }} />
+        {tieneDiarios && (
+          <div className="mt-5">
+            <label className="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink">¿Por cuántos días?</label>
+            <p className="mb-2 text-rd-12-5 text-rd-ink-2">Si tienes dudas, elige menos días: siempre puedes volver a pedir.</p>
+            <Chips nombre="dias" opciones={DIAS_OPCIONES.map((d) => `${d} ${d === 1 ? 'día' : 'días'}`)} valor={`${e.dias} ${e.dias === 1 ? 'día' : 'días'}`} onChange={(v) => set({ dias: parseInt(v, 10) })} />
+          </div>
+        )}
         <BloqueVivo metas={metas} base={g} />
       </>
     );

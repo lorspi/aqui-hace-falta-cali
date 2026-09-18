@@ -27,15 +27,13 @@ export function aDeclarar(sel: string[]): string[] {
   return sel.filter((it) => SIN_META.includes(it) && !!DETALLE[it]?.campos.some((c) => c.k === 'num'));
 }
 
-/** El camino. Los días van ANTES de la cantidad: al revés, la cifra en vivo aparecía ya
- *  multiplicada por un valor por defecto que la persona nunca eligió. El detalle no es un
- *  paso: vive dentro de «Revisar», al lado de la cifra que describe. */
+/** El camino. Los días van con la cantidad en una sola pantalla (sin paso separado).
+ *  El detalle no es un paso: vive dentro de «Revisar», al lado de la cifra que describe. */
 export function caminoPedir(e: Pick<EstadoPedir, 'sel'>): SubPaso[] {
   const c: SubPaso[] = [
     { paso: 1, id: 'evento', nombre: 'Emergencia' },
     { paso: 1, id: 'recursos', nombre: 'Qué hace falta' },
   ];
-  if (hayDiarios(e.sel)) c.push({ paso: 1, id: 'dias', nombre: 'Días' });
   gruposNecesarios(e.sel).forEach((g) => c.push({ paso: 1, id: `grupo:${g}`, nombre: NOMBRE_GRUPO[g] ?? 'Cantidad' }));
   if (aDeclarar(e.sel).length) c.push({ paso: 1, id: 'declarar', nombre: 'Cantidades' });
   c.push({ paso: 2, id: 'donde', nombre: 'Dónde' });

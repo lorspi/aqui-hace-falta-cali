@@ -65,9 +65,10 @@ describe('caminoPedir', () => {
     expect(c).toEqual(['evento', 'recursos', 'donde', 'contacto', 'fotos', 'revisar']);
   });
 
-  it('con agua: los días van antes de la cantidad de personas', () => {
+  it('con agua: incluye el paso de personas directamente (días y personas van juntos)', () => {
     const c = caminoPedir({ sel: ['Agua potable'] }).map((s) => s.id);
-    expect(c.indexOf('dias')).toBeLessThan(c.indexOf('grupo:personas'));
+    expect(c).toContain('grupo:personas');
+    expect(c).not.toContain('dias');
   });
 
   it('un recurso sin meta pide su cantidad en «Cantidades»', () => {
