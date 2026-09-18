@@ -76,6 +76,24 @@ export const TEXTOS = {
     noCoinciden: 'Las dos contraseñas no coinciden',
   },
 
+  individual: {
+    tituloDatos: 'Tus datos',
+    subDatos: 'Escribe tu nombre y documento de identidad.',
+    nombre: 'Nombre',
+    apellido: 'Apellido',
+    tipoDoc: 'Tipo de documento',
+    numeroDoc: 'Número de documento',
+    errorNombre: 'Escribe tu nombre',
+    errorApellido: 'Escribe tu apellido',
+    errorDoc: 'Escribe tu número de documento',
+    tituloCuenta: 'Tu cuenta',
+    subCuenta: 'Con este correo entras y recibes los avisos.',
+    correo: 'Correo',
+    celular: 'Número celular',
+    contrasena: 'Contraseña',
+    repetir: 'Repite la contraseña',
+  },
+
   pie: {
     volver: 'Volver',
     continuar: 'Continuar',

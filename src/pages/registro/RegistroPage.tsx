@@ -21,7 +21,8 @@ import { OptionCard } from '../../components/ui/OptionCard';
 import { PasswordRules } from '../../components/ui/PasswordRules';
 import { Segmented } from '../../components/ui/Segmented';
 import { Success } from '../../components/ui/Success';
-import { DEPTOS, PERFILES, RUTAS, TIPOS_COM, TIPOS_ORG, estadoInicial } from '../../mocks/cuentasMock';
+import { DEPTOS, PERFILES, RUTAS, TIPOS_COM, TIPOS_DOC, TIPOS_ORG, estadoInicial } from '../../mocks/cuentasMock';
+import { Turnstile } from '../../components/Turnstile';
 import { guardarEntidad } from '../../utils/cuenta';
 import type { EstadoRegistro, IconoCuenta, ModoRegistro, PerfilCuenta } from '../../types/cuenta';
 import { camino, listo, loginListo, pasoActual, validar, type Contrasenas, type Regla } from './pasos';
@@ -109,6 +110,7 @@ export const RegistroPage: React.FC = () => {
   const patchOrg = (p: Partial<EstadoRegistro['org']>) => setE((prev) => ({ ...prev, org: { ...prev.org, ...p } }));
   const patchCom = (p: Partial<EstadoRegistro['com']>) => setE((prev) => ({ ...prev, com: { ...prev.com, ...p } }));
   const patchPer = (p: Partial<EstadoRegistro['per']>) => setE((prev) => ({ ...prev, per: { ...prev.per, ...p } }));
+  const patchInd = (p: Partial<EstadoRegistro['ind']>) => setE((prev) => ({ ...prev, ind: { ...prev.ind, ...p } }));
 
   const error = (id: string) => errores[id] ?? null;
   const alSalir = (id: string, reglas: Regla[], vacio?: string) => (valor: string) =>
@@ -227,11 +229,11 @@ export const RegistroPage: React.FC = () => {
       )}
       {ultimo ? (
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={terminar}>
-          {e.perfil === 'rapida' ? T.rapida.crear : T.pie.crear}
+          {e.perfil === 'rapida' ? T.rapida.crear : e.perfil === 'individual' ? 'Registrar' : T.pie.crear}
         </Button>
       ) : (
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={siguiente}>
-          {T.pie.continuar}
+          {e.perfil === 'individual' ? 'Siguiente paso' : T.pie.continuar}
         </Button>
       )}
     </div>
@@ -400,6 +402,141 @@ export const RegistroPage: React.FC = () => {
     </>
   );
 
+  const pantallaIndDatos = (
+    <>
+      {titulo(T.individual.tituloDatos, T.individual.subDatos)}
+      <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
+        <Field
+          {...PILDORA}
+          id="ind-nombre"
+          etiqueta={T.individual.nombre}
+          icono={ico.persona}
+          autoComplete="given-name"
+          valor={e.ind.nombre}
+          onChange={alEscribir('ind-nombre', (v) => patchInd({ nombre: v }))}
+          onBlur={alSalir('ind-nombre', ['requerido'], T.individual.errorNombre)}
+          error={error('ind-nombre')}
+        />
+        <Field
+          {...PILDORA}
+          id="ind-apellido"
+          etiqueta={T.individual.apellido}
+          icono={ico.persona}
+          autoComplete="family-name"
+          valor={e.ind.apellido}
+          onChange={alEscribir('ind-apellido', (v) => patchInd({ apellido: v }))}
+          onBlur={alSalir('ind-apellido', ['requerido'], T.individual.errorApellido)}
+          error={error('ind-apellido')}
+        />
+        <Field
+          {...PILDORA}
+          id="ind-tipo-doc"
+          etiqueta={T.individual.tipoDoc}
+          tipo="select"
+          opciones={TIPOS_DOC}
+          valor={e.ind.tipoDocumento}
+          onChange={(v) => patchInd({ tipoDocumento: v })}
+        />
+        <Field
+          {...PILDORA}
+          id="ind-num-doc"
+          etiqueta={T.individual.numeroDoc}
+          icono={ico.documento}
+          inputMode="numeric"
+          valor={e.ind.numeroDocumento}
+          onChange={alEscribir('ind-num-doc', (v) => patchInd({ numeroDocumento: v }))}
+          onBlur={alSalir('ind-num-doc', ['requerido'], T.individual.errorDoc)}
+          error={error('ind-num-doc')}
+        />
+      </div>
+    </>
+  );
+
+  const pantallaIndCuenta = (
+    <>
+      {titulo(T.individual.tituloCuenta, T.individual.subCuenta)}
+      <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
+        <Field
+          {...PILDORA}
+          id="ind-correo"
+          etiqueta={T.individual.correo}
+          tipo="email"
+          icono={ico.correo}
+          autoComplete="email"
+          valor={e.ind.correo}
+          onChange={alEscribir('ind-correo', (v) => patchInd({ correo: v }))}
+          onBlur={alSalir('ind-correo', ['requerido', 'correo'], T.errores.correo)}
+          error={error('ind-correo')}
+        />
+        <Field
+          {...PILDORA}
+          id="ind-tel"
+          etiqueta={T.individual.celular}
+          tipo="tel"
+          icono={ico.celular}
+          autoComplete="tel"
+          valor={e.ind.celular}
+          onChange={alEscribir('ind-tel', (v) => patchInd({ celular: v }))}
+          onBlur={alSalir('ind-tel', ['requerido', 'celular'], T.errores.celular)}
+          error={error('ind-tel')}
+        />
+        <div>
+          <Field
+            {...PILDORA}
+            id="ind-pass"
+            etiqueta={T.individual.contrasena}
+            tipo="password"
+            icono={ico.contrasena}
+            autoComplete="new-password"
+            valorInicial={pass.current.ip}
+            onChange={guardarPass('ip')}
+          />
+          <PasswordRules className="mt-2" id="ind-reglas" contrasena={pass.current.ip || ''} correo={e.ind.correo} />
+        </div>
+        <Field
+          {...PILDORA}
+          id="ind-repetir"
+          etiqueta={T.individual.repetir}
+          tipo="password"
+          icono={ico.contrasena}
+          autoComplete="new-password"
+          valorInicial={pass.current.iq}
+          onChange={guardarPass('iq')}
+          error={pass.current.iq && pass.current.ip !== pass.current.iq ? T.cuenta.noCoinciden : null}
+        />
+        <div className="flex justify-center py-2">
+          <Turnstile
+            onVerify={(token) => patchInd({ captchaToken: token })}
+            onError={() => patchInd({ captchaToken: '' })}
+            onExpire={() => patchInd({ captchaToken: '' })}
+            appearance="always"
+            size="flexible"
+            theme="light"
+            language="es"
+          />
+        </div>
+        <Field
+          id="ind-terminos"
+          etiqueta={
+            <span className="text-rd-13 text-rd-ink-2">
+              Acepto los{' '}
+              <a href={RUTAS.terminos} target="_blank" rel="noreferrer" className="font-semibold text-rd-ink underline hover:text-rd-navy">
+                términos y condiciones
+              </a>{' '}
+              y la{' '}
+              <a href={RUTAS.privacidad} target="_blank" rel="noreferrer" className="font-semibold text-rd-ink underline hover:text-rd-navy">
+                política de privacidad
+              </a>
+            </span>
+          }
+          tipo="checkbox"
+          marcado={e.ind.terminos}
+          onChangeMarcado={(v) => patchInd({ terminos: v })}
+        />
+      </div>
+    </>
+  );
+
   const exito = (() => {
     if (e.perfil === 'rapida') {
       return (
@@ -422,7 +559,7 @@ export const RegistroPage: React.FC = () => {
     }
     /* Sin objetivo que preguntar: el mapa es donde pasa lo primero (pedir o publicar). La
        entidad solo pone nombre al panel del aviso de verificación. */
-    const quien = esOrg ? e.org.nombre : e.com.nombre;
+    const quien = esOrg ? e.org.nombre : e.perfil === 'individual' ? `${e.ind.nombre} ${e.ind.apellido}` : e.com.nombre;
     const panel = PERFILES.find((p) => p.id === e.perfil)?.panel ?? T.exito.panelPorDefecto;
     return (
       <Success
@@ -452,6 +589,8 @@ export const RegistroPage: React.FC = () => {
     com: pantallaCom,
     persona: pantallaPersona,
     cuenta: pantallaCuenta,
+    ind_datos: pantallaIndDatos,
+    ind_cuenta: pantallaIndCuenta,
   };
 
   /* `key` por paso: React reutilizaría un `Field` que quede en la misma posición del paso

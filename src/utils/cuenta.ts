@@ -20,7 +20,9 @@ export function guardarEntidad(perfil: PerfilCuenta): void {
 export function entidadGuardada(search = '', guardado: string | null = null): Exclude<PerfilCuenta, 'rapida'> {
   const forzada = new URLSearchParams(search).get('entidad');
   if (forzada === 'comunidad' || forzada === 'liderazgo') return 'liderazgo';
+  if (forzada === 'individual' || forzada === 'persona') return 'individual';
   if (forzada === 'organizacion') return 'organizacion';
+  if (guardado === 'individual') return 'individual';
   return guardado === 'liderazgo' ? 'liderazgo' : 'organizacion';
 }
 

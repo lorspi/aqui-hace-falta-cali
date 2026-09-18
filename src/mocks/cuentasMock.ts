@@ -5,7 +5,7 @@
  */
 import type { ContactoPublico, EstadoRegistro, LaminaCarrusel, OpcionPerfil } from '../types/cuenta';
 
-/** Quién es. Por ahora dos entidades; voluntariado individual queda fuera. */
+/** Quién es: Organización, Comunidad y Persona natural. */
 export const PERFILES: OpcionPerfil[] = [
   {
     id: 'organizacion',
@@ -26,6 +26,22 @@ export const PERFILES: OpcionPerfil[] = [
     rolSupabase: 'moderador',
     organizationType: 'junta_vecinal',
   },
+  {
+    id: 'individual',
+    nombre: 'Persona natural',
+    descripcion: 'Voluntario, profesional o ciudadano que quiere colaborar.',
+    icono: 'persona',
+    panel: 'Mi cuenta',
+    rolSupabase: 'voluntario',
+  },
+];
+
+export const TIPOS_DOC = [
+  'Cédula de ciudadanía',
+  'Cédula de extranjería',
+  'Pasaporte',
+  'PPT / PEP',
+  'Tarjeta de identidad',
 ];
 
 export const TIPOS_ORG = [
@@ -98,6 +114,16 @@ export function estadoInicial(rapida: boolean): EstadoRegistro {
     org: { nombre: '', tipo: '', nit: '', web: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
     com: { nombre: '', tipo: '', departamento: 'Valle del Cauca', referencia: '', contacto: { ...CONTACTO_VACIO } },
     per: { nombre: '', cargo: '', cedula: '', tel: '', mismoWa: true, wa: '', correo: '' },
+    ind: {
+      nombre: '',
+      apellido: '',
+      correo: '',
+      celular: '',
+      tipoDocumento: 'Cédula de ciudadanía',
+      numeroDocumento: '',
+      captchaToken: '',
+      terminos: false,
+    },
     login: { correo: '' },
     listo: false,
   };

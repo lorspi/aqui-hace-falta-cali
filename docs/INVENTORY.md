@@ -98,13 +98,14 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `panel/TarjetaEntrega.tsx` — la tarjeta de una entrega, una sola para todo el panel (`TarjetaEntrega`; `TarjetaSolicitud` y `TarjetaRecibida` la llenan desde el estado): título = qué, meta = quién · cuándo · distancia, chip del recurso · quién la lleva, detalle, cierre y fotos, y un pie con botones `sm` a la izquierda (el siguiente paso primario primero) y el ⋮ a la derecha. `accionesDe` y `menuDe` dan las mismas acciones en el tablero, en la tabla de Solicitudes y en las tarjetas. La `Tabla` acepta `tarjeta` para usarla bajo 1280.
 - `flujos/comunes.tsx` — el marco del flujo (`MarcoFlujo`: progreso fijo, cuerpo que desplaza, pie con Volver y Continuar; a ≥ 1024 una ventana de 680 sobre la Radar inerte y atenuada, del alto de la ventana y con el pie siempre a la vista), `SalidaDialogo` («¿Sales sin publicar?»), `ListaRecursos`, `Acordeon`, `FilaRecurso`, `TarjetasOpcion`, `Chips`, `Sugeridos`, `CampoNumero`, `CamposContacto`, `AlgoMas`, `MiniMapa`, `CampoFotos`, `FilaRevisar`, `ResumenPub`, `MetaPub`, `ExitoFlujo`; `useErrores` (validación al salir del campo). `flujos/useFlujo.ts`: estado, camino, avanzar y volver, publicar con guarda, borrador en `localStorage`, pregunta de salida.
 - `registro/RegistroPage` — ruta `/registro-v2` (`?rapida=1` para la cuenta de un paso).
+  Soporta perfiles de Organización, Comunidad y Persona natural (con datos de acceso, celular, captcha Turnstile, términos y tipo/número de documento).
   Textos en `registro/textos.ts`, camino y validación en `registro/pasos.ts`, el panel derecho
   en `registro/RegistroCarrusel.tsx` (Leaflet decorativo). Convive con
   `SimulatedRegisterPage` (`/registro`); cuál queda es decisión de Frontend.
 
 ## Tipos y mocks de Producto (`src/types/`, `src/mocks/`)
 
-- `types/cuenta.ts` — entidad (organización · comunidad: pone nombre al panel), `ModulosCuenta` (los módulos se habilitan con el uso: al publicar una necesidad, al publicar una oferta), contacto público, estado del registro.
+- `types/cuenta.ts` — entidad (organización · comunidad · individual: pone nombre al panel), `ModulosCuenta` (los módulos se habilitan con el uso: al publicar una necesidad, al publicar una oferta), contacto público, estado del registro.
 - `types/publicacion.ts` — `Publicacion`, `Recurso`, `Tramo`, `CategoriaRecurso`, `Ubicacion`.
 - `types/aviso.ts` — `Aviso`, `TipoAviso`, `AccionAviso`.
 - `types/perfil.ts` — `Persona`, `Sesion`, `CanalAviso`, `PestanaPerfil`; `mocks/perfilMock.ts` — `YO`, `SESIONES`, `CANALES`.

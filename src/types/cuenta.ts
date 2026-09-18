@@ -21,7 +21,7 @@ export interface ModulosCuenta {
 
 /** Quién es. `rapida` es la cuenta de un paso que llega desde el directorio con `?rapida=1`:
  *  solo quiere ver un contacto. Voluntariado individual queda fuera por ahora. */
-export type PerfilCuenta = 'organizacion' | 'liderazgo' | 'rapida';
+export type PerfilCuenta = 'organizacion' | 'liderazgo' | 'individual' | 'rapida';
 
 export type ModoRegistro = 'login' | 'registro';
 
@@ -77,8 +77,20 @@ export interface DatosPersona {
   correo: string;
 }
 
+/** Persona natural (voluntario / ciudadano independiente). */
+export interface DatosIndividual {
+  nombre: string;
+  apellido: string;
+  correo: string;
+  celular: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  captchaToken: string;
+  terminos: boolean;
+}
+
 /** Un paso del camino. `fase` agrupa los pasos en «Quién eres» (1) y «Tu cuenta» (2). */
-export type IdPaso = 'perfil' | 'org' | 'com' | 'persona' | 'cuenta' | 'rapida';
+export type IdPaso = 'perfil' | 'org' | 'com' | 'persona' | 'cuenta' | 'rapida' | 'ind_datos' | 'ind_cuenta';
 
 export interface Paso {
   id: IdPaso;
@@ -95,6 +107,7 @@ export interface EstadoRegistro {
   org: DatosOrganizacion;
   com: DatosComunidad;
   per: DatosPersona;
+  ind: DatosIndividual;
   login: { correo: string };
   listo: boolean;
 }
