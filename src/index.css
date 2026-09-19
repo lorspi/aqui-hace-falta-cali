@@ -17,6 +17,83 @@
   /* Variantes para fondo oscuro (#1F1C1A) */
   --color-brand-blue-light: #6D8CD8;
   --color-brand-red-light: #E4544F;
+
+  /* ------------------------------------------------------------------------------------
+     Tokens de Producto (prefijo rd-): el sistema de diseño de RaDAR con el que se construyen
+     las maquetas mockup/* (desde mockup/registro-v2). Añaden; nada de arriba cambia. Navy,
+     coral y ámbar son los mismos valores que brand-blue, brand-red y brand-yellow y los
+     referencian. Origen: Producto/css/tokens.css del prototipo. Frontend decide al integrar
+     cuáles se funden con los de arriba.
+     ---------------------------------------------------------------------------------- */
+  --color-rd-navy: var(--color-brand-blue);
+  --color-rd-navy-hover: #16307B;
+  --color-rd-navy-soft: #E9EDF8;
+  --color-rd-navy-line: #C3CDEA;
+  --color-rd-coral: var(--color-brand-red);
+  --color-rd-coral-ink: #B52F2F;
+  --color-rd-coral-soft: #FBEAEA;
+  --color-rd-amber: var(--color-brand-yellow);
+  --color-rd-amber-ink: #8A5D07;
+  --color-rd-amber-soft: #FCF4DE;
+  --color-rd-amber-line: #F0DFA8;
+  --color-rd-green: #17734A;
+  --color-rd-green-soft: #E7F3EC;
+  --color-rd-green-line: #BEDCCB;
+  --color-rd-ink: #171B2B;
+  --color-rd-ink-2: #4B5163;
+  --color-rd-ink-meta: #656B7E;
+  --color-rd-ink-3: #7C8397;
+  --color-rd-sel: #171B2B;
+  --color-rd-surface: #FFFFFF;
+  --color-rd-sunken: #EEF0F6;
+  --color-rd-fondo: #F6F7FB;
+  --color-rd-line: #E1E4EE;
+  --color-rd-line-soft: #ECEEF5;
+  --color-rd-track: #DFE3EE;
+  --color-rd-mapa: #EAE6DE;
+
+  --font-rd: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Escala tipográfica del prototipo, por píxel (no tiene nombres todavía) */
+  --text-rd-10: 10px;
+  --text-rd-10-5: 10.5px;
+  --text-rd-11: 11px;
+  --text-rd-11-5: 11.5px;
+  --text-rd-12: 12px;
+  --text-rd-12-5: 12.5px;
+  --text-rd-13: 13px;
+  --text-rd-13-5: 13.5px;
+  --text-rd-14: 14px;
+  --text-rd-14-5: 14.5px;
+  --text-rd-15: 15px;
+  --text-rd-16: 16px;
+  --text-rd-18: 18px;
+  --text-rd-22: 22px;
+  --text-rd-24: 24px;
+  --text-rd-28: 28px;
+  --text-rd-32: 32px;
+  --tracking-rd-cuerpo: -0.005em;
+  --tracking-rd-btn: -0.006em;
+  --tracking-rd-titulo: -0.03em;
+  --tracking-rd-titular: -0.035em;
+  --leading-rd-titular: 1.1;
+
+  /* Radios (escala anidada de cuatro pasos) y alturas */
+  --radius-rd-sm: 6px;
+  --radius-rd-md: 8px;
+  --radius-rd-lg: 12px;
+  --radius-rd-xl: 16px;
+  --spacing-rd-h-sm: 32px;
+  --spacing-rd-h-md: 40px;
+  --spacing-rd-h-lg: 48px;
+  --spacing-rd-tactil: 44px;
+  /* La hoja del pin: abre a media pantalla (Alejandro, 16 de septiembre de 2026; enmienda la
+     231) y expandida mide 100dvh − 96 (177) */
+  --spacing-rd-hoja-1: 50dvh;
+  --spacing-rd-hoja-2: calc(100dvh - 96px);
+  --shadow-rd-2: 0 8px 24px rgb(23 27 43 / 0.16);
+  /* La sombra del pin sobre la tesela (`.rd-pin svg` del prototipo) */
+  --drop-shadow-rd-pin: 0 1px 2px rgb(0 0 0 / 0.28);
 }
 
 /* ======================================================================
@@ -250,6 +327,94 @@ label,
 nav,
 header {
   font-family: var(--font-sans);
+}
+
+/* Utilidades de Producto (mockup/*) que no tienen clase estándar en Tailwind. */
+/* El rayado de «en camino» sobre el ámbar de la barra de recursos (RaDAR, decisión 4b). */
+@utility bg-rd-rayado {
+  background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.7) 0 2px, transparent 2px 5px);
+}
+/* La zona de chips de la consulta de la Radar: se desplaza sin barra y se desvanece en sus
+   últimos 64 px para decir que sigue hacia la derecha (plan T2). */
+@utility zona-rd-scroll {
+  scrollbar-width: none;
+}
+@utility zona-rd-chips {
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 64px), transparent calc(100% - 16px));
+}
+/* El carrusel de la hoja del pin (T4-F): la pista de tres ranuras se desplaza en X para dejar
+   la actual centrada con las vecinas asomando 20 a cada lado; `--dx` lo escribe el gesto. */
+@utility pista-rd-hoja {
+  transform: translateX(calc(-100% + 15 * var(--spacing) - 2 * var(--spacing) + var(--dx, 0px)));
+}
+@utility ranura-rd-hoja {
+  flex: 0 0 calc(100% - 10 * var(--spacing));
+}
+/* Una columna del tablero de seguimiento en móvil: casi todo el ancho, con 40 px de asomo de
+   la siguiente para que se entienda que se desplaza (como Trello). Desde 640 mide 280. */
+@utility ranura-rd-tablero {
+  flex: 0 0 calc(100% - 10 * var(--spacing));
+}
+/* El mapa de la Radar (.rd-mapa): Leaflet en la tipografía de Producto y, bajo 1024, sus
+   controles por encima de la píldora flotante (64 = 56 de píldora + 8 de margen). Reglas
+   planas porque apuntan a clases de Leaflet, no a utilidades. */
+.rd-mapa .leaflet-container {
+  font-family: var(--font-rd);
+  background: var(--color-rd-mapa);
+}
+@media (max-width: 1023px) {
+  .rd-mapa .leaflet-bottom {
+    bottom: 4rem;
+  }
+}
+/* El grupo de pines al alejarse: anillo partido por color (coral lo que se pide, navy lo que
+   se ofrece; `--p` lo escribe el mapa con el porcentaje) y el conteo en el centro. Regla plana
+   porque el gradiente cónico con una parada variable no tiene utilidad canónica. */
+.rd-mapa .rd-grupo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-rd-coral) 0 var(--p), var(--color-rd-navy) var(--p) 100%);
+  box-shadow: 0 0 0 3px var(--color-rd-surface), var(--shadow-rd-2);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.rd-mapa .rd-grupo:hover {
+  transform: scale(1.06);
+}
+/* La etiqueta al pasar por un grupo: en tinta, en la tipografía de Producto. */
+.rd-mapa .rd-tip-mapa {
+  font-family: var(--font-rd);
+  font-size: var(--text-rd-12-5);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-rd-surface);
+  background: var(--color-rd-ink);
+  border: 0;
+  border-radius: var(--radius-rd-sm);
+  box-shadow: var(--shadow-rd-2);
+}
+.rd-mapa .rd-tip-mapa::before {
+  border-top-color: var(--color-rd-ink);
+}
+
+/* Los acordeones de Producto (`details`) dibujan su propia flecha: el marcador nativo no se
+   pinta (Safari no obedece a `list-none` en el summary). */
+.font-rd summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Maquetas de Producto (mockup/*): dentro de .font-rd todo va en la tipografía de Producto,
+   incluidos los elementos que la regla de arriba manda a Figtree. Va aquí, fuera de las capas,
+   porque una regla sin capa le gana a las utilidades de Tailwind aunque tenga menos
+   especificidad; y después de la de arriba para ganar por orden. */
+.font-rd,
+.font-rd :is(h1, h2, h3, h4, h5, h6, button, label, [role="button"], nav, header, input, select, textarea) {
+  font-family: var(--font-rd);
 }
 
 /* Custom scrollbar for modals */
