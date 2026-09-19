@@ -327,3 +327,17 @@ export function buildWhatsappLink(
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
+
+/**
+ * Limpia y sanitiza URLs externas (remueve espacios iniciales/finales y asegura protocolo http:// o https://)
+ */
+export function sanitizeExternalUrl(rawUrl?: string | null): string {
+  if (!rawUrl) return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+

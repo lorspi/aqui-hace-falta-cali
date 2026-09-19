@@ -28,6 +28,7 @@ import {
   formatTimeAgo,
   getCategoryLabel,
   getPlaceTypeLabel,
+  sanitizeExternalUrl,
 } from '../utils/formatters';
 import { fetchNeedUpdateLogs, fetchMatchingOffersForNeed, MatchingOfferResult } from '../lib/supabaseService';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -218,7 +219,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
                 </p>
               </div>
               <a
-                href={need.sourceUrl.startsWith('http') ? need.sourceUrl : `https://${need.sourceUrl}`}
+                href={sanitizeExternalUrl(need.sourceUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-extrabold text-xs transition-all shadow-sm hover:shadow shrink-0 cursor-pointer"

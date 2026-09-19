@@ -20,16 +20,17 @@ export const FormattedText: React.FC<FormattedTextProps> = ({ text, className = 
     <span className={`whitespace-pre-line ${className}`}>
       {parts.map((part, i) => {
         if (part.match(/^https?:\/\//i)) {
+          const cleanUrl = part.trim().replace(/[.,;)]+$/, '');
           return (
             <a
               key={i}
-              href={part}
+              href={cleanUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand-blue font-semibold underline hover:text-brand-blue-hover break-all inline-flex items-center gap-0.5 mx-0.5"
               onClick={(e) => e.stopPropagation()}
             >
-              <span>{part}</span>
+              <span>{cleanUrl}</span>
             </a>
           );
         }

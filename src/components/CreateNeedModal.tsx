@@ -287,7 +287,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       requesterType,
       priority: placeType === 'CENTRO_ACOPIO' ? 'MEDIUM' : priority,
       operatingHours: operatingHours || undefined,
-      sourceUrl: sourceUrl || undefined,
+      sourceUrl: sourceUrl.trim() || undefined,
       source,
     });
 

@@ -233,7 +233,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         contactWhatsapp: contactWhatsapp || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
-        sourceUrl: sourceUrl || undefined,
+        sourceUrl: sourceUrl.trim() || undefined,
         priority,
         lastUpdatedBy: finalUpdatedBy,
       };
