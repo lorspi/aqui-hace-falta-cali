@@ -109,37 +109,24 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
   );
 };
 
-/** Dentro de la tarjeta: el aviso de que el cruce encontró algo —«¡RaDAR Match activado!»,
- *  cuántas organizaciones y el botón que abre la lista— (texto de Alejandro, 16 de septiembre
- *  de 2026). Sin cifras ni nombres aquí: eso va en el diálogo. */
-export const ResumenCoincidencias: React.FC<{ publicacion: Publicacion; coincidencias: CoincidenciaPublicacion[]; onVer: () => void; className?: string }> = ({ publicacion, coincidencias, onVer, className = '' }) => {
-  if (!coincidencias.length) return null;
-  const pide = publicacion.tipo === 'necesidad';
+/** Dentro de la tarjeta: el aviso compacto de que el cruce encontró coincidencias (# matches). */
+export const ResumenCoincidencias: React.FC<{ publicacion: Publicacion; coincidencias?: CoincidenciaPublicacion[]; onVer: () => void; className?: string }> = ({ publicacion: _p, coincidencias, onVer, className = '' }) => {
+  if (!coincidencias || !coincidencias.length) return null;
   const n = coincidencias.length;
-  const quien = n === 1 ? '1 organización' : `${n} organizaciones`;
-  const verbo = pide ? (n === 1 ? 'ofrece' : 'ofrecen') : n === 1 ? 'necesita' : 'necesitan';
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-rd-lg border border-rd-navy-line bg-rd-navy-soft p-3 ${className}`}>
-      <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rd-surface text-rd-navy">
-        <Zap className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1 basis-40">
-        <b className="block text-rd-13 font-semibold text-rd-navy">¡RaDAR Match activado!</b>
-        <span className="text-rd-12-5 leading-snug text-rd-ink">
-          {quien} {verbo} alguno de estos recursos.
-        </span>
-      </div>
-      <Button
-        nivel="secundario"
-        tamano="sm"
-        className="ml-auto"
+    <div className={`flex items-center ${className}`}>
+      <button
+        type="button"
         onClick={(ev) => {
           ev.stopPropagation();
           onVer();
         }}
+        title="Ver coincidencias de RaDAR Match"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-rd-navy-line bg-rd-navy-soft px-2.5 py-1 text-rd-11 font-semibold text-rd-navy transition-colors hover:bg-rd-navy-line/30"
       >
-        Consultar
-      </Button>
+        <Zap className="h-3.5 w-3.5 text-rd-navy" />
+        <span>{n} {n === 1 ? 'match' : 'matches'}</span>
+      </button>
     </div>
   );
 };

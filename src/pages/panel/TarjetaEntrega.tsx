@@ -1,7 +1,8 @@
 import React from 'react';
-import { Archive, Check, Clock, MapPin, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, Clock, MapPin, Phone, Truck, Users, X } from 'lucide-react';
 import type { EntregaRecibida, Solicitud } from '../../types/panel';
 import { EQUIPO } from '../../mocks/panelMock';
+import { ENTIDADES } from '../../mocks/directorioMock';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
 import { cifra, iniciales } from '../../utils/publicaciones';
 import { textoCierre } from '../../utils/panel';
@@ -9,7 +10,33 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Etiqueta';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
+import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { TiraFotos } from '../../components/ui/VisorFotos';
+
+export interface ContactoEntidad {
+  tel: string;
+  wa?: boolean;
+  nombre: string;
+  lider?: string;
+}
+
+export function buscarContactoEntidad(nombre: string): ContactoEntidad | null {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  const n = norm(nombre);
+  const found = ENTIDADES.find((e) => {
+    const en = norm(e.nombre);
+    return en.includes(n) || n.includes(en);
+  });
+  if (found) {
+    return { tel: found.tel, wa: found.wa, nombre: found.nombre, lider: found.lider };
+  }
+  return { tel: '+57 312 555 0100', wa: true, nombre };
+}
 
 /**
  * La tarjeta de una entrega, una sola para todo el panel (Alejandro, 16 de septiembre de 2026:
@@ -37,6 +64,7 @@ export interface TarjetaEntregaProps {
   fotos?: React.ReactNode;
   acciones?: React.ReactNode;
   menu?: React.ReactNode;
+  contacto?: ContactoEntidad | null;
   /** Sin quien la lleve: borde punteado. */
   sinAsignar?: boolean;
   atenuada?: boolean;
@@ -44,26 +72,75 @@ export interface TarjetaEntregaProps {
   arrastre?: { draggable: boolean; onDragStart: (e: React.DragEvent) => void };
 }
 
-export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({ titulo, quien, cuando, dist, recurso, lleva, detalle, estado, cierre, fotos, acciones, menu, sinAsignar = false, atenuada = false, arrastre }) => {
+export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({
+  titulo,
+  quien,
+  cuando,
+  dist,
+  recurso,
+  lleva,
+  detalle,
+  estado,
+  cierre,
+  fotos,
+  acciones,
+  menu,
+  contacto,
+  sinAsignar = false,
+  atenuada = false,
+  arrastre,
+}) => {
   const hoy = /hoy|ahora/.test(cuando);
   return (
-    <article draggable={arrastre?.draggable} onDragStart={arrastre?.onDragStart} className={`flex flex-col rounded-rd-md border bg-rd-surface p-3 text-rd-13 transition-transform hover:-translate-y-px ${arrastre?.draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${sinAsignar ? 'border-dashed border-rd-ink-3' : 'border-rd-line'} ${atenuada ? 'opacity-70' : ''}`}>
+    <article
+      draggable={arrastre?.draggable}
+      onDragStart={arrastre?.onDragStart}
+      className={`flex flex-col rounded-rd-md border bg-rd-surface p-3 text-rd-13 transition-transform hover:-translate-y-px ${
+        arrastre?.draggable ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${sinAsignar ? 'border-dashed border-rd-ink-3' : 'border-rd-line'} ${atenuada ? 'opacity-70' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <b className="text-rd-13-5 leading-snug font-semibold text-rd-ink">{titulo}</b>
         {estado && <span className="shrink-0">{estado}</span>}
       </div>
-      <span className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1 text-rd-12 text-rd-ink-2">
-        <span className="flex items-center gap-1">
-          <MapPin aria-hidden="true" className="h-3.25 w-3.25 text-rd-ink-3" />
-          {quien}
+      <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-rd-12 text-rd-ink-2">
+        <span className="flex items-center gap-1.5">
+          <MapPin aria-hidden="true" className="h-3.25 w-3.25 shrink-0 text-rd-ink-3" />
+          <span className="font-medium text-rd-ink">{quien}</span>
+          {contacto && (
+            <span className="inline-flex items-center gap-1 ml-0.5">
+              <a
+                href={`tel:${contacto.tel.replace(/\s/g, '')}`}
+                onClick={(e) => e.stopPropagation()}
+                title={`Llamar a ${quien}: ${contacto.tel}`}
+                aria-label={`Llamar a ${quien}`}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 transition-all hover:bg-rd-navy-soft hover:text-rd-navy hover:scale-110 active:scale-95"
+              >
+                <Phone className="h-3 w-3" />
+              </a>
+              {contacto.wa && (
+                <a
+                  href={`https://wa.me/${contacto.tel.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Escribir por WhatsApp a ${quien}: ${contacto.tel}`}
+                  aria-label={`Escribir por WhatsApp a ${quien}`}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rd-sunken text-rd-green transition-all hover:bg-emerald-50 hover:scale-110 active:scale-95"
+                >
+                  <IconoWhatsApp className="h-3 w-3" />
+                </a>
+              )}
+            </span>
+          )}
         </span>
         <span className={`flex items-center gap-1 ${hoy ? 'font-medium text-rd-amber-ink' : ''}`}>
-          <Clock aria-hidden="true" className="h-3.25 w-3.25 text-rd-ink-3" />
+          <Clock aria-hidden="true" className="h-3.25 w-3.25 shrink-0 text-rd-ink-3" />
           {cuando}
         </span>
         {dist && (
           <span className="flex items-center gap-1">
-            <Truck aria-hidden="true" className="h-3.25 w-3.25 text-rd-ink-3" />
+            <Truck aria-hidden="true" className="h-3.25 w-3.25 shrink-0 text-rd-ink-3" />
             {dist}
           </span>
         )}
@@ -180,16 +257,93 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
   }
 }
 
-/** El ⋮: reasignar y cancelar, solo mientras la entrega se puede cambiar. */
+/** El ⋮: comunicarse con la entidad, reasignar y cancelar. */
 export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): React.ReactNode {
-  if (s.estado !== 'aceptada' && s.estado !== 'camino') return null;
+  const contacto = buscarContactoEntidad(s.quien);
   const v = quienLleva(s);
+  const puedeModificar = s.estado === 'aceptada' || s.estado === 'camino';
+
+  const items: { texto: string; icono: React.ReactNode; tono?: 'peligro'; onElegir: () => void }[] = [];
+
+  if (contacto) {
+    items.push({
+      texto: `Llamar (${contacto.tel})`,
+      icono: <Phone className="h-4 w-4" />,
+      onElegir: () => {
+        window.location.href = `tel:${contacto.tel.replace(/\s/g, '')}`;
+      },
+    });
+    if (contacto.wa) {
+      items.push({
+        texto: 'Escribir por WhatsApp',
+        icono: <IconoWhatsApp className="h-4 w-4" />,
+        onElegir: () => {
+          window.open(`https://wa.me/${contacto.tel.replace(/\D/g, '')}`, '_blank', 'noopener');
+        },
+      });
+    }
+  }
+
+  if (puedeModificar) {
+    if (v) {
+      items.push({
+        texto: 'Reasignar',
+        icono: <Users aria-hidden="true" className="h-4.5 w-4.5" />,
+        onElegir: () => a.onAsignar(s),
+      });
+    }
+    items.push({
+      texto: 'Cancelar el compromiso',
+      icono: <X aria-hidden="true" className="h-4.5 w-4.5" />,
+      tono: 'peligro',
+      onElegir: () => a.onCancelar(s),
+    });
+  }
+
+  if (items.length === 0) return null;
+
   return (
     <MenuAcciones
       tamano="sm"
       flotante={flotante}
-      etiqueta={`Más acciones sobre la entrega a ${s.quien}`}
-      items={[...(v ? [{ texto: 'Reasignar', icono: <Users aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => a.onAsignar(s) }] : []), { texto: 'Cancelar el compromiso', icono: <X aria-hidden="true" className="h-4.5 w-4.5" />, tono: 'peligro' as const, onElegir: () => a.onCancelar(s) }]}
+      etiqueta={`Opciones sobre la entrega a ${s.quien}`}
+      items={items}
+    />
+  );
+}
+
+/** El ⋮ de ayuda recibida: comunicarse con la organización que entrega. */
+export function menuDeRecibida(r: EntregaRecibida, flotante = false): React.ReactNode {
+  const contacto = buscarContactoEntidad(r.org);
+  if (!contacto) return null;
+
+  const items = [
+    {
+      texto: `Llamar (${contacto.tel})`,
+      icono: <Phone className="h-4 w-4" />,
+      onElegir: () => {
+        window.location.href = `tel:${contacto.tel.replace(/\s/g, '')}`;
+      },
+    },
+    ...(contacto.wa
+      ? [
+          {
+            texto: 'Escribir por WhatsApp',
+            icono: <IconoWhatsApp className="h-4 w-4" />,
+            onElegir: () => {
+              window.open(`https://wa.me/${contacto.tel.replace(/\D/g, '')}`, '_blank', 'noopener');
+            },
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <MenuAcciones
+      tamano="sm"
+      flotante={flotante}
+      etiqueta={`Contacto con ${r.org}`}
+      items={items}
     />
   );
 }
@@ -213,6 +367,7 @@ export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => 
 export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolicitud; estado?: React.ReactNode; arrastre?: TarjetaEntregaProps['arrastre']; menuFlotante?: boolean }> = ({ s, acciones, estado, arrastre, menuFlotante = false }) => {
   const { cierre, fotos } = cierreDe(s, acciones.onVerFotos);
   const lleva = quienLleva(s);
+  const contacto = buscarContactoEntidad(s.quien);
   return (
     <TarjetaEntrega
       titulo={`${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`}
@@ -221,6 +376,7 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
       dist={s.dist}
       recurso={s.rec}
       lleva={lleva}
+      contacto={contacto}
       estado={estado}
       cierre={cierre}
       fotos={fotos}
@@ -241,8 +397,10 @@ export const TarjetaRecibida: React.FC<{
   onVerFotos: (r: EntregaRecibida, i: number) => void;
   onAceptar?: (id: number) => void;
   onRechazar?: (id: number) => void;
-}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar }) => {
+  menuFlotante?: boolean;
+}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar, menuFlotante = false }) => {
   const f = fotosDeRecibida(r.id);
+  const contacto = buscarContactoEntidad(r.org);
   const acciones = (() => {
     if (r.estado === 'nueva') {
       return (
@@ -286,11 +444,13 @@ export const TarjetaRecibida: React.FC<{
       dist={r.dist}
       recurso={r.rec}
       lleva={r.vol}
+      contacto={contacto}
       detalle={r.detalle}
       estado={estado}
       cierre={cierre}
       fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
       acciones={acciones}
+      menu={menuDeRecibida(r, menuFlotante)}
       atenuada={r.estado === 'archivada'}
     />
   );

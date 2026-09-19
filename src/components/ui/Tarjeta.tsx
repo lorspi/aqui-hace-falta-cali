@@ -84,7 +84,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         <Recursos publicacion={p} />
       </div>
 
-      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} className="-mt-1 mb-4" />
+      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} className="mb-3" />
 
       <div className={`mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-3 ${enHoja ? 'sticky bottom-0 z-1 bg-rd-surface pb-4' : ''}`}>
         <Button

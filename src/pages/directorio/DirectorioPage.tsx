@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, Map as MapIcon, Phone, Search, Share2, Users, X } from 'lucide-react';
+import { BadgeCheck, Eye, Flag, Funnel, Hand, HeartHandshake, Map as MapIcon, Phone, Search, Share2, Users, X } from 'lucide-react';
 import { Donde } from '../../components/ui/Donde';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
+import { DialogoCompromiso, type Compromiso } from '../../components/ui/DialogoCompromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
-import { Avatar } from '../../components/ui/Etiqueta';
+import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { Opcion } from '../../components/ui/HojaFiltros';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Pestanas } from '../../components/ui/Pestanas';
@@ -21,10 +22,11 @@ import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { ClaseEntidad, ConsultaDirectorio, Entidad } from '../../types/directorio';
+import type { Publicacion } from '../../types/publicacion';
 import { nombrePanel } from '../../utils/cuenta';
-import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, recursosDeVista, resumenPublica, zonasDe } from '../../utils/directorio';
+import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, publicacionesDe, recursosDeVista, resumenPublica, zonasDe } from '../../utils/directorio';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
-import { cifra, distanciaKm, distanciaTexto, iniciales } from '../../utils/publicaciones';
+import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante } from '../../utils/publicaciones';
 
 /**
  * El Directorio (mockup/*): quién está en la red (`organizaciones.html` del prototipo,
@@ -70,6 +72,8 @@ const Directorio: React.FC = () => {
   const [cajon, setCajon] = useState(false);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
   const [reporte, setReporte] = useState<Entidad | null>(null);
+  const [detalle, setDetalle] = useState<Entidad | null>(null);
+  const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
 
   useEffect(() => {
     document.title = 'RaDAR · Directorio';
@@ -79,7 +83,6 @@ const Directorio: React.FC = () => {
   const lista = useMemo(() => filtrar(deVista, PUBLICACIONES, q, UBICACION), [deVista, q]);
   const chips = chipsDe(q);
   const aplicados = cuantosAplicados(q);
-  const conteos = useMemo(() => ({ organizacion: entidadesDe('organizacion', ENTIDADES, ENTIDAD_PROPIA).length, comunidad: entidadesDe('comunidad', ENTIDADES, ENTIDAD_PROPIA).length }), []);
 
   const cambiarVista = (id: string) => {
     const c = id as ClaseEntidad;
@@ -103,6 +106,11 @@ const Directorio: React.FC = () => {
   const enviarReporte = () => {
     setReporte(null);
     avisar('Reporte enviado. Lo revisa el equipo de moderación.', { tipo: 'ok' });
+  };
+  const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
+    setCompromiso(null);
+    const n = `${c.recursos} ${c.recursos === 1 ? 'recurso' : 'recursos'}`;
+    avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n} · ${c.cuando.toLowerCase()}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
   };
 
   /* --- la campana --- */
@@ -149,12 +157,19 @@ const Directorio: React.FC = () => {
         </header>
 
         <div className="min-w-0 flex-none px-4 sm:px-6 lg:px-8">
-          <Pestanas etiqueta="Qué quieres ver" pestanas={PESTANAS.map((p) => ({ ...p, n: conteos[p.id] }))} actual={clase} onCambiar={cambiarVista} />
+          <Pestanas etiqueta="Qué quieres ver" pestanas={PESTANAS} actual={clase} onCambiar={cambiarVista} />
         </div>
 
         {/* ---- consulta ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
           <BotonFiltros aplicados={aplicados} abierta={hoja} onClick={() => setHoja(true)} />
+          <CampoBuscar
+            valor={q.texto}
+            onChange={(texto) => setQ({ ...q, texto })}
+            placeholder={clase === 'comunidad' ? 'Buscar comunidad, barrio o necesidad' : 'Buscar organización, barrio o recurso'}
+            abierto={buscando}
+            className="lg:w-72 xl:w-96"
+          />
           <p aria-live="polite" aria-atomic="true" className="sr-only">
             {estado}
           </p>
@@ -166,7 +181,6 @@ const Directorio: React.FC = () => {
               <QuitarTodos onClick={() => setQ({ ...consultaVacia(), orden: q.orden })} />
             </ZonaChips>
           )}
-          <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? 'Buscar comunidad, barrio o necesidad' : 'Buscar organización, barrio o recurso'} abierto={buscando} />
         </div>
 
         {/* ---- la lista ---- */}
@@ -206,11 +220,25 @@ const Directorio: React.FC = () => {
                 <b className="font-semibold text-rd-ink">{estado}</b>
                 <span>{orden}</span>
               </p>
-              {/* La cuadrícula de la vista Lista de la Radar: 2 columnas desde 1024, 3 desde 1280,
-                  tarjetas de la altura de su fila con las acciones abajo. */}
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4 xl:grid-cols-3 xl:gap-6">
+              {/* Vista de Lista del Directorio: contenedor unificado con separación clara entre filas */}
+              <div className="overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-xs divide-y divide-rd-line">
+                {/* Cabecera de columnas para escritorio (≥ 1280px) */}
+                <div className="hidden border-b border-rd-line bg-rd-sunken/40 px-4 py-2.5 sm:px-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6">
+                  <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                    {clase === 'comunidad' ? 'Comunidad y zona' : 'Organización y zona'}
+                  </span>
+                  <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                    Actividad y recursos
+                  </span>
+                  <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                    Contacto
+                  </span>
+                  <span className="text-right text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                    Acciones
+                  </span>
+                </div>
                 {lista.map((e) => (
-                  <FilaEntidad key={e.id} entidad={e} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
+                  <FilaEntidad key={e.id} entidad={e} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
                 ))}
               </div>
             </>
@@ -219,6 +247,8 @@ const Directorio: React.FC = () => {
 
         <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
         <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
+        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} onCerrar={() => setDetalle(null)} onCompromiso={(pub) => setCompromiso(pub)} />
+        <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
       </div>
     </Shell>
   );
@@ -226,13 +256,10 @@ const Directorio: React.FC = () => {
 
 /* ---------- la fila ---------- */
 
-
-/** Una entidad, con la anatomía de la tarjeta de Radar y de consulta, no de acción (Alejandro,
- *  16 de septiembre de 2026): quién, dónde está, lo que publica en números (cuántos recursos
- *  ofrece y pide), los datos que comparan, el contacto, y en el pie «Ver en el mapa» —la Radar
- *  filtrada por su nombre— y el ⋮ con WhatsApp, Llamar, Compartir y Reportar. Solicitar y
- *  Quiero ayudar viven en la Radar. */
-const FilaEntidad: React.FC<{ entidad: Entidad; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, onCompartir, onReportar }) => {
+/** Una entidad en vista de lista: quién, dónde está, lo que publica en números (cuántos recursos
+ *  ofrece y pide), datos de contacto en bloque compacto y a la derecha las acciones («Ver detalle»
+ *  y menú ⋮ con Ver en el mapa, WhatsApp, Llamar, Compartir y Reportar). */
+const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, onVerDetalle, onCompartir, onReportar }) => {
   const com = e.clase === 'comunidad';
   const cifraE = cifraDe(e, PUBLICACIONES);
   const publica = resumenPublica(e, PUBLICACIONES);
@@ -246,6 +273,8 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onCompartir: () => void; onRepor
   if (e.familias) datos.push(['Familias', cifra(e.familias)]);
   const verEnMapa = () => irA(`${RUTAS.radar}?buscar=${encodeURIComponent(e.nombre)}`);
   const menu = [
+    { texto: 'Ver detalle', icono: <Eye className="h-4 w-4" />, onElegir: onVerDetalle },
+    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: verEnMapa },
     ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
     { texto: 'Llamar', icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
     { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir },
@@ -253,75 +282,337 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onCompartir: () => void; onRepor
   ];
 
   return (
-    <article id={e.id} className="flex min-w-0 flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4">
-      {/* quién: como la cabecera de la tarjeta de Radar */}
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2">
-          <Avatar iniciales={iniciales(e.nombre)} />
-          <span className="flex min-w-0 flex-col">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <h2 className="font-rd m-0 line-clamp-2 text-rd-13-5 leading-snug font-semibold text-rd-ink">{e.nombre}</h2>
-              {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4 w-4 shrink-0 text-rd-navy" />}
-            </span>
-            <span className="text-rd-12-5 text-rd-ink-2">{e.tipo}</span>
-          </span>
+    <article
+      id={e.id}
+      className="grid min-w-0 grid-cols-1 gap-3.5 p-4 transition-colors hover:bg-rd-fondo/50 sm:p-5 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6"
+    >
+      {/* 1. Quién y dónde: avatar, nombre, insignia, tipo y ubicación */}
+      <div className="flex min-w-0 items-start gap-3">
+        <Avatar iniciales={iniciales(e.nombre)} tamano="md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
+              {e.nombre}
+            </h2>
+            {e.verificada && (
+              <BadgeCheck
+                role="img"
+                aria-label={com ? 'Comunidad verificada' : 'Organización verificada'}
+                className="h-4 w-4 shrink-0 text-rd-navy"
+              />
+            )}
+          </div>
+          <span className="text-rd-12 text-rd-ink-2">{e.tipo}</span>
+          <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mt-1" />
         </div>
       </div>
 
-      <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mb-4" />
-
-      {/* Sin rótulos de bloque (Alejandro, 16 de septiembre de 2026: competían con los rótulos de
-          ficha): el pin ya dice dónde, y «Teléfono · Dirección · Correo» ya dicen contacto. Los
-          bloques se separan con la línea suave. */}
-      {/* lo que publica y los datos que comparan, en números, con la ficha de rótulo y valor */}
-      <dl className="m-0 flex flex-wrap gap-3 border-t border-rd-line-soft pt-3">
+      {/* 2. Publicaciones y métricas */}
+      <div className="flex min-w-0 flex-col items-start gap-1.5">
         {datos.map(([k, v]) => (
-          <div key={k} className="min-w-31 flex-1 basis-31">
-            <dt className="mb-0.5 text-rd-11 leading-snug font-medium text-rd-ink-meta">{k}</dt>
-            <dd className="m-0 text-rd-12-5 leading-snug font-semibold text-rd-ink tabular-nums">{v}</dd>
+          <div
+            key={k}
+            className="inline-flex items-center gap-1.5 rounded-rd-sm border border-rd-line-soft bg-rd-sunken px-2.5 py-1 text-rd-12 whitespace-nowrap"
+          >
+            <span className="font-medium text-rd-ink-meta">{k}:</span>
+            <span className="font-semibold text-rd-ink tabular-nums">{v}</span>
           </div>
         ))}
-      </dl>
-
-      {/* contacto: teléfono (con WhatsApp pegado al número), dirección y correo */}
-      <div className="mt-3 mb-4 min-w-0 border-t border-rd-line-soft pt-3">
-        <dl className="m-0 flex flex-wrap gap-3">
-          <div className="min-w-31 flex-1 basis-31">
-            <dt className="mb-0.5 text-rd-11 leading-snug font-medium text-rd-ink-meta">Teléfono</dt>
-            <dd className="m-0 flex items-center gap-1.5 text-rd-12-5 leading-snug font-semibold text-rd-ink tabular-nums">
-              <a href={`tel:${e.tel.replace(/\s/g, '')}`} className="text-rd-ink no-underline hover:underline">
-                {e.tel}
-              </a>
-              {e.wa && <IconoWhatsApp titulo="También por WhatsApp" className="h-4 w-4 shrink-0 text-rd-green" />}
-            </dd>
-          </div>
-          <div className="min-w-31 flex-1 basis-31">
-            <dt className="mb-0.5 text-rd-11 leading-snug font-medium text-rd-ink-meta">Dirección</dt>
-            <dd className="m-0 text-rd-12-5 leading-snug font-semibold text-rd-ink">{e.dir}</dd>
-          </div>
-          {e.correo && (
-            <div className="min-w-31 flex-1 basis-31">
-              <dt className="mb-0.5 text-rd-11 leading-snug font-medium text-rd-ink-meta">Correo</dt>
-              <dd className="m-0 text-rd-12-5 leading-snug font-semibold break-all text-rd-ink">
-                <a href={`mailto:${e.correo}`} className="text-rd-ink no-underline hover:underline">
-                  {e.correo}
-                </a>
-              </dd>
-            </div>
-          )}
-        </dl>
       </div>
 
-      {/* el pie de la tarjeta de Radar: línea arriba, la acción a la izquierda, ⋮ solo a la derecha */}
-      <div className="mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-3">
-        <Button nivel="secundario" tamano="md" icono={<MapIcon className="h-4 w-4" />} onClick={verEnMapa} disabled={publica.ofrece + publica.pide === 0}>
-          Ver en el mapa
+      {/* 3. Contacto: Teléfono (con WhatsApp), Dirección, Correo */}
+      <div className="flex min-w-0 flex-col gap-1 text-rd-12 text-rd-ink-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-2.5">
+        <div className="flex items-center gap-1.5 font-medium text-rd-ink tabular-nums">
+          <Phone className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta" aria-hidden="true" />
+          <a href={`tel:${e.tel.replace(/\s/g, '')}`} className="text-rd-ink no-underline hover:underline">
+            {e.tel}
+          </a>
+          {e.wa && <IconoWhatsApp titulo="También por WhatsApp" className="h-3.5 w-3.5 shrink-0 text-rd-green" />}
+        </div>
+        <div className="flex items-center gap-1.5 truncate">
+          <span className="shrink-0 font-medium text-rd-ink-meta">Dir:</span>
+          <span className="truncate" title={e.dir}>{e.dir}</span>
+        </div>
+        {e.correo && (
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="shrink-0 font-medium text-rd-ink-meta">Correo:</span>
+            <a href={`mailto:${e.correo}`} className="truncate text-rd-ink no-underline hover:underline" title={e.correo}>
+              {e.correo}
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Acciones: Ver detalle + ⋮ */}
+      <div className="flex min-w-0 items-center justify-end gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-2.5">
+        <Button
+          nivel="primario"
+          tamano="md"
+          icono={<Eye className="h-4 w-4" />}
+          onClick={onVerDetalle}
+        >
+          Ver detalle
         </Button>
-        <span className="ml-auto">
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" flotante />
-        </span>
+        <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" flotante />
       </div>
     </article>
+  );
+};
+
+const MIS_OFERTAS = PUBLICACIONES.filter((p) => (p.org === ENTIDAD_PROPIA || p.propia) && p.tipo === 'oferta');
+
+/* ---------- el diálogo de detalle de entidad ---------- */
+
+const DialogoDetalleEntidad: React.FC<{
+  abierto: boolean;
+  entidad: Entidad | null;
+  onCerrar: () => void;
+  onCompromiso?: (pub: Publicacion) => void;
+}> = ({ abierto, entidad: e, onCerrar, onCompromiso }) => {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (abierto && !d.open) d.showModal();
+    else if (!abierto && d.open) d.close();
+  }, [abierto]);
+
+  if (!e) return null;
+
+  const com = e.clase === 'comunidad';
+  const cifraE = cifraDe(e, PUBLICACIONES);
+  const km = distanciaKm(UBICACION, e);
+  const publicaciones = publicacionesDe(e, PUBLICACIONES);
+
+  const verEnMapa = (puntoId?: string) => {
+    if (puntoId) {
+      irA(`${RUTAS.radar}?punto=${puntoId}`);
+    } else {
+      irA(`${RUTAS.radar}?buscar=${encodeURIComponent(e.nombre)}`);
+    }
+  };
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(ev) => ev.target === ref.current && onCerrar()}
+      aria-labelledby="detalle-entidad-titulo"
+      className="font-rd m-auto max-h-[90dvh] w-full max-w-145 rounded-rd-xl bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto max-sm:max-w-full"
+    >
+      {abierto && (
+        <div className="flex max-h-[90dvh] flex-col" onClick={(ev) => ev.stopPropagation()}>
+          {/* Cabecera */}
+          <div className="flex flex-none items-start justify-between gap-3 border-b border-rd-line p-5 pb-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <Avatar iniciales={iniciales(e.nombre)} tamano="lg" />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <h2 id="detalle-entidad-titulo" className="font-rd m-0 text-rd-16 font-semibold leading-snug text-rd-ink">
+                    {e.nombre}
+                  </h2>
+                  {e.verificada && (
+                    <BadgeCheck
+                      role="img"
+                      aria-label={com ? 'Comunidad verificada' : 'Organización verificada'}
+                      className="h-4.5 w-4.5 shrink-0 text-rd-navy"
+                    />
+                  )}
+                </div>
+                <span className="text-rd-12 text-rd-ink-2">{e.tipo}</span>
+                <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mt-0.5" />
+              </div>
+            </div>
+            <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
+              <X aria-hidden="true" className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Cuerpo con scroll */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Contacto y datos clave */}
+            <div className="rounded-rd-lg border border-rd-line-soft bg-rd-fondo/60 p-3.5">
+              <h3 className="font-rd mb-2.5 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                Datos de contacto y ubicación
+              </h3>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 text-rd-12-5">
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 shrink-0 text-rd-ink-meta" aria-hidden="true" />
+                  <a href={`tel:${e.tel.replace(/\s/g, '')}`} className="font-semibold text-rd-ink tabular-nums no-underline hover:underline">
+                    {e.tel}
+                  </a>
+                  {e.wa && (
+                    <a
+                      href={`https://wa.me/${e.tel.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener"
+                      title="Escribir por WhatsApp"
+                      className="inline-flex items-center gap-1 text-rd-green no-underline hover:underline"
+                    >
+                      <IconoWhatsApp className="h-4 w-4 shrink-0 text-rd-green" />
+                      <span className="text-rd-11 font-medium">WhatsApp</span>
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-rd-ink-meta shrink-0">Dirección:</span>
+                  <span className="text-rd-ink font-semibold truncate" title={e.dir}>{e.dir}</span>
+                </div>
+                {e.correo && (
+                  <div className="flex items-center gap-2 sm:col-span-2">
+                    <span className="font-medium text-rd-ink-meta shrink-0">Correo:</span>
+                    <a href={`mailto:${e.correo}`} className="text-rd-ink font-semibold truncate no-underline hover:underline" title={e.correo}>
+                      {e.correo}
+                    </a>
+                  </div>
+                )}
+                {e.lider && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-rd-ink-meta shrink-0">Líder:</span>
+                    <span className="text-rd-ink font-semibold">{e.lider}</span>
+                  </div>
+                )}
+                {!com && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-rd-ink-meta shrink-0">Entregas confirmadas:</span>
+                    <span className="text-rd-ink font-semibold tabular-nums">{cifra(cifraE.n)}</span>
+                  </div>
+                )}
+                {e.personas && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-rd-ink-meta shrink-0">Personas afectadas:</span>
+                    <span className="text-rd-ink font-semibold tabular-nums">{cifra(e.personas)}</span>
+                  </div>
+                )}
+                {e.familias && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-rd-ink-meta shrink-0">Familias afectadas:</span>
+                    <span className="text-rd-ink font-semibold tabular-nums">{cifra(e.familias)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actividad / Publicaciones en la Radar */}
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="font-rd m-0 text-rd-13 font-semibold text-rd-ink">
+                  Publicaciones en RaDAR
+                </h3>
+                <span className="rounded-full bg-rd-sunken px-2 py-0.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                  {publicaciones.length} {publicaciones.length === 1 ? 'publicación' : 'publicaciones'}
+                </span>
+              </div>
+
+              {publicaciones.length === 0 ? (
+                <p className="m-0 rounded-rd-lg border border-dashed border-rd-line p-4 text-center text-rd-12-5 text-rd-ink-meta">
+                  Esta {com ? 'comunidad' : 'organización'} no tiene publicaciones activas en la Radar en este momento.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {publicaciones.map((pub) => {
+                    const est = estadoPublicacion(pub);
+                    const esOferta = pub.tipo === 'oferta';
+                    const esNecesidad = pub.tipo === 'necesidad';
+                    const esPropia = pub.propia || pub.org === ENTIDAD_PROPIA || e.nombre === ENTIDAD_PROPIA;
+
+                    // Oferta: solo solicitar y solo si la oferta no está comprometida aún en su totalidad
+                    const ofertaDisponible = esOferta && !esPropia && pub.recursos.some((r) => restante(r) > 0);
+
+                    // Necesidad: debe decir ayudar y solo si yo tengo lo que ellos necesitan (así sea parcial) y ellos aún necesitan de ese recurso
+                    const puedeAyudarNecesidad =
+                      esNecesidad &&
+                      !esPropia &&
+                      pub.recursos.some((r) => {
+                        const ellosNecesitan = restante(r) > 0;
+                        if (!ellosNecesitan) return false;
+                        const yoTengo = MIS_OFERTAS.some((mo) =>
+                          mo.recursos.some((mor) => mor.item.toLowerCase() === r.item.toLowerCase() && restante(mor) > 0)
+                        );
+                        return yoTengo;
+                      });
+
+                    return (
+                      <div
+                        key={pub.id}
+                        className="flex flex-col gap-2 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-ink/30"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <EtiquetaTipo tipo={pub.tipo} />
+                            <EtiquetaEstado estado={est} />
+                          </div>
+                          <span className="text-rd-11 text-rd-ink-meta">{pub.zona}</span>
+                        </div>
+
+                        <h4 className="font-rd m-0 text-rd-13 font-semibold text-rd-ink">
+                          {pub.titulo}
+                        </h4>
+
+                        {pub.descripcion && (
+                          <p className="m-0 text-rd-12 text-rd-ink-2 line-clamp-2">
+                            {pub.descripcion}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rd-line-soft pt-2 mt-1">
+                          <div className="flex flex-wrap items-center gap-1">
+                            {pub.recursos.map((r) => (
+                              <span
+                                key={r.item}
+                                className="rounded-rd-sm bg-rd-sunken px-2 py-0.5 text-rd-11 font-medium text-rd-ink"
+                              >
+                                {r.total} {r.unidad} {r.item}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {ofertaDisponible && (
+                              <Button
+                                nivel="primario"
+                                tamano="sm"
+                                onClick={() => onCompromiso?.(pub)}
+                              >
+                                Solicitar
+                              </Button>
+                            )}
+                            {puedeAyudarNecesidad && (
+                              <Button
+                                nivel="primario"
+                                tamano="sm"
+                                onClick={() => onCompromiso?.(pub)}
+                              >
+                                Ayudar
+                              </Button>
+                            )}
+                            <Button
+                              nivel="secundario"
+                              tamano="sm"
+                              icono={<MapIcon className="h-3.5 w-3.5" />}
+                              onClick={() => verEnMapa(pub.id)}
+                            >
+                              Ver en el mapa
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pie */}
+          <div className="flex flex-none items-center justify-end border-t border-rd-line bg-rd-surface px-5 py-3">
+            <Button nivel="primario" tamano="md" onClick={onCerrar}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      )}
+    </dialog>
   );
 };
 

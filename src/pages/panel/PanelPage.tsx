@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Archive, Check, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, TriangleAlert, Truck, Users } from 'lucide-react';
+import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, TriangleAlert, Truck, Users } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre } from './dialogos';
@@ -639,7 +639,7 @@ const Reportes: React.FC<{ actas: Acta[]; onVer: (a: Acta) => void; onCopiar: (a
                 acc: true,
                 celda: (a) => (
                   <>
-                    <Button nivel="secundario" tamano="sm" onClick={() => onVer(a)}>
+                    <Button nivel="primario" tamano="sm" onClick={() => onVer(a)}>
                       Ver el acta
                     </Button>
                     {/* En la tarjeta el ⋮ va solo, en el borde derecho, como en toda tarjeta. */}
@@ -788,7 +788,7 @@ const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
 
 
 const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
-  { estado: 'nueva', nombre: 'Nuevas', vacia: 'Sin solicitudes por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" />, soloConAlgo: true },
+  { estado: 'nueva', nombre: 'Solicitudes', vacia: 'Sin solicitudes por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
   { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
   { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
   { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Nada por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
@@ -797,7 +797,7 @@ const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; cl
 ];
 
 const COLUMNAS_RECIBIDAS: { estado: EntregaRecibida['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
-  { estado: 'nueva', nombre: 'Nuevas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" />, soloConAlgo: true },
+  { estado: 'nueva', nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
   { estado: 'aceptada', nombre: 'Comprometidas', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
   { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
   { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Sin entregas por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
@@ -853,6 +853,9 @@ const Seguimiento: React.FC<{
 }) => {
   const tieneAmbos = modulos.pide && modulos.ofrece;
   const [vista, setVista] = useState<'entrego' | 'recibo'>(() => (modulos.ofrece ? 'entrego' : 'recibo'));
+  const [nuevasColapsadas, setNuevasColapsadas] = useState(false);
+  const [confirmadasColapsadas, setConfirmadasColapsadas] = useState(false);
+  const [archivadasColapsadas, setArchivadasColapsadas] = useState(false);
   const { onMover } = acciones;
   const avisar = useAviso();
   const [sobre, setSobre] = useState<Solicitud['estado'] | null>(null);
@@ -871,9 +874,9 @@ const Seguimiento: React.FC<{
 
   return (
     <section className="col-span-full min-w-0">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col items-start gap-2.5">
         <h2 className="font-rd m-0 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
-          {verEntregas ? 'Seguimiento de entregas salientes' : 'Seguimiento de ayuda recibida'}
+          Seguimiento
         </h2>
         {tieneAmbos && (
           <div className="inline-flex rounded-rd-md border border-rd-line bg-rd-sunken p-0.5">
@@ -918,7 +921,50 @@ const Seguimiento: React.FC<{
         >
           {COLUMNAS.map((c) => {
             const items = sol.filter((s) => s.estado === c.estado);
-            if (c.soloConAlgo && items.length === 0) return null;
+            const esNueva = c.estado === 'nueva';
+            const esConfirmada = c.estado === 'confirmada';
+            const esArchivada = c.estado === 'archivada';
+
+            const estaColapsada =
+              (esNueva && (nuevasColapsadas || items.length === 0)) ||
+              (esConfirmada && (confirmadasColapsadas || items.length === 0)) ||
+              (esArchivada && archivadasColapsadas);
+
+            if (estaColapsada) {
+              const expandir = () => {
+                if (esNueva) setNuevasColapsadas(false);
+                else if (esConfirmada) setConfirmadasColapsadas(false);
+                else if (esArchivada) setArchivadasColapsadas(false);
+              };
+              const direccion = esNueva ? 'der' : 'izq';
+              return (
+                <div
+                  key={c.estado}
+                  onClick={expandir}
+                  title={`Clic para expandir ${c.nombre}`}
+                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                >
+                  <button
+                    type="button"
+                    aria-label={`Expandir columna ${c.nombre}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      expandir();
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                  >
+                    {direccion === 'der' ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  </button>
+                  <span aria-hidden="true" className="text-rd-ink-meta">{c.icono}</span>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                    {items.length}
+                  </span>
+                  <span className="mt-2 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta [writing-mode:vertical-rl] rotate-180">
+                    {c.nombre}
+                  </span>
+                </div>
+              );
+            }
             const recibe = c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada';
             return (
               <div
@@ -934,7 +980,7 @@ const Seguimiento: React.FC<{
                   setSobre(null);
                   mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
                 }}
-                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:basis-80 ${
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:flex-1 sm:min-w-80 ${
                   sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-sunken'
                 } ${c.clase}`}
               >
@@ -946,6 +992,35 @@ const Seguimiento: React.FC<{
                   <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
+                  {esNueva && (
+                    <button
+                      type="button"
+                      title="Colapsar columna"
+                      aria-label={`Colapsar columna ${c.nombre}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNuevasColapsadas(true);
+                      }}
+                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  )}
+                  {(esConfirmada || esArchivada) && (
+                    <button
+                      type="button"
+                      title="Colapsar columna"
+                      aria-label={`Colapsar columna ${c.nombre}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (esConfirmada) setConfirmadasColapsadas(true);
+                        else setArchivadasColapsadas(true);
+                      }}
+                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 {items.map((s) => (
                   <TarjetaSolicitud
@@ -976,11 +1051,54 @@ const Seguimiento: React.FC<{
         >
           {COLUMNAS_RECIBIDAS.map((c) => {
             const items = recibidas.filter((r) => r.estado === c.estado);
-            if (c.soloConAlgo && items.length === 0) return null;
+            const esNueva = c.estado === 'nueva';
+            const esConfirmada = c.estado === 'confirmada';
+            const esArchivada = c.estado === 'archivada';
+
+            const estaColapsada =
+              (esNueva && (nuevasColapsadas || items.length === 0)) ||
+              (esConfirmada && (confirmadasColapsadas || items.length === 0)) ||
+              (esArchivada && archivadasColapsadas);
+
+            if (estaColapsada) {
+              const expandir = () => {
+                if (esNueva) setNuevasColapsadas(false);
+                else if (esConfirmada) setConfirmadasColapsadas(false);
+                else if (esArchivada) setArchivadasColapsadas(false);
+              };
+              const direccion = esNueva ? 'der' : 'izq';
+              return (
+                <div
+                  key={c.estado}
+                  onClick={expandir}
+                  title={`Clic para expandir ${c.nombre}`}
+                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                >
+                  <button
+                    type="button"
+                    aria-label={`Expandir columna ${c.nombre}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      expandir();
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                  >
+                    {direccion === 'der' ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  </button>
+                  <span aria-hidden="true" className="text-rd-ink-meta">{c.icono}</span>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                    {items.length}
+                  </span>
+                  <span className="mt-2 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta [writing-mode:vertical-rl] rotate-180">
+                    {c.nombre}
+                  </span>
+                </div>
+              );
+            }
             return (
               <div
                 key={c.estado}
-                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-sunken p-2 sm:basis-80 ${c.clase}`}
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-sunken p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
               >
                 <div
                   className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}
@@ -990,6 +1108,35 @@ const Seguimiento: React.FC<{
                   <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
+                  {esNueva && (
+                    <button
+                      type="button"
+                      title="Colapsar columna"
+                      aria-label={`Colapsar columna ${c.nombre}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNuevasColapsadas(true);
+                      }}
+                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  )}
+                  {(esConfirmada || esArchivada) && (
+                    <button
+                      type="button"
+                      title="Colapsar columna"
+                      aria-label={`Colapsar columna ${c.nombre}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (esConfirmada) setConfirmadasColapsadas(true);
+                        else setArchivadasColapsadas(true);
+                      }}
+                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 {items.map((r) => (
                   <TarjetaRecibida
@@ -999,6 +1146,7 @@ const Seguimiento: React.FC<{
                     onVerFotos={onVerFotosRecibida}
                     onAceptar={onAceptarRecibida}
                     onRechazar={onRechazarRecibida}
+                    menuFlotante
                   />
                 ))}
                 {items.length === 0 && <p className="m-0 px-1 py-3 text-center text-rd-12-5 text-rd-ink-meta">{c.vacia}</p>}
@@ -1054,7 +1202,7 @@ const MiEquipo: React.FC = () => (
       </>
     }
     accion={
-      <Button nivel="secundario" tamano="md">
+      <Button nivel="primario" tamano="md">
         Registrar a alguien
       </Button>
     }

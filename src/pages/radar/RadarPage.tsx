@@ -1,28 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search } from 'lucide-react';
+import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X, Zap } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { DialogoCompromiso, type Compromiso } from '../../components/ui/DialogoCompromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
+import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
+import { Donde } from '../../components/ui/Donde';
 import { HojaFiltros } from '../../components/ui/HojaFiltros';
 import { HojaPin } from '../../components/ui/HojaPin';
+import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
-import { coincidenciasDe } from '../../utils/cruce';
+import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, type Filtros } from '../../utils/filtros';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { distanciaKm } from '../../utils/publicaciones';
+import { Anillo } from '../../components/ui/Recursos';
+import { distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
 /**
@@ -119,6 +124,7 @@ const Radar: React.FC = () => {
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
   const chips = chipsDe(filtros, UBICACION.zona);
   const aplicados = cuantosAplicados(filtros);
+  const ordenTexto = filtros.orden === 'cerca' ? 'Ordenadas por cercanía' : filtros.orden === 'reciente' ? 'Ordenadas por más recientes' : 'Ordenadas por donde más falta';
 
   /* Seleccionar desde el mapa trae la tarjeta a la vista (y, en móvil, abre la hoja
      colapsada); desde la tarjeta, encuadra el pin. */
@@ -200,19 +206,30 @@ const Radar: React.FC = () => {
     else irA(a.accion.al);
   };
 
-  const estado = `${visibles.length} ${visibles.length === 1 ? 'publicación' : 'publicaciones'}`;
-  const publicacionHoja = hojaPin ? PUBLICACIONES.find((p) => p.id === hojaPin.id) : undefined;
   /* Del carrusel de la hoja: la nueva publicación queda seleccionada, señalada en el mapa y
      la hoja conserva su altura. */
   const irDesdeHoja = (id: string) => {
     setSeleccionada(id);
     setHojaPin((h) => ({ id, expandida: h?.expandida ?? false }));
-    setEncuadrar(id);
   };
-  /* La hoja abre a media pantalla: eso tapa el mapa desde abajo. */
-  const tapadoAbajo = hojaPin && typeof window !== 'undefined' ? Math.round(window.innerHeight / 2) : 0;
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const publicacionDetalle = detalleId ? PUBLICACIONES.find((p) => p.id === detalleId) : undefined;
+  const conteoTexto = (n: number, t: Tipo) => {
+    if (t === 'necesidad') return `${n} ${n === 1 ? 'necesidad' : 'necesidades'}`;
+    if (t === 'oferta') return `${n} ${n === 1 ? 'oferta' : 'ofertas'}`;
+    return `${n} ${n === 1 ? 'publicación' : 'publicaciones'}`;
+  };
+  const estado = conteoTexto(visibles.length, tipo);
+  const accionesTarjeta = {
+    onPrimaria: abrirCompromiso,
+    onCompartir: compartir,
+    onReportar: (id: string) => setReporte(id),
+    onVerCoincidencias: (id: string) => setVerCoincidencias(id),
+  };
   const sinLeer = avisos.filter((a) => !a.leido).length;
-  const accionesTarjeta = { onPrimaria: abrirCompromiso, onVerCoincidencias: setVerCoincidencias, onCompartir: compartir, onReportar: setReporte };
+  const publicacionHoja = hojaPin ? PUBLICACIONES.find((p) => p.id === hojaPin.id) : undefined;
+  /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
+  const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
   return (
     <Shell seccion="radar" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
@@ -265,6 +282,13 @@ const Radar: React.FC = () => {
           />
           <span aria-hidden="true" className="h-6 w-px flex-none bg-rd-line max-lg:hidden" />
           <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
+          <CampoBuscar
+            valor={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar recurso, barrio u organización"
+            abierto={buscando}
+            className="lg:w-72 xl:w-96"
+          />
           <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
             {estado}
           </p>
@@ -276,48 +300,108 @@ const Radar: React.FC = () => {
               <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
             </ZonaChips>
           )}
-          <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} />
         </div>
 
         {/* ---- mapa + lista ---- */}
-        <div className="grid min-h-0 flex-1 grid-cols-12 max-lg:flex max-lg:flex-col">
-          <MapaRadar
-            publicaciones={visibles}
-            ubicacion={UBICACION}
-            seleccionada={seleccionada}
-            onSeleccionar={seleccionarDesdeMapa}
-            encuadrar={encuadrar}
-            tapadoAbajo={tapadoAbajo}
-            resaltadas={resaltadas}
-            className={`relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1 ${vista === 'lista' ? 'hidden' : ''}`}
-          />
-          {/* Lista: al lado del mapa (5 · 4 columnas) o, con el conmutador en «Lista», a lo ancho
-              y en cuadrícula de tarjetas (2 columnas desde 1024, 3 desde 1280). */}
-          <div className={`flex min-h-0 flex-col max-lg:flex-1 ${vista === 'lista' ? 'col-span-12' : 'col-span-5 border-l border-rd-line xl:col-span-4 max-lg:border-l-0 max-lg:hidden'}`}>
-            <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            {/* «Lista» a lo ancho: las mismas tarjetas, en cuadrícula (2 columnas desde 1024, 3
-                desde 1280), todas de la altura de su fila y con las acciones pegadas abajo. */}
-            <div className={vista === 'lista' && !movil ? 'grid grid-cols-2 items-stretch gap-4 xl:grid-cols-3 xl:gap-6' : 'flex flex-col gap-3'}>
-              {visibles.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
-                  <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
-                    <Funnel className="h-6.5 w-6.5" />
-                  </span>
-                  <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Nada con estos filtros</h3>
-                  <p className="m-0 max-w-90 text-rd-13-5 leading-normal">Prueba con menos filtros o una distancia mayor.</p>
-                  <Button nivel="secundario" tamano="md" className="mt-3" onClick={limpiar}>
+        {vista === 'lista' ? (
+          <main
+            role="region"
+            aria-label="Lista de publicaciones"
+            className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+          >
+            {visibles.length === 0 ? (
+              <Vacio
+                icono={<Funnel className="h-6.5 w-6.5" />}
+                titulo="Nada con estos filtros"
+                texto="Prueba con menos filtros o una distancia mayor."
+                accion={
+                  <Button nivel="secundario" tamano="md" onClick={limpiar}>
                     Quitar los filtros
                   </Button>
+                }
+              />
+            ) : (
+              <>
+                <p className="m-0 mb-3 flex flex-wrap items-baseline gap-x-2 text-rd-12-5 text-rd-ink-meta">
+                  <b className="font-semibold text-rd-ink">{estado}</b>
+                  <span>{ordenTexto}</span>
+                </p>
+                <div className="overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-xs divide-y divide-rd-line">
+                  {/* Cabecera de columnas para escritorio (≥ 1280px) */}
+                  <div className="hidden border-b border-rd-line bg-rd-sunken/40 px-5 py-3.5 sm:px-7 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8">
+                    <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                      Publicación y organización
+                    </span>
+                    <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                      Recursos
+                    </span>
+                    <span className="text-right text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                      Acciones
+                    </span>
+                  </div>
+                  {visibles.map((p: Publicacion) => (
+                    <FilaPublicacion
+                      key={p.id}
+                      publicacion={p}
+                      distanciaKm={distancias.get(p.id)}
+                      coincidencias={coincidencias.get(p.id)}
+                      enProceso={enProceso.includes(p.id)}
+                      onVerDetalle={(id) => setDetalleId(id)}
+                      onVerEnMapa={verEnMapa}
+                      {...accionesTarjeta}
+                    />
+                  ))}
                 </div>
-              ) : (
-                visibles.map((p: Publicacion) => (
-                  <Tarjeta key={p.id} publicacion={p} distanciaKm={distancias.get(p.id)} coincidencias={coincidencias.get(p.id)} seleccionada={p.id === seleccionada} enProceso={enProceso.includes(p.id)} onSeleccionar={setSeleccionada} onVerEnMapa={verEnMapa} {...accionesTarjeta} />
-                ))
-              )}
-            </div>
+              </>
+            )}
+          </main>
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-12 max-lg:flex max-lg:flex-col">
+            <MapaRadar
+              publicaciones={visibles}
+              ubicacion={UBICACION}
+              seleccionada={seleccionada}
+              onSeleccionar={seleccionarDesdeMapa}
+              encuadrar={encuadrar}
+              tapadoAbajo={tapadoAbajo}
+              resaltadas={resaltadas}
+              className="relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1"
+            />
+            {/* Lista: al lado del mapa (5 · 4 columnas) */}
+            <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
+              <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col gap-3">
+                  {visibles.length === 0 ? (
+                    <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
+                      <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
+                        <Funnel className="h-6.5 w-6.5" />
+                      </span>
+                      <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Nada con estos filtros</h3>
+                      <p className="m-0 max-w-90 text-rd-13-5 leading-normal">Prueba con menos filtros o una distancia mayor.</p>
+                      <Button nivel="secundario" tamano="md" className="mt-3" onClick={limpiar}>
+                        Quitar los filtros
+                      </Button>
+                    </div>
+                  ) : (
+                    visibles.map((p: Publicacion) => (
+                      <Tarjeta
+                        key={p.id}
+                        publicacion={p}
+                        distanciaKm={distancias.get(p.id)}
+                        coincidencias={coincidencias.get(p.id)}
+                        seleccionada={p.id === seleccionada}
+                        enProceso={enProceso.includes(p.id)}
+                        onSeleccionar={setSeleccionada}
+                        onVerEnMapa={verEnMapa}
+                        {...accionesTarjeta}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ---- Mapa | Lista (solo < 1024) ---- */}
         {(!hojaPin || hojaPin.cerrando) && (
@@ -338,6 +422,30 @@ const Radar: React.FC = () => {
           return pub ? <DialogoCoincidencias abierto publicacion={pub} coincidencias={coincidencias.get(pub.id) ?? []} hechas={enProceso} onCerrar={() => setVerCoincidencias(null)} onPrimaria={(id) => { setVerCoincidencias(null); abrirCompromiso(id); }} onVerEnMapa={verEnMapaDesdeCoincidencias} /> : null;
         })()}
         <DialogoReporte abierto={reporte !== null} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
+        <DialogoDetallePublicacion
+          publicacion={publicacionDetalle}
+          distanciaKm={publicacionDetalle ? distancias.get(publicacionDetalle.id) : undefined}
+          coincidencias={publicacionDetalle ? coincidencias.get(publicacionDetalle.id) : undefined}
+          enProceso={publicacionDetalle ? enProceso.includes(publicacionDetalle.id) : false}
+          onCerrar={() => setDetalleId(null)}
+          onPrimaria={(id) => {
+            setDetalleId(null);
+            abrirCompromiso(id);
+          }}
+          onVerEnMapa={(id) => {
+            setDetalleId(null);
+            verEnMapa(id);
+          }}
+          onVerCoincidencias={(id) => {
+            setDetalleId(null);
+            setVerCoincidencias(id);
+          }}
+          onCompartir={compartir}
+          onReportar={(id) => {
+            setDetalleId(null);
+            setReporte(id);
+          }}
+        />
       </div>
     </Shell>
   );
@@ -359,3 +467,209 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
     {icono}
   </button>
 );
+
+/* ---------- la fila de la vista lista de la Radar ---------- */
+
+/** Una publicación en vista de lista: quién y qué (avatar, tipo, estado, título, organización y zona),
+ *  recursos con sus anillos e indicadores de disponibilidad y acciones directas
+ *  (Ver detalle, Ver en el mapa y menú ⋮). */
+const FilaPublicacion: React.FC<{
+  publicacion: Publicacion;
+  distanciaKm?: number;
+  coincidencias?: CoincidenciaPublicacion[];
+  enProceso?: boolean;
+  onVerDetalle: (id: string) => void;
+  onVerEnMapa: (id: string) => void;
+  onCompartir: (id: string) => void;
+  onReportar: (id: string) => void;
+  onVerCoincidencias?: (id: string) => void;
+}> = ({
+  publicacion: p,
+  distanciaKm: dist,
+  enProceso,
+  onVerDetalle,
+  onVerEnMapa,
+  onCompartir,
+  onReportar,
+}) => {
+  const est = estadoPublicacion(p);
+  const menu = [
+    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
+    { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
+    { texto: 'Reportar un problema', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
+  ];
+
+  return (
+    <article
+      id={p.id}
+      className="grid min-w-0 grid-cols-1 gap-5 py-7 px-5 transition-colors hover:bg-rd-fondo/50 sm:py-8 sm:px-7 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8 min-h-[185px]"
+    >
+      {/* 1. Publicación, tipo y ubicación */}
+      <div className="flex min-w-0 items-start gap-3.5">
+        <Avatar iniciales={iniciales(p.org)} tamano="md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <EtiquetaTipo tipo={p.tipo} />
+            <EtiquetaEstado estado={est} />
+            {enProceso && (
+              <span className="rounded-rd-sm bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber">
+                En proceso
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
+              {p.titulo}
+            </h2>
+            {p.verificada && (
+              <BadgeCheck
+                role="img"
+                aria-label="Verificada"
+                className="h-4 w-4 shrink-0 text-rd-navy"
+              />
+            )}
+          </div>
+          {p.org !== p.titulo && (
+            <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
+          )}
+          <Donde
+            lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`}
+            distancia={dist !== undefined ? distanciaTexto(dist) : undefined}
+            className="mt-0.5"
+          />
+          {p.descripcion && (
+            <p className="m-0 mt-1 text-rd-12 text-rd-ink-2 line-clamp-2 leading-relaxed">
+              {p.descripcion}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Recursos ofrecidos o solicitados con sus anillos */}
+      <div className="flex min-w-0 flex-col gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          {p.recursos.map((r) => {
+            const completo = restante(r) === 0;
+            return (
+              <span key={r.item} className="flex items-center gap-2.5">
+                <Anillo recurso={r} />
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>
+                    {estadoRecurso(r, p.tipo)}
+                  </span>
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Acciones: Ver detalle + Ver en mapa + ⋮ */}
+      <div className="flex min-w-0 items-center justify-end gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
+        <Button
+          nivel="primario"
+          tamano="sm"
+          onClick={() => onVerDetalle(p.id)}
+        >
+          Ver detalle
+        </Button>
+        <Button
+          nivel="secundario"
+          tamano="sm"
+          soloIcono
+          aria-label="Ver en el mapa"
+          onClick={() => onVerEnMapa(p.id)}
+        >
+          <MapIcon className="h-4 w-4" />
+        </Button>
+        <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="sm" flotante />
+      </div>
+    </article>
+  );
+};
+
+/**
+ * Diálogo que muestra la tarjeta completa de una publicación al hacer clic en «Ver detalle»
+ * desde la vista de lista del Radar.
+ */
+const DialogoDetallePublicacion: React.FC<{
+  publicacion?: Publicacion;
+  distanciaKm?: number;
+  coincidencias?: CoincidenciaPublicacion[];
+  enProceso?: boolean;
+  onCerrar: () => void;
+  onPrimaria: (id: string) => void;
+  onVerEnMapa: (id: string) => void;
+  onVerCoincidencias: (id: string) => void;
+  onCompartir: (id: string) => void;
+  onReportar: (id: string) => void;
+}> = ({
+  publicacion: p,
+  distanciaKm,
+  coincidencias,
+  enProceso,
+  onCerrar,
+  onPrimaria,
+  onVerEnMapa,
+  onVerCoincidencias,
+  onCompartir,
+  onReportar,
+}) => {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (p && !d.open) d.showModal();
+    else if (!p && d.open) d.close();
+  }, [p]);
+
+  if (!p) return null;
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(e) => e.target === ref.current && onCerrar()}
+      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+    >
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+        <span className="text-rd-13 font-semibold text-rd-ink">Detalle de la publicación</span>
+        <button
+          type="button"
+          onClick={onCerrar}
+          aria-label="Cerrar detalle"
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="p-4 sm:p-5 bg-rd-fondo/40">
+        <Tarjeta
+          publicacion={p}
+          distanciaKm={distanciaKm}
+          coincidencias={coincidencias}
+          enProceso={enProceso}
+          onPrimaria={(id) => {
+            onCerrar();
+            onPrimaria(id);
+          }}
+          onVerEnMapa={(id) => {
+            onCerrar();
+            onVerEnMapa(id);
+          }}
+          onVerCoincidencias={(id) => {
+            onCerrar();
+            onVerCoincidencias(id);
+          }}
+          onCompartir={onCompartir}
+          onReportar={(id) => {
+            onCerrar();
+            onReportar(id);
+          }}
+        />
+      </div>
+    </dialog>
+  );
+};

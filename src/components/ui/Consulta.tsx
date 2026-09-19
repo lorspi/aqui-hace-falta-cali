@@ -35,7 +35,7 @@ export const ChipAplicado: React.FC<{ texto: string; onQuitar: () => void }> = (
 );
 
 export const QuitarTodos: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button type="button" onClick={onClick} className="font-rd flex-none cursor-pointer px-1 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink-2 underline underline-offset-2 hover:text-rd-ink">
+  <button type="button" onClick={onClick} className="font-rd mr-2 flex-none cursor-pointer px-1 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink-2 underline underline-offset-2 hover:text-rd-ink">
     Quitar todos
   </button>
 );
@@ -52,15 +52,17 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
     const medir = () => {
       const ultimo = z.lastElementChild;
       setMovil(esMovil());
-      setDesborda(!!ultimo && esMovil() && ultimo.getBoundingClientRect().right > z.getBoundingClientRect().right + 1);
+      setDesborda(!!ultimo && ultimo.getBoundingClientRect().right > z.getBoundingClientRect().right + 1);
     };
     medir();
     const ro = new ResizeObserver(medir);
     ro.observe(z);
     z.addEventListener('scroll', medir, { passive: true });
+    window.addEventListener('resize', medir);
     return () => {
       ro.disconnect();
       z.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
     };
   }, [children]);
   return (
@@ -68,7 +70,12 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
       {/* La fila va en posición absoluta dentro de una caja de alto fijo: así los chips no cuentan
           como ancho mínimo de la página (Chrome en móvil agrandaría el viewport con ellos). */}
       <div className="relative h-10 min-w-0 flex-1 max-lg:h-11">
-        <div ref={zona} className={`absolute inset-0 flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pr-4 ${desborda ? 'zona-rd-chips pr-15' : movil ? 'zona-rd-scroll' : 'zona-rd-chips'}`}>
+        <div
+          ref={zona}
+          className={`absolute inset-0 flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pr-4 ${
+            desborda ? `zona-rd-chips ${movil ? 'pr-15' : ''}` : 'zona-rd-scroll'
+          }`}
+        >
           {children}
         </div>
       </div>
@@ -87,9 +94,10 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 /** El campo de búsqueda de la consulta: bajo 1024 solo aparece cuando la lupa de la cabecera
- *  lo abre (`abierto`), a lo ancho y primero en la fila; desde 1024 vive a la derecha. */
-export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean }> = ({ valor, onChange, placeholder, abierto }) => (
-  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft lg:ml-auto lg:w-64 xl:w-80 ${abierto ? 'order-first w-full max-lg:h-11' : 'max-lg:hidden'}`}>
+ *  lo abre (`abierto`), a lo ancho y primero en la fila; desde 1024 vive a la derecha por defecto
+ *  o donde lo ubique quien lo use (con `className`). */
+export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className }) => (
+  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft ${className ?? 'lg:ml-auto lg:w-64 xl:w-80'} ${abierto ? 'order-first w-full max-lg:h-11' : 'max-lg:hidden'}`}>
     <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
     <span className="sr-only">Buscar</span>
     <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
