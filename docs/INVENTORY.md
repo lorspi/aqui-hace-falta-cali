@@ -55,6 +55,7 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
   (`lg` · `md` · `sm`); 44 con el dedo.
 - `Field` — etiqueta visible, control (`text` · `email` · `tel` · `password` · `select` ·
   `checkbox` · `textarea` · `date`), icono, ayuda y error con `aria-describedby`. La contraseña no pasa por el estado.
+- `Combobox` — selector accesible con búsqueda y filtrado en tiempo real, opciones desplegables con teclado/mouse y variantes `base` y `pildora`.
 - `Segmented` — conmutador de modos con `aria-pressed`.
 - `OptionCard` — tarjeta de opción única con radio nativo.
 - `Stepper` — fases nombradas + tramos.

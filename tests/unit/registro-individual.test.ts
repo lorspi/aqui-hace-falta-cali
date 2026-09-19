@@ -18,7 +18,7 @@ describe('Registro de persona natural', () => {
     expect(c[2].nombre).toBe('Tu cuenta');
   });
 
-  it('valida paso 1 (ind_datos): requiere nombre, apellido, tipo de documento y número de documento', () => {
+  it('valida paso 1 (ind_datos): requiere nombre, apellido, tipo de documento, número de documento y celular', () => {
     const e = estadoInicial(false);
     e.perfil = 'individual';
     const pasoDatos = camino('individual')[1];
@@ -31,10 +31,13 @@ describe('Registro de persona natural', () => {
 
     e.ind.tipoDocumento = 'Cédula de ciudadanía';
     e.ind.numeroDocumento = '1234567890';
+    expect(listo(pasoDatos, e, {})).toBe(false);
+
+    e.ind.celular = '3001234567';
     expect(listo(pasoDatos, e, {})).toBe(true);
   });
 
-  it('valida paso 2 (ind_cuenta): requiere correo, celular, clave válida, repetir clave y aceptar términos', () => {
+  it('valida paso 2 (ind_cuenta): requiere correo, clave válida, repetir clave y aceptar términos', () => {
     const e = estadoInicial(false);
     e.perfil = 'individual';
     const pasoCuenta = camino('individual')[2];
@@ -42,12 +45,11 @@ describe('Registro de persona natural', () => {
     // Vacío no está listo
     expect(listo(pasoCuenta, e, {})).toBe(false);
 
-    // Con datos incompletos (sin celular)
+    // Con datos incompletos (sin clave ni términos)
     e.ind.correo = 'ana@ejemplo.com';
-    expect(listo(pasoCuenta, e, { ip: 'ClaveSegura1!', iq: 'ClaveSegura1!' })).toBe(false);
+    expect(listo(pasoCuenta, e, {})).toBe(false);
 
-    // Con celular pero faltan términos
-    e.ind.celular = '3001234567';
+    // Con clave pero faltan términos
     expect(listo(pasoCuenta, e, { ip: 'ClaveSegura1!', iq: 'ClaveSegura1!' })).toBe(false);
 
     // Con términos pero contraseñas no coinciden

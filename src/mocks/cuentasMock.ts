@@ -10,7 +10,7 @@ export const PERFILES: OpcionPerfil[] = [
   {
     id: 'organizacion',
     nombre: 'Organización',
-    descripcion: 'Fundación, ONG, empresa, bomberos o colectivo.',
+    descripcion: 'Fundación, ONG, entidad pública, empresa o colectivo.',
     icono: 'organizacion',
     panel: 'Mi organización',
     rolSupabase: 'entidad_profesional',
@@ -18,7 +18,7 @@ export const PERFILES: OpcionPerfil[] = [
   {
     id: 'liderazgo',
     nombre: 'Comunidad',
-    descripcion: 'JAC, cabildo, albergue o quien coordina un barrio o una vereda.',
+    descripcion: 'Líderes comunitarios, juntas de acción comunal o quienes representan a su sector.',
     icono: 'liderazgo',
     panel: 'Mi comunidad',
     // Sin rol propio en Supabase: lo más cercano es `moderador` («líderes comunitarios»)
@@ -62,13 +62,39 @@ export const TIPOS_COM = [
 ];
 
 export const DEPTOS = [
-  'Valle del Cauca',
-  'Bogotá D. C.',
-  'Cundinamarca',
+  'Amazonas',
   'Antioquia',
+  'Arauca',
   'Atlántico',
+  'Bogotá D. C.',
+  'Bolívar',
+  'Boyacá',
+  'Caldas',
+  'Caquetá',
+  'Casanare',
+  'Cauca',
+  'Cesar',
+  'Chocó',
+  'Córdoba',
+  'Cundinamarca',
+  'Guainía',
+  'Guaviare',
+  'Huila',
+  'La Guajira',
+  'Magdalena',
+  'Meta',
+  'Nariño',
+  'Norte de Santander',
+  'Putumayo',
+  'Quindío',
+  'Risaralda',
+  'San Andrés y Providencia',
   'Santander',
-  'Otro',
+  'Sucre',
+  'Tolima',
+  'Valle del Cauca',
+  'Vaupés',
+  'Vichada',
 ];
 
 /** A dónde lleva cada salida. Las maquetas de Producto (`*-v2`) se enlazan entre sí; lo
@@ -113,7 +139,7 @@ export function estadoInicial(rapida: boolean): EstadoRegistro {
     indice: 0,
     org: { nombre: '', tipo: '', nit: '', web: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
     com: { nombre: '', tipo: '', departamento: 'Valle del Cauca', referencia: '', contacto: { ...CONTACTO_VACIO } },
-    per: { nombre: '', cargo: '', cedula: '', tel: '', mismoWa: true, wa: '', correo: '' },
+    per: { nombre: '', cargo: '', cedula: '', tel: '', mismoWa: true, wa: '', correo: '', captchaToken: '', terminos: false },
     ind: {
       nombre: '',
       apellido: '',

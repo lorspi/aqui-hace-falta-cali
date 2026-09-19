@@ -3,7 +3,10 @@ import {
   ArrowLeft,
   Briefcase,
   Building2,
+  Check,
   CreditCard,
+  FileText,
+  Globe,
   Hand,
   HeartHandshake,
   Lock,
@@ -15,17 +18,19 @@ import {
   Users,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Combobox } from '../../components/ui/Combobox';
 import { Field, type FieldProps } from '../../components/ui/Field';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { OptionCard } from '../../components/ui/OptionCard';
 import { PasswordRules } from '../../components/ui/PasswordRules';
+import { contrasenaCumple } from '../../features/auth/schemas/registerSchema';
 import { Segmented } from '../../components/ui/Segmented';
 import { Success } from '../../components/ui/Success';
 import { DEPTOS, PERFILES, RUTAS, TIPOS_COM, TIPOS_DOC, TIPOS_ORG, estadoInicial } from '../../mocks/cuentasMock';
 import { Turnstile } from '../../components/Turnstile';
 import { guardarEntidad } from '../../utils/cuenta';
 import type { EstadoRegistro, IconoCuenta, ModoRegistro, PerfilCuenta } from '../../types/cuenta';
-import { camino, listo, loginListo, pasoActual, validar, type Contrasenas, type Regla } from './pasos';
+import { camino, esCorreo, listo, loginListo, pasoActual, validar, type Contrasenas, type Regla } from './pasos';
 import { RegistroCarrusel } from './RegistroCarrusel';
 import { TEXTOS as T } from './textos';
 
@@ -55,6 +60,8 @@ const ico = {
   correo: <Mail className="h-5 w-5" />,
   celular: <Phone className="h-5 w-5" />,
   lugar: <MapPin className="h-5 w-5" />,
+  web: <Globe className="h-5 w-5" />,
+  nit: <FileText className="h-5 w-5" />,
 };
 
 /* Todo campo de registro es la píldora del prototipo, con la etiqueta como placeholder. */
@@ -76,6 +83,8 @@ export const RegistroPage: React.FC = () => {
   const cuerpoRef = useRef<HTMLDivElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
 
+  const [correoRecuperar, setCorreoRecuperar] = useState('');
+
   const paso = pasoActual(e);
   const c = camino(e.perfil);
   const indice = Math.min(e.indice, c.length - 1);
@@ -83,7 +92,17 @@ export const RegistroPage: React.FC = () => {
 
   /* Qué pantalla se ve. Cuando cambia, el foco se mueve; en la primera pintura no
      (arranca con la clave actual, así el doble efecto de StrictMode tampoco enfoca). */
-  const clavePantalla = e.listo ? 'exito' : e.modo === 'login' ? 'login' : paso.id;
+  const clavePantalla = e.listo
+    ? 'exito'
+    : e.modo === 'login'
+    ? 'login'
+    : e.modo === 'recuperar'
+    ? 'recuperar'
+    : e.modo === 'recuperar_enviado'
+    ? 'recuperar_enviado'
+    : e.modo === 'nueva_contrasena'
+    ? 'nueva_contrasena'
+    : paso.id;
   const pantallaAnterior = useRef(clavePantalla);
 
   useEffect(() => {
@@ -108,7 +127,11 @@ export const RegistroPage: React.FC = () => {
 
   const patch = (p: Partial<EstadoRegistro>) => setE((prev) => ({ ...prev, ...p }));
   const patchOrg = (p: Partial<EstadoRegistro['org']>) => setE((prev) => ({ ...prev, org: { ...prev.org, ...p } }));
+  const patchOrgContacto = (p: Partial<EstadoRegistro['org']['contacto']>) =>
+    setE((prev) => ({ ...prev, org: { ...prev.org, contacto: { ...prev.org.contacto, ...p } } }));
   const patchCom = (p: Partial<EstadoRegistro['com']>) => setE((prev) => ({ ...prev, com: { ...prev.com, ...p } }));
+  const patchComContacto = (p: Partial<EstadoRegistro['com']['contacto']>) =>
+    setE((prev) => ({ ...prev, com: { ...prev.com, contacto: { ...prev.com.contacto, ...p } } }));
   const patchPer = (p: Partial<EstadoRegistro['per']>) => setE((prev) => ({ ...prev, per: { ...prev.per, ...p } }));
   const patchInd = (p: Partial<EstadoRegistro['ind']>) => setE((prev) => ({ ...prev, ind: { ...prev.ind, ...p } }));
 
@@ -158,6 +181,22 @@ export const RegistroPage: React.FC = () => {
       if (loginListo(e.login.correo, pass.current)) window.location.assign(RUTAS.mapa);
       return;
     }
+    if (e.modo === 'recuperar') {
+      if (esCorreo(correoRecuperar)) patch({ modo: 'recuperar_enviado' });
+      return;
+    }
+    if (e.modo === 'recuperar_enviado') {
+      patch({ modo: 'nueva_contrasena' });
+      return;
+    }
+    if (e.modo === 'nueva_contrasena') {
+      const nuevaLista =
+        Boolean(pass.current.np) &&
+        contrasenaCumple(pass.current.np || '', correoRecuperar) &&
+        pass.current.np === pass.current.nq;
+      if (nuevaLista) window.location.assign(RUTAS.mapa);
+      return;
+    }
     if (!puedeContinuar) return;
     if (ultimo) terminar();
     else siguiente();
@@ -203,21 +242,6 @@ export const RegistroPage: React.FC = () => {
       </h1>
       {sub && <p className="mb-6 text-rd-14 text-rd-ink-2">{sub}</p>}
     </>
-  );
-
-  /* La nota legal, en el primer y el último paso (como el prototipo). */
-  const legal = (
-    <p className="mt-6 text-center text-rd-12 leading-normal text-rd-ink-meta">
-      {T.legal.antes}{' '}
-      <a href={RUTAS.terminos} target="_blank" rel="noreferrer" className="text-rd-ink-2 underline hover:text-rd-ink">
-        {T.legal.terminos}
-      </a>{' '}
-      {T.legal.y}{' '}
-      <a href={RUTAS.privacidad} target="_blank" rel="noreferrer" className="text-rd-ink-2 underline hover:text-rd-ink">
-        {T.legal.privacidad}
-      </a>
-      .
-    </p>
   );
 
   const pie = (
@@ -275,10 +299,158 @@ export const RegistroPage: React.FC = () => {
         </Button>
       </div>
       <p className="mt-4 text-rd-14 text-rd-ink-2">
-        <a href={RUTAS.recuperar} className={CLASE_ENLACE}>
+        <button
+          type="button"
+          onClick={() => {
+            setCorreoRecuperar(e.login.correo || '');
+            patch({ modo: 'recuperar' });
+          }}
+          className={CLASE_ENLACE}
+        >
           {T.login.olvido}
-        </a>
+        </button>
       </p>
+    </>
+  );
+
+  /* Flujo de recuperación de contraseña en el mockup */
+  const pantallaRecuperar = (
+    <>
+      <span
+        aria-hidden="true"
+        className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-rd-line bg-rd-sunken text-rd-ink"
+      >
+        <Mail className="h-6.5 w-6.5" />
+      </span>
+      {titulo(T.recuperar.titulo, T.recuperar.sub)}
+      <div ref={cuerpoRef} className="space-y-3 text-left mt-5">
+        <Field
+          {...PILDORA}
+          id="recuperar-correo"
+          etiqueta={T.recuperar.correo}
+          tipo="email"
+          icono={ico.correo}
+          autoComplete="email"
+          valor={correoRecuperar}
+          onChange={alEscribir('recuperar-correo', (v) => setCorreoRecuperar(v))}
+          onBlur={alSalir('recuperar-correo', ['requerido', 'correo'], T.errores.correo)}
+          error={error('recuperar-correo')}
+        />
+      </div>
+      <div className="mt-6 flex flex-col gap-2">
+        <Button
+          nivel="primario"
+          tamano="lg"
+          ancho
+          disabled={!esCorreo(correoRecuperar)}
+          onClick={() => patch({ modo: 'recuperar_enviado' })}
+        >
+          {T.recuperar.enviar}
+        </Button>
+        <Button
+          nivel="terciario"
+          tamano="md"
+          ancho
+          icono={<ArrowLeft className="h-4 w-4" />}
+          onClick={() => patch({ modo: 'login' })}
+        >
+          {T.recuperar.volver}
+        </Button>
+      </div>
+    </>
+  );
+
+  const pantallaRecuperarEnviado = (
+    <>
+      <span
+        aria-hidden="true"
+        className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-rd-line bg-rd-sunken text-rd-green"
+      >
+        <Check className="h-6.5 w-6.5" />
+      </span>
+      {titulo(T.recuperar.enviadoTitulo, T.recuperar.enviadoSub)}
+      <div className="mt-6 flex flex-col gap-2">
+        <Button
+          nivel="primario"
+          tamano="lg"
+          ancho
+          onClick={() => patch({ modo: 'nueva_contrasena' })}
+        >
+          {T.recuperar.simularEnlace}
+        </Button>
+        <Button
+          nivel="terciario"
+          tamano="md"
+          ancho
+          icono={<ArrowLeft className="h-4 w-4" />}
+          onClick={() => patch({ modo: 'login' })}
+        >
+          {T.recuperar.volver}
+        </Button>
+      </div>
+    </>
+  );
+
+  const nuevaLista =
+    Boolean(pass.current.np) &&
+    contrasenaCumple(pass.current.np || '', correoRecuperar) &&
+    pass.current.np === pass.current.nq;
+
+  const pantallaNuevaContrasena = (
+    <>
+      <span
+        aria-hidden="true"
+        className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-rd-line bg-rd-sunken text-rd-ink"
+      >
+        <Lock className="h-6.5 w-6.5" />
+      </span>
+      {titulo(T.recuperar.nuevaTitulo, T.recuperar.nuevaSub)}
+      <div ref={cuerpoRef} className="space-y-3 text-left mt-5">
+        <div>
+          <Field
+            {...PILDORA}
+            id="nueva-pass"
+            etiqueta={T.recuperar.nuevaPass}
+            tipo="password"
+            icono={ico.contrasena}
+            autoComplete="new-password"
+            valorInicial={pass.current.np}
+            onChange={guardarPass('np')}
+          />
+          <PasswordRules className="mt-2" id="nueva-reglas" contrasena={pass.current.np || ''} correo={correoRecuperar} />
+        </div>
+        <Field
+          {...PILDORA}
+          id="nueva-repetir"
+          etiqueta={T.recuperar.repetirPass}
+          tipo="password"
+          icono={ico.contrasena}
+          autoComplete="new-password"
+          valorInicial={pass.current.nq}
+          onChange={guardarPass('nq')}
+          error={pass.current.nq && pass.current.np !== pass.current.nq ? T.cuenta.noCoinciden : null}
+        />
+      </div>
+      <div className="mt-6 flex flex-col gap-2">
+        <Button
+          nivel="primario"
+          tamano="lg"
+          ancho
+          disabled={!nuevaLista}
+          onClick={() => window.location.assign(RUTAS.mapa)}
+        >
+          {T.recuperar.guardar}
+        </Button>
+        <Button
+          nivel="terciario"
+          tamano="md"
+          ancho
+          icono={<ArrowLeft className="h-4 w-4" />}
+          onClick={() => patch({ modo: 'login' })}
+        >
+          {T.recuperar.volver}
+        </Button>
+      </div>
     </>
   );
 
@@ -327,11 +499,107 @@ export const RegistroPage: React.FC = () => {
     <>
       {titulo(T.org.titulo)}
       <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
-        <Field {...PILDORA} id="o-nombre" etiqueta={T.org.nombre} icono={ico.organizacion} autoComplete="organization" valor={e.org.nombre} onChange={alEscribir('o-nombre', (v) => patchOrg({ nombre: v }))} onBlur={alSalir('o-nombre', ['requerido'], T.errores.nombreOrg)} error={error('o-nombre')} />
-        <Field {...PILDORA} id="o-tipo" etiqueta={T.org.tipo} tipo="select" opciones={TIPOS_ORG} valor={e.org.tipo} onChange={(v) => patchOrg({ tipo: v })} />
-        {/* NIT, sitio web, contacto público y documento de representación viven en el panel
-            (Perfil de la entidad): el registro pide solo lo mínimo para entrar. Alejandro,
-            16 de septiembre de 2026: «esto se ve muy cargado». */}
+        <Field
+          {...PILDORA}
+          id="o-nombre"
+          etiqueta={T.org.nombre}
+          icono={ico.organizacion}
+          autoComplete="organization"
+          valor={e.org.nombre}
+          onChange={alEscribir('o-nombre', (v) => patchOrg({ nombre: v }))}
+          onBlur={alSalir('o-nombre', ['requerido'], T.errores.nombreOrg)}
+          error={error('o-nombre')}
+        />
+        <Field
+          {...PILDORA}
+          id="o-tipo"
+          etiqueta={T.org.tipo}
+          tipo="select"
+          opciones={TIPOS_ORG}
+          valor={e.org.tipo}
+          onChange={(v) => patchOrg({ tipo: v })}
+        />
+        <Field
+          {...PILDORA}
+          id="o-nit"
+          opcional
+          etiqueta={T.org.nit}
+          icono={ico.nit}
+          valor={e.org.nit}
+          onChange={alEscribir('o-nit', (v) => patchOrg({ nit: v }))}
+        />
+        <Field
+          {...PILDORA}
+          id="o-web"
+          opcional
+          etiqueta={T.org.web}
+          icono={ico.web}
+          valor={e.org.web}
+          onChange={alEscribir('o-web', (v) => patchOrg({ web: v }))}
+        />
+
+        {/* Bloque Contacto Público de la Organización */}
+        <div className="rounded-2xl border border-rd-line bg-rd-surface p-4 space-y-3 shadow-2xs">
+          <div>
+            <span className="block text-rd-13 font-semibold text-rd-ink">
+              {T.org.contactoTitulo}
+            </span>
+            <span className="block text-rd-11 text-rd-ink-2 mt-0.5">
+              {T.org.contactoSub}
+            </span>
+          </div>
+
+          <Field
+            {...PILDORA}
+            id="o-tel"
+            etiqueta={T.org.tel}
+            tipo="tel"
+            icono={ico.celular}
+            autoComplete="tel"
+            valor={e.org.contacto.tel}
+            onChange={alEscribir('o-tel', (v) => patchOrgContacto({ tel: v }))}
+            onBlur={alSalir('o-tel', ['requerido', 'celular'], T.errores.celular)}
+            error={error('o-tel')}
+          />
+
+          <Field
+            {...PILDORA}
+            id="o-correo"
+            etiqueta={T.org.correo}
+            tipo="email"
+            icono={ico.correo}
+            autoComplete="email"
+            valor={e.org.contacto.correo}
+            onChange={alEscribir('o-correo', (v) => patchOrgContacto({ correo: v }))}
+            onBlur={alSalir('o-correo', ['requerido', 'correo'], T.errores.correo)}
+            error={error('o-correo')}
+          />
+        </div>
+
+        {/* Documento de representación legal */}
+        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-rd-line bg-rd-surface p-3.5 px-4 text-rd-12 text-rd-ink-2">
+          {e.org.documentoAdjunto ? (
+            <Check className="h-5 w-5 shrink-0 text-rd-green" />
+          ) : (
+            <ShieldCheck className="h-5 w-5 shrink-0 text-rd-ink-meta" />
+          )}
+          <div className="flex-1">
+            <b className="block font-semibold text-rd-ink">
+              {T.org.docTitulo} <span className="font-normal text-rd-ink-meta">(opcional)</span>
+            </b>
+            <span>
+              {e.org.documentoAdjunto ? T.org.docAdjuntado : T.org.docSub}
+            </span>
+          </div>
+          <Button
+            type="button"
+            nivel="secundario"
+            tamano="sm"
+            onClick={() => patchOrg({ documentoAdjunto: !e.org.documentoAdjunto })}
+          >
+            {e.org.documentoAdjunto ? T.org.cambiar : T.org.adjuntar}
+          </Button>
+        </div>
       </div>
     </>
   );
@@ -340,10 +608,75 @@ export const RegistroPage: React.FC = () => {
     <>
       {titulo(T.com.titulo)}
       <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
-        <Field {...PILDORA} id="c-nombre" etiqueta={T.com.nombre} icono={ico.lugar} valor={e.com.nombre} onChange={alEscribir('c-nombre', (v) => patchCom({ nombre: v }))} onBlur={alSalir('c-nombre', ['requerido'])} error={error('c-nombre')} />
-        <Field {...PILDORA} id="c-tipo" etiqueta={T.com.tipo} tipo="select" opciones={TIPOS_COM} valor={e.com.tipo} onChange={(v) => patchCom({ tipo: v })} />
-        <Field {...PILDORA} id="c-depto" etiqueta={T.com.departamento} tipo="select" opciones={DEPTOS} valor={e.com.departamento} onChange={(v) => patchCom({ departamento: v })} />
-        {/* El punto de referencia y el contacto público van al panel, como en la organización. */}
+        <Field
+          {...PILDORA}
+          id="c-nombre"
+          etiqueta={T.com.nombre}
+          icono={ico.persona}
+          valor={e.com.nombre}
+          onChange={alEscribir('c-nombre', (v) => patchCom({ nombre: v }))}
+          onBlur={alSalir('c-nombre', ['requerido'], T.errores.nombreCom)}
+          error={error('c-nombre')}
+        />
+        <Field
+          {...PILDORA}
+          id="c-tipo"
+          etiqueta={T.com.tipo}
+          tipo="select"
+          opciones={TIPOS_COM}
+          valor={e.com.tipo}
+          onChange={(v) => patchCom({ tipo: v })}
+        />
+        <Combobox
+          forma="pildora"
+          etiquetaOculta
+          id="c-depto"
+          etiqueta={T.com.departamento}
+          icono={ico.lugar}
+          opciones={DEPTOS}
+          valor={e.com.departamento}
+          onChange={(v) => patchCom({ departamento: v })}
+          onBlur={alSalir('c-depto', ['requerido'])}
+          error={error('c-depto')}
+        />
+
+        {/* Bloque Contacto Público de la Comunidad */}
+        <div className="rounded-2xl border border-rd-line bg-rd-surface p-4 space-y-3 shadow-2xs">
+          <div>
+            <span className="block text-rd-13 font-semibold text-rd-ink">
+              {T.com.contactoTitulo}
+            </span>
+            <span className="block text-rd-11 text-rd-ink-2 mt-0.5">
+              {T.com.contactoSub}
+            </span>
+          </div>
+
+          <Field
+            {...PILDORA}
+            id="c-tel"
+            etiqueta={T.com.tel}
+            tipo="tel"
+            icono={ico.celular}
+            autoComplete="tel"
+            valor={e.com.contacto.tel}
+            onChange={alEscribir('c-tel', (v) => patchComContacto({ tel: v }))}
+            onBlur={alSalir('c-tel', ['requerido', 'celular'], T.errores.celular)}
+            error={error('c-tel')}
+          />
+
+          <Field
+            {...PILDORA}
+            id="c-correo"
+            etiqueta={T.com.correo}
+            tipo="email"
+            icono={ico.correo}
+            autoComplete="email"
+            valor={e.com.contacto.correo}
+            onChange={alEscribir('c-correo', (v) => patchComContacto({ correo: v }))}
+            onBlur={alSalir('c-correo', ['requerido', 'correo'], T.errores.correo)}
+            error={error('c-correo')}
+          />
+        </div>
       </div>
     </>
   );
@@ -354,14 +687,24 @@ export const RegistroPage: React.FC = () => {
       {titulo(T.persona.titulo)}
       <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
         <Field {...PILDORA} id="p-nombre" etiqueta={T.persona.nombre} icono={ico.persona} autoComplete="name" valor={e.per.nombre} onChange={alEscribir('p-nombre', (v) => patchPer({ nombre: v }))} onBlur={alSalir('p-nombre', ['requerido'], T.errores.nombre)} error={error('p-nombre')} />
-        {esOrg ? (
+        <Field
+          {...PILDORA}
+          id="p-cedula"
+          etiqueta={T.persona.cedula}
+          icono={ico.documento}
+          inputMode="numeric"
+          valor={e.per.cedula}
+          onChange={alEscribir('p-cedula', (v) => patchPer({ cedula: v }))}
+          onBlur={alSalir('p-cedula', ['requerido'], T.errores.cedula)}
+          error={error('p-cedula')}
+        />
+        {esOrg && (
           <Field {...PILDORA} id="p-cargo" etiqueta={T.persona.cargo} opcional icono={ico.cargo} autoComplete="organization-title" valor={e.per.cargo} onChange={(v) => patchPer({ cargo: v })} />
-        ) : (
-          <Field {...PILDORA} id="p-cedula" etiqueta={T.persona.cedula} opcional icono={ico.documento} inputMode="numeric" valor={e.per.cedula} onChange={(v) => patchPer({ cedula: v })} />
         )}
         <Field
           {...PILDORA}
           id="p-tel"
+          opcional
           etiqueta={T.persona.celular}
           tipo="tel"
           icono={ico.celular}
@@ -369,11 +712,9 @@ export const RegistroPage: React.FC = () => {
           ayuda={T.persona.ayudaCelular}
           valor={e.per.tel}
           onChange={alEscribir('p-tel', (v) => patchPer({ tel: v }))}
-          onBlur={alSalir('p-tel', ['requerido', 'celular'], T.errores.celular)}
+          onBlur={alSalir('p-tel', ['celular'], T.errores.celularFormato)}
           error={error('p-tel')}
         />
-        <Field id="p-mismo" etiqueta={T.persona.mismoWa} tipo="checkbox" marcado={e.per.mismoWa} onChangeMarcado={(v) => patchPer({ mismoWa: v })} />
-        {!e.per.mismoWa && <Field {...PILDORA} id="p-wa" etiqueta={T.persona.wa} tipo="tel" icono={ico.celular} valor={e.per.wa} onChange={(v) => patchPer({ wa: v })} />}
       </div>
     </>
   );
@@ -397,6 +738,35 @@ export const RegistroPage: React.FC = () => {
           valorInicial={pass.current.cq}
           onChange={guardarPass('cq')}
           error={pass.current.cq && pass.current.cp !== pass.current.cq ? T.cuenta.noCoinciden : null}
+        />
+        <div className="flex justify-center py-2">
+          <Turnstile
+            onVerify={(token) => patchPer({ captchaToken: token })}
+            onError={() => patchPer({ captchaToken: '' })}
+            onExpire={() => patchPer({ captchaToken: '' })}
+            appearance="always"
+            size="flexible"
+            theme="light"
+            language="es"
+          />
+        </div>
+        <Field
+          id="q-terminos"
+          etiqueta={
+            <span className="text-rd-13 text-rd-ink-2">
+              Acepto los{' '}
+              <a href={RUTAS.terminos} target="_blank" rel="noreferrer" className="font-semibold text-rd-ink underline hover:text-rd-navy">
+                términos y condiciones
+              </a>{' '}
+              y la{' '}
+              <a href={RUTAS.privacidad} target="_blank" rel="noreferrer" className="font-semibold text-rd-ink underline hover:text-rd-navy">
+                política de privacidad
+              </a>
+            </span>
+          }
+          tipo="checkbox"
+          marcado={e.per.terminos}
+          onChangeMarcado={(v) => patchPer({ terminos: v })}
         />
       </div>
     </>
@@ -448,6 +818,18 @@ export const RegistroPage: React.FC = () => {
           onBlur={alSalir('ind-num-doc', ['requerido'], T.individual.errorDoc)}
           error={error('ind-num-doc')}
         />
+        <Field
+          {...PILDORA}
+          id="ind-tel"
+          etiqueta={T.individual.celular}
+          tipo="tel"
+          icono={ico.celular}
+          autoComplete="tel"
+          valor={e.ind.celular}
+          onChange={alEscribir('ind-tel', (v) => patchInd({ celular: v }))}
+          onBlur={alSalir('ind-tel', ['requerido', 'celular'], T.errores.celular)}
+          error={error('ind-tel')}
+        />
       </div>
     </>
   );
@@ -467,18 +849,6 @@ export const RegistroPage: React.FC = () => {
           onChange={alEscribir('ind-correo', (v) => patchInd({ correo: v }))}
           onBlur={alSalir('ind-correo', ['requerido', 'correo'], T.errores.correo)}
           error={error('ind-correo')}
-        />
-        <Field
-          {...PILDORA}
-          id="ind-tel"
-          etiqueta={T.individual.celular}
-          tipo="tel"
-          icono={ico.celular}
-          autoComplete="tel"
-          valor={e.ind.celular}
-          onChange={alEscribir('ind-tel', (v) => patchInd({ celular: v }))}
-          onBlur={alSalir('ind-tel', ['requerido', 'celular'], T.errores.celular)}
-          error={error('ind-tel')}
         />
         <div>
           <Field
@@ -577,7 +947,18 @@ export const RegistroPage: React.FC = () => {
           </>
         }
       >
-        {esOrg && <InlineNotice variante="info" icono={<ShieldCheck className="h-4 w-4" />} titulo={T.exito.sinVerificarTitulo} texto={T.exito.sinVerificarTexto(panel)} />}
+        {esOrg && (
+          <InlineNotice
+            variante={e.org.documentoAdjunto ? 'pendiente' : 'info'}
+            icono={<ShieldCheck className="h-4 w-4" />}
+            titulo={e.org.documentoAdjunto ? 'Documento en revisión' : T.exito.sinVerificarTitulo}
+            texto={
+              e.org.documentoAdjunto
+                ? 'Revisaremos el documento para otorgar la insignia de verificación.'
+                : T.exito.sinVerificarTexto(panel)
+            }
+          />
+        )}
       </Success>
     );
   })();
@@ -600,11 +981,16 @@ export const RegistroPage: React.FC = () => {
     exito
   ) : e.modo === 'login' ? (
     login
+  ) : e.modo === 'recuperar' ? (
+    pantallaRecuperar
+  ) : e.modo === 'recuperar_enviado' ? (
+    pantallaRecuperarEnviado
+  ) : e.modo === 'nueva_contrasena' ? (
+    pantallaNuevaContrasena
   ) : (
     <React.Fragment key={paso.id}>
       {pantallas[paso.id]}
       {pie}
-      {(paso.id === 'perfil' || ultimo) && legal}
     </React.Fragment>
   );
 

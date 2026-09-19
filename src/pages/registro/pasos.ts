@@ -10,15 +10,15 @@ import { TEXTOS } from './textos';
 const T = TEXTOS;
 
 /** Lo que la persona escribe en los campos de contraseña vive fuera del estado. */
-export type Contrasenas = Partial<Record<'lp' | 'rp' | 'cp' | 'cq' | 'ip' | 'iq', string>>;
+export type Contrasenas = Partial<Record<'lp' | 'rp' | 'cp' | 'cq' | 'ip' | 'iq' | 'np' | 'nq', string>>;
 
 /** Quién es, sus datos, la persona de enlace y la cuenta. Nada de qué va a hacer: los módulos
  *  se habilitan con el uso. */
 export function camino(perfil: PerfilCuenta | ''): Paso[] {
   if (perfil === 'rapida') return [{ id: 'rapida', fase: 1, nombre: 'Tu cuenta' }];
   const c: Paso[] = [{ id: 'perfil', fase: 1, nombre: 'Quién eres' }];
-  if (perfil === 'organizacion') c.push({ id: 'org', fase: 1, nombre: 'Tu organización' });
-  if (perfil === 'liderazgo') c.push({ id: 'com', fase: 1, nombre: 'Tu comunidad' });
+  if (perfil === 'organizacion') c.push({ id: 'org', fase: 1, nombre: 'Datos de la organización' });
+  if (perfil === 'liderazgo') c.push({ id: 'com', fase: 1, nombre: 'Datos de la comunidad' });
   if (perfil === 'individual') {
     c.push({ id: 'ind_datos', fase: 2, nombre: 'Tus datos' });
     c.push({ id: 'ind_cuenta', fase: 2, nombre: 'Tu cuenta' });
@@ -52,24 +52,45 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
     case 'perfil':
       return Boolean(e.perfil);
     case 'org':
-      return lleno(e.org.nombre) && lleno(e.org.tipo);
+      return (
+        lleno(e.org.nombre) &&
+        lleno(e.org.tipo) &&
+        esCelular(e.org.contacto.tel) &&
+        esCorreo(e.org.contacto.correo)
+      );
     case 'com':
-      return lleno(e.com.nombre) && lleno(e.com.tipo);
+      return (
+        lleno(e.com.nombre) &&
+        lleno(e.com.tipo) &&
+        lleno(e.com.departamento) &&
+        esCelular(e.com.contacto.tel) &&
+        esCorreo(e.com.contacto.correo)
+      );
     case 'persona':
-      return lleno(e.per.nombre) && lleno(e.per.tel) && (e.per.mismoWa || lleno(e.per.wa));
+      return (
+        lleno(e.per.nombre) &&
+        lleno(e.per.cedula) &&
+        (!e.per.tel.trim() || esCelular(e.per.tel))
+      );
     case 'cuenta':
-      return esCorreo(e.per.correo) && contrasenaCumple(pass.cp || '', e.per.correo) && pass.cp === pass.cq;
+      return (
+        esCorreo(e.per.correo) &&
+        contrasenaCumple(pass.cp || '', e.per.correo) &&
+        pass.cp === pass.cq &&
+        e.per.terminos &&
+        (Boolean(e.per.captchaToken) || typeof window === 'undefined' || !window.turnstile)
+      );
     case 'ind_datos':
       return (
         lleno(e.ind.nombre) &&
         lleno(e.ind.apellido) &&
         lleno(e.ind.tipoDocumento) &&
-        lleno(e.ind.numeroDocumento)
+        lleno(e.ind.numeroDocumento) &&
+        esCelular(e.ind.celular)
       );
     case 'ind_cuenta':
       return (
         esCorreo(e.ind.correo) &&
-        esCelular(e.ind.celular) &&
         contrasenaCumple(pass.ip || '', e.ind.correo) &&
         pass.ip === pass.iq &&
         e.ind.terminos &&

@@ -23,7 +23,7 @@ export interface ModulosCuenta {
  *  solo quiere ver un contacto. Voluntariado individual queda fuera por ahora. */
 export type PerfilCuenta = 'organizacion' | 'liderazgo' | 'individual' | 'rapida';
 
-export type ModoRegistro = 'login' | 'registro';
+export type ModoRegistro = 'login' | 'registro' | 'recuperar' | 'recuperar_enviado' | 'nueva_contrasena';
 
 /** Iconos que la página resuelve a Lucide (un concepto, un icono). */
 export type IconoCuenta = 'organizacion' | 'liderazgo' | 'persona';
@@ -75,6 +75,8 @@ export interface DatosPersona {
   mismoWa: boolean;
   wa: string;
   correo: string;
+  captchaToken: string;
+  terminos: boolean;
 }
 
 /** Persona natural (voluntario / ciudadano independiente). */
