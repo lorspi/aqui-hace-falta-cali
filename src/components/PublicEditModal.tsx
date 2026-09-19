@@ -127,6 +127,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     contactPhone !== norm(need.contactPhone) ||
     organizationName !== norm(need.organizationName) ||
     operatingHours !== norm(need.operatingHours) ||
+    sourceUrl !== norm(need.sourceUrl) ||
     JSON.stringify(selectedCategories) !== JSON.stringify(need.categories || []);
 
   const handleCategoryToggle = (cat: HelpCategory) => {
