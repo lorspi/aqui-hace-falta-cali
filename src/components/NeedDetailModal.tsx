@@ -32,6 +32,7 @@ import {
 import { fetchNeedUpdateLogs, fetchMatchingOffersForNeed, MatchingOfferResult } from '../lib/supabaseService';
 import { useTranslation } from '../i18n/LanguageContext';
 import { trackClarityEvent } from '../utils/analytics';
+import { FormattedText } from './FormattedText';
 
 interface NeedDetailModalProps {
   need: Need | null;
@@ -199,10 +200,34 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-1">
               {t('detailDescription')}
             </h4>
-            <p className="text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              {need.description}
-            </p>
+            <div className="text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <FormattedText text={need.description} />
+            </div>
           </div>
+
+          {/* External Campaign Link / Vaki / Source Link */}
+          {need.sourceUrl && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="space-y-1">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <ExternalLink className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Enlace de Campaña / Recaudación Oficial</span>
+                </span>
+                <p className="text-xs text-amber-800/90 font-medium">
+                  Esta ayuda cuenta con una campaña activa o fuente oficial externa para colaborar (ej. Vaki, donación directa).
+                </p>
+              </div>
+              <a
+                href={need.sourceUrl.startsWith('http') ? need.sourceUrl : `https://${need.sourceUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-98 text-white font-extrabold text-xs transition-all shadow-sm hover:shadow shrink-0 cursor-pointer"
+              >
+                <span>Ir al Enlace Oficial</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          )}
 
           {/* What they need */}
           {need.resources && need.resources.length > 0 && (

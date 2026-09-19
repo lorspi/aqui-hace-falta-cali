@@ -29,7 +29,7 @@ Modales: `AdminDashboardModal`, `ChatbotTicketModal`, `CreateNeedModal`, `Create
 Selección / entrada: `CityCombobox`, `CityFormCombobox`, `CustomSelect`, `SearchAutocomplete`,
 `LanguageSelector`, `Turnstile`.
 
-Cards / listas: `NeedCard`, `OfferCard`, `ChatbotReportsList`, `ChatbotReportDetail`, `SocialCardView`.
+Cards / listas: `NeedCard`, `OfferCard`, `ChatbotReportsList`, `ChatbotReportDetail`, `SocialCardView`, `FormattedText`.
 
 Páginas: `AdminPanelPage`, `CifrasPage`, `LandingHomePage`, `LegalPage`, `ModeradorPage`,
 `SimulatedRegisterPage`.

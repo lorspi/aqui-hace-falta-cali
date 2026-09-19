@@ -19,6 +19,7 @@ import { LandingSplitPortal } from './components/LandingSplitPortal';
 import { LandingFooter } from './components/LandingFooter';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { getOfficialWhatsappLink } from '../../constants/contact';
 
 export const LandingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -275,7 +276,7 @@ export const LandingPage: React.FC = () => {
                 {/* Botón CTA en escritorio: centrado en el espacio libre disponible y con mayor presencia */}
                 <div className="hidden lg:flex items-center justify-center p-2">
                   <a
-                    href="https://wa.me/573112323588?text=Hola%20raDAR,%20represento%20a%20una%20organizaci%C3%B3n/comunidad%20y%20nos%20gustar%C3%ADa%20sumarnos%20a%20la%20red%20de%20ayuda."
+                    href={getOfficialWhatsappLink("Hola raDAR, represento a una organización/comunidad y nos gustaría sumarnos a la red de ayuda.")}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2.5 sm:gap-3 px-7 py-4 lg:px-8 lg:py-4.5 rounded-xl lg:rounded-2xl text-sm lg:text-base font-extrabold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-md shadow-brand-blue/25 hover:shadow-xl hover:shadow-brand-blue/35 hover:-translate-y-0.5 transition-all cursor-pointer font-sans whitespace-nowrap group"
@@ -430,7 +431,7 @@ export const LandingPage: React.FC = () => {
               {/* Botón CTA en móvil: ubicado al final, después de las pastillas/bullets */}
               <div className="lg:hidden pt-2 flex justify-center w-full">
                 <a
-                  href="https://wa.me/573112323588?text=Hola%20raDAR,%20represento%20a%20una%20organizaci%C3%B3n/comunidad%20y%20nos%20gustar%C3%ADa%20sumarnos%20a%20la%20red%20de%20ayuda."
+                  href={getOfficialWhatsappLink("Hola raDAR, represento a una organización/comunidad y nos gustaría sumarnos a la red de ayuda.")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 sm:px-6 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-brand-blue hover:bg-brand-blue-hover active:scale-98 shadow-sm sm:shadow-md shadow-brand-blue/25 hover:shadow-lg transition-all cursor-pointer font-sans group"

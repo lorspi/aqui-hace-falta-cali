@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart, Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../../../i18n/LanguageContext';
+import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../../../constants/contact';
 
 export const LandingFooter: React.FC = () => {
   const { t } = useTranslation();
@@ -82,13 +83,13 @@ export const LandingFooter: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="https://wa.me/573112323588?text=Hola%20raDAR,%20quisiera%20ponerme%20en%20contacto%20con%20el%20equipo."
+                  href={getOfficialWhatsappLink("Hola raDAR, quisiera ponerme en contacto con el equipo.")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>WhatsApp: +57 311 232 3588</span>
+                  <span>WhatsApp: {OFFICIAL_WHATSAPP_DISPLAY}</span>
                 </a>
               </li>
             </ul>

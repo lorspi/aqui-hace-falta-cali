@@ -1,6 +1,7 @@
 import React from 'react';
 import { Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
 
 export const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -28,13 +29,13 @@ export const Footer: React.FC = () => {
             <span>info@radardeayuda.co</span>
           </a>
           <a
-            href="https://wa.me/573112323588"
+            href={getOfficialWhatsappLink()}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-medium"
           >
             <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>WhatsApp: +57 311 232 3588</span>
+            <span>WhatsApp: {OFFICIAL_WHATSAPP_DISPLAY}</span>
           </a>
         </div>
 

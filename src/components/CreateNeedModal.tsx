@@ -56,6 +56,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [contactEmail, setContactEmail] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [operatingHours, setOperatingHours] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [source] = useState('Reporte ciudadano en línea');
 
   const categoriesList = Object.keys(CATEGORY_LABELS) as HelpCategory[];
@@ -76,6 +77,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     setContactEmail('');
     setOrganizationName('');
     setOperatingHours('');
+    setSourceUrl('');
     setResources([]);
     setIsManualPosition(false);
     setGeocodeStatus('IDLE');
@@ -285,6 +287,7 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
       requesterType,
       priority: placeType === 'CENTRO_ACOPIO' ? 'MEDIUM' : priority,
       operatingHours: operatingHours || undefined,
+      sourceUrl: sourceUrl || undefined,
       source,
     });
 
@@ -714,6 +717,20 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     placeholder={t('operatingHoursPlaceholder')}
                     className="input-base"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="form-label">Enlace de campaña / Vaki / Fuente oficial (opcional)</label>
+                  <input
+                    type="url"
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                    placeholder="Ej: https://vaki.co/vaki/aulas-que-se-levantan"
+                    className="input-base"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Si tu necesidad cuenta con una campaña en Vaki o enlace externo de recaudación, agrégalo aquí para que los usuarios puedan ingresar directamente.
+                  </p>
                 </div>
               </div>
 
