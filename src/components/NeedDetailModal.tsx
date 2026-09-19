@@ -196,16 +196,6 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
         {/* Content Body */}
         <div className="p-5 space-y-5 text-sm">
-          {/* Situation Description */}
-          <div>
-            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-1">
-              {t('detailDescription')}
-            </h4>
-            <div className="text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <FormattedText text={need.description} />
-            </div>
-          </div>
-
           {/* External Campaign Link / Vaki / Source Link */}
           {need.sourceUrl && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
@@ -229,6 +219,16 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
               </a>
             </div>
           )}
+
+          {/* Situation Description */}
+          <div>
+            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-1">
+              {t('detailDescription')}
+            </h4>
+            <div className="text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <FormattedText text={need.description} />
+            </div>
+          </div>
 
           {/* What they need */}
           {need.resources && need.resources.length > 0 && (
