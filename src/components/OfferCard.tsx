@@ -157,6 +157,10 @@ export const OfferCard: React.FC<OfferCardProps> = ({
             )}
             <button
               type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick?.();
+              }}
               className="w-full btn-sm font-bold flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl transition-colors cursor-pointer text-xs shadow-2xs"
             >
               <span>Ver oferta</span>

@@ -51,6 +51,7 @@ export interface RecursoOfrecido {
   total: number;
   disp: string;
   pres: string;
+  pausado?: boolean;
 }
 
 export interface OfertaPublicada {
@@ -69,6 +70,7 @@ export interface RecursoPedido {
   confirmada: number;
   camino: number;
   para: string;
+  pausado?: boolean;
 }
 
 export interface NecesidadPublicada {

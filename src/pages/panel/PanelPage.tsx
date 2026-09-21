@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, TriangleAlert, Truck, Users } from 'lucide-react';
+import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, Phone, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { DialogoAsignar, DialogoCierre } from './dialogos';
+import { DialogoAsignar, DialogoCierre, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoRegistrarMiembro } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
@@ -18,7 +18,7 @@ import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
 import type { ModulosCuenta } from '../../types/cuenta';
-import type { Acta, BloqueResumen, EntregaRecibida, Kpi, Pendiente, Solicitud } from '../../types/panel';
+import type { Acta, BloqueResumen, EntregaRecibida, Kpi, MiembroEquipo, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud } from '../../types/panel';
 import { actasDe, archivarViejas, bloquesResumen, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoActa, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, unidad } from '../../utils/publicaciones';
@@ -52,6 +52,12 @@ const Panel: React.FC = () => {
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
   const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
   const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
+  const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(OFERTA.recursos);
+  const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(NECESIDAD.recursos);
+  const [equipo, setEquipo] = useState<MiembroEquipo[]>(EQUIPO);
+  const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
+  const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
+  const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
   const [cajon, setCajon] = useState(false);
   const [pasosOcultos, setPasosOcultos] = useState(false);
   const [tab, setTab] = useState(() => (window.location.hash || '#resumen').slice(1));
@@ -65,7 +71,7 @@ const Panel: React.FC = () => {
     return () => window.removeEventListener('hashchange', alCambiar);
   }, []);
 
-  const datos = { oferta: OFERTA, sol, necesidad: NECESIDAD, recibidas };
+  const datos = { oferta: { ...OFERTA, recursos: recursosOferta }, sol, necesidad: { ...NECESIDAD, recursos: recursosNecesidad }, recibidas };
   const pestanas = useMemo(() => pestanasDe(modulos, { porConfirmarRecibidas: recibidasPorConfirmar(recibidas).length, nuevas: nuevas(sol), porConfirmar: porConfirmar(sol).length }), [modulos, sol, recibidas]);
   const actual = pestanas.some((p) => p.id === tab) ? tab : 'resumen';
   const cambiarTab = (id: string) => {
@@ -89,6 +95,38 @@ const Panel: React.FC = () => {
     const s = sol.find((x) => x.id === id);
     if (s) avisar(`Le recordamos a ${s.quien} que confirme la entrega.`, { tipo: 'ok' });
   };
+  const guardarOferta = (r: RecursoOfrecido) => {
+    setRecursosOferta((prev) => prev.map((x) => (x.n === r.n ? r : x)));
+    avisar(`Oferta de ${r.n} actualizada con éxito`, { tipo: 'ok' });
+  };
+  const togglePausaOferta = (r: RecursoOfrecido) => {
+    const pausado = !r.pausado;
+    setRecursosOferta((prev) => prev.map((x) => (x.n === r.n ? { ...x, pausado } : x)));
+    avisar(pausado ? `Oferta de ${r.n} pausada. No recibirá nuevas solicitudes en el Radar.` : `Oferta de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
+  };
+  const guardarNecesidad = (r: RecursoPedido) => {
+    setRecursosNecesidad((prev) => prev.map((x) => (x.n === r.n ? r : x)));
+    avisar(`Necesidad de ${r.n} actualizada con éxito`, { tipo: 'ok' });
+  };
+  const togglePausaNecesidad = (r: RecursoPedido) => {
+    const pausado = !r.pausado;
+    setRecursosNecesidad((prev) => prev.map((x) => (x.n === r.n ? { ...x, pausado } : x)));
+    avisar(pausado ? `Necesidad de ${r.n} pausada temporalmente.` : `Necesidad de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
+  };
+  const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+    const nuevo: MiembroEquipo = {
+      ...m,
+      id: Math.max(...equipo.map((x) => x.id), 0) + 1,
+      hechas: 0,
+    };
+    setEquipo((prev) => [nuevo, ...prev]);
+    avisar(`${nuevo.n} registrado en tu equipo. Ahora puedes asignarle entregas.`, { tipo: 'ok' });
+  };
+  const eliminarMiembro = (id: number) => {
+    const m = equipo.find((x) => x.id === id);
+    setEquipo((prev) => prev.filter((x) => x.id !== id));
+    avisar(`Colaborador ${m?.n ?? ''} desvinculado del equipo`);
+  };
   /* Los cierres son de los dos lados (Alejandro, 16 de septiembre de 2026): quien entrega
      certifica con foto; quien recibe confirma con foto. Cada uno cierra por su cuenta y el
      otro lo valida. Los tres diálogos viven aquí para que Resumen, Seguimiento y Entregas
@@ -108,7 +146,7 @@ const Panel: React.FC = () => {
     setFotos({ inicial, titulo: `Entrega de ${r.org} · ${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`, grupos: [{ titulo: `Las de ${r.org}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
   };
   /* --- reportes: las actas --- */
-  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s)?.split(' · ')[0] ?? null }), [modulos, sol, recibidas]);
+  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(' · ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
   const verFotosActa = (a: Acta, inicial = 0) => {
     if (a.origen.tipo === 'solicitud') {
@@ -192,8 +230,8 @@ const Panel: React.FC = () => {
         <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
-            {actual === 'necesidades' && <MisNecesidades />}
-            {actual === 'ofertas' && <MisOfertas sol={sol} />}
+            {actual === 'necesidades' && <MisNecesidades recursos={recursosNecesidad} onEditar={setEditandoNecesidad} onTogglePausa={togglePausaNecesidad} />}
+            {actual === 'ofertas' && <MisOfertas recursos={recursosOferta} sol={sol} onEditar={setEditandoOferta} onTogglePausa={togglePausaOferta} />}
             {actual === 'seguimiento' && (
               <Seguimiento
                 modulos={modulos}
@@ -207,11 +245,14 @@ const Panel: React.FC = () => {
               />
             )}
             {actual === 'reportes' && <Reportes actas={actas} onVer={setActa} onCopiar={copiarActa} onDescargar={descargarActa} onVerFotos={verFotosActa} />}
-            {actual === 'equipo' && <MiEquipo />}
+            {actual === 'equipo' && <MiEquipo equipo={equipo} onRegistrar={() => setRegistrandoMiembro(true)} onEliminar={eliminarMiembro} />}
           </div>
         </main>
-        <DialogoAsignar solicitud={asignando} onCerrar={() => setAsignando(null)} onAsignar={asignar} />
+        <DialogoAsignar solicitud={asignando} equipo={equipo} onCerrar={() => setAsignando(null)} onAsignar={asignar} />
         <DialogoActa acta={acta} onCerrar={() => setActa(null)} onCopiar={copiarActa} onVerFotos={verFotosActa} />
+        <DialogoEditarRecursoOfrecido recurso={editandoOferta} onCerrar={() => setEditandoOferta(null)} onGuardar={guardarOferta} />
+        <DialogoEditarRecursoPedido recurso={editandoNecesidad} onCerrar={() => setEditandoNecesidad(null)} onGuardar={guardarNecesidad} />
+        <DialogoRegistrarMiembro abierto={registrandoMiembro} onCerrar={() => setRegistrandoMiembro(false)} onRegistrar={registrarMiembro} />
         <VisorFotos abierto={fotos !== null} grupos={fotos?.grupos ?? []} inicial={fotos?.inicial ?? 0} titulo={fotos?.titulo ?? ''} onCerrar={() => setFotos(null)} />
         <Dialogo
           abierto={cancelando !== null}
@@ -394,7 +435,7 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
     { id: 'publicar', t: 'Publica lo que puedes dar o lo que te hace falta', d: 'Es lo que te pone en el mapa.', hecho: !sinModulos, accion: <Button nivel="primario" tamano="sm" onClick={() => irA(RUTAS.ofrecer)}>Ofrecer ayuda</Button> },
     { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar el certificado</Button> },
     { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: EQUIPO.length > 0, accion: <Button nivel="terciario" tamano="sm" onClick={() => onAccion('#equipo')}>Ver mi equipo</Button> },
-    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm">Ver mis canales</Button> },
+    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#avisos`)}>Ver mis canales</Button> },
   ];
   const listos = pasos.filter((p) => p.hecho).length;
   return (
@@ -520,7 +561,11 @@ const BarraAvance: React.FC<{ hecho: number; camino: number; texto: string }> = 
   </>
 );
 
-const MisNecesidades: React.FC = () => (
+const MisNecesidades: React.FC<{
+  recursos: RecursoPedido[];
+  onEditar: (r: RecursoPedido) => void;
+  onTogglePausa: (r: RecursoPedido) => void;
+}> = ({ recursos, onEditar, onTogglePausa }) => (
   <Caja
     titulo="Mis necesidades"
     accion={
@@ -531,7 +576,7 @@ const MisNecesidades: React.FC = () => (
   >
     <Tabla
       etiqueta="Mis necesidades"
-      filas={NECESIDAD.recursos}
+      filas={recursos}
       clave={(r) => r.n}
       columnas={[
         {
@@ -543,7 +588,14 @@ const MisNecesidades: React.FC = () => (
                 <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
               </span>
               <span className="min-w-0">
-                <b className="block font-semibold">{r.n}</b>
+                <span className="flex items-center gap-1.5">
+                  <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
+                  {r.pausado && (
+                    <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
+                      Pausada
+                    </span>
+                  )}
+                </span>
                 <small className="block text-rd-12 text-rd-ink-meta">{r.para}</small>
               </span>
             </span>
@@ -565,6 +617,21 @@ const MisNecesidades: React.FC = () => (
           etiqueta: 'Avance',
           ancha: true,
           celda: (r) => <BarraAvance hecho={Math.round((r.confirmada / r.total) * 100)} camino={Math.round((r.camino / r.total) * 100)} texto={`${cifra(r.confirmada)} confirmado · ${cifra(r.camino)} en camino`} />,
+        },
+        {
+          k: 'acc',
+          etiqueta: 'Acciones',
+          acc: true,
+          celda: (r) => (
+            <>
+              <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
+                Editar
+              </Button>
+              <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
+                {r.pausado ? 'Reanudar' : 'Pausar'}
+              </Button>
+            </>
+          ),
         },
       ]}
     />
@@ -710,7 +777,12 @@ const DialogoActa: React.FC<{ acta: Acta | null; onCerrar: () => void; onCopiar:
 
 /* ---------- módulo ofrece ---------- */
 
-const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
+const MisOfertas: React.FC<{
+  recursos: RecursoOfrecido[];
+  sol: Solicitud[];
+  onEditar: (r: RecursoOfrecido) => void;
+  onTogglePausa: (r: RecursoOfrecido) => void;
+}> = ({ recursos, sol, onEditar, onTogglePausa }) => (
   <Caja
     titulo="Mis ofertas"
     accion={
@@ -721,7 +793,7 @@ const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
   >
     <Tabla
       etiqueta="Mis ofertas"
-      filas={OFERTA.recursos}
+      filas={recursos}
       clave={(r) => r.n}
       columnas={[
         {
@@ -733,7 +805,14 @@ const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
                 <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
               </span>
               <span className="min-w-0">
-                <b className="block font-semibold">{r.n}</b>
+                <span className="flex items-center gap-1.5">
+                  <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
+                  {r.pausado && (
+                    <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
+                      Pausada
+                    </span>
+                  )}
+                </span>
                 <small className="block text-rd-12 text-rd-ink-meta">{r.pres}</small>
               </span>
             </span>
@@ -770,13 +849,13 @@ const MisOfertas: React.FC<{ sol: Solicitud[] }> = ({ sol }) => (
           k: 'acc',
           etiqueta: 'Acciones',
           acc: true,
-          celda: () => (
+          celda: (r) => (
             <>
-              <Button nivel="secundario" tamano="sm">
+              <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
                 Editar
               </Button>
-              <Button nivel="secundario" tamano="sm">
-                Pausar
+              <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
+                {r.pausado ? 'Reanudar' : 'Pausar'}
               </Button>
             </>
           ),
@@ -1194,22 +1273,26 @@ const Seguimiento: React.FC<{
 
 /* ---------- siempre ---------- */
 
-const MiEquipo: React.FC = () => (
+const MiEquipo: React.FC<{
+  equipo: MiembroEquipo[];
+  onRegistrar: () => void;
+  onEliminar: (id: number) => void;
+}> = ({ equipo, onRegistrar, onEliminar }) => (
   <Caja
     titulo={
       <>
-        Mi equipo<Conteo n={EQUIPO.length} />
+        Mi equipo<Conteo n={equipo.length} />
       </>
     }
     accion={
-      <Button nivel="primario" tamano="md">
+      <Button nivel="primario" tamano="md" onClick={onRegistrar}>
         Registrar a alguien
       </Button>
     }
   >
     <Tabla
       etiqueta="Mi equipo"
-      filas={EQUIPO}
+      filas={equipo}
       clave={(e) => e.id}
       columnas={[
         {
@@ -1232,6 +1315,32 @@ const MiEquipo: React.FC = () => (
         { k: 'acceso', etiqueta: 'Acceso en RaDAR', celda: (e) => ROL_PLATAFORMA[e.rolPlataforma] },
         { k: 'disp', etiqueta: 'Disponible', celda: (e) => DISPONIBILIDAD[e.disp] },
         { k: 'hechas', etiqueta: 'Entregas', num: true, celda: (e) => e.hechas },
+        {
+          k: 'acc',
+          etiqueta: 'Acciones',
+          acc: true,
+          celda: (e) => (
+            <MenuAcciones
+              tamano="sm"
+              etiqueta={`Opciones de ${e.n}`}
+              items={[
+                {
+                  texto: `Llamar (${e.tel})`,
+                  icono: <Phone className="h-4 w-4" />,
+                  onElegir: () => {
+                    window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
+                  },
+                },
+                {
+                  texto: 'Dar de baja',
+                  icono: <X className="h-4 w-4" />,
+                  tono: 'peligro',
+                  onElegir: () => onEliminar(e.id),
+                },
+              ]}
+            />
+          ),
+        },
       ]}
     />
   </Caja>

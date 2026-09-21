@@ -1,6 +1,6 @@
 import React from 'react';
 import { Archive, Check, Clock, MapPin, Phone, Truck, Users, X } from 'lucide-react';
-import type { EntregaRecibida, Solicitud } from '../../types/panel';
+import type { EntregaRecibida, MiembroEquipo, Solicitud } from '../../types/panel';
 import { EQUIPO } from '../../mocks/panelMock';
 import { ENTIDADES } from '../../mocks/directorioMock';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
@@ -184,8 +184,8 @@ export interface AccionesSolicitud {
   onVerFotos: (s: Solicitud, i: number) => void;
 }
 
-export function quienLleva(s: Solicitud): string | null {
-  const v = s.vol ? EQUIPO.find((x) => x.id === s.vol) : null;
+export function quienLleva(s: Solicitud, eq: MiembroEquipo[] = EQUIPO): string | null {
+  const v = s.vol ? eq.find((x) => x.id === s.vol) : null;
   return v ? `${v.n} · ${v.veh}` : null;
 }
 

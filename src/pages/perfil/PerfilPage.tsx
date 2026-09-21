@@ -14,6 +14,7 @@ import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentas
 import { INVITADOS, ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { CANALES, SESIONES, YO } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
+import type { DatosOrg, Invitado } from '../../types/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
@@ -281,47 +282,120 @@ const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, 
 /* ---------- Datos de la organización / entidad ---------- */
 
 const DatosOrganizacion: React.FC = () => {
+  const avisar = useAviso();
+  const [org, setOrg] = useState<DatosOrg>(ORG);
   const [directorio, setDirectorio] = useState(ORG.directorio);
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState<DatosOrg>(ORG);
+  const [invitados, setInvitados] = useState<Invitado[]>(INVITADOS);
+  const [invitando, setInvitando] = useState(false);
+  const [invNombre, setInvNombre] = useState('');
+  const [invCorreo, setInvCorreo] = useState('');
+  const [invRol, setInvRol] = useState('Gestiona entregas y equipo');
+
+  const empezar = () => {
+    setBorrador(org);
+    setEditando(true);
+  };
+  const guardar = () => {
+    setOrg(borrador);
+    setEditando(false);
+    avisar('Datos de la organización guardados', { tipo: 'ok' });
+  };
+
+  const enviarInvitacion = () => {
+    if (!invNombre.trim()) return;
+    setInvitados((prev) => [
+      ...prev,
+      {
+        n: invNombre.trim(),
+        rol: invRol,
+        estado: 'pendiente',
+        cuando: 'hace un momento',
+      },
+    ]);
+    avisar(`Invitación enviada a ${invCorreo || invNombre}`, { tipo: 'ok' });
+    setInvNombre('');
+    setInvCorreo('');
+    setInvRol('Gestiona entregas y equipo');
+    setInvitando(false);
+  };
+
   return (
     <>
       <Caja
-        titulo={`Datos de ${ORG.nombre}`}
+        titulo={`Datos de ${org.nombre}`}
         accion={
-          <Button nivel="secundario" tamano="md">
-            Editar datos
-          </Button>
+          editando ? (
+            <div className="flex items-center gap-2">
+              <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
+                Cancelar
+              </Button>
+              <Button nivel="primario" tamano="md" onClick={guardar}>
+                Guardar
+              </Button>
+            </div>
+          ) : (
+            <Button nivel="secundario" tamano="md" onClick={empezar}>
+              Editar datos
+            </Button>
+          )
         }
       >
-        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
-          {[
-            ['Nombre', ORG.nombre],
-            ['Tipo', ORG.tipo],
-            ['NIT', ORG.nit],
-            ['Dirección', ORG.dir],
-            ['Contacto público', `${ORG.contacto.tel}${ORG.contacto.wa ? ' · también WhatsApp' : ''} · ${ORG.contacto.correo}`],
-            ['Enlace con RaDAR', ORG.enlace],
-            ['Web', ORG.web],
-          ].map(([k, v]) => (
-            <div key={k} className="min-w-0">
-              <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
-              <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
-            </div>
-          ))}
-        </dl>
+        {editando ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="org-nombre" etiqueta="Nombre de la entidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
+            <Field id="org-tipo" etiqueta="Tipo de entidad" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
+            <Field id="org-nit" etiqueta="NIT" valor={borrador.nit} onChange={(v) => setBorrador({ ...borrador, nit: v })} />
+            <Field id="org-dir" etiqueta="Dirección" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
+            <Field id="org-tel" etiqueta="Teléfono público" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
+            <Field id="org-correo" etiqueta="Correo público" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
+            <Field id="org-enlace" etiqueta="Enlace con RaDAR" valor={borrador.enlace} onChange={(v) => setBorrador({ ...borrador, enlace: v })} />
+            <Field id="org-web" etiqueta="Sitio web o redes" valor={borrador.web} onChange={(v) => setBorrador({ ...borrador, web: v })} />
+          </div>
+        ) : (
+          <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+            {[
+              ['Nombre', org.nombre],
+              ['Tipo', org.tipo],
+              ['NIT', org.nit],
+              ['Dirección', org.dir],
+              ['Contacto público', `${org.contacto.tel}${org.contacto.wa ? ' · también WhatsApp' : ''} · ${org.contacto.correo}`],
+              ['Enlace con RaDAR', org.enlace],
+              ['Web', org.web],
+            ].map(([k, v]) => (
+              <div key={k} className="min-w-0">
+                <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
+                <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <div className="mt-4">
-          {ORG.verificacion === 'verificada' && (
+          {org.verificacion === 'verificada' && (
             <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo="Organización verificada" texto="La insignia sale en cada publicación." />
           )}
-          {ORG.verificacion === 'revision' && (
+          {org.verificacion === 'revision' && (
             <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto="Revisamos el documento en menos de 2 días hábiles." />
           )}
-          {ORG.verificacion === 'sin' && (
+          {org.verificacion === 'sin' && (
             <InlineNotice
               variante="neutro"
               icono={<BadgeCheck className="h-4 w-4" />}
               titulo="Sin verificar"
               texto="Adjunta el certificado de existencia y te ponemos la insignia."
-              accion={<Button nivel="secundario" tamano="sm">Adjuntar el certificado</Button>}
+              accion={
+                <Button
+                  nivel="secundario"
+                  tamano="sm"
+                  onClick={() => {
+                    setOrg((o) => ({ ...o, verificacion: 'revision' }));
+                    avisar('Certificado adjuntado. Tu organización quedó en estado de revisión.', { tipo: 'ok' });
+                  }}
+                >
+                  Adjuntar el certificado
+                </Button>
+              }
             />
           )}
         </div>
@@ -330,12 +404,12 @@ const DatosOrganizacion: React.FC = () => {
         <FilaSwitch
           id="org-directorio"
           rotulo="Aparecer en el Directorio"
-          nota={directorio ? `Tu contacto se ve en el Directorio${ORG.directorioDesde ? ` desde ${ORG.directorioDesde}` : ''}` : 'Tu contacto no se ve en el Directorio'}
+          nota={directorio ? `Tu contacto se ve en el Directorio${org.directorioDesde ? ` desde ${org.directorioDesde}` : ''}` : 'Tu contacto no se ve en el Directorio'}
           encendido={directorio}
           onCambiar={setDirectorio}
         />
         <h2 className="font-rd mt-5 mb-3 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">Quién entra a esta cuenta</h2>
-        {INVITADOS.map((p, i) => (
+        {invitados.map((p, i) => (
           <div key={p.n} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
             <Avatar iniciales={iniciales(p.n)} tamano="md" />
             <div className="min-w-0 flex-1">
@@ -345,10 +419,51 @@ const DatosOrganizacion: React.FC = () => {
             {p.estado === 'pendiente' ? <EtiquetaCiclo texto={`Invitación enviada ${p.cuando ?? ''}`} tono="inicial" /> : <EtiquetaCiclo texto="Activa" tono="completo" />}
           </div>
         ))}
-        <Button nivel="secundario" tamano="md" className="mt-3">
+        <Button nivel="secundario" tamano="md" className="mt-3" onClick={() => setInvitando(true)}>
           Invitar a alguien
         </Button>
       </Caja>
+
+      <Dialogo
+        abierto={invitando}
+        titulo="Invitar a alguien a esta cuenta"
+        accion="Enviar invitación"
+        textoCancelar="Cancelar"
+        onCerrar={() => setInvitando(false)}
+        onEnviar={enviarInvitacion}
+      >
+        <p className="mb-4 text-rd-14 text-rd-ink-2">
+          Le enviaremos un correo para que active su acceso a la cuenta de {org.nombre}.
+        </p>
+        <div className="grid gap-3">
+          <Field
+            id="inv-nombre"
+            etiqueta="Nombre y apellidos"
+            tipo="text"
+            valor={invNombre}
+            onChange={setInvNombre}
+            placeholder="Ej. Andrés Gómez"
+            requerido
+          />
+          <Field
+            id="inv-correo"
+            etiqueta="Correo electrónico"
+            tipo="email"
+            valor={invCorreo}
+            onChange={setInvCorreo}
+            placeholder="andres@ejemplo.org"
+            requerido
+          />
+          <Field
+            id="inv-rol"
+            etiqueta="Permisos en la cuenta"
+            tipo="select"
+            valor={invRol}
+            onChange={setInvRol}
+            opciones={['Permisos en la cuenta', 'Gestiona entregas y equipo', 'Administra', 'Solo ve']}
+          />
+        </div>
+      </Dialogo>
     </>
   );
 };
