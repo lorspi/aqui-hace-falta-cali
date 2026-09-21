@@ -69,6 +69,7 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
     case 'persona':
       return (
         lleno(e.per.nombre) &&
+        lleno(e.per.tipoDocumento) &&
         lleno(e.per.cedula) &&
         (!e.per.tel.trim() || esCelular(e.per.tel))
       );

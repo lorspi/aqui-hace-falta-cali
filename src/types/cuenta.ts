@@ -70,6 +70,7 @@ export interface DatosComunidad {
 export interface DatosPersona {
   nombre: string;
   cargo: string;
+  tipoDocumento: string;
   cedula: string;
   tel: string;
   mismoWa: boolean;
