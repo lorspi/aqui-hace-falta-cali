@@ -257,7 +257,7 @@ export const RegistroPage: React.FC = () => {
         </Button>
       ) : (
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={siguiente}>
-          {e.perfil === 'individual' ? 'Siguiente paso' : T.pie.continuar}
+          {T.pie.continuar}
         </Button>
       )}
     </div>
