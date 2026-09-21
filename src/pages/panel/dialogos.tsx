@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Phone, Plus, Trash2, Truck, X } from 'lucide-react';
 import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud } from '../../types/panel';
 import type { Foto } from '../../types/flujo';
+import type { Publicacion } from '../../types/publicacion';
 import { EQUIPO } from '../../mocks/panelMock';
 import { cifra } from '../../utils/publicaciones';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { Field } from '../../components/ui/Field';
+import { Button } from '../../components/ui/Button';
+import { Tarjeta } from '../../components/ui/Tarjeta';
 import { CampoFotos } from '../flujos/comunes';
 
 /**
@@ -403,5 +407,526 @@ export const DialogoCierre: React.FC<{ abierto: boolean; titulo: string; texto: 
         setPesados(p);
       }} onQuitar={(i) => setFotos((l) => l.filter((_, k) => k !== i))} error={pesados ? `${pesados === 1 ? 'Un archivo pesa' : `${pesados} archivos pesan`} más de 25 MB y no ${pesados === 1 ? 'se adjuntó' : 'se adjuntaron'}.` : null} />
     </Dialogo>
+  );
+};
+
+export interface InsumoGestion {
+  item: string;
+  total: number;
+  unidad: string;
+  disp?: string;
+  pres?: string;
+  para?: string;
+  icono?: string;
+  pausado?: boolean;
+  confirmada?: number;
+  camino?: number;
+}
+
+export interface DatosPublicacionGestion {
+  id: string;
+  tipo: 'oferta' | 'necesidad';
+  titulo: string;
+  org: string;
+  verificada: boolean;
+  zona: string;
+  dir: string;
+  descripcion: string;
+  personaContacto: string;
+  telContacto: string;
+  comoEntrega: string;
+  horario: string;
+  recursos: InsumoGestion[];
+  pausadaGlobal?: boolean;
+}
+
+/**
+ * Diálogo integral para gestionar y editar una publicación (oferta o necesidad).
+ * Integra una vista previa fiel a la tarjeta del Radar y un formulario de edición
+ * completo para modificar título, descripción, ubicación, insumos y contacto.
+ */
+export const DialogoGestionPublicacion: React.FC<{
+  abierto: boolean;
+  publicacion: DatosPublicacionGestion | null;
+  modoInicial?: 'vista' | 'editar';
+  recursoFoco?: string;
+  onCerrar: () => void;
+  onGuardar: (datos: DatosPublicacionGestion) => void;
+  onVerEnMapa?: (id: string) => void;
+}> = ({
+  abierto,
+  publicacion: pubInicial,
+  modoInicial = 'vista',
+  recursoFoco,
+  onCerrar,
+  onGuardar,
+  onVerEnMapa,
+}) => {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [modo, setModo] = useState<'vista' | 'editar'>(modoInicial);
+
+  const [titulo, setTitulo] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [zona, setZona] = useState('');
+  const [dir, setDir] = useState('');
+  const [comoEntrega, setComoEntrega] = useState('');
+  const [horario, setHorario] = useState('');
+  const [personaContacto, setPersonaContacto] = useState('');
+  const [telContacto, setTelContacto] = useState('');
+  const [recursos, setRecursos] = useState<InsumoGestion[]>([]);
+  const [pausadaGlobal, setPausadaGlobal] = useState(false);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (abierto && !d.open) d.showModal();
+    else if (!abierto && d.open) d.close();
+  }, [abierto]);
+
+  useEffect(() => {
+    if (abierto) {
+      setModo(modoInicial);
+    }
+  }, [abierto, modoInicial]);
+
+  useEffect(() => {
+    if (pubInicial) {
+      setTitulo(pubInicial.titulo);
+      setDescripcion(pubInicial.descripcion);
+      setZona(pubInicial.zona);
+      setDir(pubInicial.dir);
+      setComoEntrega(pubInicial.comoEntrega);
+      setHorario(pubInicial.horario);
+      setPersonaContacto(pubInicial.personaContacto);
+      setTelContacto(pubInicial.telContacto);
+      setRecursos(pubInicial.recursos.map((r) => ({ ...r })));
+      setPausadaGlobal(pubInicial.pausadaGlobal ?? false);
+    }
+  }, [pubInicial]);
+
+  const publicacionParaTarjeta: Publicacion | null = useMemo(() => {
+    if (!pubInicial) return null;
+    return {
+      id: pubInicial.id,
+      tipo: pubInicial.tipo,
+      titulo: titulo || pubInicial.titulo,
+      org: pubInicial.org,
+      verificada: pubInicial.verificada,
+      propia: true,
+      lat: 4.51,
+      lng: -74.115,
+      zona: zona || pubInicial.zona,
+      dir: dir || pubInicial.dir,
+      descripcion: descripcion || pubInicial.descripcion,
+      recursos: recursos.map((r) => ({
+        item: r.item,
+        unidad: r.unidad,
+        total: r.total,
+        tramos: [
+          ...(r.confirmada ? [{ t: 'hecho' as const, cant: r.confirmada, quien: 'Entregas previas', cuando: 'Confirmada' }] : []),
+          ...(r.camino ? [{ t: 'camino' as const, cant: r.camino, quien: 'En ruta', cuando: 'En camino' }] : []),
+        ],
+        ficha:
+          pubInicial.tipo === 'oferta'
+            ? [
+                ['Disponibilidad', r.disp || 'Inmediata'],
+                ['Cómo se entrega', comoEntrega || 'Lo llevamos · 15 km'],
+              ]
+            : [['Para quién', r.para || 'Comunidad afectada']],
+      })),
+    };
+  }, [pubInicial, titulo, zona, dir, descripcion, recursos, comoEntrega]);
+
+  if (!pubInicial) return null;
+
+  const esOferta = pubInicial.tipo === 'oferta';
+
+  const agregarRecurso = () => {
+    setRecursos((prev) => [
+      ...prev,
+      {
+        item: esOferta ? 'Nuevo insumo' : 'Nuevo requerimiento',
+        total: 10,
+        unidad: esOferta ? 'kits' : 'unidades',
+        disp: esOferta ? 'Hasta agotar' : undefined,
+        pres: esOferta ? 'Empaque original' : undefined,
+        para: !esOferta ? 'Familias afectadas' : undefined,
+        icono: esOferta ? 'package' : 'bolt',
+        pausado: false,
+        confirmada: 0,
+        camino: 0,
+      },
+    ]);
+  };
+
+  const actualizarRecurso = (index: number, campo: keyof InsumoGestion, valor: string | number | boolean | undefined) => {
+    setRecursos((prev) => prev.map((r, i) => (i === index ? { ...r, [campo]: valor } : r)));
+  };
+
+  const eliminarRecurso = (index: number) => {
+    if (recursos.length <= 1) return;
+    setRecursos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const togglePausaRecurso = (index: number) => {
+    setRecursos((prev) => prev.map((r, i) => (i === index ? { ...r, pausado: !r.pausado } : r)));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onGuardar({
+      ...pubInicial,
+      titulo,
+      descripcion,
+      zona,
+      dir,
+      comoEntrega,
+      horario,
+      personaContacto,
+      telContacto,
+      recursos,
+      pausadaGlobal,
+    });
+    onCerrar();
+  };
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(e) => e.target === ref.current && onCerrar()}
+      className="font-rd m-auto w-full max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+    >
+      {/* Cabecera */}
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+        <div>
+          <span className="text-rd-10 font-bold uppercase tracking-wider text-rd-ink-meta">
+            {esOferta ? 'Publicación de Oferta' : 'Publicación de Necesidad'}
+          </span>
+          <h2 className="text-rd-16 font-semibold text-rd-ink">
+            {pubInicial.titulo}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onCerrar}
+          aria-label="Cerrar diálogo"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Selector de modo (Pestañas) */}
+      <div className="flex border-b border-rd-line bg-rd-sunken/20 px-5">
+        <button
+          type="button"
+          onClick={() => setModo('vista')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-rd-13 font-semibold transition-colors cursor-pointer ${
+            modo === 'vista'
+              ? 'border-rd-navy text-rd-navy'
+              : 'border-transparent text-rd-ink-meta hover:text-rd-ink'
+          }`}
+        >
+          <Eye className="h-4 w-4" />
+          Vista previa (Radar)
+        </button>
+        <button
+          type="button"
+          onClick={() => setModo('editar')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-rd-13 font-semibold transition-colors cursor-pointer ${
+            modo === 'editar'
+              ? 'border-rd-navy text-rd-navy'
+              : 'border-transparent text-rd-ink-meta hover:text-rd-ink'
+          }`}
+        >
+          <Edit3 className="h-4 w-4" />
+          Editar publicación
+        </button>
+      </div>
+
+      {/* Contenido según modo */}
+      {modo === 'vista' ? (
+        <div className="max-h-[72vh] overflow-y-auto p-5 bg-rd-fondo/30 space-y-4">
+          <div className="rounded-rd-xl bg-rd-surface border border-rd-line p-1">
+            {publicacionParaTarjeta && (
+              <Tarjeta
+                publicacion={publicacionParaTarjeta}
+                onVerEnMapa={() => {
+                  onCerrar();
+                  onVerEnMapa?.(pubInicial.id);
+                }}
+              />
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rd-line pt-4">
+            <span className="text-rd-12 text-rd-ink-meta">
+              Así es como ven esta publicación los demás actores en el mapa del Radar.
+            </span>
+            <div className="flex items-center gap-2">
+              <Button nivel="secundario" tamano="md" onClick={() => onVerEnMapa?.(pubInicial.id)}>
+                Ver en el mapa
+              </Button>
+              <Button nivel="primario" tamano="md" onClick={() => setModo('editar')}>
+                Editar esta publicación
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="max-h-[68vh] overflow-y-auto p-5 space-y-6">
+            {/* 1. Contexto general */}
+            <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-rd-14 font-semibold text-rd-ink">
+                  1. Información general
+                </h3>
+                <span className="text-rd-12 text-rd-ink-meta">Visible en el Radar</span>
+              </div>
+
+              <Field
+                id="pub-titulo"
+                etiqueta="Título de la publicación"
+                valor={titulo}
+                onChange={setTitulo}
+                ayuda="Describe claramente qué se ofrece o qué hace falta"
+                requerido
+              />
+
+              <div>
+                <label className="mb-1 block text-rd-13 font-medium text-rd-ink">
+                  Descripción y contexto de la situación
+                </label>
+                <textarea
+                  rows={3}
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder="Detalla la situación del albergue, la capacidad de la brigada o las condiciones de entrega..."
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* 2. Ubicación y Logística */}
+            <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
+              <h3 className="text-rd-14 font-semibold text-rd-ink">
+                2. Ubicación y logística de entrega
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
+                  id="pub-zona"
+                  etiqueta="Zona o barrio"
+                  valor={zona}
+                  onChange={setZona}
+                  requerido
+                />
+                <Field
+                  id="pub-dir"
+                  etiqueta="Dirección o punto de referencia"
+                  valor={dir}
+                  onChange={setDir}
+                  requerido
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
+                  id="pub-comoEntrega"
+                  etiqueta={esOferta ? 'Modalidad de entrega / Cobertura' : 'Cómo se recibe la ayuda'}
+                  valor={comoEntrega}
+                  onChange={setComoEntrega}
+                  ayuda={esOferta ? 'Ej: Lo llevamos · 15 km o Entrega en estación' : 'Ej: Acopio en colegio o Recibimos en sitio'}
+                />
+                <Field
+                  id="pub-horario"
+                  etiqueta="Horario / Disponibilidad"
+                  valor={horario}
+                  onChange={setHorario}
+                  ayuda="Ej: Lunes a domingo 8:00 a 18:00"
+                />
+              </div>
+            </div>
+
+            {/* 3. Recursos e Insumos */}
+            <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-rd-14 font-semibold text-rd-ink">
+                    3. Insumos y recursos de la publicación
+                  </h3>
+                  <p className="text-rd-12 text-rd-ink-meta">
+                    Modifica metas, cantidades, unidades o añade nuevos recursos a esta publicación.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  nivel="secundario"
+                  tamano="sm"
+                  onClick={agregarRecurso}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Agregar insumo
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {recursos.map((r, i) => {
+                  const estaEnfocado = recursoFoco === r.item;
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-rd-md border p-3 transition-colors ${
+                        estaEnfocado
+                          ? 'border-rd-navy bg-rd-navy-surface/30'
+                          : r.pausado
+                          ? 'border-rd-amber-line bg-rd-amber-surface/20'
+                          : 'border-rd-line bg-rd-sunken/30'
+                      }`}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-rd-12 font-bold text-rd-ink-2">
+                            #{i + 1}
+                          </span>
+                          <span className="text-rd-13 font-semibold text-rd-ink">
+                            {r.item || 'Insumo sin nombre'}
+                          </span>
+                          {r.pausado && (
+                            <span className="rounded-full bg-rd-amber-surface border border-rd-amber-line px-2 py-0.5 text-rd-10 font-bold uppercase tracking-wider text-rd-amber-ink">
+                              Pausado
+                            </span>
+                          )}
+                          {estaEnfocado && (
+                            <span className="rounded-full bg-rd-navy-surface border border-rd-navy-line px-2 py-0.5 text-rd-10 font-bold uppercase tracking-wider text-rd-navy">
+                              Seleccionado
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            nivel="terciario"
+                            tamano="sm"
+                            onClick={() => togglePausaRecurso(i)}
+                          >
+                            {r.pausado ? 'Reanudar' : 'Pausar'}
+                          </Button>
+                          {recursos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => eliminarRecurso(i)}
+                              aria-label={`Eliminar ${r.item}`}
+                              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-coral transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                        <Field
+                          id={`item-${i}`}
+                          etiqueta="Nombre del insumo"
+                          valor={r.item}
+                          onChange={(v) => actualizarRecurso(i, 'item', v)}
+                          requerido
+                        />
+                        <Field
+                          id={`total-${i}`}
+                          etiqueta="Cantidad total"
+                          tipo="text"
+                          inputMode="numeric"
+                          valor={String(r.total)}
+                          onChange={(v) => actualizarRecurso(i, 'total', Math.max(0, Number(v) || 0))}
+                          requerido
+                        />
+                        <Field
+                          id={`unidad-${i}`}
+                          etiqueta="Unidad"
+                          valor={r.unidad}
+                          onChange={(v) => actualizarRecurso(i, 'unidad', v)}
+                          requerido
+                        />
+                      </div>
+
+                      {esOferta ? (
+                        <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                          <Field
+                            id={`pres-${i}`}
+                            etiqueta="Presentación / Empaque"
+                            valor={r.pres || ''}
+                            onChange={(v) => actualizarRecurso(i, 'pres', v)}
+                          />
+                          <Field
+                            id={`disp-${i}`}
+                            etiqueta="Disponibilidad"
+                            valor={r.disp || ''}
+                            onChange={(v) => actualizarRecurso(i, 'disp', v)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-2.5">
+                          <Field
+                            id={`para-${i}`}
+                            etiqueta="¿Para quién o para qué es?"
+                            valor={r.para || ''}
+                            onChange={(v) => actualizarRecurso(i, 'para', v)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Contacto de coordinación */}
+            <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
+              <h3 className="text-rd-14 font-semibold text-rd-ink">
+                4. Contacto de coordinación para esta publicación
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
+                  id="pub-personaContacto"
+                  etiqueta="Persona responsable"
+                  valor={personaContacto}
+                  onChange={setPersonaContacto}
+                />
+                <Field
+                  id="pub-telContacto"
+                  etiqueta="Teléfono móvil / WhatsApp"
+                  valor={telContacto}
+                  onChange={setTelContacto}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pie de edición */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rd-line bg-rd-sunken/40 px-5 py-3">
+            <button
+              type="button"
+              onClick={() => setPausadaGlobal((p) => !p)}
+              className="text-rd-13 font-semibold text-rd-amber-ink hover:underline cursor-pointer"
+            >
+              {pausadaGlobal ? 'Reanudar toda la publicación' : 'Pausar toda la publicación'}
+            </button>
+            <div className="flex items-center gap-2">
+              <Button type="button" nivel="terciario" tamano="md" onClick={() => setModo('vista')}>
+                Cancelar
+              </Button>
+              <Button type="submit" nivel="primario" tamano="md">
+                Guardar cambios
+              </Button>
+            </div>
+          </div>
+        </form>
+      )}
+    </dialog>
   );
 };

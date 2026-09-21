@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, Phone, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { DialogoAsignar, DialogoCierre, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoRegistrarMiembro } from './dialogos';
+import { DialogoAsignar, DialogoCierre, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoRegistrarMiembro, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
@@ -58,6 +58,98 @@ const Panel: React.FC = () => {
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
+
+  const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>({
+    id: 'oferta-usme',
+    tipo: 'oferta',
+    titulo: 'Bomberos Voluntarios Usme · Recursos de estación',
+    org: ORG.nombre,
+    verificada: true,
+    zona: 'Usme',
+    dir: ORG.dir,
+    descripcion: 'Recursos de la estación disponibles para la emergencia de la quebrada. Coordinamos por radio con el puesto de mando.',
+    personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+    telContacto: ORG.contacto.tel,
+    comoEntrega: 'Lo llevamos · Cobertura 15 km',
+    horario: 'Lunes a domingo 8:00 a 18:00',
+    recursos: OFERTA.recursos.map((r) => ({
+      item: r.n,
+      total: r.total,
+      unidad: r.unidad,
+      disp: r.disp,
+      pres: r.pres,
+      icono: r.icono,
+      pausado: r.pausado,
+      confirmada: 0,
+      camino: 0,
+    })),
+    pausadaGlobal: false,
+  });
+
+  const [pubNecesidad, setPubNecesidad] = useState<DatosPublicacionGestion>({
+    id: 'necesidad-usme',
+    tipo: 'necesidad',
+    titulo: 'Equipos de bombeo y protección · Emergencia Usme',
+    org: ORG.nombre,
+    verificada: true,
+    zona: 'Usme',
+    dir: ORG.dir,
+    descripcion: 'Equipos y dotación requeridos con urgencia para atender las inundaciones y remoción de lodo en la calle 91 sur.',
+    personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+    telContacto: ORG.contacto.tel,
+    comoEntrega: 'Recepción en Estación Usme',
+    horario: 'Atención 24 horas',
+    recursos: NECESIDAD.recursos.map((r) => ({
+      item: r.n,
+      total: r.total,
+      unidad: r.unidad,
+      para: r.para,
+      icono: r.icono,
+      pausado: r.pausado,
+      confirmada: r.confirmada,
+      camino: r.camino,
+    })),
+    pausadaGlobal: false,
+  });
+
+  const [gestionandoPublicacion, setGestionandoPublicacion] = useState<{
+    publicacion: DatosPublicacionGestion;
+    modoInicial: 'vista' | 'editar';
+    recursoFoco?: string;
+  } | null>(null);
+
+  const guardarGestionPublicacion = (datos: DatosPublicacionGestion) => {
+    if (datos.tipo === 'oferta') {
+      setPubOferta(datos);
+      setRecursosOferta(
+        datos.recursos.map((r) => ({
+          n: r.item,
+          icono: (r.icono as any) || 'package',
+          unidad: r.unidad,
+          total: r.total,
+          disp: r.disp || 'Inmediata',
+          pres: r.pres || 'Estándar',
+          pausado: r.pausado,
+        }))
+      );
+      avisar('Oferta actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
+    } else {
+      setPubNecesidad(datos);
+      setRecursosNecesidad(
+        datos.recursos.map((r) => ({
+          n: r.item,
+          icono: (r.icono as any) || 'bolt',
+          unidad: r.unidad,
+          total: r.total,
+          confirmada: r.confirmada || 0,
+          camino: r.camino || 0,
+          para: r.para || 'Atención de la comunidad',
+          pausado: r.pausado,
+        }))
+      );
+      avisar('Necesidad actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
+    }
+  };
   const [cajon, setCajon] = useState(false);
   const [pasosOcultos, setPasosOcultos] = useState(false);
   const [tab, setTab] = useState(() => (window.location.hash || '#resumen').slice(1));
@@ -230,8 +322,45 @@ const Panel: React.FC = () => {
         <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
-            {actual === 'necesidades' && <MisNecesidades recursos={recursosNecesidad} onEditar={setEditandoNecesidad} onTogglePausa={togglePausaNecesidad} />}
-            {actual === 'ofertas' && <MisOfertas recursos={recursosOferta} sol={sol} onEditar={setEditandoOferta} onTogglePausa={togglePausaOferta} />}
+            {actual === 'necesidades' && (
+              <MisNecesidades
+                recursos={recursosNecesidad}
+                onEditar={(r) =>
+                  setGestionandoPublicacion({
+                    publicacion: pubNecesidad,
+                    modoInicial: 'editar',
+                    recursoFoco: r.n,
+                  })
+                }
+                onTogglePausa={togglePausaNecesidad}
+                onGestionarPublicacion={() =>
+                  setGestionandoPublicacion({
+                    publicacion: pubNecesidad,
+                    modoInicial: 'vista',
+                  })
+                }
+              />
+            )}
+            {actual === 'ofertas' && (
+              <MisOfertas
+                recursos={recursosOferta}
+                sol={sol}
+                onEditar={(r) =>
+                  setGestionandoPublicacion({
+                    publicacion: pubOferta,
+                    modoInicial: 'editar',
+                    recursoFoco: r.n,
+                  })
+                }
+                onTogglePausa={togglePausaOferta}
+                onGestionarPublicacion={() =>
+                  setGestionandoPublicacion({
+                    publicacion: pubOferta,
+                    modoInicial: 'vista',
+                  })
+                }
+              />
+            )}
             {actual === 'seguimiento' && (
               <Seguimiento
                 modulos={modulos}
@@ -253,6 +382,15 @@ const Panel: React.FC = () => {
         <DialogoEditarRecursoOfrecido recurso={editandoOferta} onCerrar={() => setEditandoOferta(null)} onGuardar={guardarOferta} />
         <DialogoEditarRecursoPedido recurso={editandoNecesidad} onCerrar={() => setEditandoNecesidad(null)} onGuardar={guardarNecesidad} />
         <DialogoRegistrarMiembro abierto={registrandoMiembro} onCerrar={() => setRegistrandoMiembro(false)} onRegistrar={registrarMiembro} />
+        <DialogoGestionPublicacion
+          abierto={gestionandoPublicacion !== null}
+          publicacion={gestionandoPublicacion?.publicacion ?? null}
+          modoInicial={gestionandoPublicacion?.modoInicial ?? 'vista'}
+          recursoFoco={gestionandoPublicacion?.recursoFoco}
+          onCerrar={() => setGestionandoPublicacion(null)}
+          onGuardar={guardarGestionPublicacion}
+          onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
+        />
         <VisorFotos abierto={fotos !== null} grupos={fotos?.grupos ?? []} inicial={fotos?.inicial ?? 0} titulo={fotos?.titulo ?? ''} onCerrar={() => setFotos(null)} />
         <Dialogo
           abierto={cancelando !== null}
@@ -565,13 +703,21 @@ const MisNecesidades: React.FC<{
   recursos: RecursoPedido[];
   onEditar: (r: RecursoPedido) => void;
   onTogglePausa: (r: RecursoPedido) => void;
-}> = ({ recursos, onEditar, onTogglePausa }) => (
+  onGestionarPublicacion?: () => void;
+}> = ({ recursos, onEditar, onTogglePausa, onGestionarPublicacion }) => (
   <Caja
     titulo="Mis necesidades"
     accion={
-      <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${NECESIDAD.id}`)}>
-        <MapIcon aria-hidden="true" className="h-5 w-5" />
-      </Button>
+      <div className="flex items-center gap-2">
+        {onGestionarPublicacion && (
+          <Button nivel="secundario" tamano="md" onClick={onGestionarPublicacion}>
+            Gestionar publicación
+          </Button>
+        )}
+        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${NECESIDAD.id}`)}>
+          <MapIcon aria-hidden="true" className="h-5 w-5" />
+        </Button>
+      </div>
     }
   >
     <Tabla
@@ -782,13 +928,21 @@ const MisOfertas: React.FC<{
   sol: Solicitud[];
   onEditar: (r: RecursoOfrecido) => void;
   onTogglePausa: (r: RecursoOfrecido) => void;
-}> = ({ recursos, sol, onEditar, onTogglePausa }) => (
+  onGestionarPublicacion?: () => void;
+}> = ({ recursos, sol, onEditar, onTogglePausa, onGestionarPublicacion }) => (
   <Caja
     titulo="Mis ofertas"
     accion={
-      <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${OFERTA.id}`)}>
-        <MapIcon aria-hidden="true" className="h-5 w-5" />
-      </Button>
+      <div className="flex items-center gap-2">
+        {onGestionarPublicacion && (
+          <Button nivel="secundario" tamano="md" onClick={onGestionarPublicacion}>
+            Gestionar publicación
+          </Button>
+        )}
+        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${OFERTA.id}`)}>
+          <MapIcon aria-hidden="true" className="h-5 w-5" />
+        </Button>
+      </div>
     }
   >
     <Tabla
