@@ -65,7 +65,10 @@ describe('Registro de Organizacion y Comunidad', () => {
     expect(listo(pasoCom, e, {})).toBe(false);
 
     e.com.contacto.correo = 'comunidad@sanantonio.org';
-    // Departamento viene con 'Valle del Cauca' por defecto en estadoInicial
+    // Falta departamento (viene vacío por defecto en estadoInicial)
+    expect(listo(pasoCom, e, {})).toBe(false);
+
+    e.com.departamento = 'Valle del Cauca';
     expect(listo(pasoCom, e, {})).toBe(true);
 
     // Si falta departamento, no está listo
@@ -76,7 +79,15 @@ describe('Registro de Organizacion y Comunidad', () => {
     expect(listo(pasoCom, e, {})).toBe(true);
   });
 
-  it('valida paso persona (paso 2): requiere nombre y cédula; celular es opcional pero valida formato si se ingresa', () => {
+  it('DEPTOS contiene los 32 departamentos más Bogotá D. C. en orden alfabético', async () => {
+    const { DEPTOS } = await import('../../src/mocks/cuentasMock');
+    expect(DEPTOS.length).toBe(33);
+    expect(DEPTOS).toContain('Bogotá D. C.');
+    const ordenado = [...DEPTOS].sort((a, b) => a.localeCompare(b, 'es'));
+    expect(DEPTOS).toEqual(ordenado);
+  });
+
+  it('valida paso persona (paso 2): requiere nombre, tipo de documento y cédula; celular es opcional pero valida formato si se ingresa', () => {
     for (const perfil of ['organizacion', 'liderazgo'] as const) {
       const e = estadoInicial(false);
       e.perfil = perfil;
@@ -85,11 +96,21 @@ describe('Registro de Organizacion y Comunidad', () => {
       expect(listo(pasoPersona, e, {})).toBe(false);
 
       e.per.nombre = 'Carlos Rodríguez';
-      // Sin cédula no está listo
+      // Sin cédula ni tipo de documento no está listo
       expect(listo(pasoPersona, e, {})).toBe(false);
 
       e.per.cedula = '1234567890';
-      // Con nombre y cédula está listo (celular es opcional)
+      // Con nombre y cédula, pero sin tipo de documento (vacío por defecto) no está listo
+      expect(listo(pasoPersona, e, {})).toBe(false);
+
+      e.per.tipoDocumento = 'Cédula de ciudadanía';
+      // Con nombre, cédula y tipo de documento está listo (celular es opcional)
+      expect(listo(pasoPersona, e, {})).toBe(true);
+
+      // Si falta tipo de documento, no está listo
+      e.per.tipoDocumento = '';
+      expect(listo(pasoPersona, e, {})).toBe(false);
+      e.per.tipoDocumento = 'Cédula de extranjería';
       expect(listo(pasoPersona, e, {})).toBe(true);
 
       // Si se ingresa un celular inválido (menos de 10 dígitos), no está listo

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, CircleAlert } from 'lucide-react';
+import { Check, ChevronDown, CircleAlert, Search } from 'lucide-react';
 
 export interface ComboboxProps {
   id: string;
@@ -30,7 +30,7 @@ function normalizar(texto: string): string {
 }
 
 /**
- * Combobox accesible con autocompletado y búsqueda filtrable,
+ * Combobox / selector accesible con menú desplegable y barra de búsqueda rápida,
  * adaptado a los tokens y formas ('base' y 'pildora') del sistema de diseño.
  */
 export const Combobox: React.FC<ComboboxProps> = ({
@@ -50,45 +50,49 @@ export const Combobox: React.FC<ComboboxProps> = ({
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [busqueda, setBusqueda] = useState(valor || '');
+  const [busqueda, setBusqueda] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const listboxRef = useRef<HTMLUListElement>(null);
 
-  // Sincronizar búsqueda si el valor externo cambia
-  useEffect(() => {
-    setBusqueda(valor || '');
-  }, [valor]);
-
-  // Filtrar opciones
+  // Filtrar opciones en tiempo real según la búsqueda
   const opcionesFiltradas = useMemo(() => {
     if (!busqueda.trim()) return opciones;
     const q = normalizar(busqueda);
     return opciones.filter((o) => normalizar(o).includes(q));
   }, [opciones, busqueda]);
 
+  // Al abrir el dropdown, enfocar la barra de búsqueda y resaltar la opción seleccionada si existe
+  useEffect(() => {
+    if (isOpen) {
+      setBusqueda('');
+      const idx = opciones.findIndex((o) => o === valor);
+      setHighlightedIndex(idx >= 0 ? idx : 0);
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 30);
+      return () => clearTimeout(timer);
+    } else {
+      setBusqueda('');
+      setHighlightedIndex(-1);
+    }
+  }, [isOpen, opciones, valor]);
+
   // Cerrar al hacer click afuera
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        // Si el texto escrito no coincide con ninguna opción, restaurar el valor seleccionado
-        if (busqueda !== valor) {
-          const coincideExacta = opciones.find((o) => normalizar(o) === normalizar(busqueda));
-          if (coincideExacta) {
-            onChange(coincideExacta);
-            setBusqueda(coincideExacta);
-          } else {
-            setBusqueda(valor || '');
-          }
+        if (isOpen) {
+          setIsOpen(false);
+          onBlur?.(valor);
         }
-        onBlur?.(valor);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [busqueda, valor, opciones, onChange, onBlur]);
+  }, [isOpen, valor, onBlur]);
 
   // Asegurar que el elemento resaltado sea visible en el scroll
   useEffect(() => {
@@ -100,22 +104,11 @@ export const Combobox: React.FC<ComboboxProps> = ({
 
   const seleccionar = (opcion: string) => {
     onChange(opcion);
-    setBusqueda(opcion);
     setIsOpen(false);
-    setHighlightedIndex(-1);
-    inputRef.current?.focus();
+    triggerRef.current?.focus();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
-        e.preventDefault();
-        setIsOpen(true);
-        setHighlightedIndex(0);
-      }
-      return;
-    }
-
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -134,11 +127,18 @@ export const Combobox: React.FC<ComboboxProps> = ({
       case 'Escape':
         e.preventDefault();
         setIsOpen(false);
-        setHighlightedIndex(-1);
+        triggerRef.current?.focus();
         break;
       case 'Tab':
         setIsOpen(false);
         break;
+    }
+  };
+
+  const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsOpen(true);
     }
   };
 
@@ -172,7 +172,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
   const claseControl = [
     CONTROL_BASE,
     pildora ? 'h-13 rounded-full text-rd-15' : 'h-rd-h-md rounded-rd-md text-rd-14',
-    pildora ? (conIcono ? 'pr-11 pl-12' : 'pr-11 pl-4') : conIcono ? 'pr-9 pl-10' : 'pr-9 px-3',
+    pildora ? (conIcono ? 'pr-4 pl-12' : 'px-4') : conIcono ? 'pr-3 pl-10' : 'px-3',
   ]
     .filter(Boolean)
     .join(' ');
@@ -189,86 +189,94 @@ export const Combobox: React.FC<ComboboxProps> = ({
         {conIcono && (
           <span
             aria-hidden="true"
-            className={`pointer-events-none absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center text-rd-ink-3 ${pildora ? 'left-4.5' : 'left-3'}`}
+            className={`pointer-events-none absolute top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center text-rd-ink-3 z-10 ${pildora ? 'left-4.5' : 'left-3'}`}
           >
             {icono}
           </span>
         )}
 
-        <input
-          ref={inputRef}
+        <button
+          ref={triggerRef}
           id={id}
-          type="text"
+          type="button"
           role="combobox"
           aria-expanded={isOpen}
-          aria-autocomplete="list"
+          aria-haspopup="listbox"
           aria-controls={`${id}-listbox`}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
-          autoComplete="off"
-          value={busqueda}
-          placeholder={placeholderFinal}
-          onChange={(e) => {
-            setBusqueda(e.target.value);
-            setIsOpen(true);
-            setHighlightedIndex(0);
-          }}
-          onFocus={() => {
-            setIsOpen(true);
-          }}
-          onKeyDown={handleKeyDown}
-          className={claseControl}
-        />
-
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={isOpen ? 'Cerrar opciones' : 'Mostrar opciones'}
-          onClick={() => {
-            setIsOpen((prev) => !prev);
-            inputRef.current?.focus();
-          }}
-          className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-rd-ink-3 hover:text-rd-ink transition-transform duration-200 cursor-pointer ${
-            pildora ? 'right-4 h-6 w-6' : 'right-2.5 h-5 w-5'
-          }`}
+          onClick={() => setIsOpen((prev) => !prev)}
+          onKeyDown={handleTriggerKeyDown}
+          className={`${claseControl} flex items-center justify-between cursor-pointer text-left`}
         >
-          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <span className={`truncate ${valor ? 'text-rd-ink font-normal' : 'text-rd-ink-meta'}`}>
+            {valor || placeholderFinal}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-rd-ink-3 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+          />
         </button>
 
         {isOpen && (
-          <ul
-            id={`${id}-listbox`}
-            ref={listboxRef}
-            role="listbox"
-            className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto rounded-2xl border border-rd-line bg-rd-surface py-1 shadow-lg z-50 focus:outline-none animate-in fade-in slide-in-from-top-1 duration-150"
+          <div
+            id={`${id}-dropdown`}
+            className="absolute left-0 right-0 top-full mt-1.5 rounded-2xl border border-rd-line bg-rd-surface shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
           >
-            {opcionesFiltradas.length > 0 ? (
-              opcionesFiltradas.map((opcion, index) => {
-                const esSeleccionado = opcion === valor;
-                const esResaltado = index === highlightedIndex;
-                return (
-                  <li
-                    key={opcion}
-                    id={`${id}-option-${index}`}
-                    role="option"
-                    aria-selected={esSeleccionado}
-                    onClick={() => seleccionar(opcion)}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    className={`flex items-center justify-between px-4 py-2.5 text-rd-14 cursor-pointer transition-colors ${
-                      esResaltado ? 'bg-rd-sunken text-rd-ink font-medium' : 'text-rd-ink'
-                    } ${esSeleccionado ? 'text-rd-navy font-semibold' : ''}`}
-                  >
-                    <span>{opcion}</span>
-                    {esSeleccionado && <Check className="h-4 w-4 text-rd-navy shrink-0" />}
-                  </li>
-                );
-              })
-            ) : (
-              <li className="px-4 py-3 text-rd-13 text-rd-ink-meta text-center">
-                No se encontraron opciones
-              </li>
-            )}
-          </ul>
+            {/* Barra para buscar rápido */}
+            <div className="p-2 border-b border-rd-line bg-rd-surface">
+              <div className="relative flex items-center">
+                <Search className="pointer-events-none absolute left-3 h-4 w-4 text-rd-ink-3" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  role="searchbox"
+                  value={busqueda}
+                  onChange={(e) => {
+                    setBusqueda(e.target.value);
+                    setHighlightedIndex(0);
+                  }}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={`Buscar ${textoEtiqueta.toLowerCase() || 'opción'}...`}
+                  className="w-full pl-9 pr-3 py-2 text-rd-14 bg-rd-sunken border border-rd-line rounded-xl focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft text-rd-ink placeholder:text-rd-ink-meta"
+                />
+              </div>
+            </div>
+
+            {/* Lista de opciones desplegables */}
+            <ul
+              id={`${id}-listbox`}
+              ref={listboxRef}
+              role="listbox"
+              className="max-h-60 overflow-y-auto py-1 focus:outline-none"
+            >
+              {opcionesFiltradas.length > 0 ? (
+                opcionesFiltradas.map((opcion, index) => {
+                  const esSeleccionado = opcion === valor;
+                  const esResaltado = index === highlightedIndex;
+                  return (
+                    <li
+                      key={opcion}
+                      id={`${id}-option-${index}`}
+                      role="option"
+                      aria-selected={esSeleccionado}
+                      onClick={() => seleccionar(opcion)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      className={`flex items-center justify-between px-4 py-2.5 text-rd-14 cursor-pointer transition-colors ${
+                        esResaltado ? 'bg-rd-sunken text-rd-ink font-medium' : 'text-rd-ink'
+                      } ${esSeleccionado ? 'text-rd-navy font-semibold' : ''}`}
+                    >
+                      <span>{opcion}</span>
+                      {esSeleccionado && <Check className="h-4 w-4 text-rd-navy shrink-0" />}
+                    </li>
+                  );
+                })
+              ) : (
+                <li className="px-4 py-3 text-rd-13 text-rd-ink-meta text-center">
+                  No se encontraron resultados
+                </li>
+              )}
+            </ul>
+          </div>
         )}
       </div>
 

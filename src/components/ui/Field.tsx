@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CircleAlert, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, CircleAlert, Eye, EyeOff } from 'lucide-react';
 
 /**
  * Campo de formulario del sistema de Producto (el `rd-campo-f` del prototipo), con
@@ -158,22 +158,36 @@ export const Field: React.FC<FieldProps> = ({
         )}
 
         {tipo === 'select' ? (
-          <select
-            id={id}
-            value={valor}
-            onChange={(e) => onChange?.(e.target.value)}
-            onBlur={(e) => onBlur?.(e.target.value)}
-            aria-describedby={describedBy}
-            aria-invalid={error ? true : undefined}
-            className={`${claseControl} cursor-pointer`}
-          >
-            <option value="">{placeholder ?? textoEtiqueta}</option>
-            {opciones.map((o) => (
-              <option key={o} value={o}>
-                {o}
+          <div className="relative w-full">
+            <select
+              id={id}
+              value={valor}
+              onChange={(e) => onChange?.(e.target.value)}
+              onBlur={(e) => onBlur?.(e.target.value)}
+              aria-describedby={describedBy}
+              aria-invalid={error ? true : undefined}
+              className={`${claseControl} appearance-none pr-10 cursor-pointer ${
+                !valor ? 'text-rd-ink-meta' : 'text-rd-ink font-normal'
+              }`}
+            >
+              <option value="" disabled hidden>
+                {placeholder ?? textoEtiqueta}
               </option>
-            ))}
-          </select>
+              {opciones.map((o) => (
+                <option key={o} value={o} className="text-rd-ink font-normal bg-rd-surface">
+                  {o}
+                </option>
+              ))}
+            </select>
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 flex items-center justify-center text-rd-ink-3 ${
+                pildora ? 'right-4' : 'right-3'
+              }`}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </span>
+          </div>
         ) : tipo === 'textarea' ? (
           <textarea
             id={id}

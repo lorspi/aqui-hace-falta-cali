@@ -689,6 +689,15 @@ export const RegistroPage: React.FC = () => {
         <Field {...PILDORA} id="p-nombre" etiqueta={T.persona.nombre} icono={ico.persona} autoComplete="name" valor={e.per.nombre} onChange={alEscribir('p-nombre', (v) => patchPer({ nombre: v }))} onBlur={alSalir('p-nombre', ['requerido'], T.errores.nombre)} error={error('p-nombre')} />
         <Field
           {...PILDORA}
+          id="p-tipo-doc"
+          etiqueta={T.persona.tipoDoc}
+          tipo="select"
+          opciones={TIPOS_DOC}
+          valor={e.per.tipoDocumento}
+          onChange={(v) => patchPer({ tipoDocumento: v })}
+        />
+        <Field
+          {...PILDORA}
           id="p-cedula"
           etiqueta={T.persona.cedula}
           icono={ico.documento}
