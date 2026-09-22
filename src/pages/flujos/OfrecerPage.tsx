@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Info, MapPin, Monitor, Package, Truck } from 'lucide-react';
 import { Field } from '../../components/ui/Field';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { CANALES, CUENTA_OFRECER, DISPONIBLE, ENVIOS, MODOS_ENTREGA, RADIOS, REGISTRADO, TIPOS_ORG_OFERTA, estadoInicialOfrecer } from '../../mocks/flujosMock';
-import { PUERTAS } from '../../mocks/panelMock';
+import { OFERTA, PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle } from '../../types/flujo';
 import { camposOferta, camposTexto, numero, unidadOferta } from '../../utils/equivalencias';
@@ -14,6 +14,8 @@ import { cifra, tituloPublicacion } from '../../utils/publicaciones';
 import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
+import type { RecursoOfrecido } from '../../types/panel';
+import type { DatosPublicacionGestion } from '../panel/dialogos';
 import { useFlujo } from './useFlujo';
 
 /**
@@ -82,7 +84,7 @@ export const OfrecerPage: React.FC = () => (
 /** La oferta tal como se publicaría: es lo que se cruza contra lo que hay cerca. */
 function publicacionDe(e: EstadoOfrecer): Publicacion {
   const recursos = e.sel.filter((it) => e.cant[it] > 0).map((it) => ({ item: it, unidad: unidadOferta(it), total: e.cant[it], tramos: [] }));
-  const base: Publicacion = { id: 'nueva', tipo: 'oferta', titulo: '', org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'oferta-creada', tipo: 'oferta', titulo: '', org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: e.dir || 'Usme', recursos, propia: true };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
@@ -102,13 +104,14 @@ const Ofrecer: React.FC = () => {
     });
   const detalle = (it: string, cambio: RespuestasDetalle) => set((p) => ({ det: { ...p.det, [it]: { ...(p.det[it] ?? {}), ...cambio } } }));
   const cantidad = (it: string, n: number) => set((p) => ({ cant: { ...p.cant, [it]: n } }));
-  const irMapa = useCallback(() => irA(RUTAS.radar), []);
+  const [pubId, setPubId] = useState('oferta-creada');
+  const irMapa = useCallback(() => irA(`${RUTAS.radar}?punto=${pubId}`), [pubId]);
 
   const registrados = Object.keys(CUENTA_OFRECER.inventario ?? {});
 
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="ofrecer" extra={<Coincidencias publicacion={publicacionDe(e)} />} abre={PUERTAS.ofrecer.abre} onPanel={() => irA(RUTAS.miOrganizacion)} onVerMapa={irMapa} onOtra={f.reiniciar} />;
+    pantalla = <ExitoFlujo tipo="ofrecer" extra={<Coincidencias publicacion={publicacionDe(e)} />} abre={PUERTAS.ofrecer.abre} onPanel={() => irA(`${RUTAS.miOrganizacion}#ofertas`)} onCerrar={irMapa} />;
   } else if (sub.id === 'recursos') {
     pantalla = (
       <>
@@ -236,9 +239,98 @@ const Ofrecer: React.FC = () => {
     set((p) => ({ fotos: p.fotos.filter((_, k) => k !== i) }));
   }
 
+  const alPublicar = () => {
+    const pub = publicacionDe(e);
+    const recursosPanel: RecursoOfrecido[] = e.sel
+      .filter((it) => e.cant[it] > 0)
+      .map((it) => {
+        const d = e.det[it] ?? {};
+        const dt = camposTexto(camposOferta(it), d);
+        const conTiempo = camposOferta(it).some((c) => c.k === 'tiempo');
+        const disp = d.disp === 'Hasta una fecha' ? `Hasta el ${fechaCorta(String(d.fecha ?? ''))}` : String(d.disp ?? (conTiempo ? 'Inmediata' : 'Hasta agotar'));
+        return {
+          n: it,
+          icono: iconoDe(it),
+          unidad: unidadOferta(it),
+          total: e.cant[it],
+          disp,
+          pres: dt || 'Disponible para entrega',
+          pausado: false,
+        };
+      });
+
+    const idPub = `oferta-${Date.now()}`;
+    setPubId(idPub);
+    const pubFinal: Publicacion = { ...pub, id: idPub, propia: true };
+
+    const gestionOferta: DatosPublicacionGestion = {
+      id: idPub,
+      tipo: 'oferta',
+      titulo: pub.titulo,
+      org: pub.org,
+      verificada: true,
+      zona: e.dir || 'Usme',
+      dir: e.dir || CUENTA_OFRECER.direccion,
+      descripcion: e.condiciones || 'Recursos disponibles para apoyo comunitario.',
+      personaContacto: e.contacto || CUENTA_OFRECER.contacto,
+      telContacto: e.tel || CUENTA_OFRECER.telefono,
+      comoEntrega: textoEntrega(e),
+      horario: e.horario || 'Lunes a domingo 8:00 a 18:00',
+      recursos: recursosPanel.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        disp: r.disp,
+        pres: r.pres,
+        icono: r.icono,
+        pausado: false,
+        confirmada: 0,
+        camino: 0,
+      })),
+      pausadaGlobal: false,
+    };
+
+    try {
+      // 1. Guardar en la colección acumulativa de publicaciones
+      const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+      const creadas: Publicacion[] = creadasRaw ? JSON.parse(creadasRaw) : [];
+      creadas.unshift(pubFinal);
+      localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(creadas));
+
+      // Guardar también la última para foco y compatibilidad
+      localStorage.setItem('rd-oferta-publicacion', JSON.stringify(pubFinal));
+      localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(gestionOferta));
+
+      // 2. Fusionar recursos sin borrar los preexistentes
+      const previosRaw = localStorage.getItem('rd-oferta-creada-recursos');
+      const baseRecursos: RecursoOfrecido[] = previosRaw ? JSON.parse(previosRaw) : OFERTA.recursos;
+      const fusionados = [...baseRecursos];
+      recursosPanel.forEach((nuevo) => {
+        const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());
+        if (idx !== -1) {
+          fusionados[idx] = { ...fusionados[idx], total: fusionados[idx].total + nuevo.total };
+        } else {
+          fusionados.unshift(nuevo);
+        }
+      });
+      localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(fusionados));
+    } catch (err) {
+      console.error('Error guardando oferta en localStorage:', err);
+    }
+    f.publicar();
+  };
+
+  const alCerrar = () => {
+    if (e.publicado) {
+      irMapa();
+      return;
+    }
+    f.cerrar();
+  };
+
   return (
     <>
-      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar}>
+      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={alPublicar} onCerrar={alCerrar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />

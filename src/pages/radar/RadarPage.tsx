@@ -17,7 +17,7 @@ import { Tarjeta } from '../../components/ui/Tarjeta';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
@@ -59,7 +59,8 @@ function enlaceDe(id: string): string {
 /** El `?punto=<id>` de la URL, solo si existe. */
 function puntoPedido(): string | null {
   const id = new URLSearchParams(window.location.search).get('punto');
-  return id && PUBLICACIONES.some((p) => p.id === id) ? id : null;
+  const todas = obtenerPublicaciones();
+  return id && todas.some((p) => p.id === id) ? id : null;
 }
 
 /** `?buscar=<texto>`: la Radar abre con ese texto en el buscador (el Directorio manda aquí con
@@ -101,6 +102,7 @@ const Radar: React.FC = () => {
   const [reporte, setReporte] = useState<string | null>(null);
   const [enProceso, setEnProceso] = useState<string[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [todasLasPubs] = useState<Publicacion[]>(obtenerPublicaciones);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,14 +115,14 @@ const Radar: React.FC = () => {
 
   /* Los tres conteos cuentan, por tipo, lo que pasa todos los demás filtros. */
   const conteo = useMemo(() => {
-    const resto = PUBLICACIONES.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
+    const resto = todasLasPubs.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
     return { todo: resto.length, necesidad: resto.filter((p) => p.tipo === 'necesidad').length, oferta: resto.filter((p) => p.tipo === 'oferta').length };
-  }, [filtros, busqueda]);
+  }, [filtros, busqueda, todasLasPubs]);
 
-  const visibles = useMemo(() => ordenar(PUBLICACIONES.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda]);
+  const visibles = useMemo(() => ordenar(todasLasPubs.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda, todasLasPubs]);
 
-  const distancias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, distanciaKm(UBICACION, p)])), []);
-  const coincidencias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, coincidenciasDe(p, PUBLICACIONES)])), []);
+  const distancias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, distanciaKm(UBICACION, p)])), [todasLasPubs]);
+  const coincidencias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, coincidenciasDe(p, todasLasPubs)])), [todasLasPubs]);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
   const chips = chipsDe(filtros, UBICACION.zona);
   const aplicados = cuantosAplicados(filtros);
@@ -170,7 +172,7 @@ const Radar: React.FC = () => {
   }, []);
 
   /* --- lo que pasa al tocar una tarjeta (`acciones.js`) --- */
-  const abrirCompromiso = (id: string) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null);
+  const abrirCompromiso = (id: string) => setCompromiso(todasLasPubs.find((p) => p.id === id) ?? null);
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
@@ -213,7 +215,7 @@ const Radar: React.FC = () => {
     setHojaPin((h) => ({ id, expandida: h?.expandida ?? false }));
   };
   const [detalleId, setDetalleId] = useState<string | null>(null);
-  const publicacionDetalle = detalleId ? PUBLICACIONES.find((p) => p.id === detalleId) : undefined;
+  const publicacionDetalle = detalleId ? todasLasPubs.find((p) => p.id === detalleId) : undefined;
   const conteoTexto = (n: number, t: Tipo) => {
     if (t === 'necesidad') return `${n} ${n === 1 ? 'necesidad' : 'necesidades'}`;
     if (t === 'oferta') return `${n} ${n === 1 ? 'oferta' : 'ofertas'}`;
@@ -227,7 +229,7 @@ const Radar: React.FC = () => {
     onVerCoincidencias: (id: string) => setVerCoincidencias(id),
   };
   const sinLeer = avisos.filter((a) => !a.leido).length;
-  const publicacionHoja = hojaPin ? PUBLICACIONES.find((p) => p.id === hojaPin.id) : undefined;
+  const publicacionHoja = hojaPin ? todasLasPubs.find((p) => p.id === hojaPin.id) : undefined;
   /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
   const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
@@ -415,10 +417,10 @@ const Radar: React.FC = () => {
           <HojaPin publicacion={publicacionHoja} vecinas={visibles} distancias={distancias} coincidencias={coincidencias} enProceso={enProceso.includes(publicacionHoja.id)} expandida={hojaPin.expandida} cerrando={hojaPin.cerrando} onExpandir={(e) => setHojaPin({ id: hojaPin.id, expandida: e })} onCerrar={cerrarHojaPin} onIr={irDesdeHoja} {...accionesTarjeta} />
         )}
 
-        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={PUBLICACIONES} resultados={visibles.length} zonaPropia={UBICACION.zona} />
+        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={todasLasPubs} resultados={visibles.length} zonaPropia={UBICACION.zona} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
         {(() => {
-          const pub = verCoincidencias ? PUBLICACIONES.find((p) => p.id === verCoincidencias) : undefined;
+          const pub = verCoincidencias ? todasLasPubs.find((p) => p.id === verCoincidencias) : undefined;
           return pub ? <DialogoCoincidencias abierto publicacion={pub} coincidencias={coincidencias.get(pub.id) ?? []} hechas={enProceso} onCerrar={() => setVerCoincidencias(null)} onPrimaria={(id) => { setVerCoincidencias(null); abrirCompromiso(id); }} onVerEnMapa={verEnMapaDesdeCoincidencias} /> : null;
         })()}
         <DialogoReporte abierto={reporte !== null} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />

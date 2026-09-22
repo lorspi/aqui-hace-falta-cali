@@ -155,3 +155,37 @@ export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => {
     titulo: tituloPublicacion(conFotos),
   };
 });
+
+/** Obtiene las publicaciones del mock más cualquier necesidad u oferta guardada en localStorage */
+export function obtenerPublicaciones(): Publicacion[] {
+  let lista = [...PUBLICACIONES];
+  try {
+    const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+    if (creadasRaw) {
+      const creadas = JSON.parse(creadasRaw) as Publicacion[];
+      if (Array.isArray(creadas)) {
+        const ids = new Set(creadas.map((p) => p.id));
+        lista = [...creadas, ...lista.filter((p) => !ids.has(p.id))];
+      }
+    }
+  } catch {}
+  try {
+    const extraN = localStorage.getItem('rd-necesidad-publicacion');
+    if (extraN) {
+      const p = JSON.parse(extraN) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  try {
+    const extraO = localStorage.getItem('rd-oferta-publicacion');
+    if (extraO) {
+      const p = JSON.parse(extraO) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  return lista;
+}

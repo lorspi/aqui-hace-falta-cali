@@ -6,7 +6,7 @@ import { ListaCoincidencias } from '../../components/ui/Coincidencias';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
-import { PUBLICACIONES } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
 import { Button } from '../../components/ui/Button';
@@ -618,8 +618,9 @@ export const MarcaEditada: React.FC = () => (
 );
 
 /** La pantalla de éxito del flujo, con «Qué pasa ahora». */
-export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.ReactNode; abre?: string[]; onPanel?: () => void; onVerMapa: () => void; onOtra: () => void }> = ({ tipo, extra, abre, onPanel, onVerMapa, onOtra }) => {
+export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.ReactNode; abre?: string[]; onPanel?: () => void; onCerrar?: () => void; onVerMapa?: () => void; onOtra?: () => void }> = ({ tipo, extra, abre, onPanel, onCerrar, onVerMapa }) => {
   const t = EXITO[tipo];
+  const cerrarAccion = onCerrar || onVerMapa;
   return (
     <div className="py-6 text-center">
       <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-rd-green-soft text-rd-green">
@@ -645,21 +646,20 @@ export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.Rea
       {extra}
       {abre && abre.length > 0 && (
         <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
-          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.{' '}
-          {onPanel && (
-            <button type="button" onClick={onPanel} className="font-rd cursor-pointer font-semibold text-rd-navy underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
-              Ir a {nombrePanel()}
-            </button>
-          )}
+          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.
         </p>
       )}
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Button nivel="primario" tamano="md" onClick={onVerMapa}>
-          Ver en el mapa
-        </Button>
-        <Button nivel="secundario" tamano="md" onClick={onOtra}>
-          {t.otra}
-        </Button>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {onPanel && (
+          <Button nivel="primario" tamano="md" onClick={onPanel}>
+            Ver en panel
+          </Button>
+        )}
+        {cerrarAccion && (
+          <Button nivel="secundario" tamano="md" onClick={cerrarAccion}>
+            Cerrar
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -678,7 +678,7 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
   const [buscando, setBuscando] = useState(true);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [hechas, setHechas] = useState<string[]>([]);
-  const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
+  const coincidencias = useMemo(() => coincidenciasDe(publicacion, obtenerPublicaciones()), [publicacion]);
   useEffect(() => {
     const t = window.setTimeout(() => setBuscando(false), 900);
     return () => window.clearTimeout(t);
@@ -698,7 +698,7 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
           Buscando coincidencias cerca…
         </p>
       ) : (
-        <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
+        <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(obtenerPublicaciones().find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
       )}
       <DialogoCompromiso
         publicacion={compromiso}

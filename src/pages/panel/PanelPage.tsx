@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, Phone, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, ListChecks, Map as MapIcon, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, type DatosPublicacionGestion } from './dialogos';
+import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, VEHICULOS, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
@@ -15,19 +15,20 @@ import { Caja, Conteo } from '../../components/ui/Caja';
 import { IconoRecursoDe } from '../../components/ui/Recursos';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { AVISOS } from '../../mocks/avisosMock';
-import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
+import { CUENTA_SESION as CUENTA, DEPTOS, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
 import { PUBLICACIONES } from '../../mocks/publicacionesMock';
 import type { ModulosCuenta } from '../../types/cuenta';
-import type { Acta, BloqueResumen, EntregaRecibida, Kpi, MiembroEquipo, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud } from '../../types/panel';
+import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud } from '../../types/panel';
 import type { Publicacion } from '../../types/publicacion';
-import { actasDe, archivarViejas, bloquesResumen, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
+import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
-import { Barra, PuntoTono, type TonoTramo } from '../../components/ui/Barra';
+import { Barra } from '../../components/ui/Barra';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
+import { CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -55,8 +56,20 @@ const Panel: React.FC = () => {
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
   const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
   const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
-  const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(OFERTA.recursos);
-  const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(NECESIDAD.recursos);
+  const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-oferta-creada-recursos');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return OFERTA.recursos;
+  });
+  const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-necesidad-creada-recursos');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return NECESIDAD.recursos;
+  });
   const [equipo, setEquipo] = useState<MiembroEquipo[]>(EQUIPO);
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
@@ -64,57 +77,69 @@ const Panel: React.FC = () => {
   const [editandoMiembro, setEditandoMiembro] = useState<MiembroEquipo | null>(null);
   const [miembroParaBaja, setMiembroParaBaja] = useState<MiembroEquipo | null>(null);
 
-  const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>({
-    id: 'oferta-usme',
-    tipo: 'oferta',
-    titulo: 'Bomberos Voluntarios Usme · Recursos de estación',
-    org: ORG.nombre,
-    verificada: true,
-    zona: 'Usme',
-    dir: ORG.dir,
-    descripcion: 'Recursos de la estación disponibles para la emergencia de la quebrada. Coordinamos por radio con el puesto de mando.',
-    personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
-    telContacto: ORG.contacto.tel,
-    comoEntrega: 'Lo llevamos · Cobertura 15 km',
-    horario: 'Lunes a domingo 8:00 a 18:00',
-    recursos: OFERTA.recursos.map((r) => ({
-      item: r.n,
-      total: r.total,
-      unidad: r.unidad,
-      disp: r.disp,
-      pres: r.pres,
-      icono: r.icono,
-      pausado: r.pausado,
-      confirmada: 0,
-      camino: 0,
-    })),
-    pausadaGlobal: false,
+  const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-oferta-creada-gestion');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return {
+      id: 'oferta-usme',
+      tipo: 'oferta',
+      titulo: 'Bomberos Voluntarios Usme · Recursos de estación',
+      org: ORG.nombre,
+      verificada: true,
+      zona: 'Usme',
+      dir: ORG.dir,
+      descripcion: 'Recursos de la estación disponibles para la emergencia de la quebrada. Coordinamos por radio con el puesto de mando.',
+      personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+      telContacto: ORG.contacto.tel,
+      comoEntrega: 'Lo llevamos · Cobertura 15 km',
+      horario: 'Lunes a domingo 8:00 a 18:00',
+      recursos: OFERTA.recursos.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        disp: r.disp,
+        pres: r.pres,
+        icono: r.icono,
+        pausado: r.pausado,
+        confirmada: 0,
+        camino: 0,
+      })),
+      pausadaGlobal: false,
+    };
   });
 
-  const [pubNecesidad, setPubNecesidad] = useState<DatosPublicacionGestion>({
-    id: 'necesidad-usme',
-    tipo: 'necesidad',
-    titulo: 'Equipos de bombeo y protección · Emergencia Usme',
-    org: ORG.nombre,
-    verificada: true,
-    zona: 'Usme',
-    dir: ORG.dir,
-    descripcion: 'Equipos y dotación requeridos con urgencia para atender las inundaciones y remoción de lodo en la calle 91 sur.',
-    personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
-    telContacto: ORG.contacto.tel,
-    comoEntrega: 'Recepción en Estación Usme',
-    horario: 'Atención 24 horas',
-    recursos: NECESIDAD.recursos.map((r) => ({
-      item: r.n,
-      total: r.total,
-      unidad: r.unidad,
-      para: r.para,
-      icono: r.icono,
-      pausado: r.pausado,
-      confirmada: r.confirmada,
-      camino: r.camino,
-    })),
-    pausadaGlobal: false,
+  const [pubNecesidad, setPubNecesidad] = useState<DatosPublicacionGestion>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-necesidad-creada-gestion');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return {
+      id: 'necesidad-usme',
+      tipo: 'necesidad',
+      titulo: 'Equipos de bombeo y protección · Emergencia Usme',
+      org: ORG.nombre,
+      verificada: true,
+      zona: 'Usme',
+      dir: ORG.dir,
+      descripcion: 'Equipos y dotación requeridos con urgencia para atender las inundaciones y remoción de lodo en la calle 91 sur.',
+      personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+      telContacto: ORG.contacto.tel,
+      comoEntrega: 'Recepción en Estación Usme',
+      horario: 'Atención 24 horas',
+      recursos: NECESIDAD.recursos.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        para: r.para,
+        icono: r.icono,
+        pausado: r.pausado,
+        confirmada: r.confirmada,
+        camino: r.camino,
+      })),
+      pausadaGlobal: false,
+    };
   });
 
   const [gestionandoPublicacion, setGestionandoPublicacion] = useState<{
@@ -126,32 +151,38 @@ const Panel: React.FC = () => {
   const guardarGestionPublicacion = (datos: DatosPublicacionGestion) => {
     if (datos.tipo === 'oferta') {
       setPubOferta(datos);
-      setRecursosOferta(
-        datos.recursos.map((r) => ({
-          n: r.item,
-          icono: (r.icono as any) || 'package',
-          unidad: r.unidad,
-          total: r.total,
-          disp: r.disp || 'Inmediata',
-          pres: r.pres || 'Estándar',
-          pausado: r.pausado,
-        }))
-      );
+      const nuevos = datos.recursos.map((r) => ({
+        n: r.item,
+        icono: (r.icono as any) || 'package',
+        unidad: r.unidad,
+        total: r.total,
+        disp: r.disp || 'Inmediata',
+        pres: r.pres || 'Estándar',
+        pausado: r.pausado,
+      }));
+      setRecursosOferta(nuevos);
+      try {
+        localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(datos));
+        localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(nuevos));
+      } catch {}
       avisar('Oferta actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
     } else {
       setPubNecesidad(datos);
-      setRecursosNecesidad(
-        datos.recursos.map((r) => ({
-          n: r.item,
-          icono: (r.icono as any) || 'bolt',
-          unidad: r.unidad,
-          total: r.total,
-          confirmada: r.confirmada || 0,
-          camino: r.camino || 0,
-          para: r.para || 'Atención de la comunidad',
-          pausado: r.pausado,
-        }))
-      );
+      const nuevos = datos.recursos.map((r) => ({
+        n: r.item,
+        icono: (r.icono as any) || 'bolt',
+        unidad: r.unidad,
+        total: r.total,
+        confirmada: r.confirmada || 0,
+        camino: r.camino || 0,
+        para: r.para || 'Atención de la comunidad',
+        pausado: r.pausado,
+      }));
+      setRecursosNecesidad(nuevos);
+      try {
+        localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(datos));
+        localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(nuevos));
+      } catch {}
       avisar('Necesidad actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
     }
   };
@@ -168,7 +199,12 @@ const Panel: React.FC = () => {
     return () => window.removeEventListener('hashchange', alCambiar);
   }, []);
 
-  const datos = { oferta: { ...OFERTA, recursos: recursosOferta }, sol, necesidad: { ...NECESIDAD, recursos: recursosNecesidad }, recibidas };
+  const datos = {
+    oferta: { ...OFERTA, id: pubOferta.id, titulo: pubOferta.titulo, recursos: recursosOferta },
+    sol,
+    necesidad: { ...NECESIDAD, id: pubNecesidad.id, titulo: pubNecesidad.titulo, recursos: recursosNecesidad },
+    recibidas,
+  };
   const pestanas = useMemo(() => pestanasDe(modulos, { porConfirmarRecibidas: recibidasPorConfirmar(recibidas).length, nuevas: nuevas(sol), porConfirmar: porConfirmar(sol).length }), [modulos, sol, recibidas]);
   const actual = pestanas.some((p) => p.id === tab) ? tab : 'resumen';
   const cambiarTab = (id: string) => {
@@ -193,21 +229,45 @@ const Panel: React.FC = () => {
     if (s) avisar(`Le recordamos a ${s.quien} que confirme la entrega.`, { tipo: 'ok' });
   };
   const guardarOferta = (r: RecursoOfrecido) => {
-    setRecursosOferta((prev) => prev.map((x) => (x.n === r.n ? r : x)));
+    setRecursosOferta((prev) => {
+      const act = prev.map((x) => (x.n === r.n ? r : x));
+      try {
+        localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
     avisar(`Oferta de ${r.n} actualizada con éxito`, { tipo: 'ok' });
   };
   const togglePausaOferta = (r: RecursoOfrecido) => {
     const pausado = !r.pausado;
-    setRecursosOferta((prev) => prev.map((x) => (x.n === r.n ? { ...x, pausado } : x)));
+    setRecursosOferta((prev) => {
+      const act = prev.map((x) => (x.n === r.n ? { ...x, pausado } : x));
+      try {
+        localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
     avisar(pausado ? `Oferta de ${r.n} pausada. No recibirá nuevas solicitudes en el Radar.` : `Oferta de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
   };
   const guardarNecesidad = (r: RecursoPedido) => {
-    setRecursosNecesidad((prev) => prev.map((x) => (x.n === r.n ? r : x)));
+    setRecursosNecesidad((prev) => {
+      const act = prev.map((x) => (x.n === r.n ? r : x));
+      try {
+        localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
     avisar(`Necesidad de ${r.n} actualizada con éxito`, { tipo: 'ok' });
   };
   const togglePausaNecesidad = (r: RecursoPedido) => {
     const pausado = !r.pausado;
-    setRecursosNecesidad((prev) => prev.map((x) => (x.n === r.n ? { ...x, pausado } : x)));
+    setRecursosNecesidad((prev) => {
+      const act = prev.map((x) => (x.n === r.n ? { ...x, pausado } : x));
+      try {
+        localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
     avisar(pausado ? `Necesidad de ${r.n} pausada temporalmente.` : `Necesidad de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
   };
   const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
@@ -421,6 +481,7 @@ const Panel: React.FC = () => {
             {actual === 'necesidades' && (
               <MisNecesidades
                 recursos={recursosNecesidad}
+                idPublicacion={pubNecesidad.id}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubNecesidad,
@@ -441,6 +502,7 @@ const Panel: React.FC = () => {
               <MisOfertas
                 recursos={recursosOferta}
                 sol={sol}
+                idPublicacion={pubOferta.id}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubOferta,
@@ -630,87 +692,143 @@ const ListaPendientes: React.FC<{ lista: Pendiente[]; vacio: { icono: React.Reac
 
 /* ---------- Resumen ---------- */
 
-/** Icono y color de cada estado: los mismos que en las columnas del tablero y en la barra. */
-const ICONO_ESTADO: Record<Solicitud['estado'], { icono: React.ReactNode; clase: string }> = {
-  nueva: { icono: <Megaphone className="h-4.5 w-4.5" />, clase: 'text-rd-coral' },
-  aceptada: { icono: <CircleDashed className="h-4.5 w-4.5" />, clase: 'text-rd-ink-2' },
-  camino: { icono: <Truck className="h-4.5 w-4.5" />, clase: 'text-rd-amber-ink' },
-  entregada: { icono: <Clock className="h-4.5 w-4.5" />, clase: 'text-rd-navy' },
-  confirmada: { icono: <Check className="h-4.5 w-4.5" />, clase: 'text-rd-green' },
-  archivada: { icono: <Archive className="h-4.5 w-4.5" />, clase: 'text-rd-ink-meta' },
-};
+/** El Pulso del Día (Camino 1): resumen ejecutivo en tres macro-estados orientados a la acción:
+ *  1. Lo que requiere decisión o respuesta urgente (Decisiones inmediatas).
+ *  2. Lo que está en movimiento hoy (logística en curso).
+ *  3. Lo completado con éxito (impacto acumulado). */
+const PulsoOperativo: React.FC<{
+  modulos: ModulosCuenta;
+  datos: Parameters<typeof kpisDe>[1];
+  onAccion: (al: string) => void;
+}> = ({ modulos, datos, onAccion }) => {
+  // 1. Acciones pendientes (Decisiones inmediatas)
+  const nuevasSol = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'nueva').length : 0;
+  const porConfRec = modulos.pide ? datos.recibidas.filter((r) => r.estado === 'entregada').length : 0;
+  const totalAccion = nuevasSol + porConfRec;
 
-/** El tono de la `Barra` para cada estado del ciclo: el mismo que su columna en el tablero. */
-const TONO_ESTADO: Record<Solicitud['estado'], TonoTramo> = { nueva: 'nueva', aceptada: 'comprometida', camino: 'camino', entregada: 'porConfirmar', confirmada: 'confirmada', archivada: 'archivada' };
+  let detalleAccion = 'Al día: sin decisiones pendientes';
+  if (nuevasSol > 0 && porConfRec > 0) {
+    detalleAccion = `${nuevasSol} ${nuevasSol === 1 ? 'solicitud nueva' : 'solicitudes nuevas'} · ${porConfRec} por confirmar`;
+  } else if (nuevasSol > 0) {
+    detalleAccion = `${nuevasSol} ${nuevasSol === 1 ? 'solicitud nueva por responder' : 'solicitudes nuevas por responder'}`;
+  } else if (porConfRec > 0) {
+    detalleAccion = `${porConfRec} ${porConfRec === 1 ? 'entrega recibida por confirmar' : 'entregas recibidas por confirmar'}`;
+  }
 
-/** Un bloque del Resumen (patrón del «Spend overview» que eligió Alejandro, 16 de septiembre de
- *  2026, sobre nuestra `Caja`): el título y la acción de siempre, cuatro cuadritos con borde
- *  —icono a la izquierda, cifra con rótulo— y debajo la barra proporcional con su leyenda,
- *  sin contenedor. Una cara de la cuenta por bloque. */
-const BloqueResumenVista: React.FC<{ bloque: BloqueResumen; onAccion: (al: string) => void }> = ({ bloque: b, onAccion }) => {
-  const total = b.barra.reduce((t, x) => t + x.n, 0);
+  // 2. En movimiento hoy (Operaciones en curso)
+  const enCaminoOfrece = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'camino').length : 0;
+  const sinAsignarOfrece = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'aceptada' && !s.vol).length : 0;
+  const enCaminoPide = modulos.pide ? datos.recibidas.filter((r) => r.estado === 'camino').length : 0;
+  const comprometidasPide = modulos.pide ? datos.recibidas.filter((r) => r.estado === 'aceptada').length : 0;
+  const totalMovimiento = enCaminoOfrece + sinAsignarOfrece + enCaminoPide + comprometidasPide;
+
+  const partesMovimiento: string[] = [];
+  const enRuta = enCaminoOfrece + enCaminoPide;
+  if (enRuta > 0) partesMovimiento.push(`${enRuta} en camino`);
+  if (sinAsignarOfrece > 0) partesMovimiento.push(`${sinAsignarOfrece} por asignar`);
+  if (comprometidasPide > 0) partesMovimiento.push(`${comprometidasPide} comprometidas`);
+  const detalleMovimiento = partesMovimiento.length > 0 ? partesMovimiento.join(' · ') : 'Sin entregas en ruta en este momento';
+
+  // 3. Entregas completadas
+  const confOfrece = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada').length : 0;
+  const confPide = modulos.pide ? datos.recibidas.filter((r) => r.estado === 'confirmada').length : 0;
+  const totalCompletadas = confOfrece + confPide;
+  const detalleCompletadas = totalCompletadas > 0 ? 'Cerradas y confirmadas con éxito' : 'Aún no hay entregas finalizadas';
+
   return (
-    <Caja
-      titulo={b.titulo}
-      accion={
-        <Button nivel="terciario" tamano="md" onClick={() => onAccion(b.enlace.al)}>
-          {b.enlace.texto}
-        </Button>
-      }
-    >
-      {/* El conteo va en el chip del sistema, nunca en una línea con puntos, y `Conteo` cuenta
-          cosas de una lista, no dice estados (Alejandro, 16 de septiembre de 2026): el avance de
-          la publicación no va aquí, vive en su pestaña. Aquí solo las entregas de esa cara:
-          cuadritos y barra con las mismas cifras por estado. */}
-      <p className="m-0 mb-2 text-rd-12 font-medium text-rd-ink-meta">
-        {b.barraTitulo}
-        <Conteo n={total} />
-      </p>
-      {/* Bajo 640 el icono va encima de la cifra: a dos columnas, «Comprometidas» no cabe al lado. */}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {b.kpis.map((k) => (
-          <div key={k.k} className="flex min-w-0 flex-col items-start gap-2 rounded-rd-lg border border-rd-line bg-rd-surface p-3 sm:flex-row sm:items-center sm:gap-3">
-            <span aria-hidden="true" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-rd-md border border-rd-line ${ICONO_ESTADO[k.estado].clase}`}>
-              {ICONO_ESTADO[k.estado].icono}
+    <Caja titulo="Pulso del día" className="col-span-full">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Card 1: Decisiones / Acción */}
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById('seccion-decisiones');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-coral-line hover:bg-rd-coral-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-coral"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-coral-ink">
+              Requieren tu atención
             </span>
-            <span className="flex min-w-0 flex-col">
-              {/* La cifra siempre en tinta; el tono solo en el icono (Alejandro, 16 de septiembre de 2026). */}
-              <span className="text-rd-22 leading-none font-semibold tracking-rd-titulo text-rd-ink tabular-nums">{k.v}</span>
-              <span className="mt-1 text-rd-12-5 leading-tight text-rd-ink-2" title={k.d}>
-                {k.k}
-              </span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-coral-soft text-rd-coral transition-transform group-hover:scale-105"
+              aria-hidden="true"
+            >
+              <Megaphone className="h-4.5 w-4.5" />
             </span>
           </div>
-        ))}
-      </div>
-      <div className="mt-3">
-        {total === 0 ? (
-          <p className="m-0 text-rd-12-5 text-rd-ink-meta">Todavía nada. Aquí verás cada entrega según cómo va.</p>
-        ) : (
-          <>
-            <Barra etiqueta={`${b.barraTitulo}: ${b.barra.map((t) => `${t.n} ${t.texto.toLowerCase()}`).join(', ')}`} tramos={b.barra.map((t) => ({ tono: TONO_ESTADO[t.estado], porcentaje: (100 * t.n) / total }))} />
-            {/* La leyenda en filas alineadas, no en línea corrida: con seis estados el texto se
-                pisaba (Alejandro, 16 de septiembre de 2026). */}
-            <ul className="m-0 mt-3 grid list-none grid-cols-1 gap-x-6 gap-y-1.5 p-0 sm:grid-cols-2 lg:grid-cols-3">
-              {b.barra.map((t) => (
-                <li key={t.estado} className="flex min-w-0 items-center gap-2 text-rd-12-5">
-                  <PuntoTono tono={TONO_ESTADO[t.estado]} />
-                  <span className="min-w-0 flex-1 truncate font-medium text-rd-ink">{t.texto}</span>
-                  <span className="w-6 shrink-0 text-right font-semibold text-rd-ink tabular-nums">{t.n}</span>
-                  <span className="w-11 shrink-0 text-right text-rd-12 text-rd-ink-meta tabular-nums">{Math.round((100 * t.n) / total)} %</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+          <div className="mt-3">
+            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+              {totalAccion}
+            </span>
+            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+              {detalleAccion}
+            </p>
+          </div>
+        </button>
+
+        {/* Card 2: En movimiento */}
+        <button
+          type="button"
+          onClick={() => onAccion('#seguimiento')}
+          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-amber-line hover:bg-rd-amber-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-amber"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-amber-ink">
+              En movimiento hoy
+            </span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-amber-soft text-rd-amber-ink transition-transform group-hover:scale-105"
+              aria-hidden="true"
+            >
+              <Truck className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+              {totalMovimiento}
+            </span>
+            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+              {detalleMovimiento}
+            </p>
+          </div>
+        </button>
+
+        {/* Card 3: Completadas */}
+        <button
+          type="button"
+          onClick={() => onAccion('#reportes')}
+          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-green-line hover:bg-rd-green-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-green"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-green">
+              Entregas completadas
+            </span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-green-soft text-rd-green transition-transform group-hover:scale-105"
+              aria-hidden="true"
+            >
+              <Check className="h-4.5 w-4.5" />
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+              {totalCompletadas}
+            </span>
+            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+              {detalleCompletadas}
+            </p>
+          </div>
+        </button>
       </div>
     </Caja>
   );
 };
 
 const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisDe>[1]; pasosOcultos: boolean; onOcultarPasos: () => void; onAccion: (al: string) => void }> = ({ modulos, datos, pasosOcultos, onOcultarPasos, onAccion }) => {
+  const [pasosDesplegados, setPasosDesplegados] = useState(false);
   const sinModulos = !modulos.pide && !modulos.ofrece;
-  const bloques = bloquesResumen(modulos, datos);
   const pendientes = pendientesDe(modulos, datos);
   const decisiones = pendientes.filter((p) => p.grupo === 'decision');
   const operaciones = pendientes.filter((p) => p.grupo === 'operacion');
@@ -749,47 +867,22 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           </div>
         </Caja>
       )}
-      {bloques.map((b) => (
-        <BloqueResumenVista key={b.id} bloque={b} onAccion={onAccion} />
-      ))}
-      {!pasosOcultos && listos < pasos.length && (
-        <Caja
-          titulo={
-            <>
-              Primeros pasos<Conteo n={`${listos} de ${pasos.length}`} />
-            </>
-          }
-          accion={
-            <Button nivel="terciario" tamano="md" onClick={onOcultarPasos}>
-              Ocultar
-            </Button>
-          }
-        >
-          {pasos.map((p, i) => (
-            <div key={p.id} className={`flex items-start gap-3 py-3 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-              {p.hecho ? <Check aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-green" /> : <CircleDashed aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-ink-3" />}
-              <div className="min-w-0 flex-1">
-                <b className={`block text-rd-13-5 font-semibold ${p.hecho ? 'text-rd-ink-meta line-through' : 'text-rd-ink'}`}>
-                  <span className="sr-only">{p.hecho ? 'Hecho: ' : 'Pendiente: '}</span>
-                  {p.t}
-                </b>
-                <span className="text-rd-12-5 text-rd-ink-2">{p.d}</span>
-              </div>
-              {!p.hecho && <div className="shrink-0">{p.accion}</div>}
-            </div>
-          ))}
-        </Caja>
+      {!sinModulos && (
+        <PulsoOperativo modulos={modulos} datos={datos} onAccion={onAccion} />
       )}
-      {/* Dos niveles (de la rama de Fede, por decisión de Alejandro, 16 de septiembre de 2026):
-          lo que hay que responder ya y lo que está en curso. Cada fila trae su acción. */}
+      {/* Dos niveles: lo que hay que responder ya y lo que está en curso. Cada fila trae su acción. */}
       {!sinModulos && (
         <>
-          <Caja titulo="Decisiones inmediatas" className="col-span-full xl:col-span-6">
-            <ListaPendientes lista={decisiones} vacio={{ icono: <Check className="h-6.5 w-6.5" />, titulo: 'Sin decisiones pendientes', texto: 'Cuando alguien pida de tus ofertas o te llegue una entrega, aparece aquí para responder.' }} onAccion={onAccion} />
-          </Caja>
-          <Caja titulo="Operaciones del día" className="col-span-full xl:col-span-6">
-            <ListaPendientes lista={operaciones} vacio={{ icono: <Truck className="h-6.5 w-6.5" />, titulo: 'Sin operaciones en curso', texto: 'Lo que esté por asignar, en camino o por certificar aparece aquí.' }} onAccion={onAccion} />
-          </Caja>
+          <div id="seccion-decisiones" className="col-span-full xl:col-span-6 scroll-mt-4">
+            <Caja titulo="Decisiones inmediatas" className="h-full w-full">
+              <ListaPendientes lista={decisiones} vacio={{ icono: <Check className="h-6.5 w-6.5" />, titulo: 'Sin decisiones pendientes', texto: 'Cuando alguien pida de tus ofertas o te llegue una entrega, aparece aquí para responder.' }} onAccion={onAccion} />
+            </Caja>
+          </div>
+          <div className="col-span-full xl:col-span-6 scroll-mt-4">
+            <Caja titulo="Operaciones del día" className="h-full w-full">
+              <ListaPendientes lista={operaciones} vacio={{ icono: <Truck className="h-6.5 w-6.5" />, titulo: 'Sin operaciones en curso', texto: 'Lo que esté por asignar, en camino o por certificar aparece aquí.' }} onAccion={onAccion} />
+            </Caja>
+          </div>
         </>
       )}
       {historias.length > 0 && (
@@ -826,6 +919,70 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           ))
         )}
       </Caja>
+      {!pasosOcultos && listos < pasos.length && (
+        <Caja
+          className="col-span-full border-rd-line bg-rd-surface"
+          titulo={
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5">
+                <ListChecks aria-hidden="true" className="h-4.5 w-4.5 text-rd-navy" />
+                <span>Primeros pasos</span>
+              </span>
+              <Conteo n={`${listos} de ${pasos.length}`} />
+              <span className="hidden text-rd-12 font-normal text-rd-ink-meta sm:inline">
+                · Guía de puesta en marcha
+              </span>
+            </div>
+          }
+          accion={
+            <div className="flex items-center gap-2">
+              <Button
+                nivel="secundario"
+                tamano="sm"
+                onClick={() => setPasosDesplegados((v) => !v)}
+                iconoDespues={
+                  pasosDesplegados ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )
+                }
+              >
+                {pasosDesplegados ? 'Plegar' : 'Ver pasos'}
+              </Button>
+              <Button nivel="terciario" tamano="sm" onClick={onOcultarPasos}>
+                Ocultar
+              </Button>
+            </div>
+          }
+        >
+          {pasosDesplegados ? (
+            <div className="mt-2 space-y-0 divide-y divide-rd-line-soft border-t border-rd-line-soft pt-1">
+              {pasos.map((p) => (
+                <div key={p.id} className="flex items-start gap-3 py-3">
+                  {p.hecho ? (
+                    <Check aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-green" />
+                  ) : (
+                    <CircleDashed aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-ink-3" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <b className={`block text-rd-13-5 font-semibold ${p.hecho ? 'text-rd-ink-meta line-through' : 'text-rd-ink'}`}>
+                      <span className="sr-only">{p.hecho ? 'Hecho: ' : 'Pendiente: '}</span>
+                      {p.t}
+                    </b>
+                    <span className="text-rd-12-5 text-rd-ink-2">{p.d}</span>
+                  </div>
+                  {!p.hecho && <div className="shrink-0">{p.accion}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="m-0 text-rd-13 text-rd-ink-2">
+              Te faltan {pasos.length - listos} {pasos.length - listos === 1 ? 'paso' : 'pasos'} para completar la configuración de tu organización. Toca «Ver pasos» para completarlos cuando tengas tiempo.
+            </p>
+          )}
+        </Caja>
+      )}
     </>
   );
 };
@@ -847,10 +1004,11 @@ const BarraAvance: React.FC<{ hecho: number; camino: number; texto: string }> = 
 
 const MisNecesidades: React.FC<{
   recursos: RecursoPedido[];
+  idPublicacion?: string;
   onEditar: (r: RecursoPedido) => void;
   onTogglePausa: (r: RecursoPedido) => void;
   onGestionarPublicacion?: () => void;
-}> = ({ recursos, onEditar, onTogglePausa, onGestionarPublicacion }) => (
+}> = ({ recursos, idPublicacion, onEditar, onTogglePausa, onGestionarPublicacion }) => (
   <Caja
     titulo="Mis necesidades"
     accion={
@@ -860,7 +1018,7 @@ const MisNecesidades: React.FC<{
             Gestionar publicación
           </Button>
         )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${NECESIDAD.id}`)}>
+        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${idPublicacion || NECESIDAD.id}`)}>
           <MapIcon aria-hidden="true" className="h-5 w-5" />
         </Button>
       </div>
@@ -1234,10 +1392,11 @@ const DialogoActa: React.FC<{
 const MisOfertas: React.FC<{
   recursos: RecursoOfrecido[];
   sol: Solicitud[];
+  idPublicacion?: string;
   onEditar: (r: RecursoOfrecido) => void;
   onTogglePausa: (r: RecursoOfrecido) => void;
   onGestionarPublicacion?: () => void;
-}> = ({ recursos, sol, onEditar, onTogglePausa, onGestionarPublicacion }) => (
+}> = ({ recursos, sol, idPublicacion, onEditar, onTogglePausa, onGestionarPublicacion }) => (
   <Caja
     titulo="Mis ofertas"
     accion={
@@ -1247,7 +1406,7 @@ const MisOfertas: React.FC<{
             Gestionar publicación
           </Button>
         )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${OFERTA.id}`)}>
+        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${idPublicacion || OFERTA.id}`)}>
           <MapIcon aria-hidden="true" className="h-5 w-5" />
         </Button>
       </div>
@@ -1743,88 +1902,352 @@ const MiEquipo: React.FC<{
   onRegistrar: () => void;
   onEditar: (m: MiembroEquipo) => void;
   onConfirmarBaja: (m: MiembroEquipo) => void;
-}> = ({ equipo, onRegistrar, onEditar, onConfirmarBaja }) => (
-  <Caja
-    titulo={
-      <>
-        Mi equipo<Conteo n={equipo.length} />
-      </>
-    }
-    accion={
-      <Button nivel="secundario" tamano="md" onClick={onRegistrar}>
-        Agregar persona
-      </Button>
-    }
-  >
-    <Tabla
-      etiqueta="Mi equipo"
-      filas={equipo}
-      clave={(e) => e.id}
-      columnas={[
-        {
-          k: 'persona',
-          etiqueta: 'Persona',
-          celda: (e) => (
-            <span className="flex items-start gap-2">
-              <Avatar iniciales={iniciales(e.n)} tamano="md" />
-              <span className="min-w-0">
-                <b className="block font-semibold">{e.n}</b>
-                <small className="block text-rd-12 text-rd-ink-meta">
-                  {e.correo ? `${e.tel} · ${e.correo}` : e.tel}
-                </small>
-              </span>
+}> = ({ equipo, onRegistrar, onEditar, onConfirmarBaja }) => {
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroUbicacion, setFiltroUbicacion] = useState('');
+  const [filtroVeh, setFiltroVeh] = useState('');
+  const [filtroDisp, setFiltroDisp] = useState('');
+
+  const hayFiltros = Boolean(busqueda || filtroUbicacion || filtroVeh || filtroDisp);
+
+  const resetFiltros = () => {
+    setBusqueda('');
+    setFiltroUbicacion('');
+    setFiltroVeh('');
+    setFiltroDisp('');
+  };
+
+  const filtrados = useMemo(() => {
+    const q = busqueda.toLowerCase().trim();
+    return equipo.filter((m) => {
+      if (q) {
+        const coincideNombre = m.n.toLowerCase().includes(q);
+        const coincideRol = (m.rol || '').toLowerCase().includes(q);
+        const coincideTel = (m.tel || '').replace(/\s/g, '').includes(q.replace(/\s/g, ''));
+        const coincideCorreo = (m.correo || '').toLowerCase().includes(q);
+        const coincideUbicacion = (m.ubicacion || '').toLowerCase().includes(q);
+        if (!coincideNombre && !coincideRol && !coincideTel && !coincideCorreo && !coincideUbicacion) {
+          return false;
+        }
+      }
+      if (filtroUbicacion && m.ubicacion !== filtroUbicacion) return false;
+      if (filtroVeh && m.veh !== filtroVeh) return false;
+      if (filtroDisp) {
+        if (filtroDisp === 'tiempo_completo') {
+          if (!['tiempo_completo', 'tardes', 'hoy', 'manana'].includes(m.disp)) return false;
+        } else if (filtroDisp === 'fines_de_semana') {
+          if (!['fines_de_semana', 'finde'].includes(m.disp)) return false;
+        } else if (filtroDisp === 'emergencias') {
+          if (m.disp !== 'emergencias') return false;
+        } else if (m.disp !== filtroDisp) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [equipo, busqueda, filtroUbicacion, filtroVeh, filtroDisp]);
+
+  return (
+    <Caja
+      titulo={
+        <>
+          Mi equipo<Conteo n={equipo.length} />
+        </>
+      }
+      accion={
+        <Button nivel="secundario" tamano="md" onClick={onRegistrar}>
+          Agregar persona
+        </Button>
+      }
+    >
+      <div className="mb-4 space-y-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <CampoBuscar
+            valor={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar por nombre, profesión, rol..."
+            abierto={true}
+            className="h-10 w-full sm:w-72"
+          />
+
+          <div className="relative inline-flex items-center">
+            <select
+              id="filtro-equipo-ubicacion"
+              aria-label="Filtrar por ubicación"
+              value={filtroUbicacion}
+              onChange={(e) => setFiltroUbicacion(e.target.value)}
+              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
+                filtroUbicacion ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
+              }`}
+            >
+              <option value="">Todas las ubicaciones</option>
+              {DEPTOS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroUbicacion ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
+          </div>
+
+          <div className="relative inline-flex items-center">
+            <select
+              id="filtro-equipo-vehiculo"
+              aria-label="Filtrar por tipo de vehículo"
+              value={filtroVeh}
+              onChange={(e) => setFiltroVeh(e.target.value)}
+              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
+                filtroVeh ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
+              }`}
+            >
+              <option value="">Todos los vehículos</option>
+              {VEHICULOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroVeh ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
+          </div>
+
+          <div className="relative inline-flex items-center">
+            <select
+              id="filtro-equipo-disponibilidad"
+              aria-label="Filtrar por disponibilidad"
+              value={filtroDisp}
+              onChange={(e) => setFiltroDisp(e.target.value)}
+              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
+                filtroDisp ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
+              }`}
+            >
+              <option value="">Cualquier disponibilidad</option>
+              {DISPONIBILIDADES.map((d) => (
+                <option key={d.valor} value={d.valor}>{d.etiqueta}</option>
+              ))}
+            </select>
+            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroDisp ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
+          </div>
+
+          {hayFiltros && (
+            <span className="ml-auto text-rd-12 text-rd-ink-meta font-medium">
+              Mostrando {filtrados.length} de {equipo.length}
             </span>
-          ),
-        },
-        { k: 'hace', etiqueta: 'Qué hace', celda: (e) => e.rol || '—' },
-        { k: 'veh', etiqueta: 'Vehículo', celda: (e) => e.veh || '—' },
-        { k: 'acceso', etiqueta: 'Acceso en RaDAR', celda: (e) => (e.rolPlataforma ? (ROL_PLATAFORMA[e.rolPlataforma] ?? e.rolPlataforma) : 'Solo en terreno') },
-        { k: 'disp', etiqueta: 'Disponible', celda: (e) => (e.disp ? (DISPONIBILIDAD[e.disp] ?? e.disp) : '—') },
-        { k: 'hechas', etiqueta: 'Entregas', num: true, celda: (e) => e.hechas },
-        {
-          k: 'acc',
-          etiqueta: 'Acciones',
-          acc: true,
-          celda: (e) => (
-            <MenuAcciones
-              tamano="sm"
-              etiqueta={`Opciones de ${e.n}`}
-              items={[
-                {
-                  texto: 'Escribir por WhatsApp',
-                  icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
-                  onElegir: () => {
-                    const num = e.tel.replace(/\D/g, '');
-                    const numWa = num.startsWith('57') ? num : `57${num}`;
-                    window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
-                  },
-                },
-                {
-                  texto: `Llamar (${e.tel})`,
-                  icono: <Phone className="h-4 w-4" />,
-                  onElegir: () => {
-                    window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
-                  },
-                },
-                {
-                  texto: 'Editar datos',
-                  icono: <Edit3 className="h-4 w-4" />,
-                  onElegir: () => onEditar(e),
-                },
-                {
-                  texto: 'Dar de baja',
-                  icono: <X className="h-4 w-4" />,
-                  tono: 'peligro',
-                  onElegir: () => onConfirmarBaja(e),
-                },
-              ]}
-            />
-          ),
-        },
-      ]}
-    />
-  </Caja>
-);
+          )}
+        </div>
+
+        {hayFiltros && (
+          <ZonaChips>
+            {busqueda && (
+              <ChipAplicado texto={`"${busqueda}"`} onQuitar={() => setBusqueda('')} />
+            )}
+            {filtroUbicacion && (
+              <ChipAplicado texto={filtroUbicacion} onQuitar={() => setFiltroUbicacion('')} />
+            )}
+            {filtroVeh && (
+              <ChipAplicado texto={filtroVeh} onQuitar={() => setFiltroVeh('')} />
+            )}
+            {filtroDisp && (
+              <ChipAplicado
+                texto={DISPONIBILIDADES.find((d) => d.valor === filtroDisp)?.etiqueta || filtroDisp}
+                onQuitar={() => setFiltroDisp('')}
+              />
+            )}
+            <QuitarTodos onClick={resetFiltros} />
+          </ZonaChips>
+        )}
+      </div>
+
+      {filtrados.length === 0 ? (
+        <div className="rounded-rd-lg border border-dashed border-rd-line bg-rd-sunken/40 py-8 text-center">
+          <p className="text-rd-14 font-medium text-rd-ink">No se encontraron integrantes con los filtros seleccionados.</p>
+          <p className="mt-1 text-rd-12 text-rd-ink-meta">Prueba cambiando la búsqueda, ubicación, vehículo o disponibilidad.</p>
+          <Button nivel="secundario" tamano="sm" onClick={resetFiltros} className="mt-3">
+            Quitar filtros
+          </Button>
+        </div>
+      ) : (
+        <Tabla
+          etiqueta="Mi equipo"
+          filas={filtrados}
+          clave={(e) => e.id}
+          tarjeta={(e) => {
+            const rolEtiqueta = e.rolPlataforma
+              ? (ROL_PLATAFORMA[e.rolPlataforma] ?? e.rolPlataforma)
+              : 'Solo en terreno';
+            return (
+              <div
+                key={e.id}
+                className="rounded-rd-xl border border-rd-line bg-rd-surface p-3.5 shadow-2xs transition-colors hover:border-rd-line-strong"
+              >
+                {/* Cabecera: Avatar, Datos de persona y menú de acciones en esquina superior derecha */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <Avatar iniciales={iniciales(e.n)} tamano="md" />
+                    <div className="min-w-0 flex flex-col">
+                      <div className="flex flex-wrap items-center gap-1.5 leading-snug">
+                        <b className="font-semibold text-rd-ink text-rd-14">{e.n}</b>
+                        <span className="inline-flex items-center rounded-full bg-rd-sunken px-2 py-0.5 text-rd-11 font-medium text-rd-ink-2 shrink-0">
+                          {rolEtiqueta}
+                        </span>
+                      </div>
+                      <span className="mt-0.5 text-rd-12 text-rd-ink-meta leading-tight">
+                        {e.tel}
+                      </span>
+                      {e.correo && (
+                        <span className="block truncate text-rd-12 text-rd-ink-meta mt-0.5 leading-tight">
+                          {e.correo}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 -mr-1 -mt-1">
+                    <MenuAcciones
+                      tamano="sm"
+                      flotante
+                      etiqueta={`Opciones de ${e.n}`}
+                      items={[
+                        {
+                          texto: 'Escribir por WhatsApp',
+                          icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
+                          onElegir: () => {
+                            const num = e.tel.replace(/\D/g, '');
+                            const numWa = num.startsWith('57') ? num : `57${num}`;
+                            window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
+                          },
+                        },
+                        {
+                          texto: `Llamar (${e.tel})`,
+                          icono: <Phone className="h-4 w-4" />,
+                          onElegir: () => {
+                            window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
+                          },
+                        },
+                        {
+                          texto: 'Editar datos',
+                          icono: <Edit3 className="h-4 w-4" />,
+                          onElegir: () => onEditar(e),
+                        },
+                        {
+                          texto: 'Dar de baja',
+                          icono: <X className="h-4 w-4" />,
+                          tono: 'peligro',
+                          onElegir: () => onConfirmarBaja(e),
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                {/* Grid 2x2 compacto sin espacios muertos */}
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-rd-line-soft pt-2.5 text-rd-12">
+                  <div>
+                    <span className="block text-rd-11 font-medium text-rd-ink-meta">Qué hace / Profesión</span>
+                    <span className="font-medium text-rd-ink leading-tight">{e.rol || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-rd-11 font-medium text-rd-ink-meta">Ubicación</span>
+                    <span className="font-medium text-rd-ink leading-tight">{e.ubicacion || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-rd-11 font-medium text-rd-ink-meta">Vehículo</span>
+                    <span className="font-medium text-rd-ink leading-tight">{e.veh || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-rd-11 font-medium text-rd-ink-meta">Disponible</span>
+                    <span className="font-medium text-rd-ink leading-tight">
+                      {e.disp ? (DISPONIBILIDAD[e.disp] ?? e.disp) : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pie: Entregas realizadas */}
+                <div className="mt-2.5 flex items-center justify-between border-t border-rd-line-soft/60 pt-2 text-rd-11-5 text-rd-ink-meta">
+                  <span>Entregas realizadas</span>
+                  <span className="font-semibold text-rd-ink bg-rd-sunken px-2.5 py-0.5 rounded-full text-rd-11">
+                    {e.hechas} {e.hechas === 1 ? 'entrega' : 'entregas'}
+                  </span>
+                </div>
+              </div>
+            );
+          }}
+          columnas={[
+            {
+              k: 'persona',
+              etiqueta: 'Persona',
+              celda: (e) => {
+                const rolEtiqueta = e.rolPlataforma ? (ROL_PLATAFORMA[e.rolPlataforma] ?? e.rolPlataforma) : 'Solo en terreno';
+                return (
+                  <span className="flex items-start gap-2.5">
+                    <Avatar iniciales={iniciales(e.n)} tamano="md" />
+                    <span className="min-w-0 flex flex-col">
+                      <span className="flex flex-wrap items-center gap-1.5 leading-snug">
+                        <b className="font-semibold text-rd-ink">{e.n}</b>
+                        <span className="inline-flex items-center rounded-full bg-rd-sunken px-2 py-0.5 text-rd-11 font-medium text-rd-ink-2">
+                          {rolEtiqueta}
+                        </span>
+                      </span>
+                      <small className="block text-rd-12 text-rd-ink-meta mt-0.5 leading-tight">
+                        {e.tel}
+                      </small>
+                      {e.correo && (
+                        <small className="block truncate text-rd-12 text-rd-ink-meta mt-0.5 leading-tight">
+                          {e.correo}
+                        </small>
+                      )}
+                    </span>
+                  </span>
+                );
+              },
+            },
+            { k: 'ubi', etiqueta: 'Ubicación', celda: (e) => e.ubicacion || '—' },
+            { k: 'hace', etiqueta: 'Qué hace / Profesión', celda: (e) => e.rol || '—' },
+            { k: 'veh', etiqueta: 'Vehículo', celda: (e) => e.veh || '—' },
+            { k: 'disp', etiqueta: 'Disponible', celda: (e) => (e.disp ? (DISPONIBILIDAD[e.disp] ?? e.disp) : '—') },
+            { k: 'hechas', etiqueta: 'Entregas', num: true, celda: (e) => e.hechas },
+            {
+              k: 'acc',
+              etiqueta: 'Acciones',
+              acc: true,
+              celda: (e) => (
+                <MenuAcciones
+                  tamano="sm"
+                  flotante
+                  etiqueta={`Opciones de ${e.n}`}
+                  items={[
+                    {
+                      texto: 'Escribir por WhatsApp',
+                      icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
+                      onElegir: () => {
+                        const num = e.tel.replace(/\D/g, '');
+                        const numWa = num.startsWith('57') ? num : `57${num}`;
+                        window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
+                      },
+                    },
+                    {
+                      texto: `Llamar (${e.tel})`,
+                      icono: <Phone className="h-4 w-4" />,
+                      onElegir: () => {
+                        window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
+                      },
+                    },
+                    {
+                      texto: 'Editar datos',
+                      icono: <Edit3 className="h-4 w-4" />,
+                      onElegir: () => onEditar(e),
+                    },
+                    {
+                      texto: 'Dar de baja',
+                      icono: <X className="h-4 w-4" />,
+                      tono: 'peligro',
+                      onElegir: () => onConfirmarBaja(e),
+                    },
+                  ]}
+                />
+              ),
+            },
+          ]}
+        />
+      )}
+    </Caja>
+  );
+};
 
 
 

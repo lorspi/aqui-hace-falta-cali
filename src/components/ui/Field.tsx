@@ -43,6 +43,7 @@ export interface FieldProps {
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   valorInicial?: string;
+  list?: string;
   forma?: 'base' | 'pildora';
   etiquetaOculta?: boolean;
   verComoTexto?: boolean;
@@ -73,6 +74,7 @@ export const Field: React.FC<FieldProps> = ({
   autoComplete,
   inputMode,
   valorInicial,
+  list,
   forma = 'base',
   etiquetaOculta = false,
   verComoTexto = false,
@@ -259,6 +261,7 @@ export const Field: React.FC<FieldProps> = ({
             placeholder={placeholderFinal}
             autoComplete={autoComplete}
             inputMode={inputMode}
+            list={list}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
             aria-required={requerido || undefined}

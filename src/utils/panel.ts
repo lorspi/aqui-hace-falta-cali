@@ -17,7 +17,9 @@ export function leerModulos(search = '', guardado: string | null = null): Modulo
   if (forzado !== null) return { pide: forzado.includes('pide'), ofrece: forzado.includes('ofrece') };
   try {
     const g = guardado ? (JSON.parse(guardado) as Partial<ModulosCuenta>) : null;
-    return { pide: !!g?.pide, ofrece: !!g?.ofrece };
+    const tienePide = !!g?.pide || (typeof window !== 'undefined' && !!localStorage.getItem('rd-necesidad-creada-gestion'));
+    const tieneOfrece = !!g?.ofrece || (typeof window !== 'undefined' && !!localStorage.getItem('rd-oferta-creada-gestion'));
+    return { pide: tienePide, ofrece: tieneOfrece };
   } catch {
     return { pide: false, ofrece: false };
   }

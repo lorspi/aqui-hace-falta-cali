@@ -19,7 +19,9 @@ import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../mocks/directorioMock';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
+import { UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
+
+const PUBLICACIONES = obtenerPublicaciones();
 import type { Aviso } from '../../types/aviso';
 import type { ClaseEntidad, ConsultaDirectorio, Entidad } from '../../types/directorio';
 import type { Publicacion } from '../../types/publicacion';

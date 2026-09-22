@@ -4,9 +4,11 @@ import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Soli
 import type { Foto } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
 import { EQUIPO } from '../../mocks/panelMock';
+import { DEPTOS } from '../../mocks/cuentasMock';
 import { cifra, tituloPublicacion } from '../../utils/publicaciones';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { Field } from '../../components/ui/Field';
+import { Combobox } from '../../components/ui/Combobox';
 import { Button } from '../../components/ui/Button';
 import { Tarjeta } from '../../components/ui/Tarjeta';
 import { CampoFotos } from '../flujos/comunes';
@@ -220,15 +222,25 @@ export const DialogoEditarRecursoPedido: React.FC<{
   );
 };
 
-const ROLES_TERRENO = [
+export const SUGERENCIAS_PROFESION_ROL = [
   'Reparto y entregas',
   'Logística y acopio',
   'Censo y enlace comunitario',
   'Salud y primeros auxilios',
+  'Atención médica prehospitalaria',
+  'Psicología y apoyo psicosocial',
+  'Evaluación y peritaje estructural',
+  'Arquitectura y peritaje',
+  'Geología y peritaje de suelos',
+  'Ingeniería e inspección hídrica',
+  'Topografía y cartografía',
+  'Rescate y remoción',
+  'Cocina comunitaria y víveres',
+  'Asesoría legal y jurídica',
   'Coordinación general',
 ];
 
-const VEHICULOS = [
+export const VEHICULOS = [
   'Sin vehículo (a pie)',
   'Moto',
   'Carro particular',
@@ -237,7 +249,7 @@ const VEHICULOS = [
   'Bicicleta',
 ];
 
-const DISPONIBILIDADES: { valor: MiembroEquipo['disp']; etiqueta: string }[] = [
+export const DISPONIBILIDADES: { valor: MiembroEquipo['disp']; etiqueta: string }[] = [
   { valor: 'tiempo_completo', etiqueta: 'Cualquier día (tiempo completo)' },
   { valor: 'fines_de_semana', etiqueta: 'Fines de semana' },
   { valor: 'emergencias', etiqueta: 'Bajo llamado (emergencias)' },
@@ -292,6 +304,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
   const [correo, setCorreo] = useState('');
   const [rol, setRol] = useState('');
   const [veh, setVeh] = useState('');
+  const [ubicacion, setUbicacion] = useState('');
   const [rolPlataforma, setRolPlataforma] = useState<RolPlataforma | ''>('');
   const [disp, setDisp] = useState<MiembroEquipo['disp']>('');
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
@@ -304,6 +317,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
     setCorreo('');
     setRol('');
     setVeh('');
+    setUbicacion('');
     setRolPlataforma('');
     setDisp('');
     setErrorNombre(null);
@@ -319,6 +333,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
         setCorreo(miembro.correo || '');
         setRol(miembro.rol || '');
         setVeh(miembro.veh || '');
+        setUbicacion(miembro.ubicacion || '');
         setRolPlataforma(miembro.rolPlataforma || 'terreno');
         setDisp(miembro.disp || '');
       } else {
@@ -396,6 +411,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
           veh: veh.trim(),
           rolPlataforma: (rolPlataforma as RolPlataforma) || 'terreno',
           disp: disp || '',
+          ubicacion: ubicacion.trim() || undefined,
         };
 
         if (esEdicion && miembro && onGuardar) {
@@ -488,52 +504,58 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
             Operación en terreno
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field
+            <Combobox
               id="miembro-rol"
-              etiqueta="Qué hace en terreno"
-              tipo="select"
+              etiqueta="Qué hace o profesión"
               opcional
               valor={rol}
-              placeholder="Seleccionar función"
+              placeholder="Seleccionar o escribir función"
+              opciones={SUGERENCIAS_PROFESION_ROL}
               onChange={setRol}
-              opciones={ROLES_TERRENO}
+              permitePersonalizado
             />
-            <Field
+            <Combobox
+              id="miembro-ubicacion"
+              etiqueta="Ubicación"
+              opcional
+              valor={ubicacion}
+              placeholder="Seleccionar departamento"
+              opciones={DEPTOS}
+              onChange={setUbicacion}
+            />
+            <Combobox
               id="miembro-veh"
               etiqueta="Medio de transporte"
-              tipo="select"
               opcional
               valor={veh}
               placeholder="Seleccionar medio"
-              onChange={setVeh}
               opciones={VEHICULOS}
+              onChange={setVeh}
             />
-            <Field
+            <Combobox
               id="miembro-disp"
               etiqueta="Disponibilidad habitual"
-              tipo="select"
               opcional
               valor={DISPONIBILIDADES.find((d) => d.valor === disp)?.etiqueta || ''}
               placeholder="Seleccionar disponibilidad"
+              opciones={DISPONIBILIDADES.map((d) => d.etiqueta)}
               onChange={(v) => {
                 const match = DISPONIBILIDADES.find((d) => d.etiqueta === v);
                 setDisp(match ? match.valor : '');
               }}
-              opciones={DISPONIBILIDADES.map((d) => d.etiqueta)}
             />
             <div className="sm:col-span-2">
-              <Field
+              <Combobox
                 id="miembro-acceso"
                 etiqueta="Acceso en RaDAR"
-                tipo="select"
                 opcional
                 valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
                 placeholder="Seleccionar acceso (por defecto: Solo en terreno)"
+                opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
                 onChange={(v) => {
                   const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
                   setRolPlataforma(match ? match.valor : '');
                 }}
-                opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
               />
               {rolPlataforma && (
                 <p className="mt-1.5 flex items-start gap-1.5 rounded-rd-md bg-rd-sunken px-2.5 py-1.5 text-rd-12 text-rd-ink-2">

@@ -64,10 +64,10 @@ export const RECIBIDAS: EntregaRecibida[] = [
 ];
 
 export const EQUIPO: MiembroEquipo[] = [
-  { id: 1, n: 'Mateo Rojas', rolPlataforma: 'coordinador', rol: 'Reparto y entregas', veh: 'Camioneta', tel: '+57 311 200 1001', correo: 'mateo.rojas@bomberosusme.org', disp: 'tiempo_completo', hechas: 4 },
-  { id: 2, n: 'Laura Díaz', rolPlataforma: 'admin', rol: 'Logística y acopio', veh: 'Sin vehículo (a pie)', tel: '+57 311 200 1002', correo: 'laura.diaz@bomberosusme.org', disp: 'tardes', hechas: 2 },
-  { id: 3, n: 'Andrés Peña', rolPlataforma: 'terreno', rol: 'Reparto y entregas', veh: 'Moto', tel: '+57 311 200 1003', correo: '', disp: 'tiempo_completo', hechas: 6 },
-  { id: 4, n: 'Sofía Mora', rolPlataforma: 'terreno', rol: 'Salud y primeros auxilios', veh: 'Carro particular', tel: '+57 311 200 1004', correo: '', disp: 'fines_de_semana', hechas: 1 },
+  { id: 1, n: 'Mateo Rojas', rolPlataforma: 'coordinador', rol: 'Arquitectura y peritaje', veh: 'Camioneta', tel: '+57 311 200 1001', correo: 'mateo.rojas@bomberosusme.org', disp: 'tiempo_completo', hechas: 4, ubicacion: 'Bogotá D. C.' },
+  { id: 2, n: 'Laura Díaz', rolPlataforma: 'admin', rol: 'Logística y acopio', veh: 'Sin vehículo (a pie)', tel: '+57 311 200 1002', correo: 'laura.diaz@bomberosusme.org', disp: 'tardes', hechas: 2, ubicacion: 'Bogotá D. C.' },
+  { id: 3, n: 'Andrés Peña', rolPlataforma: 'terreno', rol: 'Peritaje hídrico y suelos', veh: 'Moto', tel: '+57 311 200 1003', correo: '', disp: 'tiempo_completo', hechas: 6, ubicacion: 'Cundinamarca' },
+  { id: 4, n: 'Sofía Mora', rolPlataforma: 'terreno', rol: 'Atención médica prehospitalaria', veh: 'Carro particular', tel: '+57 311 200 1004', correo: '', disp: 'fines_de_semana', hechas: 1, ubicacion: 'Valle del Cauca' },
 ];
 
 export const INVITADOS: Invitado[] = [

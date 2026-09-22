@@ -130,6 +130,7 @@ export interface MiembroEquipo {
   correo: string;
   disp: DisponibilidadMiembro;
   hechas: number;
+  ubicacion?: string;
 }
 
 export interface Actividad {
