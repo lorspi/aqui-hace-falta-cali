@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Copy, Download, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, Phone, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Archive, Check, ChevronLeft, ChevronRight, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, Map as MapIcon, Megaphone, Package, Phone, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { DialogoAsignar, DialogoCierre, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoRegistrarMiembro, type DatosPublicacionGestion } from './dialogos';
+import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
@@ -17,14 +17,17 @@ import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
+import { PUBLICACIONES } from '../../mocks/publicacionesMock';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Acta, BloqueResumen, EntregaRecibida, Kpi, MiembroEquipo, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud } from '../../types/panel';
-import { actasDe, archivarViejas, bloquesResumen, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoActa, textoCertificar, textoCierre } from '../../utils/panel';
+import type { Publicacion } from '../../types/publicacion';
+import { actasDe, archivarViejas, bloquesResumen, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
-import { cifra, iniciales, unidad } from '../../utils/publicaciones';
+import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Barra, PuntoTono, type TonoTramo } from '../../components/ui/Barra';
+import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -58,6 +61,8 @@ const Panel: React.FC = () => {
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
+  const [editandoMiembro, setEditandoMiembro] = useState<MiembroEquipo | null>(null);
+  const [miembroParaBaja, setMiembroParaBaja] = useState<MiembroEquipo | null>(null);
 
   const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>({
     id: 'oferta-usme',
@@ -214,6 +219,10 @@ const Panel: React.FC = () => {
     setEquipo((prev) => [nuevo, ...prev]);
     avisar(`${nuevo.n} registrado en tu equipo. Ahora puedes asignarle entregas.`, { tipo: 'ok' });
   };
+  const editarMiembro = (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+    setEquipo((prev) => prev.map((x) => (x.id === id ? { ...x, ...m } : x)));
+    avisar(`Datos de ${m.n} actualizados.`, { tipo: 'ok' });
+  };
   const eliminarMiembro = (id: number) => {
     const m = equipo.find((x) => x.id === id);
     setEquipo((prev) => prev.filter((x) => x.id !== id));
@@ -240,6 +249,82 @@ const Panel: React.FC = () => {
   /* --- reportes: las actas --- */
   const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(' · ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
+  const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
+
+  const obtenerPublicacionDeSolicitud = (s: Solicitud): Publicacion => {
+    const norm = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const n = norm(s.quien);
+    const found = PUBLICACIONES.find((p) => {
+      const org = norm(p.org);
+      const tit = norm(p.titulo);
+      return org.includes(n) || n.includes(org) || tit.includes(n) || n.includes(tit);
+    });
+    if (found) return found;
+
+    const pub: Publicacion = {
+      id: `sol-${s.id}`,
+      tipo: 'necesidad',
+      titulo: '',
+      punto: s.quien,
+      org: s.quien,
+      verificada: false,
+      lat: 4.52,
+      lng: -74.11,
+      zona: s.dist ? `A ${s.dist}` : 'Bogotá D. C.',
+      dir: 'Punto de atención en territorio',
+      descripcion: `Requerimiento en territorio para atención de emergencia. Solicitud gestionada y despachada a través de RaDAR.`,
+      recursos: [
+        {
+          item: s.rec,
+          unidad: s.u,
+          total: s.cant,
+          tramos: s.estado === 'confirmada'
+            ? [{ t: 'hecho', cant: s.cant, quien: 'Bomberos Voluntarios Usme', cuando: s.cuando }]
+            : s.estado === 'camino' || s.estado === 'entregada'
+            ? [{ t: 'camino', cant: s.cant, quien: 'Bomberos Voluntarios Usme', cuando: s.cuando }]
+            : [],
+        },
+      ],
+    };
+    return { ...pub, titulo: tituloPublicacion(pub) };
+  };
+
+  const obtenerPublicacionDeRecibida = (r: EntregaRecibida): Publicacion => {
+    const norm = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const n = norm(r.org);
+    const found = PUBLICACIONES.find((p) => {
+      const org = norm(p.org);
+      const tit = norm(p.titulo);
+      return org.includes(n) || n.includes(org) || tit.includes(n) || n.includes(tit);
+    });
+    if (found) return found;
+
+    const pub: Publicacion = {
+      id: `rec-${r.id}`,
+      tipo: 'oferta',
+      titulo: '',
+      punto: r.org,
+      org: r.org,
+      verificada: true,
+      lat: 4.52,
+      lng: -74.11,
+      zona: r.dist ? `A ${r.dist}` : 'Bogotá D. C.',
+      dir: 'Sede operativa de acopio y despacho',
+      descripcion: r.detalle || `Oferta humanitaria de ${r.rec} coordinada para apoyar la atención de la emergencia en la zona afectada.`,
+      recursos: [
+        {
+          item: r.rec,
+          unidad: r.u,
+          total: r.cant,
+          tramos: r.estado === 'confirmada'
+            ? [{ t: 'hecho', cant: r.cant, quien: 'Nuestra organización', cuando: r.cuando }]
+            : [{ t: 'camino', cant: r.cant, quien: 'En ruta de entrega', cuando: r.cuando }],
+        },
+      ],
+    };
+    return { ...pub, titulo: tituloPublicacion(pub) };
+  };
+
   const verFotosActa = (a: Acta, inicial = 0) => {
     if (a.origen.tipo === 'solicitud') {
       const s = sol.find((x) => x.id === a.origen.id);
@@ -249,12 +334,12 @@ const Panel: React.FC = () => {
       if (r) verFotosRecibida(r, inicial);
     }
   };
-  const copiarActa = (a: Acta) => {
-    const listo = () => avisar(`Acta ${a.codigo} copiada`, { tipo: 'ok' });
-    if (navigator.clipboard) navigator.clipboard.writeText(textoActa(a)).then(listo, listo);
-    else listo();
+  const descargarActa = (a: Acta) => {
+    setActa(a);
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
-  const descargarActa = (a: Acta) => avisar(`Acta ${a.codigo} lista para descargar (en la app real, un PDF)`, { tipo: 'ok' });
   const certificar = (id: number, fotos: number) => {
     const s = sol.find((x) => x.id === id);
     setSol((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, entrega: { fotos } } } : x)));
@@ -284,7 +369,18 @@ const Panel: React.FC = () => {
     avisar('Le avisamos a la organización que no necesitas este recurso.');
   };
   /* Todo lo que se puede hacer con una solicitud, en un solo objeto: lo usan el tablero, la tabla y las tarjetas. */
-  const accionesSolicitud: AccionesSolicitud = { onAceptar: aceptar, onRechazar: rechazar, onMover: mover, onAsignar: setAsignando, onRecordar: recordar, onCertificar: setCertificando, onArchivar: archivar, onCancelar: setCancelando, onVerFotos: verFotosEntrega };
+  const accionesSolicitud: AccionesSolicitud = {
+    onAceptar: aceptar,
+    onRechazar: rechazar,
+    onMover: mover,
+    onAsignar: setAsignando,
+    onRecordar: recordar,
+    onCertificar: setCertificando,
+    onArchivar: archivar,
+    onCancelar: setCancelando,
+    onVerFotos: verFotosEntrega,
+    onVerPublicacion: (s) => setPubDetalle(obtenerPublicacionDeSolicitud(s)),
+  };
   const accion = (al: string) => {
     if (al.startsWith('#')) return cambiarTab(al.slice(1));
     const [que, idTexto] = al.split(':');
@@ -371,17 +467,62 @@ const Panel: React.FC = () => {
                 onVerFotosRecibida={verFotosRecibida}
                 onAceptarRecibida={aceptarRecibida}
                 onRechazarRecibida={rechazarRecibida}
+                onVerPublicacionRecibida={(r) => setPubDetalle(obtenerPublicacionDeRecibida(r))}
               />
             )}
-            {actual === 'reportes' && <Reportes actas={actas} onVer={setActa} onCopiar={copiarActa} onDescargar={descargarActa} onVerFotos={verFotosActa} />}
-            {actual === 'equipo' && <MiEquipo equipo={equipo} onRegistrar={() => setRegistrandoMiembro(true)} onEliminar={eliminarMiembro} />}
+            {actual === 'reportes' && <Reportes actas={actas} onVer={setActa} onDescargar={descargarActa} onVerFotos={verFotosActa} />}
+            {actual === 'equipo' && (
+              <MiEquipo
+                equipo={equipo}
+                onRegistrar={() => {
+                  setEditandoMiembro(null);
+                  setRegistrandoMiembro(true);
+                }}
+                onEditar={(m) => setEditandoMiembro(m)}
+                onConfirmarBaja={(m) => setMiembroParaBaja(m)}
+              />
+            )}
           </div>
         </main>
         <DialogoAsignar solicitud={asignando} equipo={equipo} onCerrar={() => setAsignando(null)} onAsignar={asignar} />
-        <DialogoActa acta={acta} onCerrar={() => setActa(null)} onCopiar={copiarActa} onVerFotos={verFotosActa} />
+        <DialogoActa acta={acta} onCerrar={() => setActa(null)} onDescargar={descargarActa} onVerFotos={verFotosActa} />
         <DialogoEditarRecursoOfrecido recurso={editandoOferta} onCerrar={() => setEditandoOferta(null)} onGuardar={guardarOferta} />
         <DialogoEditarRecursoPedido recurso={editandoNecesidad} onCerrar={() => setEditandoNecesidad(null)} onGuardar={guardarNecesidad} />
-        <DialogoRegistrarMiembro abierto={registrandoMiembro} onCerrar={() => setRegistrandoMiembro(false)} onRegistrar={registrarMiembro} />
+        <DialogoMiembro
+          abierto={registrandoMiembro || editandoMiembro !== null}
+          miembro={editandoMiembro}
+          onCerrar={() => {
+            setRegistrandoMiembro(false);
+            setEditandoMiembro(null);
+          }}
+          onGuardar={(datos, id) => {
+            if (id) editarMiembro(id, datos);
+            else registrarMiembro(datos);
+          }}
+        />
+        <Dialogo
+          abierto={miembroParaBaja !== null}
+          titulo={miembroParaBaja ? `¿Desvincular a ${miembroParaBaja.n} del equipo?` : ''}
+          accion="Desvincular del equipo"
+          nivelAccion="secundario"
+          textoCancelar="Mantener en el equipo"
+          onCerrar={() => setMiembroParaBaja(null)}
+          onEnviar={() => {
+            if (!miembroParaBaja) return;
+            eliminarMiembro(miembroParaBaja.id);
+            setMiembroParaBaja(null);
+          }}
+        >
+          <p className="mb-3 text-rd-14 text-rd-ink-2">
+            Esta persona dejará de tener acceso a la coordinación y entregas asignadas en la organización.
+          </p>
+          <div className="rounded-rd-md bg-rd-sunken px-3 py-2.5 text-rd-12 text-rd-ink-2">
+            <p className="font-semibold text-rd-ink">Protección de identidad y auditoría:</p>
+            <p className="mt-0.5 text-rd-ink-meta">
+              Su cuenta de usuario en RaDAR y el registro histórico de las {miembroParaBaja?.hechas ?? 0} entregas que ya realizó permanecerán intactos en los reportes y actas oficiales.
+            </p>
+          </div>
+        </Dialogo>
         <DialogoGestionPublicacion
           abierto={gestionandoPublicacion !== null}
           publicacion={gestionandoPublicacion?.publicacion ?? null}
@@ -389,6 +530,11 @@ const Panel: React.FC = () => {
           recursoFoco={gestionandoPublicacion?.recursoFoco}
           onCerrar={() => setGestionandoPublicacion(null)}
           onGuardar={guardarGestionPublicacion}
+          onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
+        />
+        <DialogoDetallePublicacionPanel
+          publicacion={pubDetalle}
+          onCerrar={() => setPubDetalle(null)}
           onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
         />
         <VisorFotos abierto={fotos !== null} grupos={fotos?.grupos ?? []} inicial={fotos?.inicial ?? 0} titulo={fotos?.titulo ?? ''} onCerrar={() => setFotos(null)} />
@@ -792,8 +938,13 @@ const MisNecesidades: React.FC<{
 const fotosDeActa = (a: Acta) => listaFotos(a.origen.tipo === 'solicitud' ? fotosDeEntrega(a.origen.id) : fotosDeRecibida(a.origen.id));
 
 /** Una acta por entrega confirmada, de las dos caras. La tabla desde 1280; tarjeta por debajo.
- *  Ver acta abre el acta completa; el ⋮ copia el texto o la descarga. */
-const Reportes: React.FC<{ actas: Acta[]; onVer: (a: Acta) => void; onCopiar: (a: Acta) => void; onDescargar: (a: Acta) => void; onVerFotos: (a: Acta, i: number) => void }> = ({ actas, onVer, onCopiar, onDescargar, onVerFotos }) => {
+ *  Ver acta abre el acta completa; el menú de opciones permite descargar en PDF. */
+const Reportes: React.FC<{
+  actas: Acta[];
+  onVer: (a: Acta) => void;
+  onDescargar: (a: Acta) => void;
+  onVerFotos: (a: Acta, i: number) => void;
+}> = ({ actas, onVer, onDescargar, onVerFotos }) => {
   const r = resumenActas(actas);
   return (
     <Caja
@@ -834,7 +985,20 @@ const Reportes: React.FC<{ actas: Acta[]; onVer: (a: Acta) => void; onCopiar: (a
                   </b>
                 ),
               },
-              { k: 'entrego', etiqueta: 'Entregó', celda: (a) => (a.lado === 'ofrece' ? <span>{a.entrego}{a.lleva ? <small className="block text-rd-12 text-rd-ink-meta">{a.lleva}</small> : null}</span> : a.entrego) },
+              {
+                k: 'entrego',
+                etiqueta: 'Entregó',
+                celda: (a) => (
+                  a.lado === 'ofrece' ? (
+                    <span>
+                      {a.entrego}
+                      {a.lleva ? <small className="block text-rd-12 text-rd-ink-meta">{a.lleva}</small> : null}
+                    </span>
+                  ) : (
+                    a.entrego
+                  )
+                ),
+              },
               { k: 'recibio', etiqueta: 'Recibió', celda: (a) => a.recibio },
               {
                 k: 'cierre',
@@ -852,19 +1016,17 @@ const Reportes: React.FC<{ actas: Acta[]; onVer: (a: Acta) => void; onCopiar: (a
                 acc: true,
                 celda: (a) => (
                   <>
-                    <Button nivel="primario" tamano="sm" onClick={() => onVer(a)}>
-                      Ver el acta
+                    <Button nivel="secundario" tamano="sm" onClick={() => onVer(a)}>
+                      Ver acta
                     </Button>
-                    {/* En la tarjeta el ⋮ va solo, en el borde derecho, como en toda tarjeta. */}
                     <span className="max-xl:ml-auto">
-                    <MenuAcciones
-                      tamano="sm"
-                      etiqueta={`Más acciones del acta ${a.codigo}`}
-                      items={[
-                        { texto: 'Copiar el texto', icono: <Copy className="h-4 w-4" />, onElegir: () => onCopiar(a) },
-                        { texto: 'Descargar en PDF', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
-                      ]}
-                    />
+                      <MenuAcciones
+                        tamano="sm"
+                        etiqueta={`Más acciones del acta ${a.codigo}`}
+                        items={[
+                          { texto: 'Descargar en PDF', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                        ]}
+                      />
                     </span>
                   </>
                 ),
@@ -877,49 +1039,195 @@ const Reportes: React.FC<{ actas: Acta[]; onVer: (a: Acta) => void; onCopiar: (a
   );
 };
 
-/** El acta completa: los datos en dos columnas, las fotos de los dos lados y la historia. */
-const DialogoActa: React.FC<{ acta: Acta | null; onCerrar: () => void; onCopiar: (a: Acta) => void; onVerFotos: (a: Acta, i: number) => void }> = ({ acta: a, onCerrar, onCopiar, onVerFotos }) => (
-  <Dialogo
-    abierto={a !== null}
-    titulo={a ? `Acta ${a.codigo}` : ''}
-    accion="Copiar el texto"
-    nivelAccion="secundario"
-    textoCancelar="Cerrar"
-    onCerrar={onCerrar}
-    onEnviar={() => {
-      if (a) onCopiar(a);
-    }}
-  >
-    {a && (
-      <>
-        <dl className="m-0 mb-4 grid grid-cols-2 gap-x-4 gap-y-3">
-          {(
-            [
-              ['Fecha', a.fechaTexto],
-              ['Qué', `${cifra(a.cant)} ${a.u} de ${a.rec.toLowerCase()}`],
-              ['Entregó', a.entrego],
-              ['Recibió', a.recibio],
-              ...(a.lleva ? [['La llevó', a.lleva] as [string, string]] : []),
-              ['Cierre', a.confirmacion],
-            ] as [string, string][]
-          ).map(([k, v]) => (
-            <div key={k} className="min-w-0">
-              <dt className="mb-0.5 text-rd-11 leading-snug font-medium text-rd-ink-meta">{k}</dt>
-              <dd className="m-0 text-rd-13 leading-snug font-semibold text-rd-ink">{v}</dd>
+/** El acta completa: Certificado oficial de entrega y recepción en formato institucional,
+ *  con desglose bilateral, detalle de insumos, testimonio comunitario, soportes y firmas en PDF. */
+const DialogoActa: React.FC<{
+  acta: Acta | null;
+  onCerrar: () => void;
+  onDescargar: (a: Acta) => void;
+  onVerFotos: (a: Acta, i: number) => void;
+}> = ({ acta: a, onCerrar, onDescargar, onVerFotos }) => {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (a !== null && !d.open) d.showModal();
+    else if (a === null && d.open) d.close();
+  }, [a]);
+
+  if (!a) return null;
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(e) => e.target === ref.current && onCerrar()}
+      className="font-rd m-auto w-full max-w-2xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-3 max-sm:w-auto overflow-hidden max-h-[92dvh] flex flex-col"
+    >
+      {/* Cabecera del diálogo en pantalla */}
+      <div className="no-print flex items-center justify-between border-b border-rd-line px-5 py-3.5 bg-rd-sunken/40 shrink-0">
+        <div>
+          <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta block leading-none">
+            Acta oficial de entrega
+          </span>
+          <span className="font-mono text-rd-14 font-bold text-rd-ink mt-0.5 block leading-tight">
+            {a.codigo}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onCerrar}
+          aria-label="Cerrar acta"
+          className="rounded-rd-md p-1.5 text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink transition-colors cursor-pointer"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Contenedor desplazable con el documento oficial */}
+      <div className="overflow-y-auto p-5 sm:p-6 grow">
+        <div id="documento-acta-imprimible" className="rounded-rd-lg border border-rd-line bg-rd-surface p-5 sm:p-6">
+          {/* Membrete institucional */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-rd-line">
+            <div className="flex items-center gap-3">
+              <img src="/logo-radar.svg" alt="RaDAR" className="h-7 w-auto" />
+              <div>
+                <p className="m-0 text-rd-12 font-bold tracking-tight text-rd-ink uppercase">
+                  RaDAR · Aquí Hace Falta
+                </p>
+                <p className="m-0 text-rd-11 text-rd-ink-meta">
+                  Red de Apoyo y Distribución de Ayuda
+                </p>
+              </div>
             </div>
-          ))}
-        </dl>
-        {fotosDeActa(a).length > 0 && <TiraFotos fotos={fotosDeActa(a)} etiqueta max={4} onAbrir={(i) => onVerFotos(a, i)} className="mb-4" />}
-        {a.historia && (
-          <div className="mb-4">
-            <p className="m-0 mb-1 text-rd-11 leading-snug font-medium text-rd-ink-meta">Lo que permitió</p>
-            <p className="m-0 text-rd-13-5 leading-normal text-rd-ink">{a.historia}</p>
+            <div className="sm:text-right">
+              <p className="m-0 font-mono text-rd-13 font-bold text-rd-ink tabular-nums">
+                {a.codigo}
+              </p>
+              <p className="m-0 text-rd-11 text-rd-ink-meta">
+                Fecha: <span className="font-semibold text-rd-ink">{a.fechaTexto}</span>
+              </p>
+            </div>
           </div>
-        )}
-      </>
-    )}
-  </Dialogo>
-);
+
+          {/* Título formal del documento */}
+          <div className="mt-4 mb-4">
+            <h3 className="m-0 text-rd-16 font-bold text-rd-ink tracking-tight">
+              Acta de Entrega y Recepción de Ayuda
+            </h3>
+            <p className="m-0 mt-0.5 text-rd-12 text-rd-ink-meta">
+              Constancia bilateral de entrega en territorio y verificación de insumos
+            </p>
+          </div>
+
+          {/* Cuadrícula bilateral de entidades intervinientes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
+            {/* Lado A: Entrega */}
+            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5">
+              <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
+                Entidad que entrega
+              </span>
+              <p className="m-0 text-rd-14 font-bold text-rd-ink">
+                {a.entrego}
+              </p>
+              <p className="m-0 mt-0.5 text-rd-11 text-rd-ink-2">
+                {a.lado === 'ofrece' ? 'Nuestra organización (Titular de oferta)' : 'Organización cooperante'}
+              </p>
+              <div className="mt-2.5 pt-2 border-t border-rd-line text-rd-11 text-rd-ink-meta flex items-center justify-between">
+                <span>Llevó / Transporte:</span>
+                <b className="text-rd-ink font-semibold">{a.lleva || 'Despacho directo'}</b>
+              </div>
+            </div>
+
+            {/* Lado B: Recibe */}
+            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5">
+              <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
+                Entidad / Persona que recibe
+              </span>
+              <p className="m-0 text-rd-14 font-bold text-rd-ink">
+                {a.recibio}
+              </p>
+              <p className="m-0 mt-0.5 text-rd-11 text-rd-ink-2">
+                {a.lado === 'pide' ? 'Nuestra organización (Punto receptor)' : 'Comunidad / Beneficiario registrado'}
+              </p>
+              <div className="mt-2.5 pt-2 border-t border-rd-line text-rd-11 text-rd-ink-meta flex items-center justify-between">
+                <span>Verificación:</span>
+                <b className="text-rd-ink font-semibold">{a.confirmacion}</b>
+              </div>
+            </div>
+          </div>
+
+          {/* Especificación de bienes */}
+          <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5 mb-3.5">
+            <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
+              Recurso entregado y certificado
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-rd-20 font-extrabold text-rd-ink">
+                {cifra(a.cant)} {a.u}
+              </span>
+              <span className="text-rd-14 font-semibold text-rd-ink-2">
+                de {a.rec.toLowerCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Historia de impacto humano */}
+          {a.historia && (
+            <div className="rounded-rd-md border-l-3 border-brand-yellow bg-rd-sunken/60 p-3.5 mb-3.5">
+              <p className="m-0 mb-1 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                Impacto en territorio · Lo que permitió
+              </p>
+              <blockquote className="m-0 text-rd-13 leading-relaxed text-rd-ink italic">
+                «{a.historia}»
+              </blockquote>
+            </div>
+          )}
+
+          {/* Soporte fotográfico */}
+          {fotosDeActa(a).length > 0 && (
+            <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5 mb-3.5">
+              <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-2">
+                Soporte fotográfico ({fotosDeActa(a).length} {fotosDeActa(a).length === 1 ? 'registro' : 'registros'})
+              </span>
+              <TiraFotos fotos={fotosDeActa(a)} etiqueta max={4} onAbrir={(i) => onVerFotos(a, i)} />
+            </div>
+          )}
+
+          {/* Firmas físicas para versión impresa / PDF */}
+          <div className="print-only salto-evitar mt-8 pt-4">
+            <p className="text-rd-11 font-semibold text-center mb-7 text-rd-ink">
+              Firmas de constancia y conformidad de entrega:
+            </p>
+            <div className="grid grid-cols-2 gap-10 text-center text-rd-11">
+              <div>
+                <div className="border-b border-rd-ink mb-2 h-10"></div>
+                <p className="font-bold text-rd-ink">{a.entrego}</p>
+                <p className="text-rd-10 text-rd-ink-meta">Entregó a conformidad</p>
+              </div>
+              <div>
+                <div className="border-b border-rd-ink mb-2 h-10"></div>
+                <p className="font-bold text-rd-ink">{a.recibio}</p>
+                <p className="text-rd-10 text-rd-ink-meta">Recibió a conformidad</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pie de acciones del diálogo en pantalla */}
+      <div className="no-print flex items-center justify-between border-t border-rd-line px-5 py-3.5 bg-rd-sunken/40 shrink-0">
+        <Button nivel="terciario" tamano="md" onClick={onCerrar}>
+          Cerrar
+        </Button>
+        <Button nivel="primario" tamano="md" icono={<Download className="h-4 w-4" />} onClick={() => onDescargar(a)}>
+          Descargar en PDF
+        </Button>
+      </div>
+    </dialog>
+  );
+};
 
 /* ---------- módulo ofrece ---------- */
 
@@ -1074,6 +1382,7 @@ const Seguimiento: React.FC<{
   onVerFotosRecibida: (r: EntregaRecibida, i: number) => void;
   onAceptarRecibida: (id: number) => void;
   onRechazarRecibida: (id: number) => void;
+  onVerPublicacionRecibida?: (r: EntregaRecibida) => void;
 }> = ({
   modulos,
   sol,
@@ -1083,6 +1392,7 @@ const Seguimiento: React.FC<{
   onVerFotosRecibida,
   onAceptarRecibida,
   onRechazarRecibida,
+  onVerPublicacionRecibida,
 }) => {
   const tieneAmbos = modulos.pide && modulos.ofrece;
   const [vista, setVista] = useState<'entrego' | 'recibo'>(() => (modulos.ofrece ? 'entrego' : 'recibo'));
@@ -1379,6 +1689,7 @@ const Seguimiento: React.FC<{
                     onVerFotos={onVerFotosRecibida}
                     onAceptar={onAceptarRecibida}
                     onRechazar={onRechazarRecibida}
+                    onVerPublicacion={onVerPublicacionRecibida}
                     menuFlotante
                   />
                 ))}
@@ -1430,8 +1741,9 @@ const Seguimiento: React.FC<{
 const MiEquipo: React.FC<{
   equipo: MiembroEquipo[];
   onRegistrar: () => void;
-  onEliminar: (id: number) => void;
-}> = ({ equipo, onRegistrar, onEliminar }) => (
+  onEditar: (m: MiembroEquipo) => void;
+  onConfirmarBaja: (m: MiembroEquipo) => void;
+}> = ({ equipo, onRegistrar, onEditar, onConfirmarBaja }) => (
   <Caja
     titulo={
       <>
@@ -1439,8 +1751,8 @@ const MiEquipo: React.FC<{
       </>
     }
     accion={
-      <Button nivel="primario" tamano="md" onClick={onRegistrar}>
-        Registrar a alguien
+      <Button nivel="secundario" tamano="md" onClick={onRegistrar}>
+        Agregar persona
       </Button>
     }
   >
@@ -1458,16 +1770,16 @@ const MiEquipo: React.FC<{
               <span className="min-w-0">
                 <b className="block font-semibold">{e.n}</b>
                 <small className="block text-rd-12 text-rd-ink-meta">
-                  {e.tel} · {e.correo}
+                  {e.correo ? `${e.tel} · ${e.correo}` : e.tel}
                 </small>
               </span>
             </span>
           ),
         },
-        { k: 'hace', etiqueta: 'Qué hace', celda: (e) => e.rol },
-        { k: 'veh', etiqueta: 'Vehículo', celda: (e) => e.veh },
-        { k: 'acceso', etiqueta: 'Acceso en RaDAR', celda: (e) => ROL_PLATAFORMA[e.rolPlataforma] },
-        { k: 'disp', etiqueta: 'Disponible', celda: (e) => DISPONIBILIDAD[e.disp] },
+        { k: 'hace', etiqueta: 'Qué hace', celda: (e) => e.rol || '—' },
+        { k: 'veh', etiqueta: 'Vehículo', celda: (e) => e.veh || '—' },
+        { k: 'acceso', etiqueta: 'Acceso en RaDAR', celda: (e) => (e.rolPlataforma ? (ROL_PLATAFORMA[e.rolPlataforma] ?? e.rolPlataforma) : 'Solo en terreno') },
+        { k: 'disp', etiqueta: 'Disponible', celda: (e) => (e.disp ? (DISPONIBILIDAD[e.disp] ?? e.disp) : '—') },
         { k: 'hechas', etiqueta: 'Entregas', num: true, celda: (e) => e.hechas },
         {
           k: 'acc',
@@ -1479,6 +1791,15 @@ const MiEquipo: React.FC<{
               etiqueta={`Opciones de ${e.n}`}
               items={[
                 {
+                  texto: 'Escribir por WhatsApp',
+                  icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
+                  onElegir: () => {
+                    const num = e.tel.replace(/\D/g, '');
+                    const numWa = num.startsWith('57') ? num : `57${num}`;
+                    window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
+                  },
+                },
+                {
                   texto: `Llamar (${e.tel})`,
                   icono: <Phone className="h-4 w-4" />,
                   onElegir: () => {
@@ -1486,10 +1807,15 @@ const MiEquipo: React.FC<{
                   },
                 },
                 {
+                  texto: 'Editar datos',
+                  icono: <Edit3 className="h-4 w-4" />,
+                  onElegir: () => onEditar(e),
+                },
+                {
                   texto: 'Dar de baja',
                   icono: <X className="h-4 w-4" />,
                   tono: 'peligro',
-                  onElegir: () => onEliminar(e.id),
+                  onElegir: () => onConfirmarBaja(e),
                 },
               ]}
             />

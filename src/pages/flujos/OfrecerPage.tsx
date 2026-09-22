@@ -10,7 +10,7 @@ import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle } from '../../types/flujo';
 import { camposOferta, camposTexto, numero, unidadOferta } from '../../utils/equivalencias';
 import { caminoOfrecer, fechaCorta, listoOfrecer, textoEntrega } from '../../utils/ofrecer';
-import { cifra } from '../../utils/publicaciones';
+import { cifra, tituloPublicacion } from '../../utils/publicaciones';
 import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
@@ -82,7 +82,8 @@ export const OfrecerPage: React.FC = () => (
 /** La oferta tal como se publicaría: es lo que se cruza contra lo que hay cerca. */
 function publicacionDe(e: EstadoOfrecer): Publicacion {
   const recursos = e.sel.filter((it) => e.cant[it] > 0).map((it) => ({ item: it, unidad: unidadOferta(it), total: e.cant[it], tramos: [] }));
-  return { id: 'nueva', tipo: 'oferta', titulo: CUENTA_OFRECER.organizacion, org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'oferta', titulo: '', org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  return { ...base, titulo: tituloPublicacion(base) };
 }
 
 const Ofrecer: React.FC = () => {
@@ -178,7 +179,7 @@ const Ofrecer: React.FC = () => {
     pantalla = (
       <>
         <Pregunta titulo="¿Quién ofrece la ayuda?" sub="Es a quien van a escribir para pedirlo. Pusimos tu contacto; cámbialo si lo coordina alguien más." />
-        <CamposContacto contacto={e.contacto} tel={e.tel} mismoWa={e.mismoWa} wa={e.wa} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoOfrecer>)} onMismoWa={(v) => set({ mismoWa: v })} errores={errores} />
+        <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoOfrecer>)} errores={errores} />
         <label className="mb-4 flex cursor-pointer items-center justify-between gap-3 rounded-rd-md border border-rd-line px-3 py-2.5 text-rd-13-5 text-rd-ink">
           <span>Mostrar el nombre de {CUENTA_OFRECER.organizacion} en el mapa</span>
           <input type="checkbox" role="switch" checked={e.mostrarNombre} onChange={(ev) => set({ mostrarNombre: ev.target.checked })} className="m-0 h-4.5 w-4.5 shrink-0 cursor-pointer accent-rd-sel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy" />
@@ -213,7 +214,7 @@ const Ofrecer: React.FC = () => {
         </ResumenPub>
         <FilaRevisar clave="Entrega" valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
         {e.entrega !== 'remoto' && <FilaRevisar clave="Dónde" valor={e.dir} onClick={() => f.irA('donde')} />}
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}${e.mismoWa ? ' · también WhatsApp' : e.wa ? ` · WhatsApp ${e.wa}` : ''}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );

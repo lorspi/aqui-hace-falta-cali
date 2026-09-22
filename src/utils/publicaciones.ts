@@ -118,3 +118,50 @@ export function estadoPublicacion(p: Publicacion): EstadoPublicacion {
   if (r.hecho > 0 || r.camino > 0) return 'proceso';
   return 'inicial';
 }
+
+/**
+ * Determina el nombre del actor o punto territorial visible según el perfil de la cuenta,
+ * protegiendo la privacidad y datos personales en el caso de personas naturales / hogares.
+ */
+export function actorPublicacion(p: Publicacion): string {
+  const zona = p.zona || p.localidad || '';
+
+  if (p.perfil === 'individual') {
+    if (p.tipo === 'necesidad') {
+      return zona ? `Familia en ${zona}` : 'Familia afectada';
+    }
+    return zona ? `Donante en ${zona}` : 'Donante particular';
+  }
+
+  return p.punto?.trim() || p.org?.trim() || p.titulo?.trim() || (p.tipo === 'necesidad' ? (zona ? `Comunidad en ${zona}` : 'Comunidad') : 'Organización');
+}
+
+/**
+ * Genera el título institucional unificado de una publicación siguiendo la regla canónica:
+ * [Bloque de Recursos] · [Bloque de Identidad]
+ *
+ * 1 recurso: "Agua potable · Albergue Bosa"
+ * 2 recursos: "Agua potable y Alimentos · Bomberos Voluntarios Usme"
+ * 3 o más: "Alimentos y 4 más · JAC El Recuerdo"
+ *
+ * Casos individuales (protección de identidad):
+ * - "Cobijas y 2 más · Familia en Bosa"
+ * - "Ropa y calzado · Donante en Chapinero"
+ */
+export function tituloPublicacion(p: Publicacion): string {
+  const recursos = p.recursos || [];
+  let bloqueRecurso = '';
+
+  if (recursos.length === 0) {
+    bloqueRecurso = p.tipo === 'oferta' ? 'Ayuda disponible' : 'Ayuda requerida';
+  } else if (recursos.length === 1) {
+    bloqueRecurso = recursos[0].item;
+  } else if (recursos.length === 2) {
+    bloqueRecurso = `${recursos[0].item} y ${recursos[1].item}`;
+  } else {
+    bloqueRecurso = `${recursos[0].item} y ${recursos.length - 1} más`;
+  }
+
+  const actor = actorPublicacion(p);
+  return `${bloqueRecurso} · ${actor}`;
+}

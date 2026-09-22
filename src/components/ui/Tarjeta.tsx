@@ -3,7 +3,7 @@ import { BadgeCheck, Flag, Map as MapIcon, Share2 } from 'lucide-react';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { ResumenCoincidencias } from './Coincidencias';
 import type { Publicacion } from '../../types/publicacion';
-import { distanciaTexto, estadoPublicacion, iniciales } from '../../utils/publicaciones';
+import { distanciaTexto, estadoPublicacion, iniciales, tituloPublicacion } from '../../utils/publicaciones';
 import { Button } from './Button';
 import { MenuAcciones } from './MenuAcciones';
 import { TiraFotos, VisorFotos } from './VisorFotos';
@@ -61,10 +61,17 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
       </div>
 
-      <div className="mb-3 flex items-center gap-2">
-        <Avatar iniciales={iniciales(p.org)} />
-        <span className="truncate text-rd-13-5 font-semibold text-rd-ink">{p.org}</span>
-        {p.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-4 w-4 shrink-0 text-rd-navy" />}
+      <div className="mb-3">
+        <h3 className="font-rd m-0 text-rd-15 font-semibold leading-snug text-rd-ink">
+          {tituloPublicacion(p)}
+        </h3>
+        {p.org && (
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Avatar iniciales={iniciales(p.org)} tamano="xs" />
+            <span className="truncate text-rd-12 font-medium text-rd-ink-2">{p.org}</span>
+            {p.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
+          </div>
+        )}
       </div>
 
       {p.descripcion && <p className="mb-3 line-clamp-3 text-rd-14 leading-normal text-rd-ink">{p.descripcion}</p>}

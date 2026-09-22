@@ -27,7 +27,7 @@ import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { Anillo } from '../../components/ui/Recursos';
-import { distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante } from '../../utils/publicaciones';
+import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
 /**
@@ -519,7 +519,7 @@ const FilaPublicacion: React.FC<{
           </div>
           <div className="flex items-center gap-1.5">
             <h2 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
-              {p.titulo}
+              {tituloPublicacion(p)}
             </h2>
             {p.verificada && (
               <BadgeCheck
@@ -529,7 +529,7 @@ const FilaPublicacion: React.FC<{
               />
             )}
           </div>
-          {p.org !== p.titulo && (
+          {p.org && p.org !== actorPublicacion(p) && (
             <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
           )}
           <Donde
@@ -583,7 +583,7 @@ const FilaPublicacion: React.FC<{
         >
           <MapIcon className="h-4 w-4" />
         </Button>
-        <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="sm" flotante />
+        <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="sm" flotante />
       </div>
     </article>
   );

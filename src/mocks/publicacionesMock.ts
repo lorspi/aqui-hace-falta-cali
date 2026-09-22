@@ -6,6 +6,7 @@
  */
 import type { CategoriaRecurso, IconoRecurso, Publicacion, Ubicacion } from '../types/publicacion';
 import { FOTOS_PUBLICACION } from './fotosMock';
+import { tituloPublicacion } from '../utils/publicaciones';
 
 /** La taxonomía de recursos. La misma para pedir, ofrecer y filtrar. */
 export const TAXONOMIA: CategoriaRecurso[] = [
@@ -146,4 +147,11 @@ const SIN_FOTOS: Publicacion[] = [
   { id: 'm11', tipo: 'oferta', titulo: 'Bomberos Marichuela', org: 'Bomberos Marichuela', verificada: true, lat: 4.565, lng: -74.123, zona: 'Marichuela', localidad: 'Usme', recursos: [{ item: 'Agua potable', unidad: 'L', total: 800, tramos: [] }, { item: 'Atención médica', unidad: 'profesionales', total: 2, tramos: [] }] },
 ];
 
-export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => (FOTOS_PUBLICACION[p.id] ? { ...p, fotos: FOTOS_PUBLICACION[p.id] } : p));
+export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => {
+  const fotos = FOTOS_PUBLICACION[p.id];
+  const conFotos: Publicacion = fotos ? { ...p, fotos } : { ...p };
+  return {
+    ...conFotos,
+    titulo: tituloPublicacion(conFotos),
+  };
+});

@@ -4,7 +4,7 @@
  * de agua, 50 kits, 2 plantas) y con `avisosMock.ts`. Origen: `src/organizacion.html` y
  * `src/comunidad.html` del prototipo. Hoy es 14 de septiembre.
  */
-import type { Actividad, DatosOrg, EntregaRecibida, Invitado, MiembroEquipo, NecesidadPublicada, OfertaPublicada, Solicitud } from '../types/panel';
+import type { Actividad, DatosOrg, EntregaRecibida, Invitado, MiembroEquipo, NecesidadPublicada, OfertaPublicada, PermisosRol, Solicitud } from '../types/panel';
 
 /** Dos contactos, y no se mezclan: `contacto` es el de la organización y es el único que
  *  ven los demás; `enlace` es la persona a la que RaDAR le escribe. */
@@ -38,8 +38,8 @@ export const OFERTA: OfertaPublicada = {
 export const SOLICITUDES: Solicitud[] = [
   { id: 1, quien: 'Albergue Bosa', rec: 'Agua potable', cant: 180, u: 'L', estado: 'confirmada', cuando: '12 sep, 9:40 a. m.', vol: 3, cerradaEl: '2026-09-12', cierre: { entrega: { fotos: 2 }, recibe: { fotos: 1 }, historia: 'Con esa agua la cocina del albergue y los baños aguantaron el fin de semana para 140 personas evacuadas.' } },
   { id: 2, quien: 'Comedor Villa Gloria', rec: 'Agua potable', cant: 270, u: 'L', estado: 'camino', cuando: 'sale hoy 6:00 p. m.', vol: 1 },
-  { id: 3, quien: 'Comedor Villa Gloria', rec: 'Alimentos', cant: 30, u: 'kits', estado: 'confirmada', cuando: '13 sep, 11:20 a. m.', vol: 2, cerradaEl: '2026-09-13', cierre: { recibe: { fotos: 1 } } },
-  { id: 8, quien: 'JAC Vereda El Destino', rec: 'Agua potable', cant: 120, u: 'L', estado: 'confirmada', cuando: '2 ago, 4:00 p. m.', vol: 1, cerradaEl: '2026-08-02', cierre: { entrega: { fotos: 1 }, recibe: { fotos: 2 } } },
+  { id: 3, quien: 'Comedor Villa Gloria', rec: 'Alimentos', cant: 30, u: 'kits', estado: 'confirmada', cuando: '13 sep, 11:20 a. m.', vol: 2, cerradaEl: '2026-09-13', cierre: { recibe: { fotos: 1 }, historia: 'Los 30 kits de alimentos permitieron reactivar el comedor comunitario durante 4 días para 85 niños y adultos mayores de Villa Gloria.' } },
+  { id: 8, quien: 'JAC Vereda El Destino', rec: 'Agua potable', cant: 120, u: 'L', estado: 'confirmada', cuando: '2 ago, 4:00 p. m.', vol: 1, cerradaEl: '2026-08-02', cierre: { entrega: { fotos: 1 }, recibe: { fotos: 2 }, historia: 'Abastecimiento de agua vital distribuido a 35 familias campesinas que quedaron incomunicadas por el derrumbe en la vía principal.' } },
   { id: 4, quien: 'Hospital de Usme', rec: 'Planta eléctrica', cant: 1, u: 'unidad', estado: 'entregada', cuando: 'ayer 4:10 p. m.', vol: 3 },
   { id: 5, quien: 'Fundación Colombia Unida', rec: 'Agua potable', cant: 200, u: 'L', estado: 'nueva', cuando: 'hace 40 min', vol: null, dist: '9,1 km' },
   { id: 6, quien: 'Colegio Ciudad de Bogotá', rec: 'Planta eléctrica', cant: 1, u: 'unidad', estado: 'nueva', cuando: 'hace 2 horas', vol: null, dist: '6,4 km' },
@@ -64,10 +64,10 @@ export const RECIBIDAS: EntregaRecibida[] = [
 ];
 
 export const EQUIPO: MiembroEquipo[] = [
-  { id: 1, n: 'Mateo Rojas', rolPlataforma: 'coordinador', rol: 'Conducción', veh: 'Camioneta 4×4', tel: '+57 311 200 1001', correo: 'mateo.rojas@bomberosusme.org', disp: 'hoy', hechas: 4 },
-  { id: 2, n: 'Laura Díaz', rolPlataforma: 'admin', rol: 'Logística y bodega', veh: 'Sin vehículo', tel: '+57 311 200 1002', correo: 'laura.diaz@bomberosusme.org', disp: 'manana', hechas: 2 },
-  { id: 3, n: 'Andrés Peña', rolPlataforma: 'coordinador', rol: 'Rescate', veh: 'Moto', tel: '+57 311 200 1003', correo: 'andres.pena@bomberosusme.org', disp: 'hoy', hechas: 6 },
-  { id: 4, n: 'Sofía Mora', rolPlataforma: 'auditor', rol: 'Salud', veh: 'Carro', tel: '+57 311 200 1004', correo: 'sofia.mora@bomberosusme.org', disp: 'finde', hechas: 1 },
+  { id: 1, n: 'Mateo Rojas', rolPlataforma: 'coordinador', rol: 'Reparto y entregas', veh: 'Camioneta', tel: '+57 311 200 1001', correo: 'mateo.rojas@bomberosusme.org', disp: 'tiempo_completo', hechas: 4 },
+  { id: 2, n: 'Laura Díaz', rolPlataforma: 'admin', rol: 'Logística y acopio', veh: 'Sin vehículo (a pie)', tel: '+57 311 200 1002', correo: 'laura.diaz@bomberosusme.org', disp: 'tardes', hechas: 2 },
+  { id: 3, n: 'Andrés Peña', rolPlataforma: 'terreno', rol: 'Reparto y entregas', veh: 'Moto', tel: '+57 311 200 1003', correo: '', disp: 'tiempo_completo', hechas: 6 },
+  { id: 4, n: 'Sofía Mora', rolPlataforma: 'terreno', rol: 'Salud y primeros auxilios', veh: 'Carro particular', tel: '+57 311 200 1004', correo: '', disp: 'fines_de_semana', hechas: 1 },
 ];
 
 export const INVITADOS: Invitado[] = [
@@ -84,8 +84,80 @@ export const ACTIVIDAD: Actividad[] = [
   { cuando: '13 sep', texto: 'Comedor Villa Gloria confirmó 30 kits de alimentos.' },
 ];
 
-export const ROL_PLATAFORMA: Record<MiembroEquipo['rolPlataforma'], string> = { admin: 'Administra', coordinador: 'Coordina entregas', auditor: 'Solo ve' };
-export const DISPONIBILIDAD: Record<MiembroEquipo['disp'], string> = { hoy: 'Hoy', manana: 'Mañana', finde: 'Fin de semana' };
+export const ROL_PLATAFORMA: Record<MiembroEquipo['rolPlataforma'], string> = {
+  admin: 'Administrador',
+  coordinador: 'Coordinador',
+  voluntario: 'Voluntario / Repartidor',
+  auditor: 'Solo ve',
+  terreno: 'Solo en terreno',
+};
+
+export const DESCRIPCION_ROL_PLATAFORMA: Record<MiembroEquipo['rolPlataforma'], string> = {
+  admin: 'Control total: edita la entidad, gestiona el equipo y publica ayudas.',
+  coordinador: 'Logística diaria: asigna voluntarios, aprueba solicitudes y valida entregas.',
+  voluntario: 'Acceso móvil: ve el detalle completo de la ayuda asignada y certifica con fotos.',
+  terreno: 'Sin cuenta en la app: solo contacto para coordinar por llamada o WhatsApp.',
+  auditor: 'Solo consulta: veeduría y seguimiento sin permisos de edición.',
+};
+
+export const MATRIZ_PERMISOS: Record<MiembroEquipo['rolPlataforma'], PermisosRol> = {
+  admin: {
+    gestionEntidad: true,
+    gestionEquipo: true,
+    publicarAyuda: true,
+    coordinarEntregas: true,
+    verDetalleAsignacion: true,
+    certificarEntrega: true,
+    auditoriaLectura: true,
+  },
+  coordinador: {
+    gestionEntidad: false,
+    gestionEquipo: false,
+    publicarAyuda: true,
+    coordinarEntregas: true,
+    verDetalleAsignacion: true,
+    certificarEntrega: true,
+    auditoriaLectura: true,
+  },
+  voluntario: {
+    gestionEntidad: false,
+    gestionEquipo: false,
+    publicarAyuda: false,
+    coordinarEntregas: false,
+    verDetalleAsignacion: true,
+    certificarEntrega: true,
+    auditoriaLectura: false,
+  },
+  terreno: {
+    gestionEntidad: false,
+    gestionEquipo: false,
+    publicarAyuda: false,
+    coordinarEntregas: false,
+    verDetalleAsignacion: false,
+    certificarEntrega: false,
+    auditoriaLectura: false,
+  },
+  auditor: {
+    gestionEntidad: false,
+    gestionEquipo: false,
+    publicarAyuda: false,
+    coordinarEntregas: false,
+    verDetalleAsignacion: true,
+    certificarEntrega: false,
+    auditoriaLectura: true,
+  },
+};
+
+export const DISPONIBILIDAD: Record<MiembroEquipo['disp'], string> = {
+  tiempo_completo: 'Cualquier día',
+  fines_de_semana: 'Fines de semana',
+  emergencias: 'Bajo llamado',
+  tardes: 'Cualquier día',
+  hoy: 'Cualquier día',
+  manana: 'Cualquier día',
+  finde: 'Fines de semana',
+  '': 'Por definir',
+};
 
 export const ESTADO_SOLICITUD: Record<Solicitud['estado'], { texto: string; tono: 'inicial' | 'proceso' | 'completo' }> = {
   nueva: { texto: 'Nueva', tono: 'inicial' },
