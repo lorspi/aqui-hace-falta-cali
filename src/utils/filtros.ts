@@ -6,13 +6,17 @@
  * nombres coinciden con `recursos[].item`), a diferencia del prototipo.
  */
 import type { Publicacion, TipoPublicacion, Ubicacion } from '../types/publicacion';
+import { enCiudades, nombreCorto } from './lugares';
 import { distanciaKm, estadoPublicacion, type EstadoPublicacion } from './publicaciones';
 
 export type Orden = 'falta' | 'cerca' | 'reciente';
 
 export interface Filtros {
-  lugares: string[];
-  /** km; null = cualquier distancia. */
+  /** Ids de ciudad (`data/colombiaCities.ts`); vacío = todas las ciudades (`utils/lugares.ts`). */
+  ciudades: string[];
+  /** km desde la ubicación de la persona; null = cualquier distancia. Complementa el orden
+   *  «Más cerca» (Alejandro, 21 de septiembre de 2026): solo se elige con ese orden, y al
+   *  cambiar de orden se apaga. */
   distancia: number | null;
   recursos: string[];
   estados: EstadoPublicacion[];
@@ -41,17 +45,17 @@ export const ORDENES: { id: Orden; etiqueta: string }[] = [
 ];
 
 export function filtrosVacios(): Filtros {
-  return { lugares: [], distancia: null, recursos: [], estados: [], verificadas: false, orden: 'falta' };
+  return { ciudades: [], distancia: null, recursos: [], estados: [], verificadas: false, orden: 'falta' };
 }
 
-/** Los lugares que existen en los datos, con su conteo, de más a menos publicaciones. */
-export function lugaresDe(pubs: Publicacion[]): { nombre: string; n: number }[] {
-  const c = new Map<string, number>();
-  pubs.forEach((p) => {
-    const l = p.localidad ?? p.zona;
-    c.set(l, (c.get(l) ?? 0) + 1);
-  });
-  return [...c.entries()].map(([nombre, n]) => ({ nombre, n })).sort((a, b) => b.n - a.n || a.nombre.localeCompare(b.nombre));
+/** Cambiar el orden: el radio en km solo vive con «Más cerca». */
+export function conOrden(f: Filtros, orden: Orden): Filtros {
+  return { ...f, orden, distancia: orden === 'cerca' ? f.distancia : null };
+}
+
+/** Elegir un radio en km enciende «Más cerca» si no estaba. */
+export function conDistancia(f: Filtros, km: number | null): Filtros {
+  return { ...f, distancia: km, orden: km === null ? f.orden : 'cerca' };
 }
 
 function textosDe(p: Publicacion): string[] {
@@ -60,7 +64,7 @@ function textosDe(p: Publicacion): string[] {
 
 /** Todo menos el tipo: es lo que cuentan los tres números del segmentado. */
 export function pasaResto(p: Publicacion, f: Filtros, ubicacion: Ubicacion, busqueda: string): boolean {
-  if (f.lugares.length && !f.lugares.includes(p.localidad ?? p.zona)) return false;
+  if (!enCiudades(p, f.ciudades)) return false;
   if (f.distancia !== null && !(distanciaKm(ubicacion, p) < f.distancia)) return false;
   if (f.recursos.length && !p.recursos.some((r) => f.recursos.includes(r.item))) return false;
   if (f.estados.length && !f.estados.includes(estadoPublicacion(p))) return false;
@@ -77,7 +81,7 @@ export function pasa(p: Publicacion, tipo: 'todo' | TipoPublicacion, f: Filtros,
 
 /** Cuántos filtros hay aplicados (los que no son el valor por defecto). */
 export function cuantosAplicados(f: Filtros): number {
-  return f.lugares.length + (f.distancia !== null ? 1 : 0) + f.recursos.length + f.estados.length + (f.verificadas ? 1 : 0) + (f.orden !== 'falta' ? 1 : 0);
+  return f.ciudades.length + (f.distancia !== null ? 1 : 0) + f.recursos.length + f.estados.length + (f.verificadas ? 1 : 0) + (f.orden !== 'falta' ? 1 : 0);
 }
 
 export interface Chip {
@@ -86,12 +90,12 @@ export interface Chip {
   quitar: (f: Filtros) => Filtros;
 }
 
-/** Los chips de lo aplicado, en el orden de la hoja, cada uno con cómo quitarse. El lugar de
- *  la persona se dice «Tu zona · Usme» (plan T2, 2.4): es un filtro común, se quita como
- *  cualquiera. */
-export function chipsDe(f: Filtros, zonaPropia?: string): Chip[] {
+/** Los chips de lo aplicado, en el orden de la hoja, cada uno con cómo quitarse. Un chip por
+ *  ciudad, con solo su nombre; la de la persona es un filtro común y se quita como cualquiera
+ *  (plan T2, 2.4). */
+export function chipsDe(f: Filtros): Chip[] {
   const chips: Chip[] = [];
-  f.lugares.forEach((l) => chips.push({ clave: `lugar:${l}`, texto: l === zonaPropia ? `Tu zona · ${l}` : l, quitar: (x) => ({ ...x, lugares: x.lugares.filter((y) => y !== l) }) }));
+  f.ciudades.forEach((c) => chips.push({ clave: `ciudad:${c}`, texto: nombreCorto(c), quitar: (x) => ({ ...x, ciudades: x.ciudades.filter((y) => y !== c) }) }));
   if (f.distancia !== null) {
     const d = DISTANCIAS.find((x) => x.km === f.distancia);
     chips.push({ clave: 'dist', texto: d?.chip ?? `A menos de ${f.distancia} km`, quitar: (x) => ({ ...x, distancia: null }) });

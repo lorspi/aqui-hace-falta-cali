@@ -33,8 +33,10 @@ export const ICONO_ITEM: Record<string, IconoRecurso> = {
   'Alojamiento temporal': 'house',
 };
 
-/** Ubicación simulada de la persona que mira. En producción la da el dispositivo. */
-export const UBICACION: Ubicacion = { lat: 4.53, lng: -74.12, zona: 'Usme', simulada: true };
+/** Ubicación simulada de la persona que mira. En producción la da el dispositivo. Lleva la
+ *  ciudad explícita porque `detectCityFromCoords` de producción solo reconoce Bogotá a 20 km
+ *  del centro, y Usme queda a 22. */
+export const UBICACION: Ubicacion = { lat: 4.53, lng: -74.12, ciudad: 'bogota', zona: 'Usme', simulada: true };
 
 /* Las fotos viven en `fotosMock.ts`; se cuelgan aquí para que cada publicación las lleve. */
 const SIN_FOTOS: Publicacion[] = [
@@ -144,6 +146,12 @@ const SIN_FOTOS: Publicacion[] = [
   { id: 'm9', tipo: 'oferta', titulo: 'Alcaldía local de Usme', org: 'Alcaldía local de Usme', verificada: true, lat: 4.517, lng: -74.112, zona: 'Usme', recursos: [{ item: 'Transporte terrestre', unidad: 'viajes', total: 6, tramos: [{ t: 'hecho', cant: 6, quien: 'Vereda El Destino', cuando: '10 sep' }] }] },
   { id: 'm10', tipo: 'necesidad', titulo: 'Colegio Rafael Uribe Uribe', org: 'Colegio Rafael Uribe Uribe', verificada: true, lat: 4.571, lng: -74.118, zona: 'Rafael Uribe Uribe', recursos: [{ item: 'Alimentos', unidad: 'kits', total: 80, tramos: [{ t: 'camino', cant: 48, quien: 'Fundación Manos Unidas', cuando: 'Llega hoy' }] }] },
   { id: 'm11', tipo: 'oferta', titulo: 'Bomberos Marichuela', org: 'Bomberos Marichuela', verificada: true, lat: 4.565, lng: -74.123, zona: 'Marichuela', localidad: 'Usme', recursos: [{ item: 'Agua potable', unidad: 'L', total: 800, tramos: [] }, { item: 'Atención médica', unidad: 'profesionales', total: 2, tramos: [] }] },
+  /* Fuera de Bogotá, para que el filtro de ciudad (el de producción) tenga qué mostrar:
+     Cali, Medellín y Mocoa (Alejandro, 21 de septiembre de 2026). */
+  { id: 'c1', tipo: 'necesidad', titulo: 'JAC Potrero Grande', org: 'JAC Potrero Grande', verificada: false, lat: 3.418, lng: -76.478, ciudad: 'cali', zona: 'Potrero Grande', localidad: 'Aguablanca', recursos: [{ item: 'Agua potable', unidad: 'L', total: 900, tramos: [{ t: 'camino', cant: 300, quien: 'Cruz Roja seccional Valle', cuando: 'Llega mañana' }] }, { item: 'Alimentos', unidad: 'kits', total: 120, tramos: [] }] },
+  { id: 'c2', tipo: 'oferta', titulo: 'Cruz Roja seccional Valle', org: 'Cruz Roja seccional Valle', verificada: true, lat: 3.452, lng: -76.532, ciudad: 'cali', zona: 'San Fernando', recursos: [{ item: 'Agua potable', unidad: 'L', total: 2000, tramos: [{ t: 'camino', cant: 300, quien: 'JAC Potrero Grande', cuando: 'Llega mañana' }] }, { item: 'Atención médica', unidad: 'profesionales', total: 6, tramos: [] }] },
+  { id: 'c3', tipo: 'oferta', titulo: 'Fundación Antioquia Presente', org: 'Fundación Antioquia Presente', verificada: true, lat: 6.244, lng: -75.581, ciudad: 'medellin', zona: 'La Candelaria', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 150, tramos: [] }, { item: 'Transporte terrestre', unidad: 'vehículos', total: 3, tramos: [] }] },
+  { id: 'c4', tipo: 'necesidad', titulo: 'Albergue San Miguel', org: 'Albergue San Miguel', verificada: false, lat: 1.149, lng: -76.652, ciudad: 'mocoa', zona: 'San Miguel', recursos: [{ item: 'Alojamiento temporal', unidad: 'cupos', total: 60, tramos: [] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 40, tramos: [] }] },
 ];
 
 export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => (FOTOS_PUBLICACION[p.id] ? { ...p, fotos: FOTOS_PUBLICACION[p.id] } : p));

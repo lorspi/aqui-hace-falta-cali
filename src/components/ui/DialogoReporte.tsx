@@ -31,7 +31,7 @@ export const DialogoReporte: React.FC<DialogoReporteProps> = ({ abierto, titulo 
   <Dialogo
     abierto={abierto}
     titulo={titulo}
-    accion="Enviar reporte"
+    accion="Reportar"
     nivelAccion="secundario"
     onCerrar={onCerrar}
     onEnviar={(form) => {

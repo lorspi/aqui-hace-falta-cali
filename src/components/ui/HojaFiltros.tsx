@@ -1,17 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
-import type { Publicacion } from '../../types/publicacion';
-import { DISTANCIAS, ESTADOS, ORDENES, cuantosAplicados, filtrosVacios, lugaresDe, type Filtros } from '../../utils/filtros';
+import type { Publicacion, Ubicacion } from '../../types/publicacion';
+import { DISTANCIAS, ESTADOS, ORDENES, conDistancia, conOrden, cuantosAplicados, filtrosVacios, type Filtros } from '../../utils/filtros';
+import { conteoPorCiudad } from '../../utils/lugares';
 import type { EstadoPublicacion } from '../../utils/publicaciones';
 import { Button } from './Button';
+import { Opcion } from './Opcion';
+import { SelectorCiudad } from './SelectorCiudad';
 import { FilaSwitch } from './Switch';
+
+export { Opcion } from './Opcion';
 
 /**
  * La hoja lateral de filtros (`rd-hoja` del prototipo): diálogo modal a la derecha de 440,
- * con Filtrar / Ordenar como pestañas, secciones (lugar, distancia, recurso por categoría,
- * estado, solo verificadas), opciones como chips con `input` real, y el pie «Quitar todos» /
- * «Ver N resultados», donde N se cuenta con todos los filtros. Escape y el velo cierran.
+ * con Filtrar / Ordenar como pestañas, secciones (lugar con `SelectorCiudad`: Cerca de mí,
+ * Seleccionar todo, ciudades por departamento; recurso por categoría, estado, solo
+ * verificadas; en Ordenar, «Más cerca» con su radio en km), opciones como chips con `input`
+ * real, y el pie «Quitar todos» / «Ver N resultados», donde N se cuenta con todos los
+ * filtros. Escape y el velo cierran.
  */
 export interface HojaFiltrosProps {
   abierta: boolean;
@@ -20,13 +27,13 @@ export interface HojaFiltrosProps {
   onCerrar: () => void;
   publicaciones: Publicacion[];
   resultados: number;
-  /** La zona de la persona: su casilla de lugar se dice «Tu zona · Usme». */
-  zonaPropia?: string;
+  /** La ubicación de la persona: da su ciudad («Tu ciudad · Bogotá») y el radio en km. */
+  ubicacion: Ubicacion;
 }
 
 const TITULO = 'font-rd mb-3 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase';
 
-export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, onCambiar, onCerrar, publicaciones, resultados, zonaPropia }) => {
+export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, onCambiar, onCerrar, publicaciones, resultados, ubicacion }) => {
   const [pestana, setPestana] = useState<'filtrar' | 'ordenar'>('filtrar');
   const [buscaRecurso, setBuscaRecurso] = useState('');
   const hoja = useRef<HTMLElement>(null);
@@ -35,14 +42,19 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
     if (!abierta) return;
     const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar();
     document.addEventListener('keydown', alTeclear);
-    hoja.current?.querySelector<HTMLElement>('button')?.focus();
     return () => document.removeEventListener('keydown', alTeclear);
   }, [abierta, onCerrar]);
+  /* El foco va a la × solo al abrir. Aparte del efecto de arriba: `onCerrar` cambia en cada
+     render de la página y, si el foco dependiera de él, saltaría a la × con cada filtro tocado
+     (y cerraría el selector de ciudad, que se cierra al perder el foco). */
+  useEffect(() => {
+    if (abierta) hoja.current?.querySelector<HTMLElement>('button')?.focus();
+  }, [abierta]);
 
   if (!abierta) return null;
 
   const alternar = <T,>(lista: T[], v: T) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
-  const lugares = lugaresDe(publicaciones);
+  const conteos = conteoPorCiudad(publicaciones);
   const q = buscaRecurso.trim().toLowerCase();
 
   return (
@@ -51,7 +63,7 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
       <aside ref={hoja} role="dialog" aria-modal="true" aria-labelledby="hoja-filtros-t" className="font-rd fixed top-0 right-0 bottom-0 z-901 flex w-full max-w-110 flex-col bg-rd-surface shadow-rd-2">
         <div className="flex items-center gap-2 border-b border-rd-line px-4 py-3">
           <h2 id="hoja-filtros-t" className="m-0 flex-1 text-rd-16 font-semibold tracking-tight text-rd-ink">
-            Filtros
+            Filtrar y ordenar
           </h2>
           <Button nivel="terciario" tamano="sm" aria-label="Cerrar" soloIcono onClick={onCerrar}>
             <X aria-hidden="true" className="h-4.5 w-4.5" />
@@ -78,22 +90,7 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
             <>
               <section className="border-b border-rd-line-soft py-4">
                 <h3 className={TITULO}>Lugar</h3>
-                <p className="mb-2 text-rd-12-5 text-rd-ink-2">Localidades con más publicaciones</p>
-                <div className="flex flex-wrap gap-2">
-                  {lugares.map((l) => (
-                    <Opcion key={l.nombre} tipo="checkbox" nombre="lugar" marcada={f.lugares.includes(l.nombre)} onChange={() => onCambiar({ ...f, lugares: alternar(f.lugares, l.nombre) })}>
-                      {l.nombre === zonaPropia ? `Tu zona · ${l.nombre}` : l.nombre}
-                    </Opcion>
-                  ))}
-                </div>
-                <p className="mt-4 mb-2 text-rd-12-5 text-rd-ink-2">Distancia desde tu ubicación</p>
-                <div className="flex flex-wrap gap-2">
-                  {DISTANCIAS.map((d) => (
-                    <Opcion key={d.etiqueta} tipo="radio" nombre="dist" marcada={f.distancia === d.km} onChange={() => onCambiar({ ...f, distancia: d.km })}>
-                      {d.etiqueta}
-                    </Opcion>
-                  ))}
-                </div>
+                <SelectorCiudad ciudades={f.ciudades} onCambiar={(ciudades) => onCambiar({ ...f, ciudades })} conteos={conteos} ubicacion={ubicacion} onCercaDeMi={(ciudad) => onCambiar(conOrden({ ...f, ciudades: [ciudad] }, 'cerca'))} />
               </section>
 
               <section className="border-b border-rd-line-soft py-4">
@@ -147,11 +144,24 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
               <h3 className={TITULO}>Ordenar por</h3>
               <div className="flex flex-wrap gap-2">
                 {ORDENES.map((o) => (
-                  <Opcion key={o.id} tipo="radio" nombre="orden" marcada={f.orden === o.id} onChange={() => onCambiar({ ...f, orden: o.id })}>
+                  <Opcion key={o.id} tipo="radio" nombre="orden" marcada={f.orden === o.id} onChange={() => onCambiar(conOrden(f, o.id))}>
                     {o.etiqueta}
                   </Opcion>
                 ))}
               </div>
+              {/* El radio en km complementa «Más cerca» (Alejandro, 21 de septiembre de 2026). */}
+              {f.orden === 'cerca' && (
+                <>
+                  <p className="mt-4 mb-2 text-rd-12-5 text-rd-ink-2">Distancia desde tu ubicación</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DISTANCIAS.map((d) => (
+                      <Opcion key={d.etiqueta} tipo="radio" nombre="dist" marcada={f.distancia === d.km} onChange={() => onCambiar(conDistancia(f, d.km))}>
+                        {d.etiqueta}
+                      </Opcion>
+                    ))}
+                  </div>
+                </>
+              )}
             </section>
           )}
         </div>
@@ -168,14 +178,3 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
     </>
   );
 };
-
-/** Opción como chip con su `input` real dentro (`rd-opcion`): marcada en tinta. La usan la
- *  hoja de la Radar y la del Directorio. */
-export const Opcion: React.FC<{ tipo: 'checkbox' | 'radio'; nombre: string; marcada: boolean; onChange: () => void; children: React.ReactNode }> = ({ tipo, nombre, marcada, onChange, children }) => (
-  <label className="relative inline-flex">
-    <input type={tipo} name={nombre} checked={marcada} onChange={onChange} className="peer absolute inset-0 m-0 cursor-pointer opacity-0" />
-    <span className="font-rd inline-flex h-8 items-center rounded-full border border-rd-line bg-rd-surface px-3 text-rd-13 font-medium text-rd-ink peer-checked:border-rd-sel peer-checked:bg-rd-sel peer-checked:text-white peer-hover:border-rd-ink-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-rd-navy pointer-coarse:h-rd-tactil">
-      {children}
-    </span>
-  </label>
-);

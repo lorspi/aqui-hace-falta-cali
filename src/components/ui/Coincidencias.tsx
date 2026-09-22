@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BadgeCheck, X, Zap } from 'lucide-react';
+import { BadgeCheck, ChevronRight, Radar, X } from 'lucide-react';
 import type { Publicacion } from '../../types/publicacion';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { cifra, distanciaTexto, iniciales, unidad } from '../../utils/publicaciones';
@@ -7,9 +7,10 @@ import { Avatar } from './Etiqueta';
 import { Button } from './Button';
 
 /**
- * Las coincidencias de RaDAR: la experiencia «Radar Match» de la app real
+ * Las sugerencias de RaDAR: la experiencia «Radar Match» de la app real
  * (`components/RadarMatchModal.tsx`) con nuestro cruce por recurso y distancia
- * (`utils/cruce.ts`). El icono es el rayo, el mismo que usa la app real para el Match. Cuatro piezas:
+ * (`utils/cruce.ts`). En la interfaz se llaman sugerencias (manual § vocabulario) y el icono es
+ * el radar de la marca, el que busca ayuda cerca en la cortinilla (76). Piezas:
  *   `Puntaje`             el porcentaje en píldora verde.
  *   `ListaCoincidencias`  una fila por publicación que coincide: quién, porcentaje, distancia,
  *                         qué tiene en común, y las dos acciones (comprometerse · ver en el mapa).
@@ -60,10 +61,11 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
               <span className="font-medium text-rd-ink-2">{pide ? 'Ofrece' : 'Necesita'}</span> {loQueTiene(c)}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button nivel="primario" tamano="sm" disabled={hecha} onClick={() => onPrimaria(c.id)}>
-                {hecha ? (pide ? 'Solicitado' : 'Comprometido') : pide ? 'Solicitar' : 'Quiero ayudar'}
+              {/* Pie de tarjeta: `md` (RaDAR 223 C1); el primario nunca va en `sm`. */}
+              <Button nivel="primario" tamano="md" disabled={hecha} onClick={() => onPrimaria(c.id)}>
+                {hecha ? (pide ? 'Solicitado' : 'Comprometido') : pide ? 'Solicitar' : 'Ayudar'}
               </Button>
-              <Button nivel="terciario" tamano="sm" onClick={() => onVerEnMapa(c.id)}>
+              <Button nivel="terciario" tamano="md" onClick={() => onVerEnMapa(c.id)}>
                 Ver en el mapa
               </Button>
             </div>
@@ -91,8 +93,8 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
           <div className="flex flex-none items-start gap-3 border-b border-rd-line p-5 pb-4">
             <div className="min-w-0 flex-1">
               <h2 id="rd-coincidencias-t" className="font-rd m-0 flex items-center gap-2 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">
-                <Zap aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-rd-navy" />
-                Coincidencias para {lista.publicacion.org}
+                <Radar aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
+                Sugerencias para {lista.publicacion.org}
               </h2>
               <p className="mt-1 mb-0 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas a menos de 20 km que tienen algo de lo que le falta.' : 'Necesidades a menos de 20 km que piden algo de lo que ofrece.'}</p>
             </div>
@@ -109,24 +111,49 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
   );
 };
 
-/** Dentro de la tarjeta: el aviso compacto de que el cruce encontró coincidencias (# matches). */
+/** «3 sugerencias cerca». El manual no admite «match»: en la interfaz es «sugerencia». */
+export function textoSugerencias(n: number): string {
+  return `${n} ${n === 1 ? 'sugerencia' : 'sugerencias'} cerca`;
+}
+
+/**
+ * Dentro de la tarjeta: la fila que dice que el cruce encontró sugerencias y abre la lista
+ * (Alejandro, 21 de septiembre de 2026). No es un chip (los chips de la tarjeta dicen tipo y
+ * estado): es una fila a lo ancho con el radar de la marca, el texto y el chevron de «esto
+ * abre algo». Va en un degradado coral → navy, el único sitio de la herramienta donde los dos
+ * colores tienen razón para tocarse: una necesidad (coral) y una oferta (navy) que se
+ * encuentran (gramática de color, 139). El brillo la recorre una sola vez al aparecer.
+ */
 export const ResumenCoincidencias: React.FC<{ publicacion: Publicacion; coincidencias?: CoincidenciaPublicacion[]; onVer: () => void; className?: string }> = ({ publicacion: _p, coincidencias, onVer, className = '' }) => {
   if (!coincidencias || !coincidencias.length) return null;
-  const n = coincidencias.length;
+  return <FilaSugerencias n={coincidencias.length} onVer={onVer} className={className} />;
+};
+
+/**
+ * La fila de sugerencias, sola: la usa la tarjeta y la pantalla de éxito al publicar. Dos
+ * variantes (Alejandro, 21 de septiembre de 2026): `suave` (la de la tarjeta: el degradado
+ * coral → navy pleno en el contorno y al 85 % por dentro, texto en blanco, y el degradado se
+ * desplaza despacio una vez) y `relleno` (solo la sugerencia fuerte al publicar: el degradado
+ * pleno llena la fila, texto en blanco, y una luz la recorre). Interpolan en sRGB para que el
+ * medio no se lave. `brillo` (por defecto sí) es ese movimiento, una sola vez.
+ */
+export const FilaSugerencias: React.FC<{ n: number; onVer: () => void; variante?: 'suave' | 'relleno'; brillo?: boolean; className?: string }> = ({ n, onVer, variante = 'suave', brillo = true, className = '' }) => {
+  const relleno = variante === 'relleno';
   return (
-    <div className={`flex items-center ${className}`}>
-      <button
-        type="button"
-        onClick={(ev) => {
-          ev.stopPropagation();
-          onVer();
-        }}
-        title="Ver coincidencias de RaDAR Match"
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-rd-navy-line bg-rd-navy-soft px-2.5 py-1 text-rd-11 font-semibold text-rd-navy transition-colors hover:bg-rd-navy-line/30"
-      >
-        <Zap className="h-3.5 w-3.5 text-rd-navy" />
-        <span>{n} {n === 1 ? 'match' : 'matches'}</span>
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onVer();
+      }}
+      className={`font-rd relative flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-rd-lg px-3.5 py-2.5 text-left text-rd-13 font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy pointer-coarse:min-h-rd-tactil ${
+        relleno ? 'bg-linear-to-r/srgb from-rd-coral to-rd-navy hover:brightness-95' : `borde-rd-sugerencia hover:shadow-xs ${brillo ? 'animate-rd-borde motion-reduce:animate-none' : ''}`
+      } text-white ${className}`}
+    >
+      {relleno && brillo && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-linear-to-r from-transparent via-white/30 to-transparent animate-rd-brillo motion-reduce:animate-none" />}
+      <Radar aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
+      <span className="min-w-0 flex-1">{textoSugerencias(n)}</span>
+      <ChevronRight aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
+    </button>
   );
 };

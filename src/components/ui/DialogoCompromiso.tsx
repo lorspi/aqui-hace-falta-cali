@@ -30,7 +30,7 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
     <Dialogo
       abierto={p !== null}
       titulo={p ? `${esNecesidad ? '¿Con qué puedes ayudar a' : '¿Qué le solicitas a'} ${p.org}?` : ''}
-      accion={esNecesidad ? 'Comprometerme' : 'Solicitar'}
+      accion={esNecesidad ? 'Ayudar' : 'Solicitar'}
       onCerrar={onCerrar}
       onEnviar={(form) => {
         if (!p) return;

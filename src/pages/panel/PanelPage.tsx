@@ -714,8 +714,8 @@ const MisNecesidades: React.FC<{
             Gestionar publicación
           </Button>
         )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${NECESIDAD.id}`)}>
-          <MapIcon aria-hidden="true" className="h-5 w-5" />
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${NECESIDAD.id}`)}>
+          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
         </Button>
       </div>
     }
@@ -939,8 +939,8 @@ const MisOfertas: React.FC<{
             Gestionar publicación
           </Button>
         )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${OFERTA.id}`)}>
-          <MapIcon aria-hidden="true" className="h-5 w-5" />
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${OFERTA.id}`)}>
+          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
         </Button>
       </div>
     }

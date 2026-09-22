@@ -94,6 +94,41 @@
   --shadow-rd-2: 0 8px 24px rgb(23 27 43 / 0.16);
   /* La sombra del pin sobre la tesela (`.rd-pin svg` del prototipo) */
   --drop-shadow-rd-pin: 0 1px 2px rgb(0 0 0 / 0.28);
+  /* Las sugerencias del cruce (Alejandro, 21 de septiembre de 2026): un brillo que recorre la
+     fila una sola vez al aparecer, y el barrido del radar de la marca (76) al publicar con una
+     sugerencia fuerte. `motion-reduce:animate-none` los apaga, como todo movimiento del DS. */
+  --animate-rd-brillo: rd-brillo 1.4s ease-out 0.2s 1 both;
+  --animate-rd-barrido: rd-barrido 0.6s linear 2;
+  /* La fila en la tarjeta: el degradado (contorno y relleno suave) se desplaza despacio una vez. */
+  --animate-rd-borde: rd-borde 2.4s ease-in-out 0.2s 1 both;
+  @keyframes rd-borde {
+    from {
+      background-position:
+        0% 50%,
+        0% 50%;
+    }
+    to {
+      background-position:
+        100% 50%,
+        100% 50%;
+    }
+  }
+  @keyframes rd-brillo {
+    from {
+      transform: translateX(-120%);
+    }
+    to {
+      transform: translateX(120%);
+    }
+  }
+  @keyframes rd-barrido {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 /* ======================================================================
@@ -350,6 +385,31 @@ header {
 }
 @utility ranura-rd-hoja {
   flex: 0 0 calc(100% - 10 * var(--spacing));
+}
+/* La fila de sugerencias en la tarjeta (Alejandro, 21 de septiembre de 2026): el degradado
+   coral → navy pleno en el contorno y el mismo degradado al 85 % sobre la superficie por
+   dentro, con el texto en blanco (al 40 % el blanco quedaba en 1,6:1 sobre coral; al 85 % da
+   4,2:1 sobre coral y 6,5:1 sobre navy). Dos fondos: el suave recorta al `padding-box`, el
+   pleno llena el `border-box`; los dos interpolan en sRGB para que el medio no se lave. Van
+   coral → navy → coral al doble de ancho y `animate-rd-borde` los desplaza juntos, despacio y
+   una sola vez. Solo tokens. */
+@utility borde-rd-sugerencia {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(
+        90deg in srgb,
+        color-mix(in srgb, var(--color-rd-coral) 85%, var(--color-rd-surface)),
+        color-mix(in srgb, var(--color-rd-navy) 85%, var(--color-rd-surface)),
+        color-mix(in srgb, var(--color-rd-coral) 85%, var(--color-rd-surface))
+      )
+      padding-box,
+    linear-gradient(90deg in srgb, var(--color-rd-coral), var(--color-rd-navy), var(--color-rd-coral)) border-box;
+  background-size:
+    200% 100%,
+    200% 100%;
+  background-position:
+    0% 50%,
+    0% 50%;
 }
 /* Una columna del tablero de seguimiento en móvil: casi todo el ancho, con 40 px de asomo de
    la siguiente para que se entienda que se desplaza (como Trello). Desde 640 mide 280. */

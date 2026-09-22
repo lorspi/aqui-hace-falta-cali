@@ -14,6 +14,8 @@ export interface Entidad {
   tipo: string;
   clase: ClaseEntidad;
   verificada: boolean;
+  /** La ciudad (id de `data/colombiaCities.ts`); sin ella, Bogotá (`utils/lugares.ts`). */
+  ciudad?: string;
   zona: string;
   lat: number;
   lng: number;
@@ -35,7 +37,8 @@ export type OrdenDirectorio = 'cercania' | 'cifra';
 /** La consulta del directorio: una sola fuente de verdad para la hoja, los chips y la lista. */
 export interface ConsultaDirectorio {
   texto: string;
-  lugares: string[];
+  /** Ids de ciudad (`data/colombiaCities.ts`); vacío = todas las ciudades (`utils/lugares.ts`). */
+  ciudades: string[];
   recursos: string[];
   verificadas: boolean;
   orden: OrdenDirectorio;

@@ -23,6 +23,7 @@ import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, type Filtros } from '../../utils/filtros';
+import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
@@ -81,10 +82,13 @@ export const RadarPage: React.FC = () => (
 const Radar: React.FC = () => {
   const avisar = useAviso();
   const [tipo, setTipo] = useState<Tipo>('todo');
-  /* El chip inicial es la zona de la persona, «Tu zona · Usme» (plan T2, 2.4): un filtro común
-     que se quita como cualquiera. Si la URL trae un `?punto=` que existe, el enlace manda y no
-     se preselecciona. */
-  const [filtros, setFiltros] = useState<Filtros>(() => (puntoPedido() || busquedaPedida() ? filtrosVacios() : { ...filtrosVacios(), lugares: [UBICACION.zona] }));
+  /* El chip inicial es la ciudad de la persona, «Bogotá» (plan T2, 2.4, ahora a nivel de
+     ciudad como en producción): un filtro común que se quita como cualquiera. Si la URL trae
+     un `?punto=` que existe, el enlace manda y no se preselecciona. */
+  const [filtros, setFiltros] = useState<Filtros>(() => {
+    const propia = ciudadDeUbicacion(UBICACION);
+    return puntoPedido() || busquedaPedida() || !propia ? filtrosVacios() : { ...filtrosVacios(), ciudades: [propia] };
+  });
   const [hojaFiltros, setHojaFiltros] = useState(false);
   const [busqueda, setBusqueda] = useState(busquedaPedida);
   const [buscando, setBuscando] = useState(() => busquedaPedida() !== '');
@@ -122,9 +126,18 @@ const Radar: React.FC = () => {
   const distancias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, distanciaKm(UBICACION, p)])), []);
   const coincidencias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, coincidenciasDe(p, PUBLICACIONES)])), []);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
-  const chips = chipsDe(filtros, UBICACION.zona);
+  const chips = chipsDe(filtros);
+  /* Al cambiar de ciudades, el mapa encuadra lo que queda visible (como producción, que vuela a
+     la ciudad elegida). */
+  const [encuadrarCiudad, setEncuadrarCiudad] = useState<{ n: number } | null>(null);
+  const llaveCiudades = filtros.ciudades.join(',');
+  const ciudadesAnteriores = useRef(llaveCiudades);
+  useEffect(() => {
+    if (ciudadesAnteriores.current === llaveCiudades) return;
+    ciudadesAnteriores.current = llaveCiudades;
+    setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
+  }, [llaveCiudades]);
   const aplicados = cuantosAplicados(filtros);
-  const ordenTexto = filtros.orden === 'cerca' ? 'Ordenadas por cercanía' : filtros.orden === 'reciente' ? 'Ordenadas por más recientes' : 'Ordenadas por donde más falta';
 
   /* Seleccionar desde el mapa trae la tarjeta a la vista (y, en móvil, abre la hoja
      colapsada); desde la tarjeta, encuadra el pin. */
@@ -239,12 +252,6 @@ const Radar: React.FC = () => {
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Radar</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
-              {/* Desde 1024 el conmutador vive en la cabecera: Mapa (con la lista al lado) o Lista a lo ancho. */}
-              <div role="group" aria-label="Vista" className="inline-flex rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75">
-                <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-                <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
-              </div>
-              <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
                 Pedir ayuda
               </Button>
@@ -280,15 +287,16 @@ const Radar: React.FC = () => {
               { id: 'oferta', etiqueta: 'Ofertas', n: conteo.oferta, pip: 'oferta' },
             ]}
           />
+          {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
+              de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
+              la píldora flotante de abajo. */}
+          <div role="group" aria-label="Vista" className="inline-flex rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75 max-lg:hidden">
+            <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
+            <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+          </div>
           <span aria-hidden="true" className="h-6 w-px flex-none bg-rd-line max-lg:hidden" />
+          {/* Decisión 70: qué ves y cómo lo ves │ Filtros y chips │ el buscador a la derecha (146: lupa bajo 1024). */}
           <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
-          <CampoBuscar
-            valor={busqueda}
-            onChange={setBusqueda}
-            placeholder="Buscar recurso, barrio u organización"
-            abierto={buscando}
-            className="lg:w-72 xl:w-96"
-          />
           <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
             {estado}
           </p>
@@ -300,6 +308,7 @@ const Radar: React.FC = () => {
               <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
             </ZonaChips>
           )}
+          <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} />
         </div>
 
         {/* ---- mapa + lista ---- */}
@@ -307,7 +316,7 @@ const Radar: React.FC = () => {
           <main
             role="region"
             aria-label="Lista de publicaciones"
-            className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+            className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
           >
             {visibles.length === 0 ? (
               <Vacio
@@ -322,13 +331,12 @@ const Radar: React.FC = () => {
               />
             ) : (
               <>
-                <p className="m-0 mb-3 flex flex-wrap items-baseline gap-x-2 text-rd-12-5 text-rd-ink-meta">
-                  <b className="font-semibold text-rd-ink">{estado}</b>
-                  <span>{ordenTexto}</span>
-                </p>
-                <div className="overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-xs divide-y divide-rd-line">
+                {/* Sin texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena
+                    (Alejandro, 21 de septiembre de 2026). El conteo sigue en la región viva. Cada
+                    fila es una tarjeta independiente sobre fondo blanco, como en el Directorio. */}
+                <div className="flex flex-col gap-3">
                   {/* Cabecera de columnas para escritorio (≥ 1280px) */}
-                  <div className="hidden border-b border-rd-line bg-rd-sunken/40 px-5 py-3.5 sm:px-7 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8">
+                  <div className="hidden px-5 pb-1 sm:px-7 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8">
                     <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
                       Publicación y organización
                     </span>
@@ -363,6 +371,7 @@ const Radar: React.FC = () => {
               seleccionada={seleccionada}
               onSeleccionar={seleccionarDesdeMapa}
               encuadrar={encuadrar}
+              encuadrarTodo={encuadrarCiudad}
               tapadoAbajo={tapadoAbajo}
               resaltadas={resaltadas}
               className="relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1"
@@ -389,9 +398,7 @@ const Radar: React.FC = () => {
                         publicacion={p}
                         distanciaKm={distancias.get(p.id)}
                         coincidencias={coincidencias.get(p.id)}
-                        seleccionada={p.id === seleccionada}
                         enProceso={enProceso.includes(p.id)}
-                        onSeleccionar={setSeleccionada}
                         onVerEnMapa={verEnMapa}
                         {...accionesTarjeta}
                       />
@@ -415,7 +422,7 @@ const Radar: React.FC = () => {
           <HojaPin publicacion={publicacionHoja} vecinas={visibles} distancias={distancias} coincidencias={coincidencias} enProceso={enProceso.includes(publicacionHoja.id)} expandida={hojaPin.expandida} cerrando={hojaPin.cerrando} onExpandir={(e) => setHojaPin({ id: hojaPin.id, expandida: e })} onCerrar={cerrarHojaPin} onIr={irDesdeHoja} {...accionesTarjeta} />
         )}
 
-        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={PUBLICACIONES} resultados={visibles.length} zonaPropia={UBICACION.zona} />
+        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={PUBLICACIONES} resultados={visibles.length} ubicacion={UBICACION} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
         {(() => {
           const pub = verCoincidencias ? PUBLICACIONES.find((p) => p.id === verCoincidencias) : undefined;
@@ -496,13 +503,13 @@ const FilaPublicacion: React.FC<{
   const menu = [
     { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
     { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
-    { texto: 'Reportar un problema', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
+    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
   ];
 
   return (
     <article
       id={p.id}
-      className="grid min-w-0 grid-cols-1 gap-5 py-7 px-5 transition-colors hover:bg-rd-fondo/50 sm:py-8 sm:px-7 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8 min-h-[185px]"
+      className="grid min-w-0 grid-cols-1 gap-5 rounded-rd-xl border border-rd-line bg-rd-surface py-7 px-5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:py-8 sm:px-7 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8 min-h-[185px]"
     >
       {/* 1. Publicación, tipo y ubicación */}
       <div className="flex min-w-0 items-start gap-3.5">
@@ -565,25 +572,17 @@ const FilaPublicacion: React.FC<{
         </div>
       </div>
 
-      {/* 3. Acciones: Ver detalle + Ver en mapa + ⋮ */}
-      <div className="flex min-w-0 items-center justify-end gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
-        <Button
-          nivel="primario"
-          tamano="sm"
-          onClick={() => onVerDetalle(p.id)}
-        >
+      {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
+       *  y ⋮, los tres terciarios (223: ver no cambia datos) y en `md` (C1), para que se lean
+       *  como un solo grupo. El compromiso vive en la tarjeta del detalle. */}
+      <div className="flex min-w-0 items-center justify-end gap-1 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
+        <Button nivel="terciario" tamano="md" onClick={() => onVerDetalle(p.id)}>
           Ver detalle
         </Button>
-        <Button
-          nivel="secundario"
-          tamano="sm"
-          soloIcono
-          aria-label="Ver en el mapa"
-          onClick={() => onVerEnMapa(p.id)}
-        >
-          <MapIcon className="h-4 w-4" />
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => onVerEnMapa(p.id)}>
+          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
         </Button>
-        <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="sm" flotante />
+        <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="md" flotante />
       </div>
     </article>
   );
@@ -636,14 +635,10 @@ const DialogoDetallePublicacion: React.FC<{
     >
       <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
         <span className="text-rd-13 font-semibold text-rd-ink">Detalle de la publicación</span>
-        <button
-          type="button"
-          onClick={onCerrar}
-          aria-label="Cerrar detalle"
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {/* La × del modal del prototipo: `--md --ghost --icono` (28 px no llega a los 44 del dedo, 223 C4). */}
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar detalle" onClick={onCerrar}>
+          <X aria-hidden="true" className="h-5 w-5" />
+        </Button>
       </div>
       <div className="p-4 sm:p-5 bg-rd-fondo/40">
         <Tarjeta

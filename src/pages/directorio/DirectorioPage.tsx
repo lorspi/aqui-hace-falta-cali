@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, Eye, Flag, Funnel, Hand, HeartHandshake, Map as MapIcon, Phone, Search, Share2, Users, X } from 'lucide-react';
+import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, Map as MapIcon, Phone, Search, Share2, Users, X } from 'lucide-react';
 import { Donde } from '../../components/ui/Donde';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
@@ -9,9 +9,10 @@ import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from 
 import { DialogoCompromiso, type Compromiso } from '../../components/ui/DialogoCompromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
 import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
-import { Opcion } from '../../components/ui/HojaFiltros';
+import { Opcion } from '../../components/ui/Opcion';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Pestanas } from '../../components/ui/Pestanas';
+import { SelectorCiudad } from '../../components/ui/SelectorCiudad';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { FilaSwitch } from '../../components/ui/Switch';
 import { Vacio } from '../../components/ui/Vacio';
@@ -24,7 +25,8 @@ import type { Aviso } from '../../types/aviso';
 import type { ClaseEntidad, ConsultaDirectorio, Entidad } from '../../types/directorio';
 import type { Publicacion } from '../../types/publicacion';
 import { nombrePanel } from '../../utils/cuenta';
-import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, publicacionesDe, recursosDeVista, resumenPublica, zonasDe } from '../../utils/directorio';
+import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, publicacionesDe, recursosDeVista, resumenPublica } from '../../utils/directorio';
+import { conteoPorCiudad } from '../../utils/lugares';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante } from '../../utils/publicaciones';
 
@@ -124,7 +126,6 @@ const Directorio: React.FC = () => {
   };
 
   const estado = conteoTexto(lista.length, clase);
-  const orden = q.orden === 'cifra' ? (clase === 'comunidad' ? 'Ordenadas por solicitudes' : 'Ordenadas por entregas confirmadas') : 'Ordenadas por cercanía';
 
   return (
     <Shell seccion="directorio" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={avisos.filter((a) => !a.leido).length} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
@@ -162,14 +163,8 @@ const Directorio: React.FC = () => {
 
         {/* ---- consulta ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
+          {/* Decisión 70: Filtros y chips a la izquierda, el buscador a la derecha (146: lupa bajo 1024). */}
           <BotonFiltros aplicados={aplicados} abierta={hoja} onClick={() => setHoja(true)} />
-          <CampoBuscar
-            valor={q.texto}
-            onChange={(texto) => setQ({ ...q, texto })}
-            placeholder={clase === 'comunidad' ? 'Buscar comunidad, barrio o necesidad' : 'Buscar organización, barrio o recurso'}
-            abierto={buscando}
-            className="lg:w-72 xl:w-96"
-          />
           <p aria-live="polite" aria-atomic="true" className="sr-only">
             {estado}
           </p>
@@ -181,10 +176,11 @@ const Directorio: React.FC = () => {
               <QuitarTodos onClick={() => setQ({ ...consultaVacia(), orden: q.orden })} />
             </ZonaChips>
           )}
+          <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? 'Buscar comunidad, barrio o necesidad' : 'Buscar organización, barrio o recurso'} abierto={buscando} />
         </div>
 
         {/* ---- la lista ---- */}
-        <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           {lista.length === 0 ? (
             aplicados > 0 ? (
               <Vacio
@@ -216,14 +212,14 @@ const Directorio: React.FC = () => {
             )
           ) : (
             <>
-              <p className="m-0 mb-3 flex flex-wrap items-baseline gap-x-2 text-rd-12-5 text-rd-ink-meta">
-                <b className="font-semibold text-rd-ink">{estado}</b>
-                <span>{orden}</span>
-              </p>
-              {/* Vista de Lista del Directorio: contenedor unificado con separación clara entre filas */}
-              <div className="overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-xs divide-y divide-rd-line">
+              {/* Sin texto de conteo ni de orden (Alejandro, 21 de septiembre de 2026): las
+                  pestañas ya cuentan y Filtros ya ordena. El conteo sigue en la región viva. */}
+              {/* Vista de lista del Directorio: cada fila es una tarjeta independiente, como las
+                  del Radar (`rd-org-fila` del prototipo: borde, radio xl), separadas por espacio
+                  (Alejandro, 21 de septiembre de 2026). La cabecera de columnas queda como rótulo. */}
+              <div className="flex flex-col gap-3">
                 {/* Cabecera de columnas para escritorio (≥ 1280px) */}
-                <div className="hidden border-b border-rd-line bg-rd-sunken/40 px-4 py-2.5 sm:px-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6">
+                <div className="hidden px-4 pb-1 sm:px-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6">
                   <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
                     {clase === 'comunidad' ? 'Comunidad y zona' : 'Organización y zona'}
                   </span>
@@ -258,7 +254,9 @@ const Directorio: React.FC = () => {
 
 /** Una entidad en vista de lista: quién, dónde está, lo que publica en números (cuántos recursos
  *  ofrece y pide), datos de contacto en bloque compacto y a la derecha las acciones («Ver detalle»
- *  y menú ⋮ con Ver en el mapa, WhatsApp, Llamar, Compartir y Reportar). */
+ *  y menú ⋮ con Ver en el mapa, WhatsApp, Llamar, Compartir y Reportar).
+ *  «Ver detalle» solo muestra: es terciario `md` (RaDAR 223, nivel 3 «vista o cierre»; C2). El
+ *  compromiso —«Solicitar» / «Quiero ayudar»— vive en el diálogo de detalle, no en la fila. */
 const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, onVerDetalle, onCompartir, onReportar }) => {
   const com = e.clase === 'comunidad';
   const cifraE = cifraDe(e, PUBLICACIONES);
@@ -273,18 +271,16 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
   if (e.familias) datos.push(['Familias', cifra(e.familias)]);
   const verEnMapa = () => irA(`${RUTAS.radar}?buscar=${encodeURIComponent(e.nombre)}`);
   const menu = [
-    { texto: 'Ver detalle', icono: <Eye className="h-4 w-4" />, onElegir: onVerDetalle },
-    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: verEnMapa },
     ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
     { texto: 'Llamar', icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
     { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir },
-    { texto: 'Reportar un problema', icono: <Flag className="h-4 w-4" />, onElegir: onReportar },
+    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: onReportar },
   ];
 
   return (
     <article
       id={e.id}
-      className="grid min-w-0 grid-cols-1 gap-3.5 p-4 transition-colors hover:bg-rd-fondo/50 sm:p-5 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6"
+      className="grid min-w-0 grid-cols-1 gap-3.5 rounded-rd-xl border border-rd-line bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:p-5 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_190px] xl:items-center xl:gap-6"
     >
       {/* 1. Quién y dónde: avatar, nombre, insignia, tipo y ubicación */}
       <div className="flex min-w-0 items-start gap-3">
@@ -343,15 +339,14 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
         )}
       </div>
 
-      {/* 4. Acciones: Ver detalle + ⋮ */}
-      <div className="flex min-w-0 items-center justify-end gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-2.5">
-        <Button
-          nivel="primario"
-          tamano="md"
-          icono={<Eye className="h-4 w-4" />}
-          onClick={onVerDetalle}
-        >
+      {/* 4. Acciones: el mismo trío que la fila del Radar: Ver detalle, el mapa como icono (busca
+       *  la entidad en la Radar) y ⋮, los tres terciarios y en `md`. */}
+      <div className="flex min-w-0 items-center justify-end gap-1 max-md:border-t max-md:border-rd-line-soft max-md:pt-2.5">
+        <Button nivel="terciario" tamano="md" onClick={onVerDetalle}>
           Ver detalle
+        </Button>
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={verEnMapa}>
+          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
         </Button>
         <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" flotante />
       </div>
@@ -536,7 +531,7 @@ const DialogoDetalleEntidad: React.FC<{
                     return (
                       <div
                         key={pub.id}
-                        className="flex flex-col gap-2 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-ink/30"
+                        className="flex flex-col gap-2 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-navy-line/30"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-1.5">
                           <div className="flex items-center gap-1.5">
@@ -568,30 +563,18 @@ const DialogoDetalleEntidad: React.FC<{
                             ))}
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
+                            {/* Pie de tarjeta: todo en `md` (223 C1); el primario nunca va en `sm`. */}
                             {ofertaDisponible && (
-                              <Button
-                                nivel="primario"
-                                tamano="sm"
-                                onClick={() => onCompromiso?.(pub)}
-                              >
+                              <Button nivel="primario" tamano="md" onClick={() => onCompromiso?.(pub)}>
                                 Solicitar
                               </Button>
                             )}
                             {puedeAyudarNecesidad && (
-                              <Button
-                                nivel="primario"
-                                tamano="sm"
-                                onClick={() => onCompromiso?.(pub)}
-                              >
+                              <Button nivel="primario" tamano="md" onClick={() => onCompromiso?.(pub)}>
                                 Ayudar
                               </Button>
                             )}
-                            <Button
-                              nivel="secundario"
-                              tamano="sm"
-                              icono={<MapIcon className="h-3.5 w-3.5" />}
-                              onClick={() => verEnMapa(pub.id)}
-                            >
+                            <Button nivel="secundario" tamano="md" icono={<MapIcon className="h-4 w-4" />} onClick={() => verEnMapa(pub.id)}>
                               Ver en el mapa
                             </Button>
                           </div>
@@ -604,9 +587,9 @@ const DialogoDetalleEntidad: React.FC<{
             </div>
           </div>
 
-          {/* Pie */}
+          {/* Pie: cerrar no cambia datos y el diálogo ya tiene sus primarios por publicación → terciario (223). */}
           <div className="flex flex-none items-center justify-end border-t border-rd-line bg-rd-surface px-5 py-3">
-            <Button nivel="primario" tamano="md" onClick={onCerrar}>
+            <Button nivel="terciario" tamano="md" onClick={onCerrar}>
               Cerrar
             </Button>
           </div>
@@ -626,9 +609,12 @@ const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta
     if (!abierta) return;
     const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar();
     document.addEventListener('keydown', alTeclear);
-    hoja.current?.querySelector<HTMLElement>('button')?.focus();
     return () => document.removeEventListener('keydown', alTeclear);
   }, [abierta, onCerrar]);
+  /* El foco va a la × solo al abrir (no con cada filtro tocado: `onCerrar` cambia en cada render). */
+  useEffect(() => {
+    if (abierta) hoja.current?.querySelector<HTMLElement>('button')?.focus();
+  }, [abierta]);
   if (!abierta) return null;
   const alternar = (lista: string[], v: string) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
   const com = clase === 'comunidad';
@@ -638,22 +624,17 @@ const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta
       <aside ref={hoja} role="dialog" aria-modal="true" aria-labelledby="hoja-dir-t" className="font-rd fixed top-0 right-0 bottom-0 z-901 flex w-full max-w-110 flex-col bg-rd-surface shadow-rd-2">
         <div className="flex items-center gap-2 border-b border-rd-line px-4 py-3">
           <h2 id="hoja-dir-t" className="m-0 flex-1 text-rd-16 font-semibold tracking-tight text-rd-ink">
-            Filtros
+            Filtrar y ordenar
           </h2>
-          <Button nivel="terciario" tamano="sm" aria-label="Cerrar" soloIcono onClick={onCerrar}>
+          <Button nivel="terciario" tamano="md" aria-label="Cerrar" soloIcono onClick={onCerrar}>
             <X aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4">
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={TITULO}>Lugar</h3>
-            <div className="flex flex-wrap gap-2">
-              {zonasDe(entidades).map((z) => (
-                <Opcion key={z} tipo="checkbox" nombre="lugar" marcada={q.lugares.includes(z)} onChange={() => onCambiar({ ...q, lugares: alternar(q.lugares, z) })}>
-                  {z === UBICACION.zona ? `Tu zona · ${z}` : z}
-                </Opcion>
-              ))}
-            </div>
+            {/* El mismo selector que la Radar: Cerca de mí, Seleccionar todo, ciudades por departamento. */}
+            <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={UBICACION} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
           </section>
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={TITULO}>Qué recurso</h3>

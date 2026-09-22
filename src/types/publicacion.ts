@@ -49,6 +49,8 @@ export interface Publicacion {
   propia?: boolean;
   lat: number;
   lng: number;
+  /** La ciudad (id de `data/colombiaCities.ts`); sin ella, Bogotá (`utils/lugares.ts`). */
+  ciudad?: string;
   zona: string;
   localidad?: string;
   dir?: string;
@@ -71,6 +73,8 @@ export interface CategoriaRecurso {
 export interface Ubicacion {
   lat: number;
   lng: number;
+  /** La ciudad (id de `data/colombiaCities.ts`) si ya se sabe; si no, se detecta por coordenadas. */
+  ciudad?: string;
   zona: string;
   simulada: boolean;
 }

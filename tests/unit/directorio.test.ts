@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../src/mocks/directorioMock';
 import { PUBLICACIONES, UBICACION } from '../../src/mocks/publicacionesMock';
-import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, estadoComunidad, filtrar, ofertasDe, pasa, publicacionesDe, recursosDe, recursosDeVista, resumenPublica, solicitudesDe, zonasDe } from '../../src/utils/directorio';
+import { chipsDe, cifraDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, estadoComunidad, filtrar, ofertasDe, pasa, publicacionesDe, recursosDe, recursosDeVista, resumenPublica, solicitudesDe } from '../../src/utils/directorio';
+import { conteoPorCiudad } from '../../src/utils/lugares';
 
 const orgs = entidadesDe('organizacion', ENTIDADES, ENTIDAD_PROPIA);
 const coms = entidadesDe('comunidad', ENTIDADES, ENTIDAD_PROPIA);
@@ -43,7 +44,9 @@ describe('cifras y estado', () => {
 describe('la consulta', () => {
   it('cada sección acota y el texto busca en nombre, tipo, zona, líder y recursos', () => {
     const q = consultaVacia();
-    expect(filtrar(coms, PUBLICACIONES, { ...q, lugares: ['Bosa'] }, UBICACION).map((e) => e.nombre)).toEqual(['Albergue Bosa', 'JAC El Recuerdo']);
+    expect(filtrar(coms, PUBLICACIONES, { ...q, ciudades: ['cali'] }, UBICACION).map((e) => e.nombre)).toEqual(['JAC Potrero Grande']);
+    expect(filtrar(coms, PUBLICACIONES, { ...q, ciudades: ['cali', 'mocoa'] }, UBICACION).map((e) => e.nombre)).toEqual(['JAC Potrero Grande', 'Albergue San Miguel']);
+    expect(filtrar(coms, PUBLICACIONES, { ...q, ciudades: ['bogota'] }, UBICACION).every((e) => e.ciudad === undefined)).toBe(true);
     expect(filtrar(coms, PUBLICACIONES, { ...q, texto: 'neuta' }, UBICACION).map((e) => e.nombre)).toEqual(['JAC Vereda El Destino']);
     expect(filtrar(orgs, PUBLICACIONES, { ...q, recursos: ['Agua potable'], verificadas: true }, UBICACION).every((e) => e.verificada && pasa(e, PUBLICACIONES, { ...q, recursos: ['Agua potable'] }))).toBe(true);
   });
@@ -54,15 +57,18 @@ describe('la consulta', () => {
     expect(porCifra[0].nombre).toBe('Cruz Roja · seccional Bogotá');
   });
   it('los chips reflejan lo aplicado y cada uno se quita solo', () => {
-    const q = { ...consultaVacia(), lugares: ['Bosa'], recursos: ['Alimentos'], verificadas: true, texto: 'jac' };
+    const q = { ...consultaVacia(), ciudades: ['cali'], recursos: ['Alimentos'], verificadas: true, texto: 'jac' };
     expect(cuantosAplicados(q)).toBe(4);
     const chips = chipsDe(q);
-    expect(chips.map((c) => c.texto)).toEqual(['Bosa', 'Alimentos', 'Solo verificadas', '“jac”']);
+    expect(chips.map((c) => c.texto)).toEqual(['Cali', 'Alimentos', 'Solo verificadas', '“jac”']);
+    expect(chipsDe({ ...q, ciudades: ['bogota', 'cali'] }).map((c) => c.texto).slice(0, 2)).toEqual(['Bogotá', 'Cali']);
     expect(cuantosAplicados(chips[0].quitar(q))).toBe(3);
     expect(chips[3].quitar(q).texto).toBe('');
   });
-  it('las zonas y los recursos de la hoja salen de la vista', () => {
-    expect(zonasDe(coms)).toContain('Bosa');
+  it('las ciudades y los recursos de la hoja salen de la vista', () => {
+    const conteos = conteoPorCiudad(coms);
+    expect(conteos.get('cali')).toBe(1);
+    expect(conteos.get('bogota')).toBeGreaterThan(1);
     expect(recursosDeVista(orgs, PUBLICACIONES)).toContain('Transporte terrestre');
     expect(conteoTexto(0, 'comunidad')).toBe('Nada con estos filtros');
     expect(conteoTexto(1, 'organizacion')).toBe('1 organización');

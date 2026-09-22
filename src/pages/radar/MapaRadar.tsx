@@ -33,6 +33,8 @@ export interface MapaRadarProps {
   tapadoAbajo?: number;
   /** Pines resaltados (las sugerencias del cruce); al cambiar, el mapa los encuadra todos. */
   resaltadas?: { ids: string[]; n: number } | null;
+  /** Cuando cambia, el mapa encuadra todo lo visible (al cambiar de ciudad). */
+  encuadrarTodo?: { n: number } | null;
   className?: string;
 }
 
@@ -100,7 +102,7 @@ function esMovil(): boolean {
   return window.matchMedia('(max-width: 1023px)').matches;
 }
 
-export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, className = '' }) => {
+export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, encuadrarTodo, className = '' }) => {
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
@@ -280,6 +282,19 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     // Solo cuando cambia el pedido de resaltar (su `n`), no con cada selección.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resaltadas?.n]);
+
+  /* Al cambiar de ciudad, el mapa encuadra lo que queda visible (Toda Colombia: todo el país
+     con sus grupos; una ciudad: sus pines). Si no hay nada, se queda donde estaba. */
+  useEffect(() => {
+    const m = mapa.current;
+    if (!encuadrarTodo || !m) return;
+    const tam = m.getSize();
+    if (tam.x === 0 || tam.y === 0) return;
+    const puntos = pubsRef.current.map((p) => [p.lat, p.lng] as [number, number]);
+    if (puntos.length) m.flyToBounds(L.latLngBounds(puntos).pad(0.2), { maxZoom: 12, duration: 0.5 });
+    // Solo cuando cambia el pedido (su `n`).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encuadrarTodo?.n]);
 
   return <div ref={nodo} aria-label="Mapa de necesidades y ofertas" className={`rd-mapa bg-rd-mapa ${className}`} />;
 };

@@ -1,14 +1,15 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, Info, Monitor, Package, Search, X, Zap } from 'lucide-react';
-import { ListaCoincidencias } from '../../components/ui/Coincidencias';
+import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, Info, Monitor, Package, Radar, Search, X } from 'lucide-react';
+import { FilaSugerencias, ListaCoincidencias } from '../../components/ui/Coincidencias';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { PUBLICACIONES } from '../../mocks/publicacionesMock';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
+import { pingSugerencia, sinMovimiento } from '../../utils/sonido';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { IconoRecursoDe, categoriaDe, iconoDe } from '../../components/ui/Recursos';
@@ -640,13 +641,20 @@ export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.Rea
   );
 };
 
+/** Desde este puntaje una sugerencia es «fuerte» y merece el barrido y el ping al publicar
+ *  (Alejandro, 21 de septiembre de 2026). Con `puntajeCoincidencia` (70–98) se alcanza a menos
+ *  de 5 km con dos recursos en común, o a menos de 10 con tres. */
+export const SUGERENCIA_FUERTE = 90;
+
 /**
- * Las coincidencias al publicar: la experiencia «Radar Match» de la app real
+ * Las sugerencias al publicar: la experiencia «Radar Match» de la app real
  * (`components/RadarMatchModal.tsx`), con nuestro cruce y nuestra interfaz. Al publicar una
  * necesidad, las ofertas cercanas que tienen lo que falta; al publicar una oferta, las
  * necesidades cercanas que lo piden. Cada una con su porcentaje, lo que tiene en común y
  * las dos acciones: comprometerse desde aquí mismo o verla en el mapa. Primero «busca» un
- * momento, como en producción; sin coincidencias, lo dice sin drama.
+ * momento con el barrido del radar de la marca (76); si la mejor sugerencia es fuerte
+ * (≥ 90 %), el barrido se detiene sobre ella con un ping corto y la fila de sugerencias brilla
+ * una vez; si no, la fila aparece sin más. Sin sugerencias, lo dice sin drama.
  */
 export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicacion }) => {
   const avisar = useAviso();
@@ -654,26 +662,43 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [hechas, setHechas] = useState<string[]>([]);
   const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
+  const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
   useEffect(() => {
-    const t = window.setTimeout(() => setBuscando(false), 900);
+    const t = window.setTimeout(() => {
+      setBuscando(false);
+      if (fuerte) pingSugerencia();
+    }, 1200);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [fuerte]);
   const pide = publicacion.tipo === 'necesidad';
   return (
-    <section aria-label="Coincidencias" className="mx-auto mt-5 max-w-110 text-left">
+    <section aria-label="Sugerencias" className="mx-auto mt-5 max-w-110 text-left">
       <h2 className="font-rd mb-1 flex items-center gap-2 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
-        <Zap aria-hidden="true" className="h-4.5 w-4.5 text-rd-navy" />
-        Coincidencias cerca
+        <Radar aria-hidden="true" className="h-4.5 w-4.5" />
+        Sugerencias cerca
         {!buscando && coincidencias.length > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{coincidencias.length}</span>}
       </h2>
       <p className="mb-3 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas a menos de 20 km que tienen algo de lo que te falta.' : 'Necesidades a menos de 20 km que piden algo de lo que ofreces.'}</p>
       {buscando ? (
-        <p role="status" className="flex items-center gap-2 rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">
-          <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-rd-line border-t-rd-navy" />
-          Buscando coincidencias cerca…
+        <p role="status" className="flex items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-4 text-rd-13 text-rd-ink-2">
+          {/* El radar de la marca barriendo (76): un cono coral que gira dos vueltas, con el icono
+              quieto en el centro. Sin movimiento, solo el icono. */}
+          <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rd-line bg-rd-surface">
+            <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
+            <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
+          </span>
+          Buscando sugerencias cerca…
         </p>
       ) : (
-        <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
+        <>
+          {coincidencias.length > 0 && (
+            /* La misma fila que la tarjeta; con sugerencia fuerte, brilla aquí una vez (y sonó el ping). */
+            <FilaSugerencias n={coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => document.getElementById('rd-sugerencias-lista')?.scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth', block: 'start' })} className="mb-3" />
+          )}
+          <div id="rd-sugerencias-lista">
+            <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
+          </div>
+        </>
       )}
       <DialogoCompromiso
         publicacion={compromiso}

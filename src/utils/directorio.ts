@@ -5,10 +5,11 @@
  */
 import type { ClaseEntidad, ConsultaDirectorio, Entidad, EstadoComunidad } from '../types/directorio';
 import type { Publicacion, Ubicacion } from '../types/publicacion';
+import { enCiudades, nombreCorto } from './lugares';
 import { distanciaKm, estadoPublicacion } from './publicaciones';
 
 export function consultaVacia(): ConsultaDirectorio {
-  return { texto: '', lugares: [], recursos: [], verificadas: false, orden: 'cercania' };
+  return { texto: '', ciudades: [], recursos: [], verificadas: false, orden: 'cercania' };
 }
 
 /** Las publicaciones de una entidad, por su nombre. */
@@ -70,17 +71,13 @@ export function entidadesDe(clase: ClaseEntidad, entidades: Entidad[], propia: s
   return entidades.filter((e) => e.clase === clase && e.nombre !== propia);
 }
 
-export function zonasDe(entidades: Entidad[]): string[] {
-  return sinDuplicados(entidades.map((e) => e.zona)).sort((a, b) => a.localeCompare(b, 'es'));
-}
-
 export function recursosDeVista(entidades: Entidad[], pubs: Publicacion[]): string[] {
   return sinDuplicados(entidades.flatMap((e) => recursosDe(e, pubs))).sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 /** Cada sección de la hoja acota; entre valores de una misma sección, cualquiera vale. */
 export function pasa(e: Entidad, pubs: Publicacion[], q: ConsultaDirectorio): boolean {
-  if (q.lugares.length && !q.lugares.includes(e.zona)) return false;
+  if (!enCiudades(e, q.ciudades)) return false;
   const recs = recursosDe(e, pubs);
   if (q.recursos.length && !q.recursos.some((r) => recs.includes(r))) return false;
   if (q.verificadas && !e.verificada) return false;
@@ -106,7 +103,7 @@ export function filtrar(entidades: Entidad[], pubs: Publicacion[], q: ConsultaDi
 }
 
 export function cuantosAplicados(q: ConsultaDirectorio): number {
-  return q.lugares.length + q.recursos.length + (q.verificadas ? 1 : 0) + (q.texto.trim() ? 1 : 0);
+  return q.ciudades.length + q.recursos.length + (q.verificadas ? 1 : 0) + (q.texto.trim() ? 1 : 0);
 }
 
 export interface ChipDirectorio {
@@ -118,7 +115,7 @@ export interface ChipDirectorio {
 /** Los filtros aplicados, en el orden en que se ven como chips (el orden no es chip). */
 export function chipsDe(q: ConsultaDirectorio): ChipDirectorio[] {
   const chips: ChipDirectorio[] = [];
-  q.lugares.forEach((z) => chips.push({ clave: `lugar:${z}`, texto: z, quitar: (c) => ({ ...c, lugares: c.lugares.filter((x) => x !== z) }) }));
+  q.ciudades.forEach((z) => chips.push({ clave: `ciudad:${z}`, texto: nombreCorto(z), quitar: (c) => ({ ...c, ciudades: c.ciudades.filter((x) => x !== z) }) }));
   q.recursos.forEach((r) => chips.push({ clave: `recurso:${r}`, texto: r, quitar: (c) => ({ ...c, recursos: c.recursos.filter((x) => x !== r) }) }));
   if (q.verificadas) chips.push({ clave: 'verificadas', texto: 'Solo verificadas', quitar: (c) => ({ ...c, verificadas: false }) });
   if (q.texto.trim()) chips.push({ clave: 'texto', texto: `“${q.texto.trim()}”`, quitar: (c) => ({ ...c, texto: '' }) });

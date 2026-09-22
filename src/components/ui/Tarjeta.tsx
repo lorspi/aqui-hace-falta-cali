@@ -23,9 +23,7 @@ export interface TarjetaProps {
   distanciaKm?: number | null;
   /** Las coincidencias del cruce (el «Radar Match»); sin ninguna, no se pinta el bloque. */
   coincidencias?: CoincidenciaPublicacion[];
-  seleccionada?: boolean;
   enHoja?: boolean;
-  onSeleccionar?: (id: string) => void;
   onVerEnMapa?: (id: string) => void;
   onPrimaria?: (id: string) => void;
   /** Abrir la lista de coincidencias de esta publicación. */
@@ -36,7 +34,7 @@ export interface TarjetaProps {
   enProceso?: boolean;
 }
 
-export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, coincidencias = [], seleccionada = false, enHoja = false, enProceso = false, onSeleccionar, onVerEnMapa, onPrimaria, onVerCoincidencias, onCompartir, onReportar }) => {
+export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, coincidencias = [], enHoja = false, enProceso = false, onVerEnMapa, onPrimaria, onVerCoincidencias, onCompartir, onReportar }) => {
   const esOferta = p.tipo === 'oferta';
   const dist = distanciaTexto(distanciaKm);
   const estado = estadoPublicacion(p);
@@ -46,14 +44,15 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
      título dice por qué (`rdBloquearCompletadas` del prototipo). */
   const cubierta = estado === 'cubierta';
   return (
+    /* La tarjeta no se selecciona al tocarla (Alejandro, 21 de septiembre de 2026: «no estamos
+       seleccionando nada»); solo responde al hover como en el DS (`pantalla.css:752`: borde
+       navy-line y sombra leve). Las acciones son sus botones. */
     <article
       data-punto={p.id}
-      aria-current={seleccionada ? 'true' : undefined}
-      onClick={() => onSeleccionar?.(p.id)}
       className={
         enHoja
           ? 'relative flex min-h-full flex-col bg-rd-surface'
-          : `relative flex flex-col rounded-rd-xl border bg-rd-surface p-4 transition duration-200 ${seleccionada ? 'border-rd-navy-line shadow-rd-2 -translate-y-0.5' : 'border-rd-line'}`
+          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
       }
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -98,11 +97,13 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
             onPrimaria?.(p.id);
           }}
         >
-          {esOferta ? 'Solicitar' : 'Quiero ayudar'}
+          {esOferta ? 'Solicitar' : 'Ayudar'}
         </Button>
+        {/* El botón de mapa es uno solo en toda la maqueta: terciario `md`, solo icono de 18
+            (`.rd-btn--icono svg` del DS), igual que el ⋮ (223 C2: ver en el mapa no cambia datos). */}
         {!enHoja && (
           <Button
-            nivel="secundario"
+            nivel="terciario"
             tamano="md"
             aria-label="Ver en el mapa"
             soloIcono
@@ -111,14 +112,14 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
               onVerEnMapa?.(p.id);
             }}
           >
-            <MapIcon aria-hidden="true" className="h-5 w-5" />
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         )}
         <span className="ml-auto flex gap-1">
           <MenuAcciones
             items={[
               { texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir?.(p.id) },
-              { texto: 'Reportar un problema', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) },
+              { texto: 'Reportar', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) },
             ]}
           />
         </span>
