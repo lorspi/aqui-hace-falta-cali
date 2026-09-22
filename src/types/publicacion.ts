@@ -47,6 +47,10 @@ export interface Publicacion {
   verificada: boolean;
   /** La publicó la organización con sesión. */
   propia?: boolean;
+  /** Tipo de perfil del autor (para reglas de privacidad y formato). */
+  perfil?: 'organizacion' | 'liderazgo' | 'individual' | 'rapida';
+  /** Nombre del punto territorial, albergue o comunidad cuando difiere de la personería jurídica u organización matriz. */
+  punto?: string;
   lat: number;
   lng: number;
   zona: string;

@@ -56,8 +56,8 @@ export function faltanCantidades(e: EstadoPedir): string[] {
     .map((m) => m.item);
 }
 
-export function contactoListo(e: { contacto: string; tel: string; mismoWa: boolean; wa: string }): boolean {
-  return !!e.contacto.trim() && !!e.tel.trim() && (e.mismoWa || !!e.wa.trim());
+export function contactoListo(e: { contacto: string; tel: string }): boolean {
+  return !!e.contacto.trim() && !!e.tel.trim();
 }
 
 /** Si ese sub-paso ya puede dejar continuar. «Cantidades» solo responde por lo que pregunta;

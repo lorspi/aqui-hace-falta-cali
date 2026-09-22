@@ -427,21 +427,46 @@ export const TarjetasOpcion: React.FC<{ nombre: string; opciones: { id: string; 
 
 /* ---------- pantallas compartidas ---------- */
 
-/** Contacto: nombre, celular, «también es WhatsApp» y, si no, el WhatsApp. */
+/** Contacto: nombre y celular directo para llamadas y coordinación por WhatsApp. */
 export const CamposContacto: React.FC<{
   contacto: string;
   tel: string;
-  mismoWa: boolean;
-  wa: string;
-  onChange: (campo: 'contacto' | 'tel' | 'wa', v: string) => void;
-  onMismoWa: (v: boolean) => void;
+  onChange: (campo: 'contacto' | 'tel', v: string) => void;
   errores: ReturnType<typeof useErrores>;
-}> = ({ contacto, tel, mismoWa, wa, onChange, onMismoWa, errores }) => (
+}> = ({ contacto, tel, onChange, errores }) => (
   <>
-    <Field id="ct" etiqueta="Nombre" valor={contacto} autoComplete="name" requerido onChange={(v) => { onChange('contacto', v); errores.limpiar('ct'); }} onBlur={(v) => errores.validar('ct', ['requerido'], v, 'Necesitamos un nombre para llamar')} error={errores.errores.ct} className="mb-3" />
-    <Field id="tel" etiqueta="Celular" tipo="tel" valor={tel} autoComplete="tel" requerido onChange={(v) => { onChange('tel', v); errores.limpiar('tel'); }} onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, 'Necesitamos un celular para coordinar')} error={errores.errores.tel} />
-    <Field id="mismo-wa" tipo="checkbox" etiqueta="Este número también es WhatsApp" marcado={mismoWa} onChangeMarcado={onMismoWa} className="mb-3" />
-    {!mismoWa && <Field id="wa" etiqueta="WhatsApp" tipo="tel" valor={wa} autoComplete="tel" placeholder="+57 3.. ... ...." requerido onChange={(v) => { onChange('wa', v); errores.limpiar('wa'); }} onBlur={(v) => errores.validar('wa', ['requerido', 'telefono'], v, 'Escribe el número de WhatsApp')} error={errores.errores.wa} className="mb-3" />}
+    <Field
+      id="ct"
+      etiqueta="Persona de contacto"
+      valor={contacto}
+      autoComplete="name"
+      placeholder="Nombre de quien coordina en el sitio"
+      requerido
+      onChange={(v) => {
+        onChange('contacto', v);
+        errores.limpiar('ct');
+      }}
+      onBlur={(v) => errores.validar('ct', ['requerido'], v, 'Necesitamos un nombre para llamar')}
+      error={errores.errores.ct}
+      className="mb-3"
+    />
+    <Field
+      id="tel"
+      etiqueta="Celular"
+      tipo="tel"
+      valor={tel}
+      autoComplete="tel"
+      placeholder="+57 3.. ... ...."
+      requerido
+      ayuda="Se usará para llamadas y coordinación por WhatsApp."
+      onChange={(v) => {
+        onChange('tel', v);
+        errores.limpiar('tel');
+      }}
+      onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, 'Necesitamos un celular para coordinar')}
+      error={errores.errores.tel}
+      className="mb-3"
+    />
   </>
 );
 

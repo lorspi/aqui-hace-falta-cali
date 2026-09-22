@@ -10,7 +10,7 @@ import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flu
 import type { Publicacion } from '../../types/publicacion';
 import { calcularMetas, declarado, detalleTexto, numero } from '../../utils/equivalencias';
 import { aDeclarar, caminoPedir, listoPedir } from '../../utils/pedir';
-import { cifra, unidad } from '../../utils/publicaciones';
+import { cifra, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import { useFlujo } from './useFlujo';
@@ -53,7 +53,8 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
       return { item: m.item, unidad, total, tramos: [] };
     })
     .filter((r) => r.total > 0);
-  return { id: 'nueva', tipo: 'necesidad', titulo: CUENTA_PEDIR.organizacion, org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  return { ...base, titulo: tituloPublicacion(base) };
 }
 
 const Pedir: React.FC = () => {
@@ -167,7 +168,7 @@ const Pedir: React.FC = () => {
     pantalla = (
       <>
         <Pregunta titulo="¿Quién recibe la ayuda?" sub="Es a quien van a llamar cuando lleguen con la ayuda. Pusimos tu contacto; cámbialo si en el sitio atiende alguien más." />
-        <CamposContacto contacto={e.contacto} tel={e.tel} mismoWa={e.mismoWa} wa={e.wa} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} onMismoWa={(v) => set({ mismoWa: v })} errores={errores} />
+        <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} errores={errores} />
         <AlgoMas titulo="Algo más sobre la necesidad">
           <Field id="pq" etiqueta="Para quién es la ayuda" tipo="select" opciones={PARA_QUIEN} placeholder="Sin especificar" valor={e.paraQuien} onChange={(v) => set({ paraQuien: v })} className="mb-3" />
           <Field id="det" etiqueta="Detalles de la necesidad" tipo="textarea" valor={e.detalles} placeholder="Por ejemplo: hay personas mayores y niños pequeños, recibimos hasta las 6:00 p. m." onChange={(v) => set({ detalles: v })} className="mb-3" />
@@ -192,7 +193,7 @@ const Pedir: React.FC = () => {
           ))}
         </ResumenPub>
         <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? ` · ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}${e.mismoWa ? ' · también WhatsApp' : e.wa ? ` · WhatsApp ${e.wa}` : ''}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
