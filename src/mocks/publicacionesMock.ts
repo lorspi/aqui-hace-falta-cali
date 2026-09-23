@@ -6,6 +6,7 @@
  */
 import type { CategoriaRecurso, IconoRecurso, Publicacion, Ubicacion } from '../types/publicacion';
 import { FOTOS_PUBLICACION } from './fotosMock';
+import { tituloPublicacion } from '../utils/publicaciones';
 
 /** La taxonomía de recursos. La misma para pedir, ofrecer y filtrar. */
 export const TAXONOMIA: CategoriaRecurso[] = [
@@ -154,4 +155,45 @@ const SIN_FOTOS: Publicacion[] = [
   { id: 'c4', tipo: 'necesidad', titulo: 'Albergue San Miguel', org: 'Albergue San Miguel', verificada: false, lat: 1.149, lng: -76.652, ciudad: 'mocoa', zona: 'San Miguel', recursos: [{ item: 'Alojamiento temporal', unidad: 'cupos', total: 60, tramos: [] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 40, tramos: [] }] },
 ];
 
-export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => (FOTOS_PUBLICACION[p.id] ? { ...p, fotos: FOTOS_PUBLICACION[p.id] } : p));
+export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => {
+  const fotos = FOTOS_PUBLICACION[p.id];
+  const conFotos: Publicacion = fotos ? { ...p, fotos } : { ...p };
+  return {
+    ...conFotos,
+    titulo: tituloPublicacion(conFotos),
+  };
+});
+
+/** Obtiene las publicaciones del mock más cualquier necesidad u oferta guardada en localStorage */
+export function obtenerPublicaciones(): Publicacion[] {
+  let lista = [...PUBLICACIONES];
+  try {
+    const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+    if (creadasRaw) {
+      const creadas = JSON.parse(creadasRaw) as Publicacion[];
+      if (Array.isArray(creadas)) {
+        const ids = new Set(creadas.map((p) => p.id));
+        lista = [...creadas, ...lista.filter((p) => !ids.has(p.id))];
+      }
+    }
+  } catch {}
+  try {
+    const extraN = localStorage.getItem('rd-necesidad-publicacion');
+    if (extraN) {
+      const p = JSON.parse(extraN) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  try {
+    const extraO = localStorage.getItem('rd-oferta-publicacion');
+    if (extraO) {
+      const p = JSON.parse(extraO) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  return lista;
+}

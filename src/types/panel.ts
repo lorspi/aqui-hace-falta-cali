@@ -96,7 +96,29 @@ export interface EntregaRecibida {
   cerradaEl?: string;
 }
 
-export type RolPlataforma = 'admin' | 'coordinador' | 'auditor';
+export type RolPlataforma = 'admin' | 'coordinador' | 'voluntario' | 'auditor' | 'terreno';
+
+/**
+ * Matriz de capacidades por rol de plataforma para desarrollo (Frontend / RLS Supabase)
+ */
+export interface PermisosRol {
+  /** Modificar datos de la entidad, certificados, configuración */
+  gestionEntidad: boolean;
+  /** Invitar, dar de baja y asignar roles al equipo */
+  gestionEquipo: boolean;
+  /** Crear, pausar y editar ofertas y necesidades */
+  publicarAyuda: boolean;
+  /** Aprobar solicitudes y asignar quién lleva la entrega */
+  coordinarEntregas: boolean;
+  /** Ver la ficha / tarjeta detallada de la necesidad u oferta asignada */
+  verDetalleAsignacion: boolean;
+  /** Marcar entrega y adjuntar fotografías de soporte */
+  certificarEntrega: boolean;
+  /** Acceso al resumen, auditoría y actas */
+  auditoriaLectura: boolean;
+}
+
+export type DisponibilidadMiembro = 'tiempo_completo' | 'fines_de_semana' | 'emergencias' | 'tardes' | 'hoy' | 'manana' | 'finde' | '';
 
 export interface MiembroEquipo {
   id: number;
@@ -106,8 +128,9 @@ export interface MiembroEquipo {
   veh: string;
   tel: string;
   correo: string;
-  disp: 'hoy' | 'manana' | 'finde';
+  disp: DisponibilidadMiembro;
   hechas: number;
+  ubicacion?: string;
 }
 
 export interface Actividad {

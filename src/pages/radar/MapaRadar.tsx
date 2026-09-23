@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import Supercluster, { type PointFeature } from 'supercluster';
 import { Check, Hand, HeartHandshake } from 'lucide-react';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
-import { resumen } from '../../utils/publicaciones';
+import { resumen, tituloPublicacion } from '../../utils/publicaciones';
 
 /**
  * El mapa de la Radar con los pines del prototipo (`mapa.js`): el núcleo dice el tipo (coral
@@ -46,7 +46,7 @@ const CLASE_SELECCIONADO = ['after:absolute', 'after:-inset-2.5', 'after:-z-1', 
 const CLASE_RESALTADO = ['ring-3', 'ring-rd-navy', 'ring-offset-2', 'scale-115'];
 
 function nombrePunto(p: Publicacion): string {
-  return `${p.tipo === 'necesidad' ? 'Necesidad' : 'Oferta'}: ${p.titulo}${p.org !== p.titulo ? ` · ${p.org}` : ''}`;
+  return `${p.tipo === 'necesidad' ? 'Necesidad' : 'Oferta'}: ${tituloPublicacion(p)}`;
 }
 
 function pinHTML(p: Publicacion): string {

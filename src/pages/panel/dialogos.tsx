@@ -4,9 +4,11 @@ import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Soli
 import type { Foto } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
 import { EQUIPO } from '../../mocks/panelMock';
-import { cifra } from '../../utils/publicaciones';
+import { DEPTOS } from '../../mocks/cuentasMock';
+import { cifra, tituloPublicacion } from '../../utils/publicaciones';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { Field } from '../../components/ui/Field';
+import { Combobox } from '../../components/ui/Combobox';
 import { Button } from '../../components/ui/Button';
 import { Tarjeta } from '../../components/ui/Tarjeta';
 import { CampoFotos } from '../flujos/comunes';
@@ -220,164 +222,356 @@ export const DialogoEditarRecursoPedido: React.FC<{
   );
 };
 
-/**
- * Diálogo para registrar a un nuevo miembro en el equipo de la organización.
- */
-export const DialogoRegistrarMiembro: React.FC<{
+export const SUGERENCIAS_PROFESION_ROL = [
+  'Reparto y entregas',
+  'Logística y acopio',
+  'Censo y enlace comunitario',
+  'Salud y primeros auxilios',
+  'Atención médica prehospitalaria',
+  'Psicología y apoyo psicosocial',
+  'Evaluación y peritaje estructural',
+  'Arquitectura y peritaje',
+  'Geología y peritaje de suelos',
+  'Ingeniería e inspección hídrica',
+  'Topografía y cartografía',
+  'Rescate y remoción',
+  'Cocina comunitaria y víveres',
+  'Asesoría legal y jurídica',
+  'Coordinación general',
+];
+
+export const VEHICULOS = [
+  'Sin vehículo (a pie)',
+  'Moto',
+  'Carro particular',
+  'Camioneta',
+  'Camión o furgón',
+  'Bicicleta',
+];
+
+export const DISPONIBILIDADES: { valor: MiembroEquipo['disp']; etiqueta: string }[] = [
+  { valor: 'tiempo_completo', etiqueta: 'Cualquier día (tiempo completo)' },
+  { valor: 'fines_de_semana', etiqueta: 'Fines de semana' },
+  { valor: 'emergencias', etiqueta: 'Bajo llamado (emergencias)' },
+];
+
+const ACCESOS_RADAR: { valor: RolPlataforma; etiqueta: string; descripcion: string }[] = [
+  {
+    valor: 'terreno',
+    etiqueta: 'Solo en terreno (sin cuenta)',
+    descripcion: 'Sin cuenta en la app. Colaborador físico para coordinar por llamada o WhatsApp.',
+  },
+  {
+    valor: 'voluntario',
+    etiqueta: 'Voluntario / Repartidor',
+    descripcion: 'Acceso móvil: verá la tarjeta con el detalle de sus entregas asignadas y podrá certificar con fotos.',
+  },
+  {
+    valor: 'coordinador',
+    etiqueta: 'Coordinador',
+    descripcion: 'Logística diaria: gestiona el tablero, asigna entregas a voluntarios y valida soportes.',
+  },
+  {
+    valor: 'admin',
+    etiqueta: 'Administrador',
+    descripcion: 'Control total: edita la entidad, publicaciones de ayuda y administración del equipo.',
+  },
+];
+
+export interface DialogoMiembroProps {
   abierto: boolean;
+  miembro?: MiembroEquipo | null;
   onCerrar: () => void;
-  onRegistrar: (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => void;
-}> = ({ abierto, onCerrar, onRegistrar }) => {
+  onGuardar?: (m: Omit<MiembroEquipo, 'id' | 'hechas'>, id?: number) => void;
+  onRegistrar?: (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => void;
+}
+
+/**
+ * Diálogo para registrar o editar a un miembro en el equipo de la organización o comunidad.
+ */
+export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
+  abierto,
+  miembro,
+  onCerrar,
+  onGuardar,
+  onRegistrar,
+}) => {
+  const esEdicion = Boolean(miembro);
+  const tieneCuentaVinculada = esEdicion && Boolean(miembro?.correo);
+
   const [nombre, setNombre] = useState('');
   const [tel, setTel] = useState('');
   const [correo, setCorreo] = useState('');
-  const [rol, setRol] = useState('Conducción');
-  const [veh, setVeh] = useState('Camioneta 4×4');
-  const [rolPlataforma, setRolPlataforma] = useState<RolPlataforma>('coordinador');
-  const [disp, setDisp] = useState<MiembroEquipo['disp']>('hoy');
+  const [rol, setRol] = useState('');
+  const [veh, setVeh] = useState('');
+  const [ubicacion, setUbicacion] = useState('');
+  const [rolPlataforma, setRolPlataforma] = useState<RolPlataforma | ''>('');
+  const [disp, setDisp] = useState<MiembroEquipo['disp']>('');
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
   const [errorTel, setErrorTel] = useState<string | null>(null);
+  const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
 
   const reset = () => {
     setNombre('');
     setTel('');
     setCorreo('');
-    setRol('Conducción');
-    setVeh('Camioneta 4×4');
-    setRolPlataforma('coordinador');
-    setDisp('hoy');
+    setRol('');
+    setVeh('');
+    setUbicacion('');
+    setRolPlataforma('');
+    setDisp('');
     setErrorNombre(null);
     setErrorTel(null);
+    setErrorCorreo(null);
   };
+
+  useEffect(() => {
+    if (abierto) {
+      if (miembro) {
+        setNombre(miembro.n);
+        setTel(miembro.tel);
+        setCorreo(miembro.correo || '');
+        setRol(miembro.rol || '');
+        setVeh(miembro.veh || '');
+        setUbicacion(miembro.ubicacion || '');
+        setRolPlataforma(miembro.rolPlataforma || 'terreno');
+        setDisp(miembro.disp || '');
+      } else {
+        reset();
+      }
+      setErrorNombre(null);
+      setErrorTel(null);
+      setErrorCorreo(null);
+    }
+  }, [abierto, miembro]);
 
   const cerrar = () => {
     reset();
     onCerrar();
   };
 
+  const onBlurNombre = () => {
+    if (!nombre.trim()) setErrorNombre('Escribe el nombre y apellidos');
+  };
+
+  const onBlurTel = () => {
+    const clean = tel.replace(/\D/g, '');
+    if (!tel.trim()) setErrorTel('Escribe el número de celular');
+    else if (clean.length < 10) setErrorTel('Un celular tiene al menos 10 dígitos');
+  };
+
+  const onBlurCorreo = () => {
+    const clean = correo.trim();
+    if (clean && (!clean.includes('@') || !clean.includes('.'))) {
+      setErrorCorreo('Revisa el correo: falta el @ o el dominio');
+    }
+  };
+
   return (
     <Dialogo
       abierto={abierto}
-      titulo="Registrar a alguien en tu equipo"
-      accion="Registrar miembro"
+      titulo={esEdicion ? 'Editar integrante del equipo' : 'Agregar persona al equipo'}
+      accion={esEdicion ? 'Guardar cambios' : 'Agregar persona'}
       onCerrar={cerrar}
       onEnviar={() => {
         let hayError = false;
         if (!nombre.trim()) {
-          setErrorNombre('El nombre es obligatorio');
+          setErrorNombre('Escribe el nombre y apellidos');
           hayError = true;
         } else {
           setErrorNombre(null);
         }
+
+        const cleanTel = tel.replace(/\D/g, '');
         if (!tel.trim()) {
-          setErrorTel('El teléfono es obligatorio para coordinar');
+          setErrorTel('Escribe el número de celular');
+          hayError = true;
+        } else if (cleanTel.length < 10) {
+          setErrorTel('Un celular tiene al menos 10 dígitos');
           hayError = true;
         } else {
           setErrorTel(null);
         }
+
+        const cleanCorreo = correo.trim();
+        if (cleanCorreo && (!cleanCorreo.includes('@') || !cleanCorreo.includes('.'))) {
+          setErrorCorreo('Revisa el correo: falta el @ o el dominio');
+          hayError = true;
+        } else {
+          setErrorCorreo(null);
+        }
+
         if (hayError) return;
 
-        onRegistrar({
+        const datos: Omit<MiembroEquipo, 'id' | 'hechas'> = {
           n: nombre.trim(),
           tel: tel.trim(),
-          correo: correo.trim() || `${nombre.toLowerCase().trim().replace(/\s+/g, '.')}@organizacion.org`,
-          rol,
-          veh,
-          rolPlataforma,
-          disp,
-        });
+          correo: cleanCorreo,
+          rol: rol.trim(),
+          veh: veh.trim(),
+          rolPlataforma: (rolPlataforma as RolPlataforma) || 'terreno',
+          disp: disp || '',
+          ubicacion: ubicacion.trim() || undefined,
+        };
+
+        if (esEdicion && miembro && onGuardar) {
+          onGuardar(datos, miembro.id);
+        } else if (onRegistrar) {
+          onRegistrar(datos);
+        } else if (onGuardar) {
+          onGuardar(datos);
+        }
+
         cerrar();
       }}
     >
       <p className="mb-4 text-rd-14 text-rd-ink-2">
-        Agrega a un colaborador o voluntario. Podrás asignarle solicitudes y entregas en el tablero de seguimiento.
+        {esEdicion
+          ? 'Actualiza los datos de contacto, rol en terreno o nivel de acceso en RaDAR para este integrante.'
+          : 'Agrega a un colaborador o voluntario. Podrás coordinar con esta persona y asignarle entregas en el seguimiento.'}
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Field
-            id="miembro-nombre"
-            etiqueta="Nombre y apellidos"
-            tipo="text"
-            valor={nombre}
-            onChange={(v) => {
-              setNombre(v);
-              if (errorNombre) setErrorNombre(null);
-            }}
-            error={errorNombre}
-            placeholder="Ej. Mateo Rojas"
-            autoComplete="name"
-            requerido
-          />
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-rd mb-2.5 text-rd-12 font-semibold uppercase tracking-wider text-rd-ink-meta">
+            Datos de contacto
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field
+                id="miembro-nombre"
+                etiqueta="Nombre y apellidos"
+                tipo="text"
+                valor={nombre}
+                onChange={(v) => {
+                  setNombre(v);
+                  if (errorNombre) setErrorNombre(v.trim() ? null : 'Escribe el nombre y apellidos');
+                }}
+                onBlur={onBlurNombre}
+                error={errorNombre}
+                autoComplete="name"
+                requerido
+              />
+            </div>
+            <Field
+              id="miembro-tel"
+              etiqueta="Celular"
+              tipo="tel"
+              inputMode="tel"
+              valor={tel}
+              onChange={(v) => {
+                setTel(v);
+                if (errorTel) {
+                  const clean = v.replace(/\D/g, '');
+                  if (v.trim() && clean.length >= 10) setErrorTel(null);
+                }
+              }}
+              onBlur={onBlurTel}
+              error={errorTel}
+              placeholder="300 000 0000"
+              autoComplete="tel"
+              requerido
+            />
+            <Field
+              id="miembro-correo"
+              etiqueta="Correo electrónico"
+              tipo="email"
+              opcional={!esEdicion || !tieneCuentaVinculada}
+              deshabilitado={tieneCuentaVinculada}
+              valor={correo}
+              onChange={(v) => {
+                setCorreo(v);
+                if (errorCorreo) {
+                  const clean = v.trim();
+                  if (!clean || (clean.includes('@') && clean.includes('.'))) setErrorCorreo(null);
+                }
+              }}
+              onBlur={onBlurCorreo}
+              error={errorCorreo}
+              placeholder="nombre@ejemplo.org"
+              autoComplete="email"
+              ayuda={
+                tieneCuentaVinculada
+                  ? 'Vinculado a su cuenta de RaDAR. El integrante puede actualizar su correo desde su propio perfil.'
+                  : 'Opcional. Permite vincularlo a una cuenta con acceso web en RaDAR.'
+              }
+            />
+          </div>
         </div>
-        <Field
-          id="miembro-tel"
-          etiqueta="Celular"
-          tipo="tel"
-          inputMode="tel"
-          valor={tel}
-          onChange={(v) => {
-            setTel(v);
-            if (errorTel) setErrorTel(null);
-          }}
-          error={errorTel}
-          placeholder="+57 310 000 0000"
-          autoComplete="tel"
-          requerido
-        />
-        <Field
-          id="miembro-correo"
-          etiqueta="Correo electrónico"
-          tipo="email"
-          opcional
-          valor={correo}
-          onChange={setCorreo}
-          placeholder="correo@ejemplo.org"
-          autoComplete="email"
-        />
-        <Field
-          id="miembro-rol"
-          etiqueta="Qué hace en terreno"
-          tipo="select"
-          valor={rol}
-          onChange={setRol}
-          opciones={['Qué hace en terreno', 'Conducción', 'Logística y bodega', 'Rescate', 'Salud', 'Coordinación']}
-        />
-        <Field
-          id="miembro-veh"
-          etiqueta="Vehículo"
-          tipo="select"
-          valor={veh}
-          onChange={setVeh}
-          opciones={['Vehículo disponible', 'Camioneta 4×4', 'Moto', 'Carro', 'Camión / Furgón', 'Sin vehículo']}
-        />
-        <Field
-          id="miembro-disp"
-          etiqueta="Disponibilidad habitual"
-          tipo="select"
-          valor={disp === 'hoy' ? 'Hoy' : disp === 'manana' ? 'Mañana' : 'Fin de semana'}
-          onChange={(v) => {
-            if (v === 'Mañana') setDisp('manana');
-            else if (v === 'Fin de semana') setDisp('finde');
-            else setDisp('hoy');
-          }}
-          opciones={['Disponibilidad', 'Hoy', 'Mañana', 'Fin de semana']}
-        />
-        <Field
-          id="miembro-acceso"
-          etiqueta="Acceso en RaDAR"
-          tipo="select"
-          valor={rolPlataforma === 'admin' ? 'Administra' : rolPlataforma === 'auditor' ? 'Solo ve' : 'Coordina entregas'}
-          onChange={(v) => {
-            if (v === 'Administra') setRolPlataforma('admin');
-            else if (v === 'Solo ve') setRolPlataforma('auditor');
-            else setRolPlataforma('coordinador');
-          }}
-          opciones={['Acceso en RaDAR', 'Coordina entregas', 'Administra', 'Solo ve']}
-        />
+
+        <div className="border-t border-rd-line-soft pt-3">
+          <h3 className="font-rd mb-2.5 text-rd-12 font-semibold uppercase tracking-wider text-rd-ink-meta">
+            Operación en terreno
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Combobox
+              id="miembro-rol"
+              etiqueta="Qué hace o profesión"
+              opcional
+              valor={rol}
+              placeholder="Seleccionar o escribir función"
+              opciones={SUGERENCIAS_PROFESION_ROL}
+              onChange={setRol}
+              permitePersonalizado
+            />
+            <Combobox
+              id="miembro-ubicacion"
+              etiqueta="Ubicación"
+              opcional
+              valor={ubicacion}
+              placeholder="Seleccionar departamento"
+              opciones={DEPTOS}
+              onChange={setUbicacion}
+            />
+            <Combobox
+              id="miembro-veh"
+              etiqueta="Medio de transporte"
+              opcional
+              valor={veh}
+              placeholder="Seleccionar medio"
+              opciones={VEHICULOS}
+              onChange={setVeh}
+            />
+            <Combobox
+              id="miembro-disp"
+              etiqueta="Disponibilidad habitual"
+              opcional
+              valor={DISPONIBILIDADES.find((d) => d.valor === disp)?.etiqueta || ''}
+              placeholder="Seleccionar disponibilidad"
+              opciones={DISPONIBILIDADES.map((d) => d.etiqueta)}
+              onChange={(v) => {
+                const match = DISPONIBILIDADES.find((d) => d.etiqueta === v);
+                setDisp(match ? match.valor : '');
+              }}
+            />
+            <div className="sm:col-span-2">
+              <Combobox
+                id="miembro-acceso"
+                etiqueta="Acceso en RaDAR"
+                opcional
+                valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
+                placeholder="Seleccionar acceso (por defecto: Solo en terreno)"
+                opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
+                onChange={(v) => {
+                  const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
+                  setRolPlataforma(match ? match.valor : '');
+                }}
+              />
+              {rolPlataforma && (
+                <p className="mt-1.5 flex items-start gap-1.5 rounded-rd-md bg-rd-sunken px-2.5 py-1.5 text-rd-12 text-rd-ink-2">
+                  <span className="font-semibold text-rd-ink">Permisos:</span>
+                  <span>{ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.descripcion}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </Dialogo>
   );
 };
+
+export const DialogoRegistrarMiembro = DialogoMiembro;
 
 export const DialogoCierre: React.FC<{ abierto: boolean; titulo: string; texto: string; accion: string; onCerrar: () => void; onEnviar: (fotos: number) => void }> = ({ abierto, titulo, texto, accion, onCerrar, onEnviar }) => {
   const [fotos, setFotos] = useState<Foto[]>([]);
@@ -506,10 +700,10 @@ export const DialogoGestionPublicacion: React.FC<{
 
   const publicacionParaTarjeta: Publicacion | null = useMemo(() => {
     if (!pubInicial) return null;
-    return {
+    const base: Publicacion = {
       id: pubInicial.id,
       tipo: pubInicial.tipo,
-      titulo: titulo || pubInicial.titulo,
+      titulo: '',
       org: pubInicial.org,
       verificada: pubInicial.verificada,
       propia: true,
@@ -535,7 +729,8 @@ export const DialogoGestionPublicacion: React.FC<{
             : [['Para quién', r.para || 'Comunidad afectada']],
       })),
     };
-  }, [pubInicial, titulo, zona, dir, descripcion, recursos, comoEntrega]);
+    return { ...base, titulo: tituloPublicacion(base) };
+  }, [pubInicial, zona, dir, descripcion, recursos, comoEntrega]);
 
   if (!pubInicial) return null;
 
@@ -604,7 +799,7 @@ export const DialogoGestionPublicacion: React.FC<{
             {esOferta ? 'Publicación de Oferta' : 'Publicación de Necesidad'}
           </span>
           <h2 className="text-rd-16 font-semibold text-rd-ink">
-            {pubInicial.titulo}
+            {publicacionParaTarjeta ? tituloPublicacion(publicacionParaTarjeta) : pubInicial.titulo}
           </h2>
         </div>
         <button
@@ -927,6 +1122,65 @@ export const DialogoGestionPublicacion: React.FC<{
           </div>
         </form>
       )}
+    </dialog>
+  );
+};
+
+/**
+ * Muestra la tarjeta completa de la publicación (como se ve en el Radar o vista de lista)
+ * para entender el requerimiento o la oferta integral desde el tablero de seguimiento.
+ */
+export const DialogoDetallePublicacionPanel: React.FC<{
+  publicacion: Publicacion | null;
+  onCerrar: () => void;
+  onVerEnMapa?: (id: string) => void;
+}> = ({ publicacion: p, onCerrar, onVerEnMapa }) => {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (p && !d.open) d.showModal();
+    else if (!p && d.open) d.close();
+  }, [p]);
+
+  if (!p) return null;
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(e) => e.target === ref.current && onCerrar()}
+      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+    >
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+        <span className="text-rd-13 font-semibold text-rd-ink">Publicación en RaDAR</span>
+        <button
+          type="button"
+          onClick={onCerrar}
+          aria-label="Cerrar detalle"
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="p-4 sm:p-5 bg-rd-fondo/40">
+        <Tarjeta
+          publicacion={p}
+          onVerEnMapa={(id) => {
+            if (onVerEnMapa) {
+              onVerEnMapa(id);
+            } else {
+              window.location.href = `/radar-v2?punto=${id}`;
+            }
+          }}
+          onCompartir={(id) => {
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(`${window.location.origin}/radar-v2?punto=${id}`);
+            }
+          }}
+        />
+      </div>
     </dialog>
   );
 };

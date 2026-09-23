@@ -1,5 +1,5 @@
 import React from 'react';
-import { Archive, Check, Clock, MapPin, Phone, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, Clock, Eye, MapPin, Phone, Truck, Users, X } from 'lucide-react';
 import type { EntregaRecibida, MiembroEquipo, Solicitud } from '../../types/panel';
 import { EQUIPO } from '../../mocks/panelMock';
 import { ENTIDADES } from '../../mocks/directorioMock';
@@ -107,32 +107,6 @@ export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({
         <span className="flex items-center gap-1.5">
           <MapPin aria-hidden="true" className="h-3.25 w-3.25 shrink-0 text-rd-ink-3" />
           <span className="font-medium text-rd-ink">{quien}</span>
-          {contacto && (
-            <span className="inline-flex items-center gap-1 ml-0.5">
-              <a
-                href={`tel:${contacto.tel.replace(/\s/g, '')}`}
-                onClick={(e) => e.stopPropagation()}
-                title={`Llamar a ${quien}: ${contacto.tel}`}
-                aria-label={`Llamar a ${quien}`}
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 transition-all hover:bg-rd-navy-soft hover:text-rd-navy hover:scale-110 active:scale-95"
-              >
-                <Phone className="h-3 w-3" />
-              </a>
-              {contacto.wa && (
-                <a
-                  href={`https://wa.me/${contacto.tel.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  title={`Escribir por WhatsApp a ${quien}: ${contacto.tel}`}
-                  aria-label={`Escribir por WhatsApp a ${quien}`}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rd-sunken text-rd-green transition-all hover:bg-emerald-50 hover:scale-110 active:scale-95"
-                >
-                  <IconoWhatsApp className="h-3 w-3" />
-                </a>
-              )}
-            </span>
-          )}
         </span>
         <span className={`flex items-center gap-1 ${hoy ? 'font-medium text-rd-amber-ink' : ''}`}>
           <Clock aria-hidden="true" className="h-3.25 w-3.25 shrink-0 text-rd-ink-3" />
@@ -182,6 +156,7 @@ export interface AccionesSolicitud {
   onArchivar: (id: number) => void;
   onCancelar: (s: Solicitud) => void;
   onVerFotos: (s: Solicitud, i: number) => void;
+  onVerPublicacion?: (s: Solicitud) => void;
 }
 
 export function quienLleva(s: Solicitud, eq: MiembroEquipo[] = EQUIPO): string | null {
@@ -265,6 +240,14 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
 
   const items: { texto: string; icono: React.ReactNode; tono?: 'peligro'; onElegir: () => void }[] = [];
 
+  if (a.onVerPublicacion) {
+    items.push({
+      texto: 'Ver publicación completa',
+      icono: <Eye className="h-4 w-4" />,
+      onElegir: () => a.onVerPublicacion!(s),
+    });
+  }
+
   if (contacto) {
     items.push({
       texto: `Llamar (${contacto.tel})`,
@@ -313,30 +296,42 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
 }
 
 /** El ⋮ de ayuda recibida: comunicarse con la organización que entrega. */
-export function menuDeRecibida(r: EntregaRecibida, flotante = false): React.ReactNode {
+export function menuDeRecibida(
+  r: EntregaRecibida,
+  flotante = false,
+  onVerPublicacion?: (r: EntregaRecibida) => void
+): React.ReactNode {
   const contacto = buscarContactoEntidad(r.org);
-  if (!contacto) return null;
+  const items: { texto: string; icono: React.ReactNode; tono?: 'peligro'; onElegir: () => void }[] = [];
 
-  const items = [
-    {
+  if (onVerPublicacion) {
+    items.push({
+      texto: 'Ver publicación completa',
+      icono: <Eye className="h-4 w-4" />,
+      onElegir: () => onVerPublicacion(r),
+    });
+  }
+
+  if (contacto) {
+    items.push({
       texto: `Llamar (${contacto.tel})`,
       icono: <Phone className="h-4 w-4" />,
       onElegir: () => {
         window.location.href = `tel:${contacto.tel.replace(/\s/g, '')}`;
       },
-    },
-    ...(contacto.wa
-      ? [
-          {
-            texto: 'Escribir por WhatsApp',
-            icono: <IconoWhatsApp className="h-4 w-4" />,
-            onElegir: () => {
-              window.open(`https://wa.me/${contacto.tel.replace(/\D/g, '')}`, '_blank', 'noopener');
-            },
-          },
-        ]
-      : []),
-  ];
+    });
+    if (contacto.wa) {
+      items.push({
+        texto: 'Escribir por WhatsApp',
+        icono: <IconoWhatsApp className="h-4 w-4" />,
+        onElegir: () => {
+          window.open(`https://wa.me/${contacto.tel.replace(/\D/g, '')}`, '_blank', 'noopener');
+        },
+      });
+    }
+  }
+
+  if (items.length === 0) return null;
 
   return (
     <MenuAcciones
@@ -397,8 +392,9 @@ export const TarjetaRecibida: React.FC<{
   onVerFotos: (r: EntregaRecibida, i: number) => void;
   onAceptar?: (id: number) => void;
   onRechazar?: (id: number) => void;
+  onVerPublicacion?: (r: EntregaRecibida) => void;
   menuFlotante?: boolean;
-}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar, menuFlotante = false }) => {
+}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar, onVerPublicacion, menuFlotante = false }) => {
   const f = fotosDeRecibida(r.id);
   const contacto = buscarContactoEntidad(r.org);
   const acciones = (() => {
@@ -450,7 +446,7 @@ export const TarjetaRecibida: React.FC<{
       cierre={cierre}
       fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
       acciones={acciones}
-      menu={menuDeRecibida(r, menuFlotante)}
+      menu={menuDeRecibida(r, menuFlotante, onVerPublicacion)}
       atenuada={r.estado === 'archivada'}
     />
   );

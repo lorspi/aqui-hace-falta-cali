@@ -19,7 +19,7 @@ import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
@@ -30,7 +30,7 @@ import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante } from '../../utils/publicaciones';
+import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
 /**
@@ -62,7 +62,8 @@ function enlaceDe(id: string): string {
 /** El `?punto=<id>` de la URL, solo si existe. */
 function puntoPedido(): string | null {
   const id = new URLSearchParams(window.location.search).get('punto');
-  return id && PUBLICACIONES.some((p) => p.id === id) ? id : null;
+  const todas = obtenerPublicaciones();
+  return id && todas.some((p) => p.id === id) ? id : null;
 }
 
 
@@ -107,6 +108,7 @@ const Radar: React.FC = () => {
   const [reporte, setReporte] = useState<string | null>(null);
   const [enProceso, setEnProceso] = useState<string[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [todasLasPubs] = useState<Publicacion[]>(obtenerPublicaciones);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,18 +127,18 @@ const Radar: React.FC = () => {
 
   /* Los tres conteos cuentan, por tipo, lo que pasa todos los demás filtros. */
   const conteo = useMemo(() => {
-    const resto = PUBLICACIONES.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
+    const resto = todasLasPubs.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
     return { todo: resto.length, necesidad: resto.filter((p) => p.tipo === 'necesidad').length, oferta: resto.filter((p) => p.tipo === 'oferta').length };
-  }, [filtros, busqueda]);
+  }, [filtros, busqueda, todasLasPubs]);
 
-  const visibles = useMemo(() => ordenar(PUBLICACIONES.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda]);
+  const visibles = useMemo(() => ordenar(todasLasPubs.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda, todasLasPubs]);
 
-  const distancias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, distanciaKm(UBICACION, p)])), []);
-  const coincidencias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, coincidenciasDe(p, PUBLICACIONES)])), []);
+  const distancias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, distanciaKm(UBICACION, p)])), [todasLasPubs]);
+  const coincidencias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, coincidenciasDe(p, todasLasPubs)])), [todasLasPubs]);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
   /* El detalle que abre «Ver detalle» de la fila de 1280: la misma tarjeta, en un diálogo. */
   const [detalleId, setDetalleId] = useState<string | null>(null);
-  const publicacionDetalle = detalleId ? PUBLICACIONES.find((p) => p.id === detalleId) : undefined;
+  const publicacionDetalle = detalleId ? todasLasPubs.find((p) => p.id === detalleId) : undefined;
   const chips = chipsDe(filtros);
   /* Al cambiar de ciudades, el mapa encuadra lo que queda visible (como producción, que vuela a
      la ciudad elegida). */
@@ -200,7 +202,7 @@ const Radar: React.FC = () => {
   }, []);
 
   /* --- lo que pasa al tocar una tarjeta (`acciones.js`) --- */
-  const abrirCompromiso = (id: string) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null);
+  const abrirCompromiso = (id: string) => setCompromiso(todasLasPubs.find((p) => p.id === id) ?? null);
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
@@ -241,6 +243,7 @@ const Radar: React.FC = () => {
     setSeleccionada(id);
     setHojaPin((h) => ({ id, expandida: h?.expandida ?? false }));
   };
+
   const conteoTexto = (n: number, t: Tipo) => {
     if (t === 'necesidad') return `${n} ${n === 1 ? 'necesidad' : 'necesidades'}`;
     if (t === 'oferta') return `${n} ${n === 1 ? 'oferta' : 'ofertas'}`;
@@ -254,7 +257,7 @@ const Radar: React.FC = () => {
     onVerCoincidencias: (id: string) => setVerCoincidencias(id),
   };
   const sinLeer = avisos.filter((a) => !a.leido).length;
-  const publicacionHoja = hojaPin ? PUBLICACIONES.find((p) => p.id === hojaPin.id) : undefined;
+  const publicacionHoja = hojaPin ? todasLasPubs.find((p) => p.id === hojaPin.id) : undefined;
   /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
   const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
@@ -443,10 +446,10 @@ const Radar: React.FC = () => {
           <HojaPin publicacion={publicacionHoja} vecinas={visibles} distancias={distancias} coincidencias={coincidencias} enProceso={enProceso.includes(publicacionHoja.id)} expandida={hojaPin.expandida} cerrando={hojaPin.cerrando} onExpandir={(e) => setHojaPin({ id: hojaPin.id, expandida: e })} onCerrar={cerrarHojaPin} onIr={irDesdeHoja} {...accionesTarjeta} />
         )}
 
-        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={PUBLICACIONES} resultados={visibles.length} ubicacion={UBICACION} />
+        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={todasLasPubs} resultados={visibles.length} ubicacion={UBICACION} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
         {(() => {
-          const pub = verCoincidencias ? PUBLICACIONES.find((p) => p.id === verCoincidencias) : undefined;
+          const pub = verCoincidencias ? todasLasPubs.find((p) => p.id === verCoincidencias) : undefined;
           return pub ? <DialogoCoincidencias abierto publicacion={pub} coincidencias={coincidencias.get(pub.id) ?? []} hechas={enProceso} onCerrar={() => setVerCoincidencias(null)} onPrimaria={(id) => { setVerCoincidencias(null); abrirCompromiso(id); }} onVerEnMapa={verEnMapaDesdeCoincidencias} /> : null;
         })()}
         <DialogoReporte abierto={reporte !== null} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
@@ -551,7 +554,7 @@ const FilaPublicacion: React.FC<{
           </div>
           <div className="flex min-w-0 items-center gap-1.5">
             <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
-              {p.titulo}
+              {tituloPublicacion(p)}
             </h2>
             {p.verificada && (
               <BadgeCheck
@@ -561,7 +564,7 @@ const FilaPublicacion: React.FC<{
               />
             )}
           </div>
-          {p.org !== p.titulo && (
+          {p.org && p.org !== actorPublicacion(p) && (
             <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
           )}
           <Donde
@@ -613,7 +616,7 @@ const FilaPublicacion: React.FC<{
           <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => onVerEnMapa(p.id)}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="md" flotante />
+          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" flotante />
         </div>
       </div>
     </article>

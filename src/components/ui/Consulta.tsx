@@ -143,8 +143,8 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
  *  el último de la fila (`pantalla.css:240`: `margin-left:auto`, 360 de ancho). Bajo 1024 solo
  *  aparece cuando la lupa de la cabecera lo abre (`abierto`), a lo ancho y primero en la fila
  *  (146). Su sitio no lo decide quien lo usa: es el mismo en toda la herramienta. */
-export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean }> = ({ valor, onChange, placeholder, abierto }) => (
-  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft lg:ml-auto lg:w-72 xl:w-90 ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
+export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => (
+  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft ${className ? className : 'lg:ml-auto lg:w-72 xl:w-90'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
     <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
     <span className="sr-only">Buscar</span>
     <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />

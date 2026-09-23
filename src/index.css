@@ -716,3 +716,68 @@ body.modal-open {
   font-weight: 700;
   color: #1e293b;
 }
+
+/* ======================================================================
+   IMPRESIÓN OFICIAL — Acta de Entrega y Custodia Humanitaria
+   ====================================================================== */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #171b2b !important;
+  }
+
+  /* Ocultar elementos interactivos de la aplicación */
+  header,
+  footer,
+  nav,
+  aside,
+  main,
+  .no-print,
+  dialog::backdrop {
+    display: none !important;
+  }
+
+  /* Cuando el diálogo está abierto al imprimir */
+  dialog {
+    display: block !important;
+    position: static !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  dialog form > div:last-child {
+    display: none !important;
+  }
+
+  #documento-acta-imprimible {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    color: #171b2b !important;
+    background: #ffffff !important;
+    border: 1px solid #e1e4ee !important;
+    border-radius: 8px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .salto-evitar {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+

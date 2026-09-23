@@ -3,5 +3,10 @@
   "files.associations": {
     "*.css": "tailwindcss"
   },
-  "tailwindCSS.lint.suggestCanonicalClasses": "ignore"
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+  "workbench.editor.autoLockGroups": {
+    "imagePreview.previewEditor": true
+  },
+  "workbench.editor.limit.value": 10,
+  "workbench.editor.limit.perEditorGroup": false
 }

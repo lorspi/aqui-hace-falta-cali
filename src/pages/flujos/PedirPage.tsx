@@ -4,15 +4,18 @@ import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
 import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
-import { PUERTAS } from '../../mocks/panelMock';
+import { NECESIDAD, PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
 import { calcularMetas, declarado, detalleTexto, numero } from '../../utils/equivalencias';
 import { aDeclarar, caminoPedir, listoPedir } from '../../utils/pedir';
-import { cifra, unidad } from '../../utils/publicaciones';
+import { cifra, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
+import { iconoDe } from '../../components/ui/Recursos';
+import type { RecursoPedido } from '../../types/panel';
+import type { DatosPublicacionGestion } from '../panel/dialogos';
 import { useFlujo } from './useFlujo';
 
 /**
@@ -53,7 +56,8 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
       return { item: m.item, unidad, total, tramos: [] };
     })
     .filter((r) => r.total > 0);
-  return { id: 'nueva', tipo: 'necesidad', titulo: CUENTA_PEDIR.organizacion, org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  return { ...base, titulo: tituloPublicacion(base) };
 }
 
 const Pedir: React.FC = () => {
@@ -76,11 +80,21 @@ const Pedir: React.FC = () => {
     set((p) => ({ grupo: { ...p.grupo, [g]: n } }));
   };
 
-  const irMapa = useCallback(() => irA(RUTAS.radar), []);
+  const [pubId, setPubId] = useState('necesidad-creada');
+  const irMapa = useCallback(() => irA(`${RUTAS.radar}?punto=${pubId}`), [pubId]);
 
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="pedir" publicacion={publicacionDe(e, metas)} onVerMapa={irMapa} onPanel={() => irA(RUTAS.miOrganizacion)} onOtra={f.reiniciar} />;
+    pantalla = (
+      <ExitoFlujo
+        tipo="pedir"
+        publicacion={publicacionDe(e, metas)}
+        abre={PUERTAS.pedir.abre}
+        onVerMapa={irMapa}
+        onPanel={() => irA(`${RUTAS.miOrganizacion}#necesidades`)}
+        onOtra={f.reiniciar}
+      />
+    );
   } else if (sub.id === 'evento') {
     pantalla = (
       <>
@@ -167,7 +181,7 @@ const Pedir: React.FC = () => {
     pantalla = (
       <>
         <Pregunta titulo="¿Quién recibe la ayuda?" sub="Es a quien van a llamar cuando lleguen con la ayuda. Pusimos tu contacto; cámbialo si en el sitio atiende alguien más." />
-        <CamposContacto contacto={e.contacto} tel={e.tel} mismoWa={e.mismoWa} wa={e.wa} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} onMismoWa={(v) => set({ mismoWa: v })} errores={errores} />
+        <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} errores={errores} />
         <AlgoMas titulo="Algo más sobre la necesidad">
           <Field id="pq" etiqueta="Para quién es la ayuda" tipo="select" opciones={PARA_QUIEN} placeholder="Sin especificar" valor={e.paraQuien} onChange={(v) => set({ paraQuien: v })} className="mb-3" />
           <Field id="det" etiqueta="Detalles de la necesidad" tipo="textarea" valor={e.detalles} placeholder="Por ejemplo: hay personas mayores y niños pequeños, recibimos hasta las 6:00 p. m." onChange={(v) => set({ detalles: v })} className="mb-3" />
@@ -192,7 +206,7 @@ const Pedir: React.FC = () => {
           ))}
         </ResumenPub>
         <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? ` · ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}${e.mismoWa ? ' · también WhatsApp' : e.wa ? ` · WhatsApp ${e.wa}` : ''}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
@@ -214,9 +228,88 @@ const Pedir: React.FC = () => {
     set((p) => ({ fotos: p.fotos.filter((_, k) => k !== i) }));
   }
 
+  const alPublicar = () => {
+    const pub = publicacionDe(e, metas);
+    const idPub = `necesidad-${Date.now()}`;
+    setPubId(idPub);
+    const pubFinal: Publicacion = { ...pub, id: idPub, propia: true };
+
+    const recursosPanel: RecursoPedido[] = pub.recursos.map((r) => ({
+      n: r.item,
+      icono: iconoDe(r.item),
+      unidad: r.unidad,
+      total: r.total,
+      para: e.evento ? `Atención de ${e.evento.toLowerCase()}` : 'Atención comunitaria',
+      confirmada: 0,
+      camino: 0,
+      pausado: false,
+    }));
+    const gestionNecesidad: DatosPublicacionGestion = {
+      id: idPub,
+      tipo: 'necesidad',
+      titulo: pub.titulo,
+      org: pub.org,
+      verificada: true,
+      zona: e.tipoLugar || 'Cali',
+      dir: e.dir || CUENTA_PEDIR.direccion,
+      descripcion: `Atención de emergencia (${e.evento || 'Comunidad'}). Recursos requeridos con urgencia.`,
+      personaContacto: e.contacto || CUENTA_PEDIR.contacto,
+      telContacto: e.tel || CUENTA_PEDIR.telefono,
+      comoEntrega: 'Recepción en punto de acopio / sede comunitaria',
+      horario: 'Atención 24 horas',
+      recursos: recursosPanel.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        para: r.para,
+        icono: r.icono,
+        pausado: false,
+        confirmada: 0,
+        camino: 0,
+      })),
+      pausadaGlobal: false,
+    };
+    try {
+      // 1. Guardar en la colección acumulativa de publicaciones
+      const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+      const creadas: Publicacion[] = creadasRaw ? JSON.parse(creadasRaw) : [];
+      creadas.unshift(pubFinal);
+      localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(creadas));
+
+      // Guardar también la última para foco y compatibilidad
+      localStorage.setItem('rd-necesidad-publicacion', JSON.stringify(pubFinal));
+      localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(gestionNecesidad));
+
+      // 2. Fusionar recursos sin borrar los preexistentes
+      const previosRaw = localStorage.getItem('rd-necesidad-creada-recursos');
+      const baseRecursos: RecursoPedido[] = previosRaw ? JSON.parse(previosRaw) : NECESIDAD.recursos;
+      const fusionados = [...baseRecursos];
+      recursosPanel.forEach((nuevo) => {
+        const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());
+        if (idx !== -1) {
+          fusionados[idx] = { ...fusionados[idx], total: fusionados[idx].total + nuevo.total };
+        } else {
+          fusionados.unshift(nuevo);
+        }
+      });
+      localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(fusionados));
+    } catch (err) {
+      console.error('Error guardando necesidad en localStorage:', err);
+    }
+    f.publicar();
+  };
+
+  const alCerrar = () => {
+    if (e.publicado) {
+      irMapa();
+      return;
+    }
+    f.cerrar();
+  };
+
   return (
     <>
-      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar}>
+      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={alPublicar} onCerrar={alCerrar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />

@@ -94,3 +94,96 @@ Antes de fusionar el trabajo final:
 1. **Protocolo de Modificación Quirúrgica:** Pide a la IA modificar **solamente** los archivos involucrados en tu tarea. Prohíbele explícitamente reescribir archivos globales o reemplazar componentes existentes.
 2. **Revisión Humana Obligatoria:** Ningún código generado por IA se sube al repositorio sin que el desarrollador haya leído y comprendido lo que hace.
 3. **Mismo Contexto:** Todos los miembros deben contar con las reglas de IA actualizadas en el repositorio (`.cursorrules` / `GEMINI.md`).
+
+---
+
+## 🔐 5. Matriz de Roles y Permisos en RaDAR (Hand-off Oficial para Backend & Frontend)
+
+### 5.1 Diferenciación Conceptual Fundamental
+1. **Labor / Tarea en Terreno (`rol`):** Lo que la persona hace físicamente en el mundo real (*Reparto y entregas, Logística y acopio, Censo comunitario, Salud / primeros auxilios, Coordinación general*). No otorga permisos de software ni requiere usuario.
+2. **Permisos en la Plataforma (`rolPlataforma`):** Lo que el usuario puede ver, editar o certificar dentro de la aplicación web y base de datos (políticas RLS de Supabase).
+
+---
+
+### 5.2 Matriz de Capacidades por Rol de Plataforma
+
+| Rol en RaDAR | Cuenta Web | Correo | Gestionar Entidad | Gestionar Equipo | Publicar Oferta/Necesidad | Coordinar / Asignar | Ver Detalle de Asignación | Certificar Entrega (Fotos) | Auditoría / Actas |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Administrador** (`admin`) | ✅ | Requerido | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Coordinador** (`coordinador`) | ✅ | Requerido | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Voluntario / Repartidor** (`voluntario`) | ✅ | Requerido | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **Solo en terreno** (`terreno`) | ❌ | Opcional | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Solo ve / Auditor** (`auditor`) | ✅ | Requerido | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+
+---
+
+### 5.3 Especificación del Rol: Voluntario / Repartidor (`voluntario`)
+
+El voluntario es el enlace operativo de entrega en calle o comunidad con acceso móvil:
+1. **Vista móvil simplificada:** Al iniciar sesión solo ve sus entregas asignadas (no accede a configuración institucional, creación de ofertas globales ni datos privados de otros miembros).
+2. **Acceso al Detalle Completo de la Ayuda:**
+   - En cada entrega asignada, el voluntario cuenta con una acción **«Ver detalle»**.
+   - Esta acción despliega la **tarjeta / modal completa de la necesidad u oferta** (idéntica a la vista detallada de la lista del Radar).
+   - **Información crítica que visualiza:**
+     - Contexto y descripción de la emergencia o ayuda requerida.
+     - Recursos exactos a entregar (cantidades, unidades, especificaciones técnicas).
+     - Datos y teléfono directo de la persona u organización receptora.
+     - Punto de entrega y mapa georreferenciado con distancia.
+     - Horarios de recepción y recomendaciones de seguridad en terreno.
+3. **Flujo de Cierre en Terreno:**
+   - Cambiar estado a «En camino».
+   - Marcar «Entregado» y adjuntar fotografía(s) de soporte directamente con la cámara de su dispositivo móvil.
+   - El coordinador o receptor valida el cierre y se actualiza el acta final.
+
+---
+
+### 5.4 Mapeo a Supabase RLS y Esquema de Base de Datos
+* `admin` / `coordinador` -> Mapean a roles con permisos sobre `organizations`, `needs`, `offers`, `deliveries`, `team_members`.
+* `voluntario` -> Política RLS restrictiva: `SELECT` y `UPDATE` filtrado estrictamente por `delivery.assigned_volunteer_id = auth.uid()`.
+* `terreno` -> Registro meramente informativo en tabla `team_members` con `auth_user_id = NULL` (sin credenciales).
+
+---
+
+## 🏗️ 6. Especificación de Base de Datos y Ciclo de Vida de Membresías (`team_members`)
+
+Para guiar la implementación backend en Supabase, se establecen los siguientes principios de modelado y reglas de negocio:
+
+### 6.1 Modelo Relacional Sugerido (`team_members`)
+```sql
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- NULL si es colaborador 'terreno' sin cuenta
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT, -- Correo para invitaciones o vinculación
+  operational_role TEXT, -- Labor en terreno (Reparto, Logística, Salud, etc.)
+  vehicle TEXT, -- Medio de transporte
+  availability TEXT, -- Disponibilidad horaria
+  platform_role VARCHAR(50) NOT NULL DEFAULT 'terreno', -- admin, coordinador, voluntario, auditor, terreno
+  status VARCHAR(20) NOT NULL DEFAULT 'active', -- invited, active, inactive
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ -- Baja lógica para preservar trazabilidad
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_members_org ON public.team_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_user ON public.team_members(user_id);
+```
+
+### 6.2 Reglas de Negocio Oficiales
+
+#### 1. Inmutabilidad del Correo al Editar Integrantes
+* El correo electrónico es la credencial maestra de acceso en `auth.users`.
+* Ningún administrador de una organización tiene permisos para cambiar el correo con el que otra persona inicia sesión en la plataforma global de RaDAR.
+* Al editar un miembro que ya tiene correo o cuenta vinculada, el campo permanece en solo lectura con la indicación: *«Vinculado a su cuenta de RaDAR. El integrante puede actualizar su correo desde su propio perfil»*.
+* Si se ingresó un correo erróneo durante una invitación pendiente (`status = 'invited'`), el administrador puede revocar dicha invitación y emitir una nueva.
+
+#### 2. Desvinculación («Dar de baja») vs. Borrado de Perfil
+* **NUNCA se borra el usuario ni su perfil (`auth.users` / `public.profiles`)**: El usuario es una persona natural ciudadana que puede participar en múltiples colectivos, JACs, ONGs o como donante/solicitante individual.
+* Al «Dar de baja», la acción desvincula al miembro de la organización marcando `status = 'inactive'` y fijando `deleted_at = NOW()`.
+* Si es un colaborador «Solo en terreno» sin cuenta (`user_id IS NULL`), igualmente se marca inactivo para salvaguardar el nombre registrado en las entregas históricas que ejecutó.
+
+#### 3. Integridad de Auditoría en Entregas y Actas (`deliveries` / `reports`)
+* Las actas oficiales (`RD-2026-...`) exigen validez legal e histórica.
+* Si un voluntario desvinculado realizó entregas en el pasado, su registro histórico persiste intacto en los reportes y actas generadas. Las claves foráneas en entregas hacia miembros desvinculados deben configurarse con `ON DELETE SET NULL` o resolverse mediante el snapshot de auditoría guardado en el acta.

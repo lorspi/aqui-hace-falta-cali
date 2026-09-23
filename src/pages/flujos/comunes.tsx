@@ -8,7 +8,7 @@ import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso } from '../../utils/compromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
-import { PUBLICACIONES } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
 import { pingSugerencia } from '../../utils/sonido';
@@ -437,21 +437,46 @@ export const TarjetasOpcion: React.FC<{ nombre: string; opciones: { id: string; 
 
 /* ---------- pantallas compartidas ---------- */
 
-/** Contacto: nombre, celular, «también es WhatsApp» y, si no, el WhatsApp. */
+/** Contacto: nombre y celular directo para llamadas y coordinación por WhatsApp. */
 export const CamposContacto: React.FC<{
   contacto: string;
   tel: string;
-  mismoWa: boolean;
-  wa: string;
-  onChange: (campo: 'contacto' | 'tel' | 'wa', v: string) => void;
-  onMismoWa: (v: boolean) => void;
+  onChange: (campo: 'contacto' | 'tel', v: string) => void;
   errores: ReturnType<typeof useErrores>;
-}> = ({ contacto, tel, mismoWa, wa, onChange, onMismoWa, errores }) => (
+}> = ({ contacto, tel, onChange, errores }) => (
   <>
-    <Field id="ct" etiqueta="Nombre" valor={contacto} autoComplete="name" requerido onChange={(v) => { onChange('contacto', v); errores.limpiar('ct'); }} onBlur={(v) => errores.validar('ct', ['requerido'], v, 'Necesitamos un nombre para llamar')} error={errores.errores.ct} className="mb-3" />
-    <Field id="tel" etiqueta="Celular" tipo="tel" valor={tel} autoComplete="tel" requerido onChange={(v) => { onChange('tel', v); errores.limpiar('tel'); }} onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, 'Necesitamos un celular para coordinar')} error={errores.errores.tel} />
-    <Field id="mismo-wa" tipo="checkbox" etiqueta="Este número también es WhatsApp" marcado={mismoWa} onChangeMarcado={onMismoWa} className="mb-3" />
-    {!mismoWa && <Field id="wa" etiqueta="WhatsApp" tipo="tel" valor={wa} autoComplete="tel" placeholder="+57 3.. ... ...." requerido onChange={(v) => { onChange('wa', v); errores.limpiar('wa'); }} onBlur={(v) => errores.validar('wa', ['requerido', 'telefono'], v, 'Escribe el número de WhatsApp')} error={errores.errores.wa} className="mb-3" />}
+    <Field
+      id="ct"
+      etiqueta="Persona de contacto"
+      valor={contacto}
+      autoComplete="name"
+      placeholder="Nombre de quien coordina en el sitio"
+      requerido
+      onChange={(v) => {
+        onChange('contacto', v);
+        errores.limpiar('ct');
+      }}
+      onBlur={(v) => errores.validar('ct', ['requerido'], v, 'Necesitamos un nombre para llamar')}
+      error={errores.errores.ct}
+      className="mb-3"
+    />
+    <Field
+      id="tel"
+      etiqueta="Celular"
+      tipo="tel"
+      valor={tel}
+      autoComplete="tel"
+      placeholder="+57 3.. ... ...."
+      requerido
+      ayuda="Se usará para llamadas y coordinación por WhatsApp."
+      onChange={(v) => {
+        onChange('tel', v);
+        errores.limpiar('tel');
+      }}
+      onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, 'Necesitamos un celular para coordinar')}
+      error={errores.errores.tel}
+      className="mb-3"
+    />
   </>
 );
 
@@ -634,9 +659,12 @@ export interface ExitoFlujoProps {
   tipo: 'pedir' | 'ofrecer';
   /** Lo que se acaba de publicar: de aquí salen las sugerencias y las tres acciones. */
   publicacion: Publicacion;
-  onVerMapa: () => void;
-  onPanel: () => void;
-  onOtra: () => void;
+  onVerMapa?: () => void;
+  onPanel?: () => void;
+  onOtra?: () => void;
+  onCerrar?: () => void;
+  abre?: string[];
+  extra?: React.ReactNode;
 }
 
 /**
@@ -647,14 +675,15 @@ export interface ExitoFlujoProps {
  * cambia a la lista y lo anterior desaparece; arriba a la izquierda queda el volver y a la
  * derecha la × del marco.
  */
-export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVerMapa, onPanel, onOtra }) => {
+export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVerMapa, onPanel, onOtra, onCerrar, abre, extra }) => {
   const t = EXITO[tipo];
   const avisar = useAviso();
+  const cerrarAccion = onCerrar || onVerMapa;
   const [vista, setVista] = useState<'resumen' | 'sugerencias'>('resumen');
   const [buscando, setBuscando] = useState(true);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [hechas, setHechas] = useState<string[]>([]);
-  const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
+  const coincidencias = useMemo(() => coincidenciasDe(publicacion, obtenerPublicaciones()), [publicacion]);
   const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -677,7 +706,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
       publicacion={publicacion}
       coincidencias={coincidencias}
       hechas={hechas}
-      onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)}
+      onPrimaria={(id) => setCompromiso(obtenerPublicaciones().find((p) => p.id === id) ?? null)}
       onVerEnMapa={(id) => {
         window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`;
       }}
@@ -754,16 +783,27 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
           pantalla o sacan un enlace, no comprometen a nadie, pero con contorno se leen como
           botones y no como adorno. */}
       <div className="mt-5 flex items-center justify-center gap-2">
-        <AccionExito etiqueta="Ver en el mapa" onClick={onVerMapa}>
-          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
-        </AccionExito>
+        {cerrarAccion && (
+          <AccionExito etiqueta="Ver en el mapa" onClick={cerrarAccion}>
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
+        )}
         <AccionExito etiqueta="Compartir" onClick={compartir}>
           <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
         </AccionExito>
-        <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
-          <House aria-hidden="true" className="h-4.5 w-4.5" />
-        </AccionExito>
+        {onPanel && (
+          <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
+            <House aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
+        )}
       </div>
+
+      {abre && abre.length > 0 && (
+        <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
+          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.
+        </p>
+      )}
+      {extra}
 
       {/* Qué sigue: la línea de tiempo, horizontal desde 480 y en columna con el dedo. Separada
           por aire, no por una línea (Alejandro, 22 de septiembre de 2026). */}
@@ -790,10 +830,17 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
         <p className="m-0 mt-4 text-rd-12-5 text-rd-ink-meta">{EXITO.canales}</p>
       </div>
 
-      <div className="mt-10">
-        <Button nivel="primario" tamano="lg" onClick={onOtra}>
-          {t.otra}
-        </Button>
+      <div className="mt-10 flex flex-wrap justify-center gap-3">
+        {onPanel && (
+          <Button nivel="secundario" tamano="lg" onClick={onPanel}>
+            Ver en panel
+          </Button>
+        )}
+        {onOtra && (
+          <Button nivel="primario" tamano="lg" onClick={onOtra}>
+            {t.otra}
+          </Button>
+        )}
       </div>
       {dialogo}
     </div>

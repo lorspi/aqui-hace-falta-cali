@@ -1,11 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { actasDe, archivarViejas, bloquesResumen, confirmadas, fechaCorta, kpisDe, leerModulos, pendientesCuenta, pendientesDe, pestanasDe, quedan, resumenActas, siglas, textoActa, textoCierre, textoCierreRecibida } from '../../src/utils/panel';
 import { NECESIDAD, OFERTA, ORG, RECIBIDAS, SOLICITUDES } from '../../src/mocks/panelMock';
+import { obtenerPublicaciones, PUBLICACIONES } from '../../src/mocks/publicacionesMock';
 
 // ============================================================================
 // El panel se arma con lo que la cuenta hizo (src/utils/panel.ts): publicar una necesidad
 // abre `pide`, publicar una oferta abre `ofrece`. Decisión de Alejandro, 16 de septiembre.
 // ============================================================================
+
+const storageMap = new Map<string, string>();
+const fakeStorage = {
+  getItem: (k: string) => storageMap.get(k) ?? null,
+  setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+  removeItem: (k: string) => storageMap.delete(k),
+  clear: () => storageMap.clear(),
+};
+(globalThis as any).localStorage = fakeStorage;
+(globalThis as any).window = { localStorage: fakeStorage };
 
 const datos = { oferta: OFERTA, sol: SOLICITUDES, necesidad: NECESIDAD, recibidas: RECIBIDAS };
 const conteos = { porConfirmarRecibidas: 1, nuevas: 2, porConfirmar: 1 };
@@ -16,6 +27,16 @@ describe('leerModulos', () => {
   });
   it('lee lo guardado al publicar', () => {
     expect(leerModulos('', JSON.stringify({ ofrece: true }))).toEqual({ pide: false, ofrece: true });
+  });
+  it('activa ofrece si existe oferta guardada en localStorage', () => {
+    localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify({ id: 'oferta-creada' }));
+    expect(leerModulos('', null)).toEqual({ pide: false, ofrece: true });
+    localStorage.removeItem('rd-oferta-creada-gestion');
+  });
+  it('activa pide si existe necesidad guardada en localStorage', () => {
+    localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify({ id: 'necesidad-creada' }));
+    expect(leerModulos('', null)).toEqual({ pide: true, ofrece: false });
+    localStorage.removeItem('rd-necesidad-creada-gestion');
   });
   it('la URL manda para verlo sin publicar', () => {
     expect(leerModulos('?modulos=pide,ofrece', null)).toEqual({ pide: true, ofrece: true });
@@ -132,5 +153,121 @@ describe('reportes: las actas de entrega', () => {
     expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { recibe: { fotos: 1 } } })).toBe('Confirmada por ti');
     const r = resumenActas(actasDe({ pide: true, ofrece: true }, { sol: SOLICITUDES, recibidas: RECIBIDAS, org: ORG.nombre, lleva }));
     expect(r).toEqual({ actas: 4, organizaciones: 4 });
+  });
+});
+
+describe('obtenerPublicaciones sincronizado con ofertas y necesidades', () => {
+  it('agrega oferta y necesidad dinámicas desde localStorage', () => {
+    const ofertaTest = { id: 'oferta-creada', tipo: 'oferta', titulo: 'Oferta de prueba', org: 'Bomberos', verificada: true, lat: 4.5, lng: -74.1, zona: 'Usme', recursos: [] };
+    const necesidadTest = { id: 'necesidad-creada', tipo: 'necesidad', titulo: 'Necesidad de prueba', org: 'Comunidad', verificada: true, lat: 4.5, lng: -74.1, zona: 'Usme', recursos: [] };
+
+    localStorage.setItem('rd-oferta-publicacion', JSON.stringify(ofertaTest));
+    localStorage.setItem('rd-necesidad-publicacion', JSON.stringify(necesidadTest));
+
+    const pubs = obtenerPublicaciones();
+    expect(pubs.some((p) => p.id === 'oferta-creada')).toBe(true);
+    expect(pubs.some((p) => p.id === 'necesidad-creada')).toBe(true);
+    expect(pubs.length).toBe(PUBLICACIONES.length + 2);
+
+    localStorage.removeItem('rd-oferta-publicacion');
+    localStorage.removeItem('rd-necesidad-publicacion');
+  });
+
+  it('acumula múltiples ofertas y necesidades desde rd-publicaciones-creadas sin sobreescribir las anteriores', () => {
+    const pub1 = { id: 'necesidad-101', tipo: 'necesidad', titulo: 'Necesidad 1', org: 'Comunidad', verificada: true, lat: 4.5, lng: -74.1, zona: 'Usme', recursos: [] } as any;
+    const pub2 = { id: 'oferta-102', tipo: 'oferta', titulo: 'Oferta 2', org: 'Bomberos', verificada: true, lat: 4.5, lng: -74.1, zona: 'Usme', recursos: [] } as any;
+
+    localStorage.setItem('rd-publicaciones-creadas', JSON.stringify([pub1, pub2]));
+
+    const pubs = obtenerPublicaciones();
+    expect(pubs.some((p) => p.id === 'necesidad-101')).toBe(true);
+    expect(pubs.some((p) => p.id === 'oferta-102')).toBe(true);
+    expect(pubs.length).toBe(PUBLICACIONES.length + 2);
+
+    localStorage.removeItem('rd-publicaciones-creadas');
+  });
+});
+
+describe('MiEquipo filtros y ubicación', () => {
+  it('los miembros de EQUIPO tienen ubicación asignada', async () => {
+    const { EQUIPO } = await import('../../src/mocks/panelMock');
+    expect(EQUIPO.every((m) => typeof m.ubicacion === 'string')).toBe(true);
+    expect(EQUIPO.some((m) => m.ubicacion === 'Bogotá D. C.')).toBe(true);
+    expect(EQUIPO.some((m) => m.ubicacion === 'Cundinamarca')).toBe(true);
+  });
+
+  it('filtra correctamente por ubicación, vehículo y disponibilidad', async () => {
+    const { EQUIPO } = await import('../../src/mocks/panelMock');
+
+    const filtrar = (equipo: typeof EQUIPO, ubi: string, veh: string, disp: string) => {
+      return equipo.filter((m) => {
+        if (ubi && m.ubicacion !== ubi) return false;
+        if (veh && m.veh !== veh) return false;
+        if (disp) {
+          if (disp === 'tiempo_completo') {
+            if (!['tiempo_completo', 'tardes', 'hoy', 'manana'].includes(m.disp)) return false;
+          } else if (disp === 'fines_de_semana') {
+            if (!['fines_de_semana', 'finde'].includes(m.disp)) return false;
+          } else if (disp === 'emergencias') {
+            if (m.disp !== 'emergencias') return false;
+          } else if (m.disp !== disp) {
+            return false;
+          }
+        }
+        return true;
+      });
+    };
+
+    // Filtro por ubicación 'Bogotá D. C.' (Mateo y Laura)
+    const enBogota = filtrar(EQUIPO, 'Bogotá D. C.', '', '');
+    expect(enBogota).toHaveLength(2);
+    expect(enBogota.map((m) => m.n)).toEqual(['Mateo Rojas', 'Laura Díaz']);
+
+    // Filtro por vehículo 'Moto' (Andrés)
+    const conMoto = filtrar(EQUIPO, '', 'Moto', '');
+    expect(conMoto).toHaveLength(1);
+    expect(conMoto[0].n).toBe('Andrés Peña');
+
+    // Filtro por disponibilidad 'fines_de_semana' (Sofía)
+    const finDeSemana = filtrar(EQUIPO, '', '', 'fines_de_semana');
+    expect(finDeSemana).toHaveLength(1);
+    expect(finDeSemana[0].n).toBe('Sofía Mora');
+
+    // Filtro combinado: Bogotá D. C. + Camioneta (Mateo)
+    const combinado = filtrar(EQUIPO, 'Bogotá D. C.', 'Camioneta', '');
+    expect(combinado).toHaveLength(1);
+    expect(combinado[0].n).toBe('Mateo Rojas');
+
+    // Filtro sin coincidencias
+    const vacio = filtrar(EQUIPO, 'Amazonas', '', '');
+    expect(vacio).toHaveLength(0);
+  });
+
+  it('filtra en tiempo real por búsqueda de texto (nombre, profesión / rol)', async () => {
+    const { EQUIPO } = await import('../../src/mocks/panelMock');
+
+    const buscar = (equipo: typeof EQUIPO, q: string) => {
+      const term = q.toLowerCase().trim();
+      return equipo.filter((m) => {
+        if (!term) return true;
+        return (
+          m.n.toLowerCase().includes(term) ||
+          (m.rol || '').toLowerCase().includes(term) ||
+          (m.correo || '').toLowerCase().includes(term) ||
+          (m.ubicacion || '').toLowerCase().includes(term)
+        );
+      });
+    };
+
+    // Búsqueda por profesión técnica
+    expect(buscar(EQUIPO, 'peritaje').map((m) => m.n)).toEqual(['Mateo Rojas', 'Andrés Peña']);
+    expect(buscar(EQUIPO, 'hídrico').map((m) => m.n)).toEqual(['Andrés Peña']);
+    expect(buscar(EQUIPO, 'médica').map((m) => m.n)).toEqual(['Sofía Mora']);
+
+    // Búsqueda por nombre
+    expect(buscar(EQUIPO, 'laura').map((m) => m.n)).toEqual(['Laura Díaz']);
+
+    // Búsqueda sin coincidencias
+    expect(buscar(EQUIPO, 'electricista')).toHaveLength(0);
   });
 });
