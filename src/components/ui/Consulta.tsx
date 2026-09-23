@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronRight, Funnel, Search, X } from 'lucide-react';
 
 /**
@@ -6,10 +6,6 @@ import { ChevronRight, Funnel, Search, X } from 'lucide-react';
  * para la Radar y el Directorio. El botón Filtros con su conteo, la zona de chips aplicados
  * (en una fila que se desplaza, con › cuando desborda en móvil) y el campo de búsqueda.
  */
-function esMovil(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches;
-}
-
 /** El botón que abre la hoja. Dice «Filtrar y ordenar» porque la hoja trae las dos cosas
  *  (Alejandro, 21 de septiembre de 2026; el prototipo decía «Filtros» con el orden escondido). */
 export const BotonFiltros: React.FC<{ aplicados: number; abierta: boolean; onClick: () => void }> = ({ aplicados, abierta, onClick }) => (
@@ -42,18 +38,19 @@ export const QuitarTodos: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   </button>
 );
 
-/** La fila de chips: se desplaza sin barra y, si en móvil hay chips fuera de la vista a la
- *  derecha, muestra › para llegar a ellos (decisión 143). */
+/** La fila de chips: se desplaza sin barra y, si hay chips fuera de la vista a la derecha,
+ *  muestra › para llegar a ellos. En el prototipo ese botón vivía solo bajo 1024
+ *  (`pantalla.css:628`, decisión 143); ahora va en todos los anchos (Alejandro, 22 de
+ *  septiembre de 2026), porque desde 1024 la fila también se desborda cuando pasa bajo el
+ *  buscador y sin el › no hay forma de saber que hay más. */
 export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const zona = useRef<HTMLDivElement>(null);
   const [desborda, setDesborda] = useState(false);
-  const [movil, setMovil] = useState(esMovil);
   useEffect(() => {
     const z = zona.current;
     if (!z) return;
     const medir = () => {
       const ultimo = z.lastElementChild;
-      setMovil(esMovil());
       setDesborda(!!ultimo && ultimo.getBoundingClientRect().right > z.getBoundingClientRect().right + 1);
     };
     medir();
@@ -67,6 +64,37 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
       window.removeEventListener('resize', medir);
     };
   }, [children]);
+
+  /* El › no manda al final de un toque (Alejandro, 22 de septiembre de 2026): empuja un poco al
+     apretarlo y, si se mantiene, sigue barriendo solo, acelerando hasta una velocidad de lectura.
+     Un toque corto mueve un chip; mantenerlo recorre la fila. */
+  const cuadro = useRef<number | undefined>(undefined);
+  const espera = useRef<number | undefined>(undefined);
+  const parar = useCallback(() => {
+    if (cuadro.current !== undefined) cancelAnimationFrame(cuadro.current);
+    if (espera.current !== undefined) window.clearTimeout(espera.current);
+    cuadro.current = undefined;
+    espera.current = undefined;
+  }, []);
+  const barrer = useCallback(() => {
+    parar();
+    /* El empujón del toque: lo que mide un chip corto, para que un clic se note. */
+    if (zona.current) zona.current.scrollLeft += 56;
+    /* Si sigue apretado tras un cuarto de segundo, el barrido continuo. */
+    espera.current = window.setTimeout(() => {
+      const desde = performance.now();
+      const paso = (ahora: number) => {
+        const z = zona.current;
+        if (!z) return;
+        /* De 3 a 8 px por cuadro (180 a 480 px/s) en el primer segundo. */
+        z.scrollLeft += 3 + Math.min(1, (ahora - desde) / 1000) * 5;
+        cuadro.current = requestAnimationFrame(paso);
+      };
+      cuadro.current = requestAnimationFrame(paso);
+    }, 250);
+  }, [parar]);
+  useEffect(() => parar, [parar]);
+
   return (
     <>
       {/* La fila va en posición absoluta dentro de una caja de alto fijo: así los chips no cuentan
@@ -75,7 +103,7 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
         <div
           ref={zona}
           className={`absolute inset-0 flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pr-4 ${
-            desborda ? `zona-rd-chips ${movil ? 'pr-15' : ''}` : 'zona-rd-scroll'
+            desborda ? 'zona-rd-chips pr-15' : 'zona-rd-scroll'
           }`}
         >
           {children}
@@ -85,8 +113,24 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
         <button
           type="button"
           aria-label="Ver más filtros aplicados"
-          onClick={() => zona.current?.scrollTo({ left: zona.current.scrollWidth, behavior: 'smooth' })}
-          className="relative z-1 -ml-13 flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink hover:bg-rd-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy lg:hidden"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            barrer();
+          }}
+          onPointerUp={parar}
+          onPointerLeave={parar}
+          onPointerCancel={parar}
+          onBlur={parar}
+          /* Con teclado: la repetición de `keydown` mientras se mantiene hace el mismo avance. */
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            if (zona.current) zona.current.scrollLeft += 56;
+          }}
+          /* Caja externa de 0: se pinta encima de los últimos 60 px de la zona, que conserva su
+             ancho hasta el borde. `z-1` porque la máscara de la zona crea contexto de apilamiento
+             y, sin él, el toque caería en el chip de debajo (prototipo, 78 G1). */
+          className="relative z-1 -ml-13 flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink hover:bg-rd-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
         >
           <ChevronRight aria-hidden="true" className="h-5 w-5" />
         </button>

@@ -32,9 +32,12 @@ export interface TarjetaProps {
   onReportar?: (id: string) => void;
   /** La persona ya se comprometió o solicitó en esta sesión: pasa a «En proceso». */
   enProceso?: boolean;
+  /** Para que quien la use la esconda en un ancho (la lista la oculta desde 1280, donde manda
+   *  la fila con columnas). */
+  className?: string;
 }
 
-export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, coincidencias = [], enHoja = false, enProceso = false, onVerEnMapa, onPrimaria, onVerCoincidencias, onCompartir, onReportar }) => {
+export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, coincidencias = [], enHoja = false, enProceso = false, className = '', onVerEnMapa, onPrimaria, onVerCoincidencias, onCompartir, onReportar }) => {
   const esOferta = p.tipo === 'oferta';
   const dist = distanciaTexto(distanciaKm);
   const estado = estadoPublicacion(p);
@@ -49,11 +52,11 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
        navy-line y sombra leve). Las acciones son sus botones. */
     <article
       data-punto={p.id}
-      className={
+      className={`${
         enHoja
           ? 'relative flex min-h-full flex-col bg-rd-surface'
           : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
-      }
+      } ${className}`}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <EtiquetaTipo tipo={p.tipo} />
@@ -66,6 +69,11 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         {p.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-4 w-4 shrink-0 text-rd-navy" />}
       </div>
 
+      {/* El orden de la tarjeta (Alejandro, 22 de septiembre de 2026): etiquetas, quién, dónde,
+          qué dice, fotos y recursos. Dónde va antes de la descripción: sitúa lo que se lee
+          después. Sin rótulo de bloque (16 de septiembre): el pin ya dice que es un lugar. */}
+      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-3" />
+
       {p.descripcion && <p className="mb-3 line-clamp-3 text-rd-14 leading-normal text-rd-ink">{p.descripcion}</p>}
 
       {p.fotos && p.fotos.length > 0 && (
@@ -74,10 +82,6 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
           <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`Fotos de ${p.org}`} onCerrar={() => setFoto(null)} />
         </>
       )}
-
-      {/* Sin rótulo de bloque (Alejandro, 16 de septiembre de 2026): el pin ya dice dónde, y la
-          etiqueta de arriba ya dice si se necesita o se ofrece. */}
-      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-4" />
 
       <div className="mb-4">
         <Recursos publicacion={p} />

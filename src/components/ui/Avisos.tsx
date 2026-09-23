@@ -153,7 +153,7 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
               ]}
             />
           </div>
-          <div className="max-h-130 overflow-y-auto px-2 pb-2">
+          <div className="sin-barra max-h-130 overflow-y-auto px-2 pb-2">
             <ListaAvisos avisos={lista} compacta onAccion={onAccion} />
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-rd-line px-3 py-2">

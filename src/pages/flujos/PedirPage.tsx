@@ -11,7 +11,7 @@ import type { Publicacion } from '../../types/publicacion';
 import { calcularMetas, declarado, detalleTexto, numero } from '../../utils/equivalencias';
 import { aDeclarar, caminoPedir, listoPedir } from '../../utils/pedir';
 import { cifra, unidad } from '../../utils/publicaciones';
-import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
+import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import { useFlujo } from './useFlujo';
 
@@ -80,7 +80,7 @@ const Pedir: React.FC = () => {
 
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="pedir" extra={<Coincidencias publicacion={publicacionDe(e, metas)} />} abre={PUERTAS.pedir.abre} onPanel={() => irA(RUTAS.miOrganizacion)} onVerMapa={irMapa} onOtra={f.reiniciar} />;
+    pantalla = <ExitoFlujo tipo="pedir" publicacion={publicacionDe(e, metas)} onVerMapa={irMapa} onPanel={() => irA(RUTAS.miOrganizacion)} onOtra={f.reiniciar} />;
   } else if (sub.id === 'evento') {
     pantalla = (
       <>

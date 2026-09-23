@@ -1,15 +1,17 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, Info, Monitor, Package, Radar, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, CircleAlert, House, Info, Map as MapIcon, Monitor, Package, Radar, Search, Share2, X } from 'lucide-react';
 import { FilaSugerencias, ListaCoincidencias } from '../../components/ui/Coincidencias';
+import { Explosion } from '../../components/ui/Explosion';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
+import { avisoCompromiso } from '../../utils/compromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { PUBLICACIONES } from '../../mocks/publicacionesMock';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
-import { pingSugerencia, sinMovimiento } from '../../utils/sonido';
+import { pingSugerencia } from '../../utils/sonido';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { IconoRecursoDe, categoriaDe, iconoDe } from '../../components/ui/Recursos';
@@ -76,6 +78,12 @@ export function useErrores(clave?: string) {
   };
 }
 
+/** «Mis necesidades y Seguimiento»; con tres o más, comas y la última con «y». */
+function lista(partes: string[]): string {
+  if (partes.length <= 1) return partes[0] ?? '';
+  return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
+}
+
 /* ---------- el marco ---------- */
 export interface MarcoFlujoProps {
   /** Nombre corto de la ventana (para la pestaña y el lector de pantalla). */
@@ -137,15 +145,16 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
           <div className="absolute inset-0 z-2000 bg-rd-ink/50" />
         </div>
       )}
-      <section aria-label={nombre} className="relative flex h-dvh w-full flex-col bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
+      <section aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
         <button type="button" aria-label="Cerrar" onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
-        {/* La pantalla de éxito: `justify-center-safe` centra lo corto y, si el contenido es más
-            alto que la caja, empieza arriba (con `justify-center` a secas el desborde se
-            repartía y el título quedaba recortado sin poder llegar a él). */}
+        {/* La pantalla de éxito empieza siempre arriba (Alejandro, 22 de septiembre de 2026):
+            centrada, el contenido saltaba al pasar del resumen a las sugerencias, porque las dos
+            vistas no miden lo mismo. Anclada arriba, el título se queda quieto y solo cambia lo
+            de abajo. */}
         {publicado ? (
-          <div ref={cuerpo} className="flex min-h-0 flex-1 flex-col justify-center-safe overflow-y-auto px-4 py-6 sm:px-6">
+          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto px-4 sm:px-6">
             {children}
           </div>
         ) : (
@@ -153,7 +162,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
             <div className="flex-none px-4 pt-5 pr-14 sm:px-6 sm:pr-16">
               <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((t, j) => ({ nombre: t.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
-            <div ref={cuerpo} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
+            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
               {children}
             </div>
             <div className="flex flex-none items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3 sm:px-6">
@@ -593,50 +602,200 @@ export const MarcaEditada: React.FC = () => (
   </span>
 );
 
-/** La pantalla de éxito del flujo, con «Qué pasa ahora». */
-export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.ReactNode; abre?: string[]; onPanel?: () => void; onVerMapa: () => void; onOtra: () => void }> = ({ tipo, extra, abre, onPanel, onVerMapa, onOtra }) => {
+/**
+ * Una acción de solo icono con su nombre en un globo (Alejandro, 22 de septiembre de 2026). Un
+ * icono solo no dice qué hace: en escritorio el nombre aparece al pasar por encima o al llegar
+ * con el teclado. Es el `rd-tip` del prototipo (`Producto/css/componentes.css`), portado tal
+ * cual: globo arriba con 8 px de aire, tinta sólida, texto blanco de 12 en medium, radio
+ * pequeño y la flechita abajo; la flecha se dibuja con el cuadrado girado que ya usa el menú de
+ * `Shell.tsx`. El nombre vive en el `aria-label` —no en `title`, que pintaría un segundo globo
+ * nativo encima— y el globo va `aria-hidden` para que el lector no lo diga dos veces.
+ *
+ * Con el dedo no hay «encima»: `hover:` de Tailwind ya sale envuelto en `@media (hover: hover)`,
+ * `focus-visible` no se activa al tocar y, por si acaso, el globo se esconde en `pointer-coarse`.
+ * Ancho acotado (`w-max max-w-50`): un globo oculto sigue ocupando caja y así fue como la
+ * decisión 59 terminó con la lista desplazándose en horizontal.
+ */
+const AccionExito: React.FC<{ etiqueta: string; onClick: () => void; children: React.ReactNode }> = ({ etiqueta, onClick, children }) => (
+  <span className="relative inline-flex">
+    <Button nivel="secundario" tamano="md" soloIcono aria-label={etiqueta} onClick={onClick} className="peer">
+      {children}
+    </Button>
+    <span
+      aria-hidden="true"
+      className="pointer-events-none invisible absolute bottom-full left-1/2 z-2 mb-2 w-max max-w-50 -translate-x-1/2 rounded-rd-sm bg-rd-ink px-2.5 py-2 text-left text-rd-12 leading-snug font-medium text-rd-surface opacity-0 shadow-rd-2 transition-opacity duration-100 after:absolute after:-bottom-1 after:left-1/2 after:h-2.5 after:w-2.5 after:-translate-x-1/2 after:rotate-45 after:bg-rd-ink peer-hover:visible peer-hover:opacity-100 peer-focus-visible:visible peer-focus-visible:opacity-100 pointer-coarse:hidden"
+    >
+      {etiqueta}
+    </span>
+  </span>
+);
+
+export interface ExitoFlujoProps {
+  tipo: 'pedir' | 'ofrecer';
+  /** Lo que se acaba de publicar: de aquí salen las sugerencias y las tres acciones. */
+  publicacion: Publicacion;
+  onVerMapa: () => void;
+  onPanel: () => void;
+  onOtra: () => void;
+}
+
+/**
+ * La pantalla de éxito, en dos vistas dentro de la misma ventana (Alejandro, 22 de septiembre
+ * de 2026). **Resumen:** el visto, el título, la tarjeta de sugerencias, tres acciones en
+ * icono sobre lo publicado, «¿Ahora qué sigue?» como línea de tiempo horizontal y, al final, el
+ * botón de publicar otra, centrado. Sin pie. **Sugerencias:** al tocar la tarjeta, la ventana
+ * cambia a la lista y lo anterior desaparece; arriba a la izquierda queda el volver y a la
+ * derecha la × del marco.
+ */
+export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVerMapa, onPanel, onOtra }) => {
   const t = EXITO[tipo];
+  const avisar = useAviso();
+  const [vista, setVista] = useState<'resumen' | 'sugerencias'>('resumen');
+  const [buscando, setBuscando] = useState(true);
+  const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
+  const [hechas, setHechas] = useState<string[]>([]);
+  const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
+  const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setBuscando(false);
+      if (fuerte) pingSugerencia();
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [fuerte]);
+
+  const compartir = () => {
+    const url = `${window.location.origin}${RUTAS.radar}?punto=${encodeURIComponent(publicacion.id)}`;
+    const listo = () => avisar('Enlace copiado', { tipo: 'ok' });
+    if (navigator.share) navigator.share({ title: `${publicacion.titulo}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
+    else listo();
+  };
+
+  const lista = (
+    <ListaCoincidencias
+      publicacion={publicacion}
+      coincidencias={coincidencias}
+      hechas={hechas}
+      onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)}
+      onVerEnMapa={(id) => {
+        window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`;
+      }}
+    />
+  );
+
+  const dialogo = (
+    <DialogoCompromiso
+      publicacion={compromiso}
+      onCerrar={() => setCompromiso(null)}
+      onEnviar={(p, c) => {
+        setCompromiso(null);
+        setHechas((h) => [...h, p.id]);
+        avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+      }}
+    />
+  );
+
+  if (vista === 'sugerencias') {
+    return (
+      <div className="mx-auto w-full max-w-140 py-6">
+        {/* El volver, en espejo de la × del marco. */}
+        <button
+          type="button"
+          onClick={() => setVista('resumen')}
+          className="absolute top-2 left-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:left-3 lg:h-10 lg:w-10"
+        >
+          <ChevronLeft aria-hidden="true" className="h-5 w-5" />
+          <span className="sr-only">Volver</span>
+        </button>
+        {/* La entrada de la diapositiva repite la del resumen —el mismo círculo, el mismo tamaño
+            de título— para que al cambiar de vista solo cambie el contenido. El círculo lleva el
+            degradado coral → navy de las sugerencias (139), el único sitio donde los dos colores
+            de la marca se tocan. */}
+        <div className="text-center">
+          <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br/srgb from-rd-coral to-rd-navy text-white">
+            <Radar className="h-7.5 w-7.5" />
+          </span>
+          <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
+            {t.sugerencias.titulo}
+          </h1>
+          <p className="mx-auto mt-3 mb-8 max-w-120 text-rd-14 leading-normal text-rd-ink-2">{t.sugerencias.bajada}</p>
+        </div>
+        {lista}
+        {dialogo}
+      </div>
+    );
+  }
+
   return (
-    <div className="py-6 text-center">
+    <div className="relative mx-auto w-full max-w-140 py-6 text-center">
+      <Explosion tipo={tipo} />
       <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-rd-green-soft text-rd-green">
         <Check className="h-7.5 w-7.5" />
       </span>
-      <h1 tabIndex={-1} className="font-rd mb-2 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
+      <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
         {t.titulo}
       </h1>
-      <p className="mb-5 text-rd-14 text-rd-ink-2">{t.sub}</p>
-      <div className="mx-auto mt-5 max-w-110 rounded-rd-lg border border-rd-line bg-rd-fondo p-4 text-left">
-        <h2 className="font-rd mb-3 text-rd-13 font-semibold tracking-wide text-rd-ink-meta uppercase">Qué pasa ahora</h2>
-        {t.pasos.map((p, i) => (
-          <div key={p.titulo} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-            {p.hecho ? <Check aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-green" /> : <CircleDashed aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-ink-3" />}
-            <span className="text-rd-12-5 leading-relaxed text-rd-ink-2">
-              <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.titulo}</b>
-              {p.texto}
-            </span>
-          </div>
-        ))}
-        <p className="mt-3 border-t border-rd-line-soft pt-3 text-rd-12-5 text-rd-ink-2">{EXITO.canales}</p>
-      </div>
-      {extra}
-      {abre && abre.length > 0 && (
-        <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
-          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.{' '}
-          {onPanel && (
-            <button type="button" onClick={onPanel} className="font-rd cursor-pointer font-semibold text-rd-navy underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
-              Ir a {nombrePanel()}
-            </button>
-          )}
+
+      {/* La tarjeta de sugerencias lleva a la lista, dentro de la misma ventana. */}
+      {buscando ? (
+        <p role="status" className="mt-6 flex items-center justify-center gap-3 text-rd-13 text-rd-ink-2">
+          <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rd-line bg-rd-surface">
+            <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
+            <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
+          </span>
+          Buscando sugerencias cerca…
         </p>
-      )}
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Button nivel="primario" tamano="md" onClick={onVerMapa}>
-          Ver en el mapa
-        </Button>
-        <Button nivel="secundario" tamano="md" onClick={onOtra}>
+      ) : coincidencias.length > 0 ? (
+        <FilaSugerencias n={coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => setVista('sugerencias')} className="mt-6" />
+      ) : null}
+
+      {/* Tres acciones sobre lo que acabas de publicar, en icono. Nivel 2 (223): cambian de
+          pantalla o sacan un enlace, no comprometen a nadie, pero con contorno se leen como
+          botones y no como adorno. */}
+      <div className="mt-5 flex items-center justify-center gap-2">
+        <AccionExito etiqueta="Ver en el mapa" onClick={onVerMapa}>
+          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+        </AccionExito>
+        <AccionExito etiqueta="Compartir" onClick={compartir}>
+          <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
+        </AccionExito>
+        <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
+          <House aria-hidden="true" className="h-4.5 w-4.5" />
+        </AccionExito>
+      </div>
+
+      {/* Qué sigue: la línea de tiempo, horizontal desde 480 y en columna con el dedo. Separada
+          por aire, no por una línea (Alejandro, 22 de septiembre de 2026). */}
+      <div className="mt-12">
+        {/* Del mismo tamaño que el título de arriba (Alejandro, 22 de septiembre de 2026): son
+            los dos tiempos de la pantalla —lo que pasó y lo que viene—, no un título y su
+            letra chica. Sigue siendo `h2`: el tamaño no es el nivel. */}
+        <h2 className="font-rd m-0 mb-5 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink sm:text-rd-28">¿Ahora qué sigue?</h2>
+        {/* En columna la lista se centra como bloque (`w-fit mx-auto`): si no, el título va
+            centrado y los pasos pegados a la izquierda, y la mirada cambia de eje a media
+            pantalla (Alejandro, 22 de septiembre de 2026). */}
+        <ol className="m-0 flex list-none flex-col gap-3 p-0 max-xs:mx-auto max-xs:w-fit max-xs:text-left xs:flex-row">
+          {t.pasos.map((p, i) => (
+            <li key={p.titulo} className="relative flex flex-1 items-center gap-2.5 xs:flex-col xs:gap-2 xs:text-center">
+              {/* El hilo entre pasos: vertical en columna, horizontal en fila. */}
+              {i > 0 && <span aria-hidden="true" className="absolute max-xs:-top-3.5 max-xs:left-2 max-xs:h-3.5 max-xs:w-px xs:top-2 xs:right-1/2 xs:-left-1/2 xs:ml-3.5 xs:h-px bg-rd-line" />}
+              <span aria-hidden="true" className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${p.hecho ? 'bg-rd-green text-white' : 'border border-dashed border-rd-ink-3 bg-rd-surface'}`}>
+                {p.hecho && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              <span className={`text-rd-12-5 leading-snug ${p.hecho ? 'font-semibold text-rd-ink' : 'text-rd-ink-2'}`}>{p.titulo}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="m-0 mt-4 text-rd-12-5 text-rd-ink-meta">{EXITO.canales}</p>
+      </div>
+
+      <div className="mt-10">
+        <Button nivel="primario" tamano="lg" onClick={onOtra}>
           {t.otra}
         </Button>
       </div>
+      {dialogo}
     </div>
   );
 };
@@ -656,63 +815,7 @@ export const SUGERENCIA_FUERTE = 90;
  * (≥ 90 %), el barrido se detiene sobre ella con un ping corto y la fila de sugerencias brilla
  * una vez; si no, la fila aparece sin más. Sin sugerencias, lo dice sin drama.
  */
-export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicacion }) => {
-  const avisar = useAviso();
-  const [buscando, setBuscando] = useState(true);
-  const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
-  const [hechas, setHechas] = useState<string[]>([]);
-  const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
-  const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setBuscando(false);
-      if (fuerte) pingSugerencia();
-    }, 1200);
-    return () => window.clearTimeout(t);
-  }, [fuerte]);
-  const pide = publicacion.tipo === 'necesidad';
-  return (
-    <section aria-label="Sugerencias" className="mx-auto mt-5 max-w-110 text-left">
-      <h2 className="font-rd mb-1 flex items-center gap-2 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
-        <Radar aria-hidden="true" className="h-4.5 w-4.5" />
-        Sugerencias cerca
-        {!buscando && coincidencias.length > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{coincidencias.length}</span>}
-      </h2>
-      <p className="mb-3 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas a menos de 20 km que tienen algo de lo que te falta.' : 'Necesidades a menos de 20 km que piden algo de lo que ofreces.'}</p>
-      {buscando ? (
-        <p role="status" className="flex items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-4 text-rd-13 text-rd-ink-2">
-          {/* El radar de la marca barriendo (76): un cono coral que gira dos vueltas, con el icono
-              quieto en el centro. Sin movimiento, solo el icono. */}
-          <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rd-line bg-rd-surface">
-            <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
-            <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
-          </span>
-          Buscando sugerencias cerca…
-        </p>
-      ) : (
-        <>
-          {coincidencias.length > 0 && (
-            /* La misma fila que la tarjeta; con sugerencia fuerte, brilla aquí una vez (y sonó el ping). */
-            <FilaSugerencias n={coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => document.getElementById('rd-sugerencias-lista')?.scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth', block: 'start' })} className="mb-3" />
-          )}
-          <div id="rd-sugerencias-lista">
-            <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
-          </div>
-        </>
-      )}
-      <DialogoCompromiso
-        publicacion={compromiso}
-        onCerrar={() => setCompromiso(null)}
-        onEnviar={(p, c) => {
-          setCompromiso(null);
-          setHechas((h) => [...h, p.id]);
-          const n = `${c.recursos} ${c.recursos === 1 ? 'recurso' : 'recursos'}`;
-          avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n} · ${c.cuando.toLowerCase()}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
-        }}
-      />
-    </section>
-  );
-};
+
 
 /** Aviso corto en línea con icono (`rd-aviso` de flujo). */
 export const AvisoLinea: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (

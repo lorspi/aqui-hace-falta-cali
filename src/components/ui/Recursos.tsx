@@ -104,7 +104,10 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
       </button>
       )}
 
-      {!soloFilas && (
+      {/* El resumen de anillos es lo que se ve plegado; abierto, su sitio lo toman las filas,
+          que son ese mismo resumen con detalle (Alejandro, 22 de septiembre de 2026: antes se
+          veían los dos, repitiendo cada recurso). */}
+      {!soloFilas && !abierto && (
       <div className="flex flex-wrap gap-3 p-3">
         {p.recursos.map((r) => {
           const completo = restante(r) === 0;

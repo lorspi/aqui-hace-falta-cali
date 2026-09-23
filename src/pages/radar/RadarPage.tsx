@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X, Zap } from 'lucide-react';
+import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
-import { DialogoCompromiso, type Compromiso } from '../../components/ui/DialogoCompromiso';
+import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
+import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
-import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
-import { Donde } from '../../components/ui/Donde';
 import { HojaFiltros } from '../../components/ui/HojaFiltros';
 import { HojaPin } from '../../components/ui/HojaPin';
-import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { Anillo } from '../../components/ui/Recursos';
+import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
+import { Donde } from '../../components/ui/Donde';
+import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
@@ -21,13 +23,13 @@ import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
-import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
-import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, type Filtros } from '../../utils/filtros';
+import { DialogoCoincidencias, ResumenCoincidencias } from '../../components/ui/Coincidencias';
+import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
+import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
 import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { Anillo } from '../../components/ui/Recursos';
 import { distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
@@ -63,11 +65,6 @@ function puntoPedido(): string | null {
   return id && PUBLICACIONES.some((p) => p.id === id) ? id : null;
 }
 
-/** `?buscar=<texto>`: la Radar abre con ese texto en el buscador (el Directorio manda aquí con
- *  el nombre de la organización, para ver todo lo suyo en el mapa). */
-function busquedaPedida(): string {
-  return new URLSearchParams(window.location.search).get('buscar')?.trim() ?? '';
-}
 
 function irA(ruta: string): void {
   window.location.href = ruta;
@@ -81,24 +78,29 @@ export const RadarPage: React.FC = () => (
 
 const Radar: React.FC = () => {
   const avisar = useAviso();
-  const [tipo, setTipo] = useState<Tipo>('todo');
+  /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
+     (`utils/enlace.ts`). Sin parámetros, los valores por defecto de siempre. */
+  const inicial = useMemo(() => radarDeParams(paramsActuales()), []);
+  const [tipo, setTipo] = useState<Tipo>(inicial.tipo);
   /* El chip inicial es la ciudad de la persona, «Bogotá» (plan T2, 2.4, ahora a nivel de
-     ciudad como en producción): un filtro común que se quita como cualquiera. Si la URL trae
-     un `?punto=` que existe, el enlace manda y no se preselecciona. */
+     ciudad como en producción): un filtro común que se quita como cualquiera. Solo se
+     preselecciona si nadie dijo nada: con un enlace (filtros, `?punto=` o `?buscar=`) manda
+     el enlace. */
   const [filtros, setFiltros] = useState<Filtros>(() => {
     const propia = ciudadDeUbicacion(UBICACION);
-    return puntoPedido() || busquedaPedida() || !propia ? filtrosVacios() : { ...filtrosVacios(), ciudades: [propia] };
+    const pidieron = paramsActuales().toString() !== '';
+    return pidieron || !propia ? inicial.filtros : { ...inicial.filtros, ciudades: [propia] };
   });
   const [hojaFiltros, setHojaFiltros] = useState(false);
-  const [busqueda, setBusqueda] = useState(busquedaPedida);
-  const [buscando, setBuscando] = useState(() => busquedaPedida() !== '');
+  const [busqueda, setBusqueda] = useState(inicial.busqueda);
+  const [buscando, setBuscando] = useState(() => inicial.busqueda !== '');
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [encuadrar, setEncuadrarEstado] = useState<{ id: string; n: number } | null>(null);
   const setEncuadrar = (id: string) => setEncuadrarEstado((e) => ({ id, n: (e?.n ?? 0) + 1 }));
   const [resaltadas, setResaltadas] = useState<{ ids: string[]; n: number } | null>(null);
   const [hojaPin, setHojaPin] = useState<{ id: string; expandida: boolean; cerrando?: boolean } | null>(null);
   const cierreHoja = useRef<number | undefined>(undefined);
-  const [vista, setVista] = useState<Vista>('mapa');
+  const [vista, setVista] = useState<Vista>(inicial.vista);
   const [cajon, setCajon] = useState(false);
   const [movil, setMovil] = useState(esMovil);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
@@ -115,6 +117,12 @@ const Radar: React.FC = () => {
     return () => mq.removeEventListener('change', alCambiar);
   }, []);
 
+  /* La URL dice lo que se ve, para poder compartirlo. `punto` se conserva: es el enlace a una
+     publicación, que no es parte de la consulta. */
+  useEffect(() => {
+    escribirUrl(paramsDeRadar({ filtros, tipo, busqueda, vista }), { punto: paramsActuales().get('punto') });
+  }, [filtros, tipo, busqueda, vista]);
+
   /* Los tres conteos cuentan, por tipo, lo que pasa todos los demás filtros. */
   const conteo = useMemo(() => {
     const resto = PUBLICACIONES.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
@@ -126,6 +134,9 @@ const Radar: React.FC = () => {
   const distancias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, distanciaKm(UBICACION, p)])), []);
   const coincidencias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, coincidenciasDe(p, PUBLICACIONES)])), []);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
+  /* El detalle que abre «Ver detalle» de la fila de 1280: la misma tarjeta, en un diálogo. */
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const publicacionDetalle = detalleId ? PUBLICACIONES.find((p) => p.id === detalleId) : undefined;
   const chips = chipsDe(filtros);
   /* Al cambiar de ciudades, el mapa encuadra lo que queda visible (como producción, que vuela a
      la ciudad elegida). */
@@ -171,6 +182,12 @@ const Radar: React.FC = () => {
     setFiltros(filtrosVacios());
     setBusqueda('');
   };
+  /* El vacío nombra el filtro que más acota y ofrece soltar ese, no «quita todo». */
+  const vacio = vacioDe(filtros, busqueda);
+  const aflojar = () => {
+    if (vacio.accion === 'Quitar la búsqueda') setBusqueda('');
+    setFiltros(vacio.aflojar);
+  };
 
   /* `?punto=<id>`: la publicación compartida abre encuadrada; bajo 1024, con su hoja. */
   useEffect(() => {
@@ -187,8 +204,7 @@ const Radar: React.FC = () => {
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
-    const n = `${c.recursos} ${c.recursos === 1 ? 'recurso' : 'recursos'}`;
-    avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n} · ${c.cuando.toLowerCase()}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
+    avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
   };
   const compartir = (id: string) => {
     const url = enlaceDe(id);
@@ -225,8 +241,6 @@ const Radar: React.FC = () => {
     setSeleccionada(id);
     setHojaPin((h) => ({ id, expandida: h?.expandida ?? false }));
   };
-  const [detalleId, setDetalleId] = useState<string | null>(null);
-  const publicacionDetalle = detalleId ? PUBLICACIONES.find((p) => p.id === detalleId) : undefined;
   const conteoTexto = (n: number, t: Tipo) => {
     if (t === 'necesidad') return `${n} ${n === 1 ? 'necesidad' : 'necesidades'}`;
     if (t === 'oferta') return `${n} ${n === 1 ? 'oferta' : 'ofertas'}`;
@@ -321,46 +335,53 @@ const Radar: React.FC = () => {
             {visibles.length === 0 ? (
               <Vacio
                 icono={<Funnel className="h-6.5 w-6.5" />}
-                titulo="Nada con estos filtros"
-                texto="Prueba con menos filtros o una distancia mayor."
+                titulo={vacio.titulo}
+                texto={vacio.texto}
                 accion={
-                  <Button nivel="secundario" tamano="md" onClick={limpiar}>
-                    Quitar los filtros
+                  <Button nivel="secundario" tamano="md" onClick={aflojar}>
+                    {vacio.accion}
                   </Button>
                 }
               />
             ) : (
-              <>
-                {/* Sin texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena
-                    (Alejandro, 21 de septiembre de 2026). El conteo sigue en la región viva. Cada
-                    fila es una tarjeta independiente sobre fondo blanco, como en el Directorio. */}
-                <div className="flex flex-col gap-3">
-                  {/* Cabecera de columnas para escritorio (≥ 1280px) */}
-                  <div className="hidden px-5 pb-1 sm:px-7 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8">
-                    <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                      Publicación y organización
-                    </span>
-                    <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                      Recursos
-                    </span>
-                    <span className="text-right text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                      Acciones
-                    </span>
-                  </div>
-                  {visibles.map((p: Publicacion) => (
-                    <FilaPublicacion
-                      key={p.id}
+              /* La lista es la misma tarjeta del mapa y de la hoja del pin, no otra maquetación
+                 (Alejandro, 22 de septiembre de 2026; es también lo que dice el prototipo): a lo
+                 ancho en una cuadrícula de 2 · 3 columnas, con las acciones pegadas abajo. Sin
+                 texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena. */
+              <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
+                {/* Cabecera de columnas, solo desde 1280 (rótulo suelto: cada fila es una tarjeta) */}
+                <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8">
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Publicación y organización</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Recursos</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Acciones</span>
+                </div>
+                {visibles.map((p: Publicacion) => (
+                  <React.Fragment key={p.id}>
+                    {/* hasta 1279: la tarjeta */}
+                    <Tarjeta
                       publicacion={p}
                       distanciaKm={distancias.get(p.id)}
                       coincidencias={coincidencias.get(p.id)}
                       enProceso={enProceso.includes(p.id)}
-                      onVerDetalle={(id) => setDetalleId(id)}
                       onVerEnMapa={verEnMapa}
                       {...accionesTarjeta}
+                      className="xl:hidden"
                     />
-                  ))}
-                </div>
-              </>
+                    {/* desde 1280: la misma información en columnas */}
+                    <FilaPublicacion
+                      publicacion={p}
+                      distanciaKm={distancias.get(p.id)}
+                      coincidencias={coincidencias.get(p.id)}
+                      enProceso={enProceso.includes(p.id)}
+                      onVerDetalle={setDetalleId}
+                      onVerEnMapa={verEnMapa}
+                      onCompartir={compartir}
+                      onReportar={(id) => setReporte(id)}
+                      onVerCoincidencias={(id) => setVerCoincidencias(id)}
+                    />
+                  </React.Fragment>
+                ))}
+              </div>
             )}
           </main>
         ) : (
@@ -385,10 +406,10 @@ const Radar: React.FC = () => {
                       <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
                         <Funnel className="h-6.5 w-6.5" />
                       </span>
-                      <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Nada con estos filtros</h3>
-                      <p className="m-0 max-w-90 text-rd-13-5 leading-normal">Prueba con menos filtros o una distancia mayor.</p>
-                      <Button nivel="secundario" tamano="md" className="mt-3" onClick={limpiar}>
-                        Quitar los filtros
+                      <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{vacio.titulo}</h3>
+                      <p className="m-0 max-w-90 text-rd-13-5 leading-normal">{vacio.texto}</p>
+                      <Button nivel="secundario" tamano="md" className="mt-3" onClick={aflojar}>
+                        {vacio.accion}
                       </Button>
                     </div>
                   ) : (
@@ -477,9 +498,11 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
 
 /* ---------- la fila de la vista lista de la Radar ---------- */
 
-/** Una publicación en vista de lista: quién y qué (avatar, tipo, estado, título, organización y zona),
- *  recursos con sus anillos e indicadores de disponibilidad y acciones directas
- *  (Ver detalle, Ver en el mapa y menú ⋮). */
+/** Una publicación en la vista de lista **desde 1280**: una tarjeta horizontal independiente que
+ *  reparte en columnas lo mismo que la tarjeta vertical de bajo 1280, igual que la fila del
+ *  Directorio (Alejandro, 22 de septiembre de 2026). Lo que no cabe en una fila —las fotos y el
+ *  detalle de cada recurso— lo abre «Ver detalle» en su diálogo. Bajo 1280 esta fila no existe:
+ *  manda la tarjeta. */
 const FilaPublicacion: React.FC<{
   publicacion: Publicacion;
   distanciaKm?: number;
@@ -493,11 +516,13 @@ const FilaPublicacion: React.FC<{
 }> = ({
   publicacion: p,
   distanciaKm: dist,
+  coincidencias,
   enProceso,
   onVerDetalle,
   onVerEnMapa,
   onCompartir,
   onReportar,
+  onVerCoincidencias,
 }) => {
   const est = estadoPublicacion(p);
   const menu = [
@@ -509,7 +534,7 @@ const FilaPublicacion: React.FC<{
   return (
     <article
       id={p.id}
-      className="grid min-w-0 grid-cols-1 gap-5 rounded-rd-xl border border-rd-line bg-rd-surface py-7 px-5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:py-8 sm:px-7 md:grid-cols-2 md:gap-x-6 md:gap-y-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_auto] xl:items-center xl:gap-8 min-h-[185px]"
+      className="hidden min-w-0 rounded-rd-xl border border-rd-line bg-rd-surface px-5 py-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8"
     >
       {/* 1. Publicación, tipo y ubicación */}
       <div className="flex min-w-0 items-start gap-3.5">
@@ -524,8 +549,8 @@ const FilaPublicacion: React.FC<{
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            <h2 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
               {p.titulo}
             </h2>
             {p.verificada && (
@@ -553,7 +578,7 @@ const FilaPublicacion: React.FC<{
       </div>
 
       {/* 2. Recursos ofrecidos o solicitados con sus anillos */}
-      <div className="flex min-w-0 flex-col gap-2 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
+      <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           {p.recursos.map((r) => {
             const completo = restante(r) === 0;
@@ -575,14 +600,21 @@ const FilaPublicacion: React.FC<{
       {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
        *  y ⋮, los tres terciarios (223: ver no cambia datos) y en `md` (C1), para que se lean
        *  como un solo grupo. El compromiso vive en la tarjeta del detalle. */}
-      <div className="flex min-w-0 items-center justify-end gap-1 max-md:border-t max-md:border-rd-line-soft max-md:pt-3">
-        <Button nivel="terciario" tamano="md" onClick={() => onVerDetalle(p.id)}>
-          Ver detalle
-        </Button>
-        <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => onVerEnMapa(p.id)}>
-          <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
-        </Button>
-        <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="md" flotante />
+      {/* La columna ocupa todo el alto de la fila (`self-stretch`, aunque las demás vayan
+          centradas): las sugerencias arriba del todo y las acciones abajo del todo, cada una
+          contra el relleno de la tarjeta. `mt-auto` empuja los botones aunque no haya
+          sugerencias (Alejandro, 22 de septiembre de 2026). */}
+      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
+        <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
+        <div className="mt-auto flex items-center gap-1">
+          <Button nivel="terciario" tamano="md" onClick={() => onVerDetalle(p.id)}>
+            Ver detalle
+          </Button>
+          <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => onVerEnMapa(p.id)}>
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+          </Button>
+          <MenuAcciones items={menu} etiqueta={`Más acciones de ${p.titulo}`} tamano="md" flotante />
+        </div>
       </div>
     </article>
   );

@@ -32,7 +32,7 @@ describe('el directorio cuenta lo mismo que la Radar', () => {
 describe('cifras y estado', () => {
   it('una comunidad cuenta solicitudes (un recurso pedido, una solicitud); una organización, entregas', () => {
     expect(solicitudesDe(de('JAC Barrio San Francisco'), PUBLICACIONES)).toBe(publicacionesDe(de('JAC Barrio San Francisco'), PUBLICACIONES).reduce((t, p) => t + p.recursos.length, 0));
-    expect(cifraDe(de('Cruz Roja · seccional Bogotá'), PUBLICACIONES)).toEqual({ n: 57, que: 'entregas confirmadas' });
+    expect(cifraDe(de('Cruz Roja seccional Bogotá'), PUBLICACIONES)).toEqual({ n: 57, que: 'entregas confirmadas' });
     expect(cifraDe(de('JAC El Recuerdo'), PUBLICACIONES).que).toBe('solicitud');
   });
   it('el estado de una comunidad sale del avance de lo que pidió', () => {
@@ -54,7 +54,7 @@ describe('la consulta', () => {
     const porCerca = filtrar(orgs, PUBLICACIONES, consultaVacia(), UBICACION);
     expect(porCerca[0].nombre).toBe('Alcaldía local de Usme');
     const porCifra = filtrar(orgs, PUBLICACIONES, { ...consultaVacia(), orden: 'cifra' }, UBICACION);
-    expect(porCifra[0].nombre).toBe('Cruz Roja · seccional Bogotá');
+    expect(porCifra[0].nombre).toBe('Cruz Roja seccional Bogotá');
   });
   it('los chips reflejan lo aplicado y cada uno se quita solo', () => {
     const q = { ...consultaVacia(), ciudades: ['cali'], recursos: ['Alimentos'], verificadas: true, texto: 'jac' };

@@ -6,7 +6,7 @@
  * nombres coinciden con `recursos[].item`), a diferencia del prototipo.
  */
 import type { Publicacion, TipoPublicacion, Ubicacion } from '../types/publicacion';
-import { enCiudades, nombreCorto } from './lugares';
+import { enCiudades, nombreCiudades, nombreCorto } from './lugares';
 import { distanciaKm, estadoPublicacion, type EstadoPublicacion } from './publicaciones';
 
 export type Orden = 'falta' | 'cerca' | 'reciente';
@@ -88,6 +88,24 @@ export interface Chip {
   clave: string;
   texto: string;
   quitar: (f: Filtros) => Filtros;
+}
+
+export interface Vacio {
+  titulo: string;
+  texto: string;
+  accion: string;
+  aflojar: (f: Filtros) => Filtros;
+}
+
+/** Qué decir cuando no queda nada: en vez de un consejo genérico, nombra el filtro que más
+ *  acota y ofrece soltar ese, de lo más estrecho a lo más ancho (la búsqueda, luego el radio,
+ *  luego la ciudad, y si no, todo). */
+export function vacioDe(f: Filtros, busqueda = ''): Vacio {
+  const q = busqueda.trim();
+  if (q) return { titulo: `Nada para «${q}»`, texto: 'Prueba con otra palabra, o quita la búsqueda y filtra por recurso.', accion: 'Quitar la búsqueda', aflojar: (x) => x };
+  if (f.distancia !== null) return { titulo: `Nada a menos de ${f.distancia} km`, texto: 'Lo que hace falta puede estar un poco más lejos.', accion: 'Quitar la distancia', aflojar: (x) => ({ ...x, distancia: null }) };
+  if (f.ciudades.length) return { titulo: `Nada en ${nombreCiudades(f.ciudades)}`, texto: 'Todavía nadie publicó aquí con estos filtros.', accion: 'Ver todas las ciudades', aflojar: (x) => ({ ...x, ciudades: [] }) };
+  return { titulo: 'Nada con estos filtros', texto: 'Prueba con menos filtros.', accion: 'Quitar los filtros', aflojar: () => filtrosVacios() };
 }
 
 /** Los chips de lo aplicado, en el orden de la hoja, cada uno con cómo quitarse. Un chip por

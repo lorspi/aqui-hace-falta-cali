@@ -397,7 +397,7 @@ const Panel: React.FC = () => {
           titulo={cancelando ? `¿Cancelar el compromiso con ${cancelando.quien}?` : ''}
           accion="Cancelar el compromiso"
           nivelAccion="secundario"
-          textoCancelar="Dejar como está"
+          textoAlterno="Dejar como está"
           onCerrar={() => setCancelando(null)}
           onEnviar={(form) => {
             if (!cancelando) return;
@@ -884,7 +884,6 @@ const DialogoActa: React.FC<{ acta: Acta | null; onCerrar: () => void; onCopiar:
     titulo={a ? `Acta ${a.codigo}` : ''}
     accion="Copiar el texto"
     nivelAccion="secundario"
-    textoCancelar="Cerrar"
     onCerrar={onCerrar}
     onEnviar={() => {
       if (a) onCopiar(a);
@@ -1395,7 +1394,7 @@ const Seguimiento: React.FC<{
         abierto={devolviendo !== null}
         titulo={devolviendo ? `¿Devolver a ${NOMBRE_ESTADO[devolviendo.a]}?` : ''}
         accion={devolviendo ? `Devolver y avisar a ${devolviendo.s.quien}` : 'Devolver y avisar'}
-        textoCancelar="Dejar como está"
+        textoAlterno="Dejar como está"
         onCerrar={() => setDevolviendo(null)}
         onEnviar={() => {
           if (!devolviendo) return;

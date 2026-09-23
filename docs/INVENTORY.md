@@ -81,7 +81,17 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `HojaPin` — la hoja del pin bajo 1024: sube deslizándose mientras el mapa vuela al pin; a media pantalla y expandida es la misma pieza (carrusel de tres ranuras con vecinas asomando y puntos en las dos alturas); cambiar de publicación hace volar el mapa a su pin; asa con flecha y arrastre, × y Escape.
 - `Shell` — el cascarón con sesión: side nav de 232 plegable a 64 (≥ 1024; Radar · Mi organización / Mi comunidad · Directorio), píldora flotante con «+», panel Pedir / Ofrecer y cajón lateral (< 1024); `BotonMenu`.
 - `AvisoCorto` — el aviso corto abajo (`rd-toast`): `AvisosProvider` + `useAviso()`; negro, centrado, icono por tipo (`neutro` · `ok` · `error` · `cargando`), acción opcional, se va solo. Convive con `components/Toast.tsx`.
-- `Dialogo` — `<dialog>` nativo con `showModal()`: título, cuerpo (un formulario), pie Cancelar + la acción que cierra (lg); bajo 640 en columna. `Opciones`: chips con radio real.
+- `Dialogo` — `<dialog>` nativo con `showModal()`: título (que le da el nombre accesible por
+  `aria-labelledby`), cuerpo (un formulario), pie Cancelar + la acción que cierra (lg); bajo 640
+  en columna con la acción abajo, al alcance del pulgar. `accionActiva={false}` apaga la acción
+  cuando no hay nada que enviar. `Opciones`: chips con radio real.
+- `Casilla` — la casilla de verificación dibujada del sistema (marcada, sin marcar, a medias).
+  Solo la parte visual: quien la usa pone el `input` real. La usan `SelectorCiudad` y
+  `DialogoCompromiso`.
+- `DialogoCompromiso` — «Ayudar» / «Solicitar» desde una tarjeta: una fila por recurso con saldo
+  (casilla, nombre, lo que falta o queda, y la cantidad en una columna alineada con su unidad
+  dentro del campo), el plazo en chips y el pie del `Dialogo`. Devuelve qué y cuánto
+  (`utils/compromiso.ts`: `Compromiso.partes`, `avisoCompromiso`), no solo cuántas filas.
 - `DialogoCompromiso` — «Quiero ayudar» / «Solicitar»: filas de recursos pendientes con cantidad, «Cuándo llega». Devuelve cuántos recursos y el cuándo.
 - `DialogoReporte` — «Reportar un problema»: tres motivos (`MOTIVOS_PUBLICACION`, el directorio pasa los suyos) y «Qué viste (opcional)».
 - `Tabla` — la tabla del panel (`rd-tabla`, decisión 184): tabla desde 1280; por debajo cada fila es una tarjeta (título con su meta, estado a la derecha, datos a media fila con rótulo, controles y barras a lo ancho, acciones como pie). Columnas tipadas.

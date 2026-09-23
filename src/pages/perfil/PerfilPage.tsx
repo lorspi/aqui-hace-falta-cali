@@ -180,7 +180,7 @@ const Perfil: React.FC = () => {
           titulo={confirmando === 'salir' ? `¿Sales de ${ORG.nombre}?` : '¿Eliminas tu cuenta?'}
           accion={confirmando === 'salir' ? 'Salir de la organización' : 'Eliminar la cuenta'}
           nivelAccion="secundario"
-          textoCancelar="Dejar como está"
+          textoAlterno="Dejar como está"
           onCerrar={() => setConfirmando(null)}
           onEnviar={() => {
             const que = confirmando;
@@ -428,7 +428,6 @@ const DatosOrganizacion: React.FC = () => {
         abierto={invitando}
         titulo="Invitar a alguien a esta cuenta"
         accion="Enviar invitación"
-        textoCancelar="Cancelar"
         onCerrar={() => setInvitando(false)}
         onEnviar={enviarInvitacion}
       >

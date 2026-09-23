@@ -85,7 +85,7 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4">
+        <div className="sin-barra min-h-0 flex-1 overflow-y-auto px-4">
           {pestana === 'filtrar' ? (
             <>
               <section className="border-b border-rd-line-soft py-4">

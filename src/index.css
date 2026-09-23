@@ -72,6 +72,11 @@
   --text-rd-24: 24px;
   --text-rd-28: 28px;
   --text-rd-32: 32px;
+  /* Un escalón por debajo de `sm`, para la línea de tiempo del congrats: desde 480 caben los
+     tres pasos en fila y debajo van en columna. Nace como token para no escribir `min-[480px]:`,
+     que el estándar del equipo prohíbe (`ESTANDAR_TECNICO_Y_MOCKS.md`, sin corchetes). */
+  --breakpoint-xs: 480px;
+
   --tracking-rd-cuerpo: -0.005em;
   --tracking-rd-btn: -0.006em;
   --tracking-rd-titulo: -0.03em;
@@ -99,8 +104,10 @@
      sugerencia fuerte. `motion-reduce:animate-none` los apaga, como todo movimiento del DS. */
   --animate-rd-brillo: rd-brillo 1.4s ease-out 0.2s 1 both;
   --animate-rd-barrido: rd-barrido 0.6s linear 2;
-  /* La fila en la tarjeta: el degradado (contorno y relleno suave) se desplaza despacio una vez. */
-  --animate-rd-borde: rd-borde 2.4s ease-in-out 0.2s 1 both;
+  /* La fila en la tarjeta: el degradado (contorno y relleno) va y vuelve sin parar, despacio
+     (Alejandro, 22 de septiembre de 2026). `alternate` evita el salto que daría reiniciar el
+     recorrido, y 6 s por tramo lo dejan en el borde de lo que se nota sin molestar. */
+  --animate-rd-borde: rd-borde 6s ease-in-out infinite alternate;
   @keyframes rd-borde {
     from {
       background-position:
@@ -111,6 +118,27 @@
       background-position:
         100% 50%,
         100% 50%;
+    }
+  }
+  /* La explosión de la primera publicación: sube, gira y se desvanece. Cada pedazo pone su
+     desvío, su altura y su giro (`Explosion.tsx`). */
+  --animate-rd-explosion: rd-explosion 1.8s cubic-bezier(0.1, 0.62, 0.28, 1) both;
+  @keyframes rd-explosion {
+    0% {
+      transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+      opacity: 0;
+    }
+    /* Sube a plena tinta casi de inmediato y solo se apaga en el último tramo: así se lee la
+       subida entera y no un borrón pálido. */
+    8% {
+      opacity: 1;
+    }
+    65% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate3d(var(--rd-x, 0), calc(-1 * var(--rd-alto, 50vh)), 0) scale(1) rotate(var(--rd-giro, 180deg));
+      opacity: 0;
     }
   }
   @keyframes rd-brillo {
@@ -383,6 +411,62 @@ header {
 @utility pista-rd-hoja {
   transform: translateX(calc(-100% + 15 * var(--spacing) - 2 * var(--spacing) + var(--dx, 0px)));
 }
+/* Nada inerte enseña su barra: no se puede desplazar, así que la barra solo estorba. Es la
+   Radar que queda de fondo mientras se publica (`MarcoFlujo`), que se veía con su barra al
+   lado de la ventana del flujo (Alejandro, 22 de septiembre de 2026). */
+[inert],
+[inert] * {
+  scrollbar-width: none;
+}
+[inert]::-webkit-scrollbar,
+[inert] *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Bajo 1024 ninguna zona que se desplaza enseña su barra (Alejandro, 22 de septiembre de 2026):
+   en el teléfono el desplazamiento se anuncia con el contenido asomando y con los desvanecidos
+   de la zona de chips, no con una barra encima del contenido. Desde 1024 la barra se queda: con
+   ratón sí sirve. Solo dentro del cascarón de Producto (`.rd-app`), para no tocar las pantallas
+   de producción. */
+@media (max-width: 1023px) {
+  .rd-app,
+  .rd-app * {
+    scrollbar-width: none;
+  }
+  .rd-app::-webkit-scrollbar,
+  .rd-app *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Una zona que se desplaza sin enseñar la barra: lo que hay más abajo se anuncia con el
+   contenido asomando, no con una barra encima (Alejandro, 22 de septiembre de 2026). Para las
+   superficies que van encima del contenido —la ventana de un flujo, los diálogos, las hojas y
+   los desplegables—, donde la barra se pinta sobre la propia caja y se ve mal en cualquier
+   ancho. Las listas de una página conservan la suya desde 1024, donde con ratón sí sirve. */
+/* El desvanecido de una zona que se desplaza sin barra: el borde donde queda contenido se
+   difumina, y se apaga al llegar al final (`useDesvanecido` pone las medidas). Vertical, como
+   el de la fila de chips lo hace en horizontal (143). */
+@utility zona-rd-desvanece {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--rd-borde-arriba, 0px),
+    #000 calc(100% - var(--rd-borde-abajo, 0px)),
+    transparent 100%
+  );
+}
+
+@utility sin-barra {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
 @utility ranura-rd-hoja {
   flex: 0 0 calc(100% - 10 * var(--spacing));
 }

@@ -63,7 +63,7 @@ const SIN_FOTOS: Publicacion[] = [
         ],
         ficha: [
           ['Disponibilidad', 'Hasta agotar'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
       {
@@ -73,7 +73,7 @@ const SIN_FOTOS: Publicacion[] = [
         tramos: [{ t: 'hecho', cant: 30, quien: 'Comedor Villa Gloria', cuando: '13 sep, 11:20 a. m.' }],
         ficha: [
           ['Disponibilidad', 'Hasta el 20 sep'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
       {
@@ -83,7 +83,7 @@ const SIN_FOTOS: Publicacion[] = [
         tramos: [{ t: 'camino', cant: 1, quien: 'Hospital de Usme', cuando: 'Ayer 4:10 p. m.' }],
         ficha: [
           ['Disponibilidad', '48 horas'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
     ],
@@ -136,7 +136,7 @@ const SIN_FOTOS: Publicacion[] = [
   },
   /* Las demás publicaciones del mapa. Menos detalle, mismas reglas. */
   { id: 'm1', tipo: 'necesidad', titulo: 'Albergue Bosa', org: 'Albergue Bosa', verificada: false, lat: 4.608, lng: -74.19, zona: 'Bosa', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 50, tramos: [{ t: 'camino', cant: 20, quien: 'Parroquia San Bernardino', cuando: 'Llega hoy 5:00 p. m.' }] }] },
-  { id: 'm2', tipo: 'oferta', titulo: 'Cruz Roja seccional', org: 'Cruz Roja · seccional Bogotá', verificada: true, lat: 4.612, lng: -74.185, zona: 'Teusaquillo', recursos: [{ item: 'Atención médica', unidad: 'profesionales', total: 5, tramos: [{ t: 'hecho', cant: 3, quien: 'Albergue Bosa', cuando: '12 sep' }] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 600, tramos: [{ t: 'hecho', cant: 420, quien: 'Varias', cuando: '11 sep' }] }] },
+  { id: 'm2', tipo: 'oferta', titulo: 'Cruz Roja seccional', org: 'Cruz Roja seccional Bogotá', verificada: true, lat: 4.612, lng: -74.185, zona: 'Teusaquillo', recursos: [{ item: 'Atención médica', unidad: 'profesionales', total: 5, tramos: [{ t: 'hecho', cant: 3, quien: 'Albergue Bosa', cuando: '12 sep' }] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 600, tramos: [{ t: 'hecho', cant: 420, quien: 'Varias', cuando: '11 sep' }] }] },
   { id: 'm3', tipo: 'necesidad', titulo: 'JAC El Recuerdo', org: 'JAC El Recuerdo', verificada: false, lat: 4.615, lng: -74.196, zona: 'Bosa', recursos: [{ item: 'Agua potable', unidad: 'L', total: 600, tramos: [] }] },
   { id: 'm4', tipo: 'necesidad', titulo: 'Comedor Villa Gloria', org: 'Comedor Villa Gloria', verificada: false, lat: 4.601, lng: -74.183, zona: 'Ciudad Bolívar', recursos: [{ item: 'Alimentos', unidad: 'kits', total: 100, tramos: [{ t: 'hecho', cant: 20, quien: 'Bomberos Voluntarios Usme', cuando: '13 sep' }, { t: 'camino', cant: 30, quien: 'Fundación Manos Unidas', cuando: 'Llega mañana' }] }] },
   { id: 'm5', tipo: 'oferta', titulo: 'Parroquia San Bernardino', org: 'Parroquia San Bernardino', verificada: false, lat: 4.604, lng: -74.199, zona: 'Bosa', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 60, tramos: [] }, { item: 'Ropa y calzado', unidad: 'mudas', total: 300, tramos: [] }] },

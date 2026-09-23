@@ -1,8 +1,9 @@
 import React, { useId, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, MapPin, Minus, Navigation, Search } from 'lucide-react';
+import { ChevronDown, MapPin, Navigation, Search } from 'lucide-react';
 import type { Ubicacion } from '../../types/publicacion';
 import { alternarCiudades, ciudadDeUbicacion, gruposDeCiudades, nombreCiudades } from '../../utils/lugares';
 import { Button } from './Button';
+import { Casilla, type Marca } from './Casilla';
 
 /**
  * El lugar, en una sola pieza (Alejandro, 21 de septiembre de 2026): un campo de búsqueda que
@@ -31,7 +32,6 @@ type Item =
   | { tipo: 'depto'; id: string; nombre: string; ids: string[] }
   | { tipo: 'ciudad'; id: string; nombre: string; n: number };
 
-type Marca = 'si' | 'no' | 'parte';
 
 export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCambiar, conteos, ubicacion, onCercaDeMi }) => {
   const [abierto, setAbierto] = useState(false);
@@ -124,7 +124,7 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
 
   return (
     <div ref={raiz} className="relative">
-      <label className="flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft">
+      <label className="flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft pointer-coarse:h-rd-tactil">
         {abierto ? <Search aria-hidden="true" className="h-4 w-4 shrink-0" /> : <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />}
         <span className="sr-only">Ciudades</span>
         <input
@@ -158,7 +158,7 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
             </Button>
           </div>
         )}
-        <div id={idLista} role="listbox" aria-label="Ciudades" aria-multiselectable="true" className="min-h-0 flex-1 overflow-y-auto py-1">
+        <div id={idLista} role="listbox" aria-label="Ciudades" aria-multiselectable="true" className="sin-barra min-h-0 flex-1 overflow-y-auto py-1">
           {items.length === 0 ? (
             <p className="m-0 px-3 py-2.5 text-rd-12-5 text-rd-ink-2">No se encontró «{q.trim()}»</p>
           ) : (
@@ -193,11 +193,3 @@ const Fila: React.FC<{ item: Item; id: string; activa: boolean; marca: Marca; on
   );
 };
 
-/** La casilla, dibujada como la del DS: relleno tinta (`rd-sel`) y marca blanca cuando está
- *  marcada; una raya cuando el grupo está a medias. */
-const Casilla: React.FC<{ marca: Marca }> = ({ marca }) => (
-  <span aria-hidden="true" className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-rd-sm border ${marca === 'no' ? 'border-rd-line bg-rd-surface' : 'border-rd-sel bg-rd-sel text-white'}`}>
-    {marca === 'si' && <Check className="h-3 w-3" strokeWidth={3} />}
-    {marca === 'parte' && <Minus className="h-3 w-3" strokeWidth={3} />}
-  </span>
-);

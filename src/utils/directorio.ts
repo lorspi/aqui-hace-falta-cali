@@ -5,8 +5,8 @@
  */
 import type { ClaseEntidad, ConsultaDirectorio, Entidad, EstadoComunidad } from '../types/directorio';
 import type { Publicacion, Ubicacion } from '../types/publicacion';
-import { enCiudades, nombreCorto } from './lugares';
-import { distanciaKm, estadoPublicacion } from './publicaciones';
+import { enCiudades, nombreCiudades, nombreCorto } from './lugares';
+import { cifra as miles, distanciaKm, estadoPublicacion } from './publicaciones';
 
 export function consultaVacia(): ConsultaDirectorio {
   return { texto: '', ciudades: [], recursos: [], verificadas: false, orden: 'cercania' };
@@ -52,6 +52,22 @@ export function cifraDe(e: Entidad, pubs: Publicacion[]): { n: number; que: stri
     return { n, que: n === 1 ? 'solicitud' : 'solicitudes' };
   }
   return { n: e.entregas, que: e.entregas === 1 ? 'entrega confirmada' : 'entregas confirmadas' };
+}
+
+/** Las cifras de una entidad, en el orden en que se leen: lo que publica, su cifra de
+ *  comparación y a cuánta gente cubre. Se derivan aquí una sola vez para que la tarjeta, la
+ *  fila de tabla y el detalle digan exactamente lo mismo. */
+export function cifrasDe(e: Entidad, pubs: Publicacion[]): [string, string][] {
+  const publica = resumenPublica(e, pubs);
+  const cifraE = cifraDe(e, pubs);
+  const recursos = (n: number) => `${n} ${n === 1 ? 'recurso' : 'recursos'}`;
+  const filas: [string, string][] = [];
+  if (publica.ofrece) filas.push(['Ofrece', recursos(publica.ofrece)]);
+  if (publica.pide) filas.push(['Pide', recursos(publica.pide)]);
+  if (e.clase !== 'comunidad') filas.push([cifraE.que[0].toUpperCase() + cifraE.que.slice(1), miles(cifraE.n)]);
+  if (e.personas) filas.push(['Personas afectadas', miles(e.personas)]);
+  if (e.familias) filas.push(['Familias', miles(e.familias)]);
+  return filas;
 }
 
 /** El estado de una comunidad sale del avance de lo que pidió: nada movido es «Sin iniciar»,
@@ -120,6 +136,23 @@ export function chipsDe(q: ConsultaDirectorio): ChipDirectorio[] {
   if (q.verificadas) chips.push({ clave: 'verificadas', texto: 'Solo verificadas', quitar: (c) => ({ ...c, verificadas: false }) });
   if (q.texto.trim()) chips.push({ clave: 'texto', texto: `“${q.texto.trim()}”`, quitar: (c) => ({ ...c, texto: '' }) });
   return chips;
+}
+
+export interface VacioDirectorio {
+  titulo: string;
+  texto: string;
+  accion: string;
+  aflojar: (q: ConsultaDirectorio) => ConsultaDirectorio;
+}
+
+/** Qué decir cuando no queda nada: nombra el filtro que más acota y ofrece soltar ese (igual
+ *  que en la Radar, `utils/filtros.ts`). */
+export function vacioDe(q: ConsultaDirectorio, clase: ClaseEntidad): VacioDirectorio {
+  const quienes = clase === 'comunidad' ? 'comunidades' : 'organizaciones';
+  const texto = q.texto.trim();
+  if (texto) return { titulo: `Nada para «${texto}»`, texto: 'Prueba con otra palabra, o quita la búsqueda y filtra por recurso.', accion: 'Quitar la búsqueda', aflojar: (c) => ({ ...c, texto: '' }) };
+  if (q.ciudades.length) return { titulo: `Ninguna en ${nombreCiudades(q.ciudades)}`, texto: `Todavía no hay ${quienes} aquí con estos filtros.`, accion: 'Ver todas las ciudades', aflojar: (c) => ({ ...c, ciudades: [] }) };
+  return { titulo: `Ninguna ${clase === 'comunidad' ? 'comunidad' : 'organización'} con estos filtros`, texto: 'Prueba con menos filtros o busca otro recurso.', accion: 'Quitar los filtros', aflojar: (c) => ({ ...consultaVacia(), orden: c.orden }) };
 }
 
 /** Qué dice el conteo de la lista, para la región viva y la cabecera. */

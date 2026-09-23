@@ -11,7 +11,7 @@ import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle 
 import { camposOferta, camposTexto, numero, unidadOferta } from '../../utils/equivalencias';
 import { caminoOfrecer, fechaCorta, listoOfrecer, textoEntrega } from '../../utils/ofrecer';
 import { cifra } from '../../utils/publicaciones';
-import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
+import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
@@ -107,7 +107,7 @@ const Ofrecer: React.FC = () => {
 
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="ofrecer" extra={<Coincidencias publicacion={publicacionDe(e)} />} abre={PUERTAS.ofrecer.abre} onPanel={() => irA(RUTAS.miOrganizacion)} onVerMapa={irMapa} onOtra={f.reiniciar} />;
+    pantalla = <ExitoFlujo tipo="ofrecer" publicacion={publicacionDe(e)} onVerMapa={irMapa} onPanel={() => irA(RUTAS.miOrganizacion)} onOtra={f.reiniciar} />;
   } else if (sub.id === 'recursos') {
     pantalla = (
       <>
