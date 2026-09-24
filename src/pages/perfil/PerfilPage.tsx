@@ -101,9 +101,7 @@ const Perfil: React.FC = () => {
             <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
           </span>
         </header>
-        <div className="min-w-0 flex-none px-4 sm:px-6 lg:px-8">
-          <Pestanas etiqueta="Pestañas del perfil" pestanas={PESTANAS} actual={actual} onCambiar={cambiarTab} />
-        </div>
+        <Pestanas etiqueta="Pestañas del perfil" pestanas={PESTANAS} actual={actual} onCambiar={cambiarTab} className="px-4 sm:px-6 lg:px-8" />
 
         <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">

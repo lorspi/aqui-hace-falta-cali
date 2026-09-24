@@ -154,13 +154,15 @@ export const FilaSugerencias: React.FC<{ n: number; onVer: () => void; variante?
       className={`font-rd relative flex cursor-pointer items-center overflow-hidden rounded-rd-lg text-left font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${
         compacta ? 'w-auto gap-1.5 px-2.5 py-1.5 text-rd-12-5' : 'w-full gap-2.5 px-3.5 py-2.5 text-rd-13 pointer-coarse:min-h-rd-tactil'
       } ${
-        relleno ? 'bg-linear-to-r/srgb from-rd-coral to-rd-navy hover:brightness-95' : `borde-rd-sugerencia hover:shadow-xs ${brillo ? 'animate-rd-borde motion-reduce:animate-none' : ''}`
-      } text-white ${className}`}
+        relleno
+          ? 'bg-linear-to-r/srgb from-rd-coral to-rd-navy text-white hover:brightness-95'
+          : `borde-rd-sugerencia text-rd-ink hover:text-rd-navy hover:shadow-xs ${brillo ? 'animate-rd-borde motion-reduce:animate-none' : ''}`
+      } ${className}`}
     >
       {relleno && brillo && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-linear-to-r from-transparent via-white/30 to-transparent animate-rd-brillo motion-reduce:animate-none" />}
-      <Radar aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0`} />
+      <Radar aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white' : 'text-rd-navy'}`} />
       <span className={compacta ? 'whitespace-nowrap' : 'min-w-0 flex-1'}>{textoSugerencias(n, compacta)}</span>
-      <ChevronRight aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0`} />
+      <ChevronRight aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white/80' : 'text-rd-ink-meta'}`} />
     </button>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, ListChecks, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Funnel, Hand, HeartHandshake, LayoutDashboard, ListChecks, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, VEHICULOS, type DatosPublicacionGestion } from './dialogos';
@@ -7,9 +7,11 @@ import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos, FOTOS_ENTREGA, FOTOS_RECIBIDA } from '../../mocks/fotosMock';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
+import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
 import { Pestanas } from '../../components/ui/Pestanas';
+import { Segmented } from '../../components/ui/Segmented';
 import { Vacio } from '../../components/ui/Vacio';
 import { Caja, Conteo } from '../../components/ui/Caja';
 import { IconoRecursoDe } from '../../components/ui/Recursos';
@@ -18,9 +20,10 @@ import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, DEPTOS, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../mocks/panelMock';
 import { PUBLICACIONES } from '../../mocks/publicacionesMock';
+import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
-import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
+import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
@@ -45,6 +48,134 @@ function irA(ruta: string): void {
   window.location.href = ruta;
 }
 
+const ICONO_PESTANA: Record<string, React.ReactNode> = {
+  resumen: <LayoutDashboard className="h-4 w-4" />,
+  necesidades: <Hand className="h-4 w-4" />,
+  ofertas: <HeartHandshake className="h-4 w-4" />,
+  seguimiento: <Truck className="h-4 w-4" />,
+  reportes: <FileText className="h-4 w-4" />,
+  equipo: <Users className="h-4 w-4" />,
+};
+
+/**
+ * Conmutador horizontal de módulos del panel en pestañas:
+ * Sigue los tokens canónicos y el diseño de la app: esquinas cuadradas (rounded-rd-md) y
+ * modo seleccionado en overlay claro (bg-rd-navy-soft, border-rd-navy-line, texto e icono en rd-navy).
+ * Si desborda hacia la derecha (en móviles o pantallas medianas), activa la máscara degradada
+ * (`zona-rd-chips`) y muestra la flecha › flotante que avanza el scroll suavemente al tocarla.
+ */
+const PestanasPanel: React.FC<{
+  pestanas: PestanaPanel[];
+  actual: string;
+  onCambiar: (id: string) => void;
+  nombrePanel: string;
+}> = ({ pestanas, actual, onCambiar, nombrePanel }) => {
+  const zonaRef = useRef<HTMLDivElement>(null);
+  const [desborda, setDesborda] = useState(false);
+
+  useEffect(() => {
+    const z = zonaRef.current;
+    if (!z) return;
+    const medir = () => {
+      const restante = z.scrollWidth - (z.scrollLeft + z.clientWidth);
+      setDesborda(restante > 8);
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(z);
+    z.addEventListener('scroll', medir, { passive: true });
+    window.addEventListener('resize', medir);
+    return () => {
+      ro.disconnect();
+      z.removeEventListener('scroll', medir);
+      window.removeEventListener('resize', medir);
+    };
+  }, [pestanas]);
+
+  useEffect(() => {
+    const z = zonaRef.current;
+    if (!z) return;
+    const activa = z.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (activa && typeof activa.scrollIntoView === 'function') {
+      activa.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [actual]);
+
+  const avanzar = () => {
+    if (zonaRef.current) {
+      zonaRef.current.scrollBy({ left: 160, behavior: 'smooth' });
+    }
+  };
+
+  const alTeclear = (e: React.KeyboardEvent, i: number) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const k = (i + (e.key === 'ArrowRight' ? 1 : -1) + pestanas.length) % pestanas.length;
+    onCambiar(pestanas[k].id);
+    (e.currentTarget.parentElement?.children[k] as HTMLElement | undefined)?.focus();
+  };
+
+  return (
+    <div className="flex flex-none items-center border-b border-rd-line bg-rd-surface px-4 py-2 sm:px-6 lg:px-8">
+      <div className="relative h-9.5 w-full min-w-0 flex-1 pointer-coarse:h-rd-tactil">
+        <div
+          ref={zonaRef}
+          role="tablist"
+          aria-label={`Pestañas de ${nombrePanel}`}
+          className={`zona-rd-scroll absolute inset-0 flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden ${
+            desborda ? 'zona-rd-chips pr-12' : 'pr-2'
+          }`}
+        >
+          {pestanas.map((p, i) => {
+            const sel = p.id === actual;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                id={`pestana-${p.id}`}
+                aria-selected={sel}
+                aria-controls={`panel-${p.id}`}
+                tabIndex={sel ? 0 : -1}
+                onClick={() => onCambiar(p.id)}
+                onKeyDown={(e) => alTeclear(e, i)}
+                className={`font-rd inline-flex h-9 flex-none cursor-pointer items-center gap-2 rounded-rd-md border px-3 text-rd-13-5 whitespace-nowrap transition-colors pointer-coarse:h-rd-tactil focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:translate-y-px ${
+                  sel
+                    ? 'border-rd-navy-line bg-rd-navy-soft font-semibold text-rd-navy shadow-xs'
+                    : 'border-rd-line bg-rd-sunken font-medium text-rd-ink-2 hover:border-rd-navy-line hover:bg-rd-surface hover:text-rd-ink'
+                }`}
+              >
+                <span aria-hidden="true" className={sel ? 'text-rd-navy' : 'text-rd-ink-meta'}>
+                  {ICONO_PESTANA[p.id] ?? <LayoutDashboard className="h-4 w-4" />}
+                </span>
+                <span>{p.nombre}</span>
+                {p.n ? (
+                  <>
+                    <span className="sr-only">, </span>
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-coral px-1.5 text-rd-11 font-semibold text-white tabular-nums">
+                      {p.n}
+                    </span>
+                  </>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {desborda && (
+        <button
+          type="button"
+          aria-label="Ver más pestañas a la derecha"
+          onClick={avanzar}
+          className="relative z-1 -ml-9 flex h-8.5 w-8.5 flex-none cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink shadow-xs transition-colors hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:scale-95"
+        >
+          <ChevronRight aria-hidden="true" className="h-4.5 w-4.5 text-rd-ink" />
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const PanelPage: React.FC = () => (
   <AvisosProvider>
     <Panel />
@@ -53,6 +184,19 @@ export const PanelPage: React.FC = () => (
 
 const Panel: React.FC = () => {
   const avisar = useAviso();
+  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
+
+  /* --- la campana --- */
+  const leerTodos = () => setAvisos((lista) => lista.map((a) => ({ ...a, leido: true })));
+  const accionDeAviso = (a: Aviso) => {
+    setAvisos((lista) => lista.map((x) => (x.id === a.id ? { ...x, leido: true } : x)));
+    if (!a.accion) return;
+    if (a.accion.al === 'confirmar') avisar(`Confirmaste lo que llegó de ${a.quien}`, { tipo: 'ok' });
+    else if (a.accion.al === 'revalidar') avisar('Tu necesidad sigue arriba en el mapa', { tipo: 'ok' });
+    else irA(a.accion.al);
+  };
+
   const [modulos] = useState<ModulosCuenta>(modulosGuardados);
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
   const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
@@ -599,7 +743,7 @@ const Panel: React.FC = () => {
   };
 
   return (
-    <Shell seccion="panel" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientes} avisosNuevos={AVISOS.filter((a) => !a.leido).length} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
+    <Shell seccion="panel" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientes} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
       <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{nombrePanel()}</h1>
@@ -611,13 +755,13 @@ const Panel: React.FC = () => {
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
                 Ofrecer ayuda
               </Button>
+              <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
+              <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
             </span>
             <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
           </span>
         </header>
-        <div className="min-w-0 flex-none px-4 sm:px-6 lg:px-8">
-          <Pestanas etiqueta={`Pestañas de ${nombrePanel()}`} pestanas={pestanas} actual={actual} onCambiar={cambiarTab} />
-        </div>
+        <PestanasPanel pestanas={pestanas} actual={actual} onCambiar={cambiarTab} nombrePanel={nombrePanel()} />
         <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
@@ -917,7 +1061,7 @@ const PulsoOperativo: React.FC<{
 
   return (
     <Caja titulo="Pulso del día" className="col-span-full">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         {/* Card 1: Decisiones / Acción */}
         <button
           type="button"
@@ -925,24 +1069,29 @@ const PulsoOperativo: React.FC<{
             const el = document.getElementById('seccion-decisiones');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
-          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-coral-line hover:bg-rd-coral-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-coral"
+          className="group flex items-center justify-between gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-2.5 text-left transition-all hover:border-rd-coral-line hover:bg-rd-coral-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-coral pointer-coarse:min-h-rd-tactil sm:flex-col sm:items-stretch sm:justify-between sm:p-4"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-coral-ink">
-              Requieren tu atención
-            </span>
+          <div className="flex min-w-0 items-center gap-2.5 sm:justify-between">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-coral-soft text-rd-coral transition-transform group-hover:scale-105"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-coral-soft text-rd-coral transition-transform group-hover:scale-105 sm:order-2"
               aria-hidden="true"
             >
               <Megaphone className="h-4.5 w-4.5" />
             </span>
+            <div className="min-w-0 flex-1 sm:order-1">
+              <span className="block truncate text-rd-13 font-semibold text-rd-ink group-hover:text-rd-coral-ink sm:text-rd-13-5">
+                Requieren tu atención
+              </span>
+              <p className="m-0 truncate text-rd-11-5 text-rd-ink-meta sm:hidden">
+                {detalleAccion}
+              </p>
+            </div>
           </div>
-          <div className="mt-3">
-            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+          <div className="shrink-0 text-right sm:mt-3 sm:text-left">
+            <span className="font-rd text-rd-20 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums sm:text-rd-28">
               {totalAccion}
             </span>
-            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+            <p className="m-0 mt-2 hidden text-rd-12 leading-snug text-rd-ink-meta sm:block">
               {detalleAccion}
             </p>
           </div>
@@ -952,24 +1101,29 @@ const PulsoOperativo: React.FC<{
         <button
           type="button"
           onClick={() => onAccion('#seguimiento')}
-          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-amber-line hover:bg-rd-amber-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-amber"
+          className="group flex items-center justify-between gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-2.5 text-left transition-all hover:border-rd-amber-line hover:bg-rd-amber-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-amber pointer-coarse:min-h-rd-tactil sm:flex-col sm:items-stretch sm:justify-between sm:p-4"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-amber-ink">
-              En movimiento hoy
-            </span>
+          <div className="flex min-w-0 items-center gap-2.5 sm:justify-between">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-amber-soft text-rd-amber-ink transition-transform group-hover:scale-105"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-amber-soft text-rd-amber-ink transition-transform group-hover:scale-105 sm:order-2"
               aria-hidden="true"
             >
               <Truck className="h-4.5 w-4.5" />
             </span>
+            <div className="min-w-0 flex-1 sm:order-1">
+              <span className="block truncate text-rd-13 font-semibold text-rd-ink group-hover:text-rd-amber-ink sm:text-rd-13-5">
+                En movimiento hoy
+              </span>
+              <p className="m-0 truncate text-rd-11-5 text-rd-ink-meta sm:hidden">
+                {detalleMovimiento}
+              </p>
+            </div>
           </div>
-          <div className="mt-3">
-            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+          <div className="shrink-0 text-right sm:mt-3 sm:text-left">
+            <span className="font-rd text-rd-20 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums sm:text-rd-28">
               {totalMovimiento}
             </span>
-            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+            <p className="m-0 mt-2 hidden text-rd-12 leading-snug text-rd-ink-meta sm:block">
               {detalleMovimiento}
             </p>
           </div>
@@ -979,24 +1133,29 @@ const PulsoOperativo: React.FC<{
         <button
           type="button"
           onClick={() => onAccion('#reportes')}
-          className="group flex flex-col justify-between rounded-rd-lg border border-rd-line bg-rd-surface p-4 text-left transition-all hover:border-rd-green-line hover:bg-rd-green-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-green"
+          className="group flex items-center justify-between gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-2.5 text-left transition-all hover:border-rd-green-line hover:bg-rd-green-soft/10 focus:outline-none focus:ring-2 focus:ring-rd-green pointer-coarse:min-h-rd-tactil sm:flex-col sm:items-stretch sm:justify-between sm:p-4"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-rd-13-5 font-semibold text-rd-ink group-hover:text-rd-green">
-              Entregas completadas
-            </span>
+          <div className="flex min-w-0 items-center gap-2.5 sm:justify-between">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-green-soft text-rd-green transition-transform group-hover:scale-105"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-rd-md bg-rd-green-soft text-rd-green transition-transform group-hover:scale-105 sm:order-2"
               aria-hidden="true"
             >
               <Check className="h-4.5 w-4.5" />
             </span>
+            <div className="min-w-0 flex-1 sm:order-1">
+              <span className="block truncate text-rd-13 font-semibold text-rd-ink group-hover:text-rd-green sm:text-rd-13-5">
+                Entregas completadas
+              </span>
+              <p className="m-0 truncate text-rd-11-5 text-rd-ink-meta sm:hidden">
+                {detalleCompletadas}
+              </p>
+            </div>
           </div>
-          <div className="mt-3">
-            <span className="font-rd text-rd-28 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums">
+          <div className="shrink-0 text-right sm:mt-3 sm:text-left">
+            <span className="font-rd text-rd-20 font-bold leading-none tracking-rd-titulo text-rd-ink tabular-nums sm:text-rd-28">
               {totalCompletadas}
             </span>
-            <p className="m-0 mt-2 text-rd-12 leading-snug text-rd-ink-meta">
+            <p className="m-0 mt-2 hidden text-rd-12 leading-snug text-rd-ink-meta sm:block">
               {detalleCompletadas}
             </p>
           </div>
@@ -1433,6 +1592,43 @@ const Reportes: React.FC<{
             etiqueta="Actas de entrega"
             filas={actas}
             clave={(a) => a.codigo}
+            tarjeta={(a) => (
+              <div
+                key={a.codigo}
+                className="flex items-center justify-between gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-line-strong"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span className="font-semibold text-rd-ink tabular-nums text-rd-13">
+                      {a.codigo}
+                    </span>
+                    <span className="text-rd-12 text-rd-ink-meta">
+                      · {a.fechaTexto}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 truncate text-rd-13-5 font-semibold text-rd-ink">
+                    {cifra(a.cant)} {a.u} de {a.rec.toLowerCase()}
+                  </div>
+                  <div className="mt-0.5 truncate text-rd-12 text-rd-ink-2">
+                    {a.entrego} → {a.recibio}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button nivel="secundario" tamano="sm" onClick={() => onVer(a)}>
+                    Ver acta
+                  </Button>
+                  <MenuAcciones
+                    tamano="sm"
+                    flotante
+                    etiqueta={`Más acciones del acta ${a.codigo}`}
+                    items={[
+                      { texto: 'Descargar en PDF', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
             columnas={[
               {
                 k: 'acta',
@@ -2014,12 +2210,23 @@ const Seguimiento: React.FC<{
 }) => {
   const tieneAmbos = modulos.pide && modulos.ofrece;
   const [vista, setVista] = useState<'entrego' | 'recibo'>(() => (modulos.ofrece ? 'entrego' : 'recibo'));
-  const [nuevasEntregoColapsadas, setNuevasEntregoColapsadas] = useState<boolean>(() => sol.filter((s) => s.estado === 'nueva').length === 0);
-  const [confirmadasEntregoColapsadas, setConfirmadasEntregoColapsadas] = useState<boolean>(() => sol.filter((s) => s.estado === 'confirmada').length === 0);
-  const [archivadasEntregoColapsadas, setArchivadasEntregoColapsadas] = useState<boolean>(true);
+  const [colapsadasEntrego, setColapsadasEntrego] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    COLUMNAS.forEach((c) => {
+      const items = sol.filter((s) => s.estado === c.estado);
+      map[c.estado] = items.length === 0 || c.estado === 'archivada';
+    });
+    return map;
+  });
 
-  const [ofertasReciboColapsadas, setOfertasReciboColapsadas] = useState<boolean>(() => recibidas.filter((r) => r.estado === 'nueva').length === 0);
-  const [archivadasReciboColapsadas, setArchivadasReciboColapsadas] = useState<boolean>(true);
+  const [colapsadasRecibo, setColapsadasRecibo] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    COLUMNAS_RECIBIDAS.forEach((c) => {
+      const items = recibidas.filter((r) => c.estados.includes(r.estado));
+      map[c.id] = items.length === 0 || c.id === 'archivadas';
+    });
+    return map;
+  });
   const { onMover } = acciones;
   const avisar = useAviso();
   const [sobre, setSobre] = useState<Solicitud['estado'] | null>(null);
@@ -2047,36 +2254,23 @@ const Seguimiento: React.FC<{
           Seguimiento
         </h2>
         {tieneAmbos && (
-          <div className="inline-flex rounded-rd-md border border-rd-line bg-rd-sunken p-0.5">
-            <button
-              type="button"
-              onClick={() => setVista('entrego')}
-              className={`cursor-pointer rounded-rd-sm px-3 py-1 text-rd-12 font-medium transition-colors ${
-                vista === 'entrego'
-                  ? 'bg-rd-surface font-semibold text-rd-ink shadow-xs'
-                  : 'text-rd-ink-2 hover:text-rd-ink'
-              }`}
-            >
-              Ayuda que entrego
-              <span className="ml-1.5 rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
-                {sol.filter((s) => s.estado !== 'archivada').length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setVista('recibo')}
-              className={`cursor-pointer rounded-rd-sm px-3 py-1 text-rd-12 font-medium transition-colors ${
-                vista === 'recibo'
-                  ? 'bg-rd-surface font-semibold text-rd-ink shadow-xs'
-                  : 'text-rd-ink-2 hover:text-rd-ink'
-              }`}
-            >
-              Ayuda que recibo
-              <span className="ml-1.5 rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
-                {recibidas.filter((r) => r.estado !== 'archivada').length}
-              </span>
-            </button>
-          </div>
+          <Segmented<'entrego' | 'recibo'>
+            etiquetaGrupo="Tablero de seguimiento"
+            valor={vista}
+            onChange={setVista}
+            opciones={[
+              {
+                id: 'entrego',
+                etiqueta: 'Ayuda que entrego',
+                n: sol.filter((s) => s.estado !== 'archivada').length,
+              },
+              {
+                id: 'recibo',
+                etiqueta: 'Ayuda que recibo',
+                n: recibidas.filter((r) => r.estado !== 'archivada').length,
+              },
+            ]}
+          />
         )}
       </div>
 
@@ -2087,37 +2281,36 @@ const Seguimiento: React.FC<{
           tabIndex={0}
           className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
         >
-          {COLUMNAS.map((c) => {
+          {COLUMNAS.map((c, idx) => {
             const items = sol.filter((s) => s.estado === c.estado);
-            const esNueva = c.estado === 'nueva';
-            const esConfirmada = c.estado === 'confirmada';
-            const esArchivada = c.estado === 'archivada';
-
-            const estaColapsada =
-              (esNueva && nuevasEntregoColapsadas) ||
-              (esConfirmada && confirmadasEntregoColapsadas) ||
-              (esArchivada && archivadasEntregoColapsadas);
+            const estaColapsada = !!colapsadasEntrego[c.estado];
+            const direccion = idx < COLUMNAS.length / 2 ? 'der' : 'izq';
+            const recibe = c.estado !== 'nueva' && c.estado !== 'archivada';
 
             if (estaColapsada) {
               const expandir = () => {
-                if (esNueva) setNuevasEntregoColapsadas(false);
-                else if (esConfirmada) setConfirmadasEntregoColapsadas(false);
-                else if (esArchivada) setArchivadasEntregoColapsadas(false);
+                setColapsadasEntrego((prev) => ({ ...prev, [c.estado]: false }));
               };
-              const direccion = esNueva ? 'der' : 'izq';
               return (
                 <div
                   key={c.estado}
                   onClick={expandir}
                   onDragOver={(e) => {
-                    if (c.estado === 'archivada') {
+                    if (c.estado === 'confirmada' || c.estado === 'archivada' || recibe) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'move';
                     }
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
+                    const id = Number(e.dataTransfer.getData('text/plain'));
+                    if (c.estado === 'confirmada') {
+                      const s = sol.find((x) => x.id === id);
+                      if (s) acciones.onCertificar(s);
+                    } else if (c.estado !== 'nueva') {
+                      mover(id, c.estado);
+                    }
+                    expandir();
                   }}
                   title={`Clic para expandir ${c.nombre}`}
                   className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
@@ -2143,7 +2336,6 @@ const Seguimiento: React.FC<{
                 </div>
               );
             }
-            const recibe = c.estado !== 'nueva' && c.estado !== 'archivada';
             return (
               <div
                 key={c.estado}
@@ -2181,35 +2373,18 @@ const Seguimiento: React.FC<{
                   <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
-                  {esNueva && (
-                    <button
-                      type="button"
-                      title="Colapsar columna"
-                      aria-label={`Colapsar columna ${c.nombre}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNuevasEntregoColapsadas(true);
-                      }}
-                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  )}
-                  {(esConfirmada || esArchivada) && (
-                    <button
-                      type="button"
-                      title="Colapsar columna"
-                      aria-label={`Colapsar columna ${c.nombre}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (esConfirmada) setConfirmadasEntregoColapsadas(true);
-                        else setArchivadasEntregoColapsadas(true);
-                      }}
-                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    title={`Colapsar columna ${c.nombre}`}
+                    aria-label={`Colapsar columna ${c.nombre}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setColapsadasEntrego((prev) => ({ ...prev, [c.estado]: true }));
+                    }}
+                    className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                  >
+                    {direccion === 'der' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </button>
                 </div>
                 {items.map((s) => (
                   <TarjetaSolicitud
@@ -2238,27 +2413,21 @@ const Seguimiento: React.FC<{
           tabIndex={0}
           className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
         >
-          {COLUMNAS_RECIBIDAS.map((c) => {
+          {COLUMNAS_RECIBIDAS.map((c, idx) => {
             const items = recibidas.filter((r) => c.estados.includes(r.estado));
-            const esNueva = c.id === 'ofertas';
-            const esArchivada = c.id === 'archivadas';
-
-            const estaColapsada =
-              (esNueva && ofertasReciboColapsadas) ||
-              (esArchivada && archivadasReciboColapsadas);
+            const estaColapsada = !!colapsadasRecibo[c.id];
+            const direccion = idx < COLUMNAS_RECIBIDAS.length / 2 ? 'der' : 'izq';
 
             if (estaColapsada) {
               const expandir = () => {
-                if (esNueva) setOfertasReciboColapsadas(false);
-                else if (esArchivada) setArchivadasReciboColapsadas(false);
+                setColapsadasRecibo((prev) => ({ ...prev, [c.id]: false }));
               };
-              const direccion = esNueva ? 'der' : 'izq';
               return (
                 <div
                   key={c.id}
                   onClick={expandir}
                   onDragOver={(e) => {
-                    if (c.id === 'archivadas') {
+                    if (c.id === 'recibido' || c.id === 'distribuido' || c.id === 'archivadas') {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'move';
                     }
@@ -2270,9 +2439,14 @@ const Seguimiento: React.FC<{
                       const id = Number(data.replace('recibida:', ''));
                       const r = recibidas.find((x) => x.id === id);
                       if (!r) return;
-                      if (c.id === 'archivadas' && r.estado === 'distribuida') {
+                      if (c.id === 'recibido' && r.estado === 'entregada') {
+                        onConfirmarRecibido(id);
+                      } else if (c.id === 'distribuido' && r.estado === 'confirmada') {
+                        onDistribuirRecibida?.(r);
+                      } else if (c.id === 'archivadas' && r.estado === 'distribuida') {
                         onArchivarRecibida?.(id);
                       }
+                      expandir();
                     }
                   }}
                   title={`Clic para expandir ${c.nombre}`}
@@ -2334,34 +2508,18 @@ const Seguimiento: React.FC<{
                   <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
-                  {esNueva && (
-                    <button
-                      type="button"
-                      title="Colapsar columna"
-                      aria-label={`Colapsar columna ${c.nombre}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOfertasReciboColapsadas(true);
-                      }}
-                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  )}
-                  {esArchivada && (
-                    <button
-                      type="button"
-                      title="Colapsar columna"
-                      aria-label={`Colapsar columna ${c.nombre}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setArchivadasReciboColapsadas(true);
-                      }}
-                      className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    title={`Colapsar columna ${c.nombre}`}
+                    aria-label={`Colapsar columna ${c.nombre}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setColapsadasRecibo((prev) => ({ ...prev, [c.id]: true }));
+                    }}
+                    className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                  >
+                    {direccion === 'der' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </button>
                 </div>
                 {items.map((r) => (
                   <TarjetaRecibida
@@ -2440,7 +2598,35 @@ const MiEquipo: React.FC<{
   const [filtroVeh, setFiltroVeh] = useState('');
   const [filtroDisp, setFiltroDisp] = useState('');
 
-  const hayFiltros = Boolean(busqueda || filtroUbicacion || filtroVeh || filtroDisp);
+  const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
+  const popoverFiltrosRef = useRef<HTMLDivElement>(null);
+  const botonFiltrosRef = useRef<HTMLButtonElement>(null);
+
+  const filtrosDropdownActivos = [filtroUbicacion, filtroVeh, filtroDisp].filter(Boolean).length;
+  const hayFiltros = Boolean(busqueda || filtrosDropdownActivos > 0);
+
+  useEffect(() => {
+    if (!panelFiltrosAbierto) return;
+    const alTocar = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        popoverFiltrosRef.current?.contains(target) ||
+        botonFiltrosRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setPanelFiltrosAbierto(false);
+    };
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPanelFiltrosAbierto(false);
+    };
+    document.addEventListener('mousedown', alTocar);
+    document.addEventListener('keydown', alTeclear);
+    return () => {
+      document.removeEventListener('mousedown', alTocar);
+      document.removeEventListener('keydown', alTeclear);
+    };
+  }, [panelFiltrosAbierto]);
 
   const resetFiltros = () => {
     setBusqueda('');
@@ -2502,58 +2688,146 @@ const MiEquipo: React.FC<{
             className="h-10 w-full sm:w-72"
           />
 
-          <div className="relative inline-flex items-center">
-            <select
-              id="filtro-equipo-ubicacion"
-              aria-label="Filtrar por ubicación"
-              value={filtroUbicacion}
-              onChange={(e) => setFiltroUbicacion(e.target.value)}
-              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
-                filtroUbicacion ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
+          <div className="relative inline-block">
+            <button
+              ref={botonFiltrosRef}
+              type="button"
+              onClick={() => setPanelFiltrosAbierto((v) => !v)}
+              aria-expanded={panelFiltrosAbierto}
+              aria-label={filtrosDropdownActivos > 0 ? `Filtros, ${filtrosDropdownActivos} aplicados` : 'Filtros'}
+              className={`font-rd inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-rd-13 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
+                filtrosDropdownActivos > 0
+                  ? 'border-rd-navy bg-rd-navy/5 text-rd-navy font-semibold hover:bg-rd-navy/10'
+                  : 'border-rd-line bg-rd-surface text-rd-ink hover:bg-rd-fondo'
               }`}
             >
-              <option value="">Todas las ubicaciones</option>
-              {DEPTOS.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroUbicacion ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
-          </div>
+              <Funnel className={`h-3.75 w-3.75 ${filtrosDropdownActivos > 0 ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
+              <span>Filtros</span>
+              {filtrosDropdownActivos > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-navy px-1.5 text-rd-11 font-semibold text-white tabular-nums">
+                  {filtrosDropdownActivos}
+                </span>
+              )}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-150 ${
+                  panelFiltrosAbierto ? 'rotate-180' : ''
+                } ${filtrosDropdownActivos > 0 ? 'text-rd-navy' : 'text-rd-ink-3'}`}
+              />
+            </button>
 
-          <div className="relative inline-flex items-center">
-            <select
-              id="filtro-equipo-vehiculo"
-              aria-label="Filtrar por tipo de vehículo"
-              value={filtroVeh}
-              onChange={(e) => setFiltroVeh(e.target.value)}
-              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
-                filtroVeh ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
-              }`}
-            >
-              <option value="">Todos los vehículos</option>
-              {VEHICULOS.map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
-            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroVeh ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
-          </div>
+            {/* Popover desplegable con los filtros */}
+            {panelFiltrosAbierto && (
+              <div
+                ref={popoverFiltrosRef}
+                className="absolute left-0 top-full z-40 mt-2 w-72 sm:w-80 rounded-rd-xl border border-rd-line bg-rd-surface p-4 shadow-rd-2"
+              >
+                <div className="mb-3 flex items-center justify-between border-b border-rd-line-soft pb-2.5">
+                  <span className="text-rd-13-5 font-semibold text-rd-ink">
+                    Filtros de equipo
+                  </span>
+                  {filtrosDropdownActivos > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroUbicacion('');
+                        setFiltroVeh('');
+                        setFiltroDisp('');
+                      }}
+                      className="cursor-pointer text-rd-12 font-medium text-rd-navy hover:underline"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                </div>
 
-          <div className="relative inline-flex items-center">
-            <select
-              id="filtro-equipo-disponibilidad"
-              aria-label="Filtrar por disponibilidad"
-              value={filtroDisp}
-              onChange={(e) => setFiltroDisp(e.target.value)}
-              className={`font-rd h-10 cursor-pointer appearance-none rounded-full border bg-rd-surface pl-3.5 pr-8 text-rd-13 font-medium transition-colors hover:bg-rd-fondo focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
-                filtroDisp ? 'border-rd-navy bg-rd-navy/5 font-semibold text-rd-navy' : 'border-rd-line text-rd-ink'
-              }`}
-            >
-              <option value="">Cualquier disponibilidad</option>
-              {DISPONIBILIDADES.map((d) => (
-                <option key={d.valor} value={d.valor}>{d.etiqueta}</option>
-              ))}
-            </select>
-            <ChevronDown className={`pointer-events-none absolute right-2.5 h-4 w-4 ${filtroDisp ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
+                <div className="space-y-3">
+                  <div>
+                    <label
+                      htmlFor="filtro-equipo-ubicacion"
+                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
+                    >
+                      Ubicación (Departamento)
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="filtro-equipo-ubicacion"
+                        value={filtroUbicacion}
+                        onChange={(e) => setFiltroUbicacion(e.target.value)}
+                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+                      >
+                        <option value="">Todas las ubicaciones</option>
+                        {DEPTOS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="filtro-equipo-vehiculo"
+                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
+                    >
+                      Tipo de vehículo
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="filtro-equipo-vehiculo"
+                        value={filtroVeh}
+                        onChange={(e) => setFiltroVeh(e.target.value)}
+                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+                      >
+                        <option value="">Todos los vehículos</option>
+                        {VEHICULOS.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="filtro-equipo-disponibilidad"
+                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
+                    >
+                      Disponibilidad
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="filtro-equipo-disponibilidad"
+                        value={filtroDisp}
+                        onChange={(e) => setFiltroDisp(e.target.value)}
+                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+                      >
+                        <option value="">Cualquier disponibilidad</option>
+                        {DISPONIBILIDADES.map((d) => (
+                          <option key={d.valor} value={d.valor}>
+                            {d.etiqueta}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end border-t border-rd-line-soft pt-3">
+                  <Button
+                    nivel="primario"
+                    tamano="sm"
+                    onClick={() => setPanelFiltrosAbierto(false)}
+                  >
+                    Listo
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {hayFiltros && (

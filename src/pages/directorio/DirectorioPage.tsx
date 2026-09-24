@@ -97,12 +97,7 @@ const Directorio: React.FC = () => {
 
   const deVista = useMemo(() => entidadesDe(clase, ENTIDADES, ENTIDAD_PROPIA), [clase]);
   const lista = useMemo(() => filtrar(deVista, PUBLICACIONES, q, UBICACION), [deVista, q]);
-  /* Cada pestaña cuenta lo que quedaría en ella con los filtros puestos, como los conteos del
-     segmentado de la Radar: es el único conteo a la vista de la sección. */
-  const pestanas = useMemo(
-    () => PESTANAS.map((p) => ({ ...p, n: filtrar(entidadesDe(p.id, ENTIDADES, ENTIDAD_PROPIA), PUBLICACIONES, { ...q, recursos: p.id === clase ? q.recursos : [] }, UBICACION).length })),
-    [q, clase],
-  );
+  const pestanas = PESTANAS;
   const chips = chipsDe(q);
   const aplicados = cuantosAplicados(q);
 
@@ -173,9 +168,7 @@ const Directorio: React.FC = () => {
           </span>
         </header>
 
-        <div className="min-w-0 flex-none px-4 sm:px-6 lg:px-8">
-          <Pestanas etiqueta="Qué quieres ver" pestanas={pestanas} actual={clase} onCambiar={cambiarVista} />
-        </div>
+        <Pestanas etiqueta="Qué quieres ver" pestanas={pestanas} actual={clase} onCambiar={cambiarVista} className="px-4 sm:px-6 lg:px-8" />
 
         {/* ---- consulta ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">

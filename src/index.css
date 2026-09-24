@@ -470,23 +470,15 @@ header {
 @utility ranura-rd-hoja {
   flex: 0 0 calc(100% - 10 * var(--spacing));
 }
-/* La fila de sugerencias en la tarjeta (Alejandro, 21 de septiembre de 2026): el degradado
-   coral → navy pleno en el contorno y el mismo degradado al 85 % sobre la superficie por
-   dentro, con el texto en blanco (al 40 % el blanco quedaba en 1,6:1 sobre coral; al 85 % da
-   4,2:1 sobre coral y 6,5:1 sobre navy). Dos fondos: el suave recorta al `padding-box`, el
-   pleno llena el `border-box`; los dos interpolan en sRGB para que el medio no se lave. Van
-   coral → navy → coral al doble de ancho y `animate-rd-borde` los desplaza juntos, despacio y
-   una sola vez. Solo tokens. */
+/* La fila de sugerencias en la tarjeta (Opción 1: Borde fino animado coral → navy con fondo
+   limpio de superficie): el degradado coral → navy pleno en el contorno (border-box) y fondo de
+   superficie limpio por dentro (padding-box), con texto oscuro legible en rd-ink. Al pasar el cursor,
+   el interior cambia suavemente a rd-sunken. Van coral → navy → coral al doble de ancho y
+   `animate-rd-borde` los desplaza suavemente. */
 @utility borde-rd-sugerencia {
   border: 1px solid transparent;
   background:
-    linear-gradient(
-        90deg in srgb,
-        color-mix(in srgb, var(--color-rd-coral) 85%, var(--color-rd-surface)),
-        color-mix(in srgb, var(--color-rd-navy) 85%, var(--color-rd-surface)),
-        color-mix(in srgb, var(--color-rd-coral) 85%, var(--color-rd-surface))
-      )
-      padding-box,
+    linear-gradient(var(--color-rd-surface), var(--color-rd-surface)) padding-box,
     linear-gradient(90deg in srgb, var(--color-rd-coral), var(--color-rd-navy), var(--color-rd-coral)) border-box;
   background-size:
     200% 100%,
@@ -494,6 +486,12 @@ header {
   background-position:
     0% 50%,
     0% 50%;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+  &:hover {
+    background:
+      linear-gradient(var(--color-rd-sunken), var(--color-rd-sunken)) padding-box,
+      linear-gradient(90deg in srgb, var(--color-rd-coral), var(--color-rd-navy), var(--color-rd-coral)) border-box;
+  }
 }
 /* Una columna del tablero de seguimiento en móvil: casi todo el ancho, con 40 px de asomo de
    la siguiente para que se entienda que se desplaza (como Trello). Desde 640 mide 280. */

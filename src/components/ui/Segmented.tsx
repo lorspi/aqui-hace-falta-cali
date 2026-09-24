@@ -1,18 +1,16 @@
-import React from 'react';
-
 /**
- * Conmutador de vistas o modos: el `rd-segmentado` del prototipo, con utilidades sobre los
- * tokens `rd-*`. Caja hundida con borde y radio 12; la opción activa en blanco con texto en
- * tinta, las demás en gris. Elegir no es actuar: nada aquí va en el azul de acción. Un
- * `role="group"` con nombre y `aria-pressed` en cada botón; 34 de alto, 44 con el dedo. Como
- * los botones no se destruyen al cambiar, el foco se queda donde estaba.
+ * Conmutador de vistas o modos en píldoras (Segmented):
+ * Sigue el diseño de controles de la app: píldoras con esquinas cuadradas (rounded-rd-md),
+ * opción activa en overlay claro (bg-rd-navy-soft, border-rd-navy-line, texto rd-navy) e
+ * inactivas con fondo hundido (bg-rd-sunken, border-rd-line, texto rd-ink-2).
+ * Altura 36 (h-9) y 44 con el dedo (pointer-coarse:h-rd-tactil).
  */
 export interface OpcionSegmentada<T extends string> {
   id: T;
   etiqueta: string;
-  /** Conteo al lado, en `rd-ink-meta` y tabular. */
+  /** Conteo al lado, en tabular. */
   n?: number;
-  /** Punto de 7 antes del texto con el color del tipo (`rd-pip`): coral pide, navy ofrece. */
+  /** Punto de color antes del texto (coral pide, navy ofrece). */
   pip?: 'necesidad' | 'oferta';
 }
 
@@ -26,7 +24,7 @@ export interface SegmentedProps<T extends string> {
 
 export function Segmented<T extends string>({ etiquetaGrupo, opciones, valor, onChange, className = '' }: SegmentedProps<T>) {
   return (
-    <div role="group" aria-label={etiquetaGrupo} className={`inline-flex rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75 ${className}`}>
+    <div role="group" aria-label={etiquetaGrupo} className={`inline-flex flex-nowrap items-center gap-2 zona-rd-scroll ${className}`}>
       {opciones.map((o) => {
         const activa = o.id === valor;
         return (
@@ -35,13 +33,24 @@ export function Segmented<T extends string>({ etiquetaGrupo, opciones, valor, on
             type="button"
             aria-pressed={activa}
             onClick={() => onChange(o.id)}
-            className={`font-rd inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-rd-md px-3.25 text-rd-13-5 font-semibold whitespace-nowrap transition-colors pointer-coarse:h-rd-tactil focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${
-              activa ? 'bg-rd-surface text-rd-ink shadow-xs ring-1 ring-rd-ink/4' : 'text-rd-ink-2 hover:bg-rd-ink/4 hover:text-rd-ink'
+            className={`font-rd inline-flex h-9 flex-none cursor-pointer items-center gap-1.5 rounded-rd-md border px-3 text-rd-13-5 whitespace-nowrap transition-colors pointer-coarse:h-rd-tactil focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:translate-y-px ${
+              activa
+                ? 'border-rd-navy-line bg-rd-navy-soft font-semibold text-rd-navy shadow-xs'
+                : 'border-rd-line bg-rd-sunken font-medium text-rd-ink-2 hover:border-rd-navy-line hover:bg-rd-surface hover:text-rd-ink'
             }`}
           >
-            {o.pip && <span aria-hidden="true" className={`h-1.75 w-1.75 shrink-0 rounded-full ${o.pip === 'necesidad' ? 'bg-rd-coral' : 'bg-rd-navy'}`} />}
-            {o.etiqueta}
-            {o.n !== undefined && <span className="font-semibold text-rd-ink-meta tabular-nums">{o.n}</span>}
+            {o.pip && (
+              <span
+                aria-hidden="true"
+                className={`h-2 w-2 shrink-0 rounded-full ${o.pip === 'necesidad' ? 'bg-rd-coral' : 'bg-rd-navy'}`}
+              />
+            )}
+            <span>{o.etiqueta}</span>
+            {o.n !== undefined && (
+              <span className={`font-semibold tabular-nums ${activa ? 'text-rd-navy' : 'text-rd-ink-meta'}`}>
+                {o.n}
+              </span>
+            )}
           </button>
         );
       })}

@@ -307,7 +307,7 @@ const Radar: React.FC = () => {
           {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
               de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
               la píldora flotante de abajo. */}
-          <div role="group" aria-label="Vista" className="inline-flex rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75 max-lg:hidden">
+          <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-rd-line bg-rd-sunken p-1 max-lg:hidden">
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
           </div>
@@ -436,7 +436,11 @@ const Radar: React.FC = () => {
 
         {/* ---- Mapa | Lista (solo < 1024) ---- */}
         {(!hojaPin || hojaPin.cerrando) && (
-          <div role="group" aria-label="Vista" className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75 shadow-rd-2 lg:hidden">
+          <div
+            role="group"
+            aria-label="Vista"
+            className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-sunken/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
+          >
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
           </div>
@@ -493,7 +497,11 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
     aria-pressed={actual}
     aria-label={etiqueta}
     onClick={onClick}
-    className={`inline-flex h-rd-h-sm w-11 cursor-pointer items-center justify-center rounded-rd-md focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${actual ? 'bg-rd-surface text-rd-ink shadow-xs' : 'text-rd-ink-2'}`}
+    className={`inline-flex h-rd-h-sm w-11 cursor-pointer items-center justify-center rounded-full transition-all duration-150 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${
+      actual
+        ? 'bg-rd-surface text-rd-navy font-semibold shadow-xs ring-1 ring-rd-ink/8'
+        : 'text-rd-ink-2 hover:text-rd-ink'
+    }`}
   >
     {icono}
   </button>
