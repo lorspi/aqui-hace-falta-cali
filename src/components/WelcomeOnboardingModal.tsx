@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, MapPin, HelpCircle, Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
 
 interface WelcomeOnboardingModalProps {
   isOpen: boolean;
@@ -180,13 +181,13 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
           </a>
           <span>•</span>
           <a
-            href="https://wa.me/573112323588"
+            href={getOfficialWhatsappLink()}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-bold text-emerald-700 hover:underline"
           >
             <MessageCircle className="w-3 h-3 text-emerald-600" />
-            <span>WhatsApp: +57 311 232 3588</span>
+            <span>WhatsApp: {OFFICIAL_WHATSAPP_DISPLAY}</span>
           </a>
         </div>
       </div>

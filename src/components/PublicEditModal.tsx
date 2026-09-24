@@ -36,6 +36,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [contactWhatsapp, setContactWhatsapp] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [operatingHours, setOperatingHours] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [resources, setResources] = useState<
     Array<{ id: string; type: HelpCategory; description: string; requestedQuantity: number; fulfilledQuantity: number; unit: string; status: string }>
@@ -80,6 +81,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       setContactWhatsapp(need.contactWhatsapp || '');
       setOrganizationName(need.organizationName || '');
       setOperatingHours(need.operatingHours || '');
+      setSourceUrl(need.sourceUrl || '');
       setPriority((need.priority as Priority) || 'MEDIUM');
       setResources(
         need.resources
@@ -125,6 +127,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     contactPhone !== norm(need.contactPhone) ||
     organizationName !== norm(need.organizationName) ||
     operatingHours !== norm(need.operatingHours) ||
+    sourceUrl !== norm(need.sourceUrl) ||
     JSON.stringify(selectedCategories) !== JSON.stringify(need.categories || []);
 
   const handleCategoryToggle = (cat: HelpCategory) => {
@@ -201,6 +204,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       if (contactPhone !== n(need.contactPhone)) changedFields.push('teléfono');
       if (organizationName !== n(need.organizationName)) changedFields.push('organización');
       if (operatingHours !== n(need.operatingHours)) changedFields.push('horario');
+      if (sourceUrl !== n(need.sourceUrl)) changedFields.push('enlace de campaña/fuente');
       if (JSON.stringify(selectedCategories) !== JSON.stringify(need.categories || [])) changedFields.push('categorías');
 
       const changesSummary = changedFields.length > 0
@@ -229,6 +233,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
         contactWhatsapp: contactWhatsapp || undefined,
         organizationName: organizationName || undefined,
         operatingHours: operatingHours || undefined,
+        sourceUrl: sourceUrl.trim() || undefined,
         priority,
         lastUpdatedBy: finalUpdatedBy,
       };
@@ -657,6 +662,20 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                   placeholder="Ej: 8:00 a.m. - 5:00 p.m. / 24 horas"
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
                 />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-slate-700 mb-1">Enlace de campaña / Vaki / Fuente oficial (opcional)</label>
+                <input
+                  type="url"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                  placeholder="Ej: https://vaki.co/vaki/aulas-que-se-levantan"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Si la necesidad tiene una Vaki o recaudación activa, ingresa la URL completa para mostrar un botón de acceso directo en el mapa.
+                </p>
               </div>
             </div>
           </div>

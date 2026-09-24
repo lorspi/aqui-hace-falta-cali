@@ -77,6 +77,9 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   const [accessInstructions, setAccessInstructions] = useState('');
   const [affectedPeople, setAffectedPeople] = useState<number>(0);
   const [affectedAnimals, setAffectedAnimals] = useState<number>(0);
+  const [operatingHours, setOperatingHours] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [source] = useState('Reporte ciudadano en línea');
 
   const placeTypesList = Object.keys(PLACE_TYPE_LABELS) as PlaceType[];
 
@@ -121,6 +124,8 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
     setAccessInstructions('');
     setAffectedPeople(0);
     setAffectedAnimals(0);
+    setOperatingHours('');
+    setSourceUrl('');
     setIsManualPosition(false);
     setGeocodeStatus('IDLE');
 
@@ -295,6 +300,9 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
         accessInstructions,
         affectedPeople,
         affectedAnimals,
+        operatingHours: operatingHours || undefined,
+        sourceUrl: sourceUrl.trim() || undefined,
+        source,
         categories: Array.from(new Set(selectedItems.map((i) => i.categoryId))),
         resources: selectedItems.map((i) => ({
           id: i.resourceId,
@@ -689,6 +697,20 @@ export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
                     placeholder="Ej: 3155550192"
                     className="input-base"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="form-label">Enlace de campaña / Vaki / Fuente oficial (opcional)</label>
+                  <input
+                    type="url"
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                    placeholder="Ej: https://vaki.co/vaki/aulas-que-se-levantan"
+                    className="input-base"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Si tu necesidad cuenta con una campaña en Vaki o enlace externo de recaudación, agrégalo aquí para que los usuarios puedan ingresar directamente.
+                  </p>
                 </div>
               </div>
 
