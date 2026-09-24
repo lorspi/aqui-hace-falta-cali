@@ -347,10 +347,10 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
           {quien}
           <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mt-1" />
         </div>
-        <div className="flex min-w-0 flex-col items-start gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1 text-rd-12-5 text-rd-ink-2">
           {datos.map(([k, v]) => (
-            <div key={k} className="inline-flex items-center gap-1.5 rounded-rd-sm border border-rd-line-soft bg-rd-sunken px-2.5 py-1 text-rd-12 whitespace-nowrap">
-              <span className="font-medium text-rd-ink-meta">{k}:</span>
+            <div key={k} className="flex min-w-0 items-baseline gap-1.5">
+              <span>{k}:</span>
               <span className="font-semibold text-rd-ink tabular-nums">{v}</span>
             </div>
           ))}
