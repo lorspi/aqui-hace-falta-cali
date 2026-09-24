@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EllipsisVertical } from 'lucide-react';
-import { Button } from './Button';
+import { Button, type NivelBoton } from './Button';
 
 /**
  * El ⋮ de una tarjeta (`rd-mas-acc` del prototipo): las acciones que no merecen un botón a la
@@ -19,7 +19,23 @@ export interface ItemMenu {
   tono?: 'normal' | 'peligro';
 }
 
-export const MenuAcciones: React.FC<{ items: ItemMenu[]; etiqueta?: string; tamano?: 'sm' | 'md'; flotante?: boolean }> = ({ items, etiqueta = 'Más acciones', tamano = 'md', flotante = false }) => {
+export interface MenuAccionesProps {
+  items: ItemMenu[];
+  etiqueta?: string;
+  tamano?: 'sm' | 'md';
+  flotante?: boolean;
+  nivel?: NivelBoton;
+  className?: string;
+}
+
+export const MenuAcciones: React.FC<MenuAccionesProps> = ({
+  items,
+  etiqueta = 'Más acciones',
+  tamano = 'md',
+  flotante = false,
+  nivel = 'terciario',
+  className = '',
+}) => {
   const [abierto, setAbierto] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number; arriba?: boolean } | null>(null);
   const raiz = useRef<HTMLSpanElement>(null);
@@ -96,12 +112,13 @@ export const MenuAcciones: React.FC<{ items: ItemMenu[]; etiqueta?: string; tama
     <span ref={raiz} className="relative">
       <Button
         ref={dots}
-        nivel="terciario"
+        nivel={nivel}
         tamano={tamano}
         aria-label={etiqueta}
         aria-haspopup="menu"
         aria-expanded={abierto}
         soloIcono
+        className={className}
         onClick={(ev) => {
           ev.stopPropagation();
           abrir();

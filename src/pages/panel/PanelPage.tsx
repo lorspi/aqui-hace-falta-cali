@@ -997,7 +997,7 @@ const ListaPendientes: React.FC<{ lista: Pendiente[]; vacio: { icono: React.Reac
               <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.titulo}</b>
               <span className="text-rd-12-5 text-rd-ink-2">{p.detalle}</span>
             </div>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2 max-sm:mt-2 max-sm:w-full max-sm:pl-12 max-sm:justify-start">
               {p.secundaria && (
                 <Button nivel="secundario" tamano="sm" onClick={() => onAccion(p.secundaria!.al)}>
                   {p.secundaria.texto}
@@ -1363,7 +1363,7 @@ const MisNecesidades: React.FC<{
 
   return (
     <>
-      <Caja titulo="Mis necesidades">
+      <Caja titulo="Mis necesidades" planaMovil>
         <Tabla
           etiqueta="Mis necesidades"
           filas={recursos}
@@ -1428,6 +1428,7 @@ const MisNecesidades: React.FC<{
       </Caja>
 
       <Caja
+        planaMovil
         titulo={
           <span className="flex items-center gap-2">
             <span>Mis solicitudes a organizaciones</span>
@@ -1928,7 +1929,7 @@ const MisOfertas: React.FC<{
 
   return (
     <>
-      <Caja titulo="Mis ofertas">
+      <Caja titulo="Mis ofertas" planaMovil>
         <Tabla
           etiqueta="Mis ofertas"
           filas={recursos}
@@ -2003,6 +2004,7 @@ const MisOfertas: React.FC<{
       </Caja>
 
       <Caja
+        planaMovil
         titulo={
           <span className="flex items-center gap-2">
             <span>Ayudas ofrecidas a comunidades</span>

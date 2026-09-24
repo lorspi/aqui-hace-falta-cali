@@ -609,8 +609,8 @@ const FilaPublicacion: React.FC<{
       </div>
 
       {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
-       *  y ⋮, los tres terciarios (223: ver no cambia datos) y en `md` (C1), para que se lean
-       *  como un solo grupo. El compromiso vive en la tarjeta del detalle. */}
+       *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
+       *  con marco interactivo. En `md` para mantener la escala tipográfica intacta. */}
       {/* La columna ocupa todo el alto de la fila (`self-stretch`, aunque las demás vayan
           centradas): las sugerencias arriba del todo y las acciones abajo del todo, cada una
           contra el relleno de la tarjeta. `mt-auto` empuja los botones aunque no haya
@@ -618,13 +618,13 @@ const FilaPublicacion: React.FC<{
       <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
         <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
         <div className="mt-auto flex items-center gap-1">
-          <Button nivel="terciario" tamano="md" onClick={() => onVerDetalle(p.id)}>
+          <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVerDetalle(p.id)}>
             Ver detalle
           </Button>
-          <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => onVerEnMapa(p.id)}>
+          <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" flotante />
+          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
         </div>
       </div>
     </article>

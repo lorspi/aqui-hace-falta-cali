@@ -55,15 +55,15 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       className={`${
         enHoja
           ? 'relative flex min-h-full flex-col bg-rd-surface'
-          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
+          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 max-sm:p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
       } ${className}`}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 max-sm:mb-2 flex items-center justify-between gap-2">
         <EtiquetaTipo tipo={p.tipo} />
         <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
       </div>
 
-      <div className="mb-3">
+      <div className="mb-3 max-sm:mb-2">
         <h3 className="font-rd m-0 text-rd-15 font-semibold leading-snug text-rd-ink">
           {tituloPublicacion(p)}
         </h3>
@@ -79,24 +79,22 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       {/* El orden de la tarjeta (Alejandro, 22 de septiembre de 2026): etiquetas, quién, dónde,
           qué dice, fotos y recursos. Dónde va antes de la descripción: sitúa lo que se lee
           después. Sin rótulo de bloque (16 de septiembre): el pin ya dice que es un lugar. */}
-      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-3" />
+      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-3 max-sm:mb-2.5" />
 
-      {p.descripcion && <p className="mb-3 line-clamp-3 text-rd-14 leading-normal text-rd-ink">{p.descripcion}</p>}
+      {p.descripcion && <p className="mb-3 max-sm:mb-2.5 line-clamp-3 text-rd-14 leading-normal text-rd-ink">{p.descripcion}</p>}
 
       {p.fotos && p.fotos.length > 0 && (
         <>
-          <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-4" />
+          <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-4 max-sm:mb-3" />
           <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`Fotos de ${p.org}`} onCerrar={() => setFoto(null)} />
         </>
       )}
 
-      <div className="mb-4">
-        <Recursos publicacion={p} />
-      </div>
+      <Recursos publicacion={p} className="mb-3.5 max-sm:mb-2.5" />
 
-      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} className="mb-3" />
+      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} className="mb-3 max-sm:mb-2.5" />
 
-      <div className={`mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-3 ${enHoja ? 'sticky bottom-0 z-1 bg-rd-surface pb-4' : ''}`}>
+      <div className={`mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-3 max-sm:pt-2.5 ${enHoja ? 'sticky bottom-0 z-1 bg-rd-surface pb-4' : ''}`}>
         <Button
           nivel="primario"
           tamano="md"
@@ -110,14 +108,14 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         >
           {esOferta ? 'Solicitar' : 'Ayudar'}
         </Button>
-        {/* El botón de mapa es uno solo en toda la maqueta: terciario `md`, solo icono de 18
-            (`.rd-btn--icono svg` del DS), igual que el ⋮ (223 C2: ver en el mapa no cambia datos). */}
+        {/* El botón de mapa es consistente con Directorio y FilaPublicacion: secundario con sombra sutil */}
         {!enHoja && (
           <Button
-            nivel="terciario"
+            nivel="secundario"
             tamano="md"
             aria-label="Ver en el mapa"
             soloIcono
+            className="shadow-2xs"
             onClick={(ev) => {
               ev.stopPropagation();
               onVerEnMapa?.(p.id);
@@ -132,6 +130,10 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
               { texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir?.(p.id) },
               { texto: 'Reportar', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) },
             ]}
+            tamano="md"
+            nivel="secundario"
+            className="shadow-2xs"
+            flotante
           />
         </span>
       </div>

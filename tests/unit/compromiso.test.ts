@@ -34,10 +34,10 @@ describe('lo comprometido, dicho en una línea', () => {
 });
 
 describe('el aviso del resultado', () => {
-  const c = { partes: [agua], cuando: 'Hoy' };
-  it('habla en verbo y devuelve el plazo que el diálogo pidió', () => {
-    expect(avisoCompromiso('Cruz Roja', 'necesidad', c)).toBe('Listo, avisamos a Cruz Roja. Te comprometiste con 450 L de agua potable, hoy.');
-    expect(avisoCompromiso('Cruz Roja', 'oferta', c)).toBe('Listo, le solicitaste 450 L de agua potable a Cruz Roja para hoy.');
+  const c = { partes: [agua] };
+  it('habla en verbo y confirma lo acordado sin fechas innecesarias', () => {
+    expect(avisoCompromiso('Cruz Roja', 'necesidad', c)).toBe('Listo, avisamos a Cruz Roja. Te comprometiste con 450 L de agua potable.');
+    expect(avisoCompromiso('Cruz Roja', 'oferta', c)).toBe('Listo, le solicitaste 450 L de agua potable a Cruz Roja.');
   });
   it('no usa punto medio ni pasiva impersonal', () => {
     const a = avisoCompromiso('Cruz Roja', 'necesidad', c);

@@ -4,12 +4,25 @@ import React from 'react';
  * La caja de una sección (`rd-caja` del prototipo): borde `rd-line`, radio 12, 16 de relleno;
  * cabecera con el `h2` de 16/600 y la acción a la derecha. La usan el panel y el Perfil.
  */
-export const Caja: React.FC<{ titulo?: React.ReactNode; accion?: React.ReactNode; className?: string; children: React.ReactNode }> = ({ titulo, accion, className = 'col-span-full', children }) => (
-  <section className={`min-w-0 rounded-rd-lg border border-rd-line bg-rd-surface p-4 ${className}`}>
+export interface CajaProps {
+  titulo?: React.ReactNode;
+  accion?: React.ReactNode;
+  className?: string;
+  /** En móvil (`< sm`), elimina el borde y fondo exterior si contiene tarjetas hijas (ej. `Tabla`), evitando el efecto «tarjeta dentro de tarjeta». */
+  planaMovil?: boolean;
+  children: React.ReactNode;
+}
+
+export const Caja: React.FC<CajaProps> = ({ titulo, accion, className = 'col-span-full', planaMovil = false, children }) => (
+  <section
+    className={`min-w-0 rounded-rd-lg border border-rd-line bg-rd-surface p-4 max-sm:p-3.5 ${
+      planaMovil ? 'max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none' : ''
+    } ${className}`}
+  >
     {/* La acción nunca baja sola a otra línea: el título envuelve por dentro (el chip cae bajo
         el texto) y el botón se queda a la derecha (Alejandro, 16 de septiembre de 2026). */}
     {(titulo || accion) && (
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className={`mb-3 flex items-start justify-between gap-3 ${planaMovil ? 'max-sm:mb-2.5 max-sm:px-0.5' : ''}`}>
         {titulo && <h2 className="font-rd m-0 min-w-0 flex-1 text-rd-16 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{titulo}</h2>}
         {accion && <div className="ml-auto flex shrink-0 gap-2">{accion}</div>}
       </div>

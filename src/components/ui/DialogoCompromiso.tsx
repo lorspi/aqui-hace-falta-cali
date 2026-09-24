@@ -3,7 +3,7 @@ import type { Publicacion } from '../../types/publicacion';
 import { estadoRecurso, cifra, restante, unidad } from '../../utils/publicaciones';
 import { cantidadDe, type Compromiso } from '../../utils/compromiso';
 import { Casilla } from './Casilla';
-import { Dialogo, Opciones } from './Dialogo';
+import { Dialogo } from './Dialogo';
 
 /**
  * Sin bajada: el título ya pregunta y cada fila ya dice lo que falta o lo que queda. Hubo una
@@ -34,8 +34,6 @@ export interface DialogoCompromisoProps {
   onCerrar: () => void;
   onEnviar: (publicacion: Publicacion, compromiso: Compromiso) => void;
 }
-
-const CUANDO = ['Hoy', 'Mañana', 'Esta semana'].map((t) => ({ valor: t, texto: t }));
 
 interface EstadoFila {
   marcado: boolean;
@@ -72,12 +70,10 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
       accion={esNecesidad ? 'Ayudar' : 'Solicitar'}
       accionActiva={elegidas.length > 0}
       onCerrar={onCerrar}
-      onEnviar={(form) => {
+      onEnviar={() => {
         if (!p || elegidas.length === 0) return;
-        const datos = new FormData(form);
         onEnviar(p, {
           partes: elegidas.map(({ i, r, queda }) => ({ item: r.item, cantidad: cantidadDe(filaDe(i, queda).cantidad, queda), unidad: r.unidad })),
-          cuando: String(datos.get('cuando') ?? ''),
         });
       }}
     >
@@ -134,7 +130,6 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
           })}
         </ul>
       )}
-      {filas.length > 0 && <Opciones nombre="cuando" etiqueta={esNecesidad ? 'Cuándo llega' : 'Cuándo lo necesitas'} opciones={CUANDO} />}
     </Dialogo>
   );
 };

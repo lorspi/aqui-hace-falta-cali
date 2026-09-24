@@ -17,7 +17,7 @@ export interface Compromiso {
   /** Qué y cuánto, para decirlo en el aviso y, con backend, para descontarlo. Una entrada por
    *  recurso marcado: `partes.length` es lo que antes se enviaba suelto como `recursos`. */
   partes: ParteCompromiso[];
-  cuando: string;
+  cuando?: string;
 }
 
 /** Lo comprometido, dicho en una línea para el aviso: «450 L de agua potable y 20 kits de
@@ -36,12 +36,11 @@ export function textoCompromiso(partes: ParteCompromiso[], tipo: TipoPublicacion
 
 /** El aviso de que ya está hecho. En verbo y con RaDAR en primera persona del plural, no en
  *  pasiva impersonal («Compromiso enviado a…»): el manual lo pide en el §2 y el §8 lo muestra
- *  con el aviso de publicar. Devuelve el plazo, que es el dato que va a leer la otra parte. */
+ *  con el aviso de publicar. */
 export function avisoCompromiso(org: string, tipo: TipoPublicacion, c: Compromiso): string {
   const que = textoCompromiso(c.partes, tipo);
-  const cuando = c.cuando.toLowerCase();
-  if (tipo === 'necesidad') return `Listo, avisamos a ${org}. Te comprometiste con ${que}, ${cuando}.`;
-  return `Listo, le solicitaste ${que} a ${org} para ${cuando}.`;
+  if (tipo === 'necesidad') return `Listo, avisamos a ${org}. Te comprometiste con ${que}.`;
+  return `Listo, le solicitaste ${que} a ${org}.`;
 }
 
 /** Lo que vale de verdad lo escrito en el campo: nunca más de lo que falta, nunca cero ni

@@ -83,14 +83,15 @@ export interface RecursosProps {
    *  (`rd-recursos--fijo`): en el Directorio, donde el rótulo «Ofrece» / «Pide» ya lo pone la
    *  fila y no hay resumen corto que plegar. */
   soloFilas?: boolean;
+  className?: string;
 }
 
-export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abiertoInicial = false, soloFilas = false }) => {
+export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abiertoInicial = false, soloFilas = false, className = 'mb-4' }) => {
   const [abierto, setAbierto] = useState(abiertoInicial || soloFilas);
   const id = useId();
   const esOferta = p.tipo === 'oferta';
   return (
-    <div className="mb-4 rounded-rd-lg border border-rd-line">
+    <div className={`rounded-rd-lg border border-rd-line ${className}`}>
       {!soloFilas && (
       <button
         type="button"

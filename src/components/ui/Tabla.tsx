@@ -62,7 +62,7 @@ export function Tabla<T>({ columnas, filas, clave, etiqueta, tarjeta }: TablaPro
       </thead>
       <tbody className="max-xl:flex max-xl:flex-col max-xl:gap-3">
         {filas.map((f) => (
-          <tr key={clave(f)} className="group max-xl:grid max-xl:grid-cols-2 max-xl:items-start max-xl:gap-3 max-xl:rounded-rd-xl max-xl:border max-xl:border-rd-line max-xl:bg-rd-surface max-xl:p-4 xl:hover:bg-rd-fondo">
+          <tr key={clave(f)} className="group max-xl:grid max-xl:grid-cols-2 max-xl:items-start max-xl:gap-3 max-sm:gap-2.5 max-xl:rounded-rd-xl max-xl:border max-xl:border-rd-line max-xl:bg-rd-surface max-xl:p-4 max-sm:p-3.5 max-sm:shadow-2xs xl:hover:bg-rd-fondo">
             {columnas.map((c, i) => {
               const titulo = i === 0;
               const clases = [

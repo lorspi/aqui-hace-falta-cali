@@ -310,6 +310,10 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
   const [errorNombre, setErrorNombre] = useState<string | null>(null);
   const [errorTel, setErrorTel] = useState<string | null>(null);
   const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
+  const [errorRolPlataforma, setErrorRolPlataforma] = useState<string | null>(null);
+
+  const esSoloTerreno = rolPlataforma === 'terreno';
+  const esCorreoRequerido = !esSoloTerreno;
 
   const reset = () => {
     setNombre('');
@@ -323,6 +327,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
     setErrorNombre(null);
     setErrorTel(null);
     setErrorCorreo(null);
+    setErrorRolPlataforma(null);
   };
 
   useEffect(() => {
@@ -342,6 +347,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
       setErrorNombre(null);
       setErrorTel(null);
       setErrorCorreo(null);
+      setErrorRolPlataforma(null);
     }
   }, [abierto, miembro]);
 
@@ -362,8 +368,12 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
 
   const onBlurCorreo = () => {
     const clean = correo.trim();
-    if (clean && (!clean.includes('@') || !clean.includes('.'))) {
+    if (esCorreoRequerido && !clean) {
+      setErrorCorreo('Escribe el correo electrónico para el acceso a RaDAR');
+    } else if (clean && (!clean.includes('@') || !clean.includes('.'))) {
       setErrorCorreo('Revisa el correo: falta el @ o el dominio');
+    } else {
+      setErrorCorreo(null);
     }
   };
 
@@ -393,8 +403,18 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
           setErrorTel(null);
         }
 
+        if (!rolPlataforma) {
+          setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
+          hayError = true;
+        } else {
+          setErrorRolPlataforma(null);
+        }
+
         const cleanCorreo = correo.trim();
-        if (cleanCorreo && (!cleanCorreo.includes('@') || !cleanCorreo.includes('.'))) {
+        if (esCorreoRequerido && !cleanCorreo) {
+          setErrorCorreo('Escribe el correo electrónico para el acceso a RaDAR');
+          hayError = true;
+        } else if (cleanCorreo && (!cleanCorreo.includes('@') || !cleanCorreo.includes('.'))) {
           setErrorCorreo('Revisa el correo: falta el @ o el dominio');
           hayError = true;
         } else {
@@ -409,7 +429,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
           correo: cleanCorreo,
           rol: rol.trim(),
           veh: veh.trim(),
-          rolPlataforma: (rolPlataforma as RolPlataforma) || 'terreno',
+          rolPlataforma: rolPlataforma as RolPlataforma,
           disp: disp || '',
           ubicacion: ubicacion.trim() || undefined,
         };
@@ -476,14 +496,19 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
               id="miembro-correo"
               etiqueta="Correo electrónico"
               tipo="email"
-              opcional={!esEdicion || !tieneCuentaVinculada}
+              opcional={esSoloTerreno}
+              requerido={esCorreoRequerido}
               deshabilitado={tieneCuentaVinculada}
               valor={correo}
               onChange={(v) => {
                 setCorreo(v);
                 if (errorCorreo) {
                   const clean = v.trim();
-                  if (!clean || (clean.includes('@') && clean.includes('.'))) setErrorCorreo(null);
+                  if (esSoloTerreno) {
+                    if (!clean || (clean.includes('@') && clean.includes('.'))) setErrorCorreo(null);
+                  } else {
+                    if (clean && clean.includes('@') && clean.includes('.')) setErrorCorreo(null);
+                  }
                 }
               }}
               onBlur={onBlurCorreo}
@@ -492,8 +517,10 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
               autoComplete="email"
               ayuda={
                 tieneCuentaVinculada
-                  ? 'Vinculado a su cuenta de RaDAR. El integrante puede actualizar su correo desde su propio perfil.'
-                  : 'Opcional. Permite vincularlo a una cuenta con acceso web en RaDAR.'
+                  ? 'Vinculado a su cuenta de RaDAR.'
+                  : esSoloTerreno
+                  ? 'Opcional para colaboradores en terreno.'
+                  : 'Requerido para acceder a RaDAR.'
               }
             />
           </div>
@@ -545,16 +572,26 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
               }}
             />
             <div className="sm:col-span-2">
-              <Combobox
+              <Field
                 id="miembro-acceso"
                 etiqueta="Acceso en RaDAR"
-                opcional
+                tipo="select"
+                requerido
                 valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
-                placeholder="Seleccionar acceso (por defecto: Solo en terreno)"
+                placeholder="Seleccionar nivel de acceso"
                 opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
+                error={errorRolPlataforma}
+                onBlur={() => {
+                  if (!rolPlataforma) setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
+                }}
                 onChange={(v) => {
                   const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
-                  setRolPlataforma(match ? match.valor : '');
+                  const nuevo = match ? match.valor : '';
+                  setRolPlataforma(nuevo);
+                  if (nuevo) setErrorRolPlataforma(null);
+                  if (nuevo === 'terreno' && errorCorreo === 'Escribe el correo electrónico para el acceso a RaDAR') {
+                    setErrorCorreo(null);
+                  }
                 }}
               />
               {rolPlataforma && (

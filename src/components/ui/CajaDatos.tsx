@@ -8,8 +8,8 @@ import React from 'react';
  * publicación: borde, radio 12 y cabecera en versalitas de 10,5.
  */
 export const CajaDatos: React.FC<{ titulo: string; filas: [string, string][]; className?: string }> = ({ titulo, filas, className = '' }) => (
-  <div className={`rounded-rd-lg border border-rd-line ${className}`}>
-    <div className="font-rd rounded-t-rd-lg border-b border-rd-line bg-rd-sunken px-3 py-2 text-rd-10-5 font-semibold tracking-wider text-rd-ink-meta uppercase">{titulo}</div>
+  <div className={`rounded-rd-lg border border-rd-line max-sm:border-rd-line-soft max-sm:bg-rd-sunken/30 ${className}`}>
+    <div className="font-rd rounded-t-rd-lg border-b border-rd-line max-sm:border-rd-line-soft bg-rd-sunken px-3 py-2 text-rd-10-5 font-semibold tracking-wider text-rd-ink-meta uppercase">{titulo}</div>
     <dl className="m-0 flex flex-col">
       {filas.map(([k, v]) => (
         <div key={k} className="flex items-baseline justify-between gap-3 px-3 py-2 text-rd-12-5 not-first:border-t not-first:border-rd-line-soft">

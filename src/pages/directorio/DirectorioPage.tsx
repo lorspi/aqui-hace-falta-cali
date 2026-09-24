@@ -316,14 +316,14 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
   );
   const acciones = (
     <>
-      <Button nivel="terciario" tamano="md" onClick={onVerDetalle}>
+      <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={onVerDetalle}>
         Ver detalle
       </Button>
-      <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={verEnMapa}>
+      <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={verEnMapa}>
         <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
       </Button>
       <span className="ml-auto flex gap-1">
-        <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" flotante />
+        <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
       </span>
     </>
   );
@@ -331,12 +331,12 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
   return (
     <>
       {/* ---- hasta 1279: tarjeta ---- */}
-      <article id={e.id} className="flex min-w-0 flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:hidden">
-        <div className="mb-3">{quien}</div>
-        <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mb-4" />
-        <CajaDatos titulo="En RaDAR" filas={datos} className="mb-4" />
-        <div className="mb-4">{contacto}</div>
-        <div className="mt-auto flex min-w-0 items-center gap-2 border-t border-rd-line-soft pt-3">{acciones}</div>
+      <article id={e.id} className="flex min-w-0 flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 max-sm:p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:hidden">
+        <div className="mb-3 max-sm:mb-2">{quien}</div>
+        <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mb-3.5 max-sm:mb-2.5" />
+        <CajaDatos titulo="En RaDAR" filas={datos} className="mb-3.5 max-sm:mb-2.5" />
+        <div className="mb-3.5 max-sm:mb-2.5">{contacto}</div>
+        <div className="mt-auto flex min-w-0 items-center gap-2 border-t border-rd-line-soft pt-3 max-sm:pt-2.5">{acciones}</div>
       </article>
 
       {/* ---- desde 1280: fila de tabla, las cuatro columnas de su cabecera ---- */}

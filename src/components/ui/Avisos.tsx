@@ -37,7 +37,7 @@ export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false
   /* Bajo 640 la acción baja a su propia línea también en la fila completa: al lado del texto
      no cabía y el título quedaba en una columna estrecha. */
   return (
-    <article className={`relative flex items-start gap-3 rounded-rd-lg py-3 pr-3 pl-4 hover:bg-rd-fondo ${a.leido ? '' : 'bg-rd-navy-soft hover:bg-rd-navy-line/60'} ${compacta ? 'flex-wrap' : 'max-sm:flex-wrap'}`}>
+    <article className={`relative flex items-start gap-3 rounded-rd-lg py-3 pr-3 pl-4 mb-1 last:mb-0 hover:bg-rd-fondo ${a.leido ? '' : 'bg-rd-navy-soft hover:bg-rd-navy-line/60'} ${compacta ? 'flex-wrap' : 'max-sm:flex-wrap'}`}>
       <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ic.clase}`}>
         <Icono className="h-4.5 w-4.5" />
       </span>
@@ -47,13 +47,13 @@ export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false
         <time className="mt-0.5 text-rd-11-5 text-rd-ink-meta">{a.cuando}</time>
       </div>
       {a.accion && (
-        <div className={`flex shrink-0 items-center self-center ${compacta ? 'mt-2 w-full justify-end pl-12' : 'max-sm:mt-2 max-sm:w-full max-sm:justify-end max-sm:pl-12'}`}>
+        <div className={`flex shrink-0 items-center self-center ${compacta ? 'mt-2 w-full justify-end pl-12' : 'max-sm:mt-2 max-sm:w-full max-sm:justify-start max-sm:pl-12'}`}>
           <Button nivel={a.accion.nivel} tamano="md" onClick={() => onAccion?.(a)}>
             {a.accion.texto}
           </Button>
         </div>
       )}
-      {!a.leido && <span role="img" aria-label="Sin leer" className="absolute top-1/2 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
+      {!a.leido && <span role="img" aria-label="Sin leer" className="absolute top-7.5 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
     </article>
   );
 };

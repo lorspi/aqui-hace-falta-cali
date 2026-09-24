@@ -90,8 +90,8 @@ const Avisos: React.FC = () => {
           </Button>
         </div>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
-          <section className="mx-auto max-w-3xl rounded-rd-lg border border-rd-line bg-rd-surface py-2">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
+          <section className="mx-auto max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-1.5 sm:py-2 sm:px-2">
             {lista.length === 0 ? <Vacio icono={<Bell className="h-6.5 w-6.5" />} titulo={filtro === 'nuevos' ? 'Nada sin leer' : 'Nada nuevo'} texto="Cuando pase algo con lo tuyo, aparece aquí." /> : <ListaAvisos avisos={lista} onAccion={accionDeAviso} />}
           </section>
         </main>
