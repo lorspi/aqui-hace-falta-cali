@@ -125,4 +125,41 @@ describe('coincidenciasDe (el «Radar Match» con nuestro cruce)', () => {
     expect(puntajeCoincidencia(12, 1)).toBe(75);
     expect(puntajeCoincidencia(3, 4)).toBe(98);
   });
+  it('soporta modalidad remota/virtual con puntaje alto e ignorando distancia física', async () => {
+    const { puntajeCoincidencia, resolverAlcance, etiquetaAlcance } = await import('../../src/utils/cruce');
+    const alcance = resolverAlcance({ modoEntrega: 'remoto' } as any, {} as any, 450);
+    expect(alcance).toBe('remoto');
+    expect(etiquetaAlcance('remoto', 450)).toBe('Asistencia virtual');
+    expect(puntajeCoincidencia(450, 1, 'remoto')).toBe(88);
+    expect(puntajeCoincidencia(450, 2, 'remoto')).toBe(96);
+  });
+  it('soporta envíos nacionales intermunicipales (ej. Bogotá a Cali ~320 km) con puntaje modulado', async () => {
+    const { puntajeCoincidencia, resolverAlcance, etiquetaAlcance } = await import('../../src/utils/cruce');
+    const alcance = resolverAlcance({ radio: 'Todo el país' } as any, {} as any, 320);
+    expect(alcance).toBe('nacional');
+    expect(etiquetaAlcance('nacional', 320)).toBe('Envío nacional (320 km)');
+    expect(puntajeCoincidencia(320, 1, 'nacional')).toBe(50);
+    expect(puntajeCoincidencia(320, 2, 'nacional')).toBe(55);
+  });
 });
+
+describe('textoMatches (etiquetas y límites de Radar Match)', () => {
+  it('unifica la nomenclatura en singular y plural («1 match», «N matches»)', async () => {
+    const { textoMatches } = await import('../../src/components/ui/Coincidencias');
+    expect(textoMatches(1)).toBe('1 match');
+    expect(textoMatches(2)).toBe('2 matches');
+    expect(textoMatches(5)).toBe('5 matches');
+  });
+
+  it('aplica el tope máximo mostrando «5+ matches» cuando hay más sugerencias disponibles', async () => {
+    const { textoMatches, TOPE_MATCHES_DEFECTO } = await import('../../src/components/ui/Coincidencias');
+    expect(TOPE_MATCHES_DEFECTO).toBe(5);
+    // n=5 pero total=8 en base de datos
+    expect(textoMatches(5, 8)).toBe('5+ matches');
+    // n=5 y total=5 exactos
+    expect(textoMatches(5, 5)).toBe('5 matches');
+    // directo con n > 5
+    expect(textoMatches(9)).toBe('5+ matches');
+  });
+});
+

@@ -236,14 +236,54 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
       .filter((s) => (s.estado === 'confirmada' || s.estado === 'archivada') && s.cerradaEl)
       .forEach((s) => {
         const v = d.lleva(s);
-        lista.push({ lado: 'ofrece', fecha: s.cerradaEl!, fechaTexto: fechaCorta(s.cerradaEl!), entrego: d.org, recibio: s.quien, rec: s.rec, cant: s.cant, u: s.u, lleva: v ?? undefined, cierre: s.cierre ?? {}, confirmacion: textoCierre(s), historia: s.cierre?.historia, origen: { tipo: 'solicitud', id: s.id } });
+        const nc = s.notasCamino || s.cierre?.notasCamino;
+        const ne = s.notasEntrega || s.cierre?.notasEntrega;
+        const nr = s.cierre?.notasRecibe;
+        lista.push({
+          lado: 'ofrece',
+          fecha: s.cerradaEl!,
+          fechaTexto: fechaCorta(s.cerradaEl!),
+          entrego: d.org,
+          recibio: s.quien,
+          rec: s.rec,
+          cant: s.cant,
+          u: s.u,
+          lleva: v ?? undefined,
+          cierre: s.cierre ?? {},
+          confirmacion: textoCierre(s),
+          historia: s.cierre?.historia,
+          notasCamino: nc,
+          notasEntrega: ne,
+          notasRecibe: nr,
+          origen: { tipo: 'solicitud', id: s.id },
+        });
       });
   }
   if (m.pide) {
     d.recibidas
       .filter((r) => (r.estado === 'confirmada' || r.estado === 'distribuida' || r.estado === 'archivada') && r.cerradaEl)
       .forEach((r) => {
-        lista.push({ lado: 'pide', fecha: r.cerradaEl!, fechaTexto: fechaCorta(r.cerradaEl!), entrego: r.org, recibio: d.org, rec: r.rec, cant: r.cant, u: r.u, lleva: r.vol ?? undefined, cierre: r.cierre ?? {}, confirmacion: textoCierreRecibida(r), historia: r.cierre?.historia, origen: { tipo: 'recibida', id: r.id } });
+        const nc = r.notasCamino || r.cierre?.notasCamino;
+        const ne = r.cierre?.notasEntrega;
+        const nr = r.notasRecibe || r.cierre?.notasRecibe;
+        lista.push({
+          lado: 'pide',
+          fecha: r.cerradaEl!,
+          fechaTexto: fechaCorta(r.cerradaEl!),
+          entrego: r.org,
+          recibio: d.org,
+          rec: r.rec,
+          cant: r.cant,
+          u: r.u,
+          lleva: r.vol ?? undefined,
+          cierre: r.cierre ?? {},
+          confirmacion: textoCierreRecibida(r),
+          historia: r.cierre?.historia,
+          notasCamino: nc,
+          notasEntrega: ne,
+          notasRecibe: nr,
+          origen: { tipo: 'recibida', id: r.id },
+        });
       });
   }
   const ordenadas = [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -273,6 +313,9 @@ export function textoActa(a: Acta): string {
     `Qué: ${a.cant} ${a.u} de ${a.rec.toLowerCase()}`,
     a.lleva ? `La llevó: ${a.lleva}` : '',
     `Cierre: ${a.confirmacion}`,
+    a.notasCamino ? `Detalles de despacho / en camino: ${a.notasCamino}` : '',
+    a.notasEntrega ? `Observaciones de entrega: ${a.notasEntrega}` : '',
+    a.notasRecibe ? `Observaciones de recepción: ${a.notasRecibe}` : '',
     a.cierre?.personasBeneficiadas ? `Personas beneficiadas: ${a.cierre.personasBeneficiadas}` : '',
     a.historia ? `Lo que permitió: ${a.historia}` : '',
   ];

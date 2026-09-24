@@ -17,6 +17,7 @@ import type { Publicacion } from '../../types/publicacion';
 import type { RecursoOfrecido } from '../../types/panel';
 import type { DatosPublicacionGestion } from '../panel/dialogos';
 import { useFlujo } from './useFlujo';
+import { publicacionSaleVerificada } from '../../utils/cuenta';
 
 /**
  * Ofrecer ayuda (mockup/*): `src/ofrecer-v2.html` del prototipo. Una organización registrada
@@ -84,7 +85,21 @@ export const OfrecerPage: React.FC = () => (
 /** La oferta tal como se publicaría: es lo que se cruza contra lo que hay cerca. */
 function publicacionDe(e: EstadoOfrecer): Publicacion {
   const recursos = e.sel.filter((it) => e.cant[it] > 0).map((it) => ({ item: it, unidad: unidadOferta(it), total: e.cant[it], tramos: [] }));
-  const base: Publicacion = { id: 'oferta-creada', tipo: 'oferta', titulo: '', org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: e.dir || 'Usme', recursos, propia: true };
+  const base: Publicacion = {
+    id: 'oferta-creada',
+    tipo: 'oferta',
+    titulo: '',
+    org: CUENTA_OFRECER.organizacion,
+    verificada: publicacionSaleVerificada(),
+    lat: e.lat,
+    lng: e.lng,
+    zona: e.dir || 'Usme',
+    recursos,
+    propia: true,
+    modoEntrega: e.entrega,
+    radio: e.radio,
+    comoEntrega: textoEntrega(e),
+  };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
@@ -277,7 +292,7 @@ const Ofrecer: React.FC = () => {
       tipo: 'oferta',
       titulo: pub.titulo,
       org: pub.org,
-      verificada: true,
+      verificada: pub.verificada,
       zona: e.dir || 'Usme',
       dir: e.dir || CUENTA_OFRECER.direccion,
       descripcion: e.condiciones || 'Recursos disponibles para apoyo comunitario.',

@@ -610,14 +610,12 @@ const FilaPublicacion: React.FC<{
 
       {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
        *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
-       *  con marco interactivo. En `md` para mantener la escala tipográfica intacta. */}
-      {/* La columna ocupa todo el alto de la fila (`self-stretch`, aunque las demás vayan
-          centradas): las sugerencias arriba del todo y las acciones abajo del todo, cada una
-          contra el relleno de la tarjeta. `mt-auto` empuja los botones aunque no haya
-          sugerencias (Alejandro, 22 de septiembre de 2026). */}
-      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
+      {/* 3. Acciones: el CTA de matches va agrupado directamente arriba del trío de acciones
+       *  (Ver detalle, el mapa como icono y ⋮) formando un solo bloque visual alineado a la
+       *  derecha y centrado verticalmente en la fila. */}
+      <div className="flex min-w-0 flex-col items-end justify-center gap-2">
         <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
-        <div className="mt-auto flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVerDetalle(p.id)}>
             Ver detalle
           </Button>

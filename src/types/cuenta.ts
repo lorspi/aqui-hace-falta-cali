@@ -64,6 +64,7 @@ export interface DatosComunidad {
   departamento: string;
   referencia: string;
   contacto: ContactoPublico;
+  documentoAdjunto?: boolean;
 }
 
 /** La persona que crea la cuenta. Su celular es por donde RaDAR le escribe. */

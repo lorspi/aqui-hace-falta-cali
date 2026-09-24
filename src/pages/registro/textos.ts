@@ -92,6 +92,11 @@ export const TEXTOS = {
     mismoWa: 'Este número también es WhatsApp',
     wa: 'WhatsApp de la comunidad',
     correo: 'Correo de contacto',
+    docTitulo: 'Soporte de liderazgo comunitario',
+    docSub: 'Auto de reconocimiento JAC, personería o acta para verificación manual de la comunidad.',
+    docAdjuntado: 'Soporte adjuntado correctamente.',
+    adjuntar: 'Adjuntar',
+    cambiar: 'Cambiar',
   },
 
   persona: {

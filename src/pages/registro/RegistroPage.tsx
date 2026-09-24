@@ -28,7 +28,7 @@ import { Segmented } from '../../components/ui/Segmented';
 import { Success } from '../../components/ui/Success';
 import { DEPTOS, PERFILES, RUTAS, TIPOS_COM, TIPOS_DOC, TIPOS_ORG, estadoInicial } from '../../mocks/cuentasMock';
 import { Turnstile } from '../../components/Turnstile';
-import { guardarEntidad } from '../../utils/cuenta';
+import { guardarEntidad, guardarVerificacion } from '../../utils/cuenta';
 import type { EstadoRegistro, IconoCuenta, ModoRegistro, PerfilCuenta } from '../../types/cuenta';
 import { camino, esCorreo, listo, loginListo, pasoActual, validar, type Contrasenas, type Regla } from './pasos';
 import { RegistroCarrusel } from './RegistroCarrusel';
@@ -166,6 +166,13 @@ export const RegistroPage: React.FC = () => {
   const atras = () => patch({ indice: Math.max(indice - 1, 0) });
   const terminar = () => {
     if (e.perfil) guardarEntidad(e.perfil);
+    if (e.perfil === 'organizacion') {
+      guardarVerificacion(e.org.documentoAdjunto ? 'revision' : 'sin');
+    } else if (e.perfil === 'liderazgo') {
+      guardarVerificacion(e.com.documentoAdjunto ? 'revision' : 'sin');
+    } else if (e.perfil === 'individual') {
+      guardarVerificacion('sin');
+    }
     patch({ listo: true });
   };
 
@@ -677,6 +684,31 @@ export const RegistroPage: React.FC = () => {
             error={error('c-correo')}
           />
         </div>
+
+        {/* Documento o soporte de liderazgo comunitario */}
+        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-rd-line bg-rd-surface p-3.5 px-4 text-rd-12 text-rd-ink-2">
+          {e.com.documentoAdjunto ? (
+            <Check className="h-5 w-5 shrink-0 text-rd-green" />
+          ) : (
+            <ShieldCheck className="h-5 w-5 shrink-0 text-rd-ink-meta" />
+          )}
+          <div className="flex-1">
+            <b className="block font-semibold text-rd-ink">
+              {T.com.docTitulo} <span className="font-normal text-rd-ink-meta">(opcional)</span>
+            </b>
+            <span>
+              {e.com.documentoAdjunto ? T.com.docAdjuntado : T.com.docSub}
+            </span>
+          </div>
+          <Button
+            type="button"
+            nivel="secundario"
+            tamano="sm"
+            onClick={() => patchCom({ documentoAdjunto: !e.com.documentoAdjunto })}
+          >
+            {e.com.documentoAdjunto ? T.com.cambiar : T.com.adjuntar}
+          </Button>
+        </div>
       </div>
     </>
   );
@@ -966,6 +998,26 @@ export const RegistroPage: React.FC = () => {
                 ? 'Revisaremos el documento para otorgar la insignia de verificación.'
                 : T.exito.sinVerificarTexto(panel)
             }
+          />
+        )}
+        {e.perfil === 'liderazgo' && (
+          <InlineNotice
+            variante={e.com.documentoAdjunto ? 'pendiente' : 'info'}
+            icono={<ShieldCheck className="h-4 w-4" />}
+            titulo={e.com.documentoAdjunto ? 'Soporte en revisión' : T.exito.sinVerificarTitulo}
+            texto={
+              e.com.documentoAdjunto
+                ? 'Revisaremos el soporte de liderazgo territorial para otorgar la insignia de comunidad verificada.'
+                : `Para la insignia de comunidad verificada, sube el soporte o auto de la JAC en ${panel}.`
+            }
+          />
+        )}
+        {e.perfil === 'individual' && (
+          <InlineNotice
+            variante="info"
+            icono={<ShieldCheck className="h-4 w-4" />}
+            titulo="Cuenta ciudadana individual"
+            texto="Tus publicaciones se comparten como reportes ciudadanos directos sin insignia institucional."
           />
         )}
       </Success>

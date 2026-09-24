@@ -62,6 +62,12 @@ export interface Publicacion {
   recursos: Recurso[];
   /** Las fotos de la publicación: públicas en el mapa, como en la app real. */
   fotos?: FotoPublicada[];
+  /** Modalidad logística: 'llevamos' | 'sitio' | 'remoto'. */
+  modoEntrega?: 'llevamos' | 'sitio' | 'remoto';
+  /** Cobertura declarada: '5 km' | '10 km' | '25 km' | '50 km' | 'Todo el país'. */
+  radio?: string;
+  /** Texto legible de entrega o recepción (ej. 'Lo llevamos · Todo el país', 'Remoto · WhatsApp'). */
+  comoEntrega?: string;
 }
 
 /** Icono del catálogo (Phosphor en el prototipo; aquí se resuelve a Lucide en la vista). */

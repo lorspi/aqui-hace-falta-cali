@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { actasDe, archivarViejas, bloquesResumen, confirmadas, fechaCorta, kpisDe, leerModulos, pendientesCuenta, pendientesDe, pestanasDe, quedan, resumenActas, siglas, textoActa, textoCierre, textoCierreRecibida } from '../../src/utils/panel';
+import { guardarEntidad, guardarVerificacion, publicacionSaleVerificada, verificacionActual } from '../../src/utils/cuenta';
 import { NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, RECIBIDAS, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../src/mocks/panelMock';
 import { obtenerPublicaciones, PUBLICACIONES } from '../../src/mocks/publicacionesMock';
 
@@ -149,6 +150,40 @@ describe('reportes: las actas de entrega', () => {
     const aConBeneficiarios = { ...a, cierre: { ...a.cierre, personasBeneficiadas: 45 } };
     const tBeneficiarios = textoActa(aConBeneficiarios);
     expect(tBeneficiarios).toContain('Personas beneficiadas: 45');
+
+    // Con notas operativas (en camino, certificación de entrega y confirmación de recibido)
+    const aConNotas = {
+      ...a,
+      notasCamino: 'Camión NPR placa ABC-123 conductor Carlos',
+      notasEntrega: 'Entregado en puerta principal al líder comunitario',
+      notasRecibe: 'Se verificó contenido y estado de los paquetes',
+    };
+    const tNotas = textoActa(aConNotas);
+    expect(tNotas).toContain('Detalles de despacho / en camino: Camión NPR placa ABC-123 conductor Carlos');
+    expect(tNotas).toContain('Observaciones de entrega: Entregado en puerta principal al líder comunitario');
+    expect(tNotas).toContain('Observaciones de recepción: Se verificó contenido y estado de los paquetes');
+  });
+
+  it('actasDe mapea notas de transporte, entrega y recibo desde la solicitud o el cierre', () => {
+    const solConNotas = [
+      {
+        ...SOLICITUDES[0],
+        estado: 'confirmada' as const,
+        cerradaEl: '2026-09-15T10:00:00',
+        notasCamino: 'Vehículo 01 ruta norte',
+        cierre: {
+          ...SOLICITUDES[0].cierre,
+          entrega: { fotos: 1 },
+          recibe: { fotos: 1 },
+          notasEntrega: 'Entrega sin novedades',
+          notasRecibe: 'Recibido a conformidad',
+        },
+      },
+    ];
+    const actasNotas = actasDe({ pide: false, ofrece: true }, { sol: solConNotas, recibidas: [], org: ORG.nombre, lleva });
+    expect(actasNotas[0].notasCamino).toBe('Vehículo 01 ruta norte');
+    expect(actasNotas[0].notasEntrega).toBe('Entrega sin novedades');
+    expect(actasNotas[0].notasRecibe).toBe('Recibido a conformidad');
   });
   it('siglas, fecha corta, cierre visto por quien recibe y el resumen', () => {
     expect(siglas('Bomberos Voluntarios Usme')).toBe('BVU');
@@ -163,7 +198,7 @@ describe('reportes: las actas de entrega', () => {
     // Actas incluye entregas distribuidas
     const recibidasConDistribuida = [
       ...RECIBIDAS,
-      { id: 105, org: 'JAC La Flora', rec: 'Kits aseo', cant: 10, u: 'kits', estado: 'distribuida' as const, cerradaEl: '2026-09-15T10:00:00' }
+      { id: 105, org: 'JAC La Flora', rec: 'Kits aseo', cant: 10, u: 'kits', estado: 'distribuida' as const, cuando: '15 sep', vol: null, cerradaEl: '2026-09-15T10:00:00' }
     ];
     const actasConDistribuida = actasDe({ pide: true, ofrece: false }, { sol: [], recibidas: recibidasConDistribuida, org: ORG.nombre, lleva });
     expect(actasConDistribuida.some((a) => a.origen.id === 105 && a.confirmacion === 'Distribuida en la comunidad')).toBe(true);
@@ -398,4 +433,84 @@ describe('ofrecimientos enviados a comunidades (organización / donante)', () =>
   });
 });
 
+describe('matches en recursos del panel', () => {
+  it('detecta matches específicos por recurso para ofertas y necesidades', async () => {
+    const { coincidenciasDe, coincideItem } = await import('../../src/utils/cruce');
+    const { obtenerPublicaciones } = await import('../../src/mocks/publicacionesMock');
+    const todas = obtenerPublicaciones();
 
+    // Necesidad propia
+    const pubNecesidad = {
+      id: 'necesidad-usme',
+      tipo: 'necesidad' as const,
+      titulo: 'Emergencia Usme',
+      org: 'Bomberos Voluntarios Usme',
+      verificada: true,
+      lat: 4.51,
+      lng: -74.115,
+      zona: 'Usme',
+      recursos: [{ item: 'Equipos de bombeo', unidad: 'motobombas', total: 4, tramos: [] }],
+    };
+    const matchesNecesidad = coincidenciasDe(pubNecesidad as any, todas);
+    const bombeo = matchesNecesidad.filter((c) => c.recursos.some((r) => coincideItem(r.item, 'Equipos de bombeo')));
+    expect(bombeo.length).toBeGreaterThan(0);
+    expect(bombeo.some((c) => c.org.includes('Alcaldía'))).toBe(true);
+
+    // Oferta propia
+    const pubOferta = {
+      id: 'oferta-usme',
+      tipo: 'oferta' as const,
+      titulo: 'Oferta Usme',
+      org: 'Bomberos Voluntarios Usme',
+      verificada: true,
+      lat: 4.51,
+      lng: -74.115,
+      zona: 'Usme',
+      recursos: [{ item: 'Agua potable', unidad: 'L', total: 900, tramos: [] }],
+    };
+    const matchesOferta = coincidenciasDe(pubOferta as any, todas);
+    const agua = matchesOferta.filter((c) => c.recursos.some((r) => coincideItem(r.item, 'Agua potable')));
+    expect(agua.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Reglas de verificación y herencia a publicaciones', () => {
+  it('entidad organizacion verificada genera publicaciones verificadas', () => {
+    guardarEntidad('organizacion');
+    guardarVerificacion('verificada');
+    expect(verificacionActual()).toBe('verificada');
+    expect(publicacionSaleVerificada()).toBe(true);
+  });
+
+  it('entidad organizacion en revision o sin verificar genera publicaciones no verificadas', () => {
+    guardarEntidad('organizacion');
+    guardarVerificacion('revision');
+    expect(verificacionActual()).toBe('revision');
+    expect(publicacionSaleVerificada()).toBe(false);
+
+    guardarVerificacion('sin');
+    expect(verificacionActual()).toBe('sin');
+    expect(publicacionSaleVerificada()).toBe(false);
+  });
+
+  it('entidad comunidad verificada genera publicaciones verificadas', () => {
+    guardarEntidad('liderazgo');
+    guardarVerificacion('verificada');
+    expect(verificacionActual()).toBe('verificada');
+    expect(publicacionSaleVerificada()).toBe(true);
+  });
+
+  it('entidad comunidad en revision genera publicaciones no verificadas', () => {
+    guardarEntidad('liderazgo');
+    guardarVerificacion('revision');
+    expect(verificacionActual()).toBe('revision');
+    expect(publicacionSaleVerificada()).toBe(false);
+  });
+
+  it('cuenta individual SIEMPRE genera publicaciones no verificadas', () => {
+    guardarEntidad('individual');
+    guardarVerificacion('verificada'); // Intento de forzar verificación
+    expect(verificacionActual()).toBe('sin');
+    expect(publicacionSaleVerificada()).toBe(false);
+  });
+});

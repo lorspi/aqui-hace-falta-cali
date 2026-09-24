@@ -24,6 +24,12 @@ export interface Cierre {
   historia?: string;
   /** Número de personas o familias beneficiadas con la entrega/distribución comunitaria. */
   personasBeneficiadas?: number;
+  /** Notas de ruta / despacho / transporte registradas en camino. */
+  notasCamino?: string;
+  /** Observaciones registradas al certificar la entrega. */
+  notasEntrega?: string;
+  /** Observaciones registradas al confirmar la recepción. */
+  notasRecibe?: string;
 }
 
 export interface Solicitud {
@@ -38,6 +44,12 @@ export interface Solicitud {
   vol: number | null;
   dist?: string;
   cierre?: Cierre;
+  /** Notas de ruta o transporte cuando se marcó en camino. */
+  notasCamino?: string;
+  /** Observaciones registradas al certificar la entrega. */
+  notasEntrega?: string;
+  /** Motivo si la solicitud no pudo ser atendida por la organización. */
+  motivoRechazo?: string;
   /** Motivo si la solicitud fue cancelada o desistida en algún punto del ciclo. */
   motivoCancelacion?: string;
   /** En qué estado se encontraba cuando fue cancelada (ej. 'aceptada', 'camino'). */
@@ -98,6 +110,12 @@ export interface EntregaRecibida {
   detalle?: string;
   vol: string | null;
   cierre?: Cierre;
+  /** Notas de ruta o transporte de la entrega recibida. */
+  notasCamino?: string;
+  /** Observaciones registradas al confirmar la recepción. */
+  notasRecibe?: string;
+  /** Motivo si el ofrecimiento de ayuda fue declinado o no aceptado. */
+  motivoRechazo?: string;
   /** Motivo si fue cancelada o no recibida. */
   motivoCancelacion?: string;
   /** Fecha (AAAA-MM-DD) en que la confirmaste o distribuiste. */
@@ -120,6 +138,7 @@ export interface SolicitudEnviada {
   cuando: string;
   estado: EstadoSolicitudEnviada;
   motivo?: string;
+  motivoCancelacion?: string;
   contacto?: { tel?: string; wa?: boolean };
   entregaRecibidaId?: number;
 }
@@ -140,6 +159,7 @@ export interface OfrecimientoEnviado {
   cuando: string;
   estado: EstadoOfrecimientoEnviado;
   motivo?: string;
+  motivoCancelacion?: string;
   contacto?: { nombre?: string; tel?: string; wa?: boolean };
   solicitudId?: number;
 }
@@ -289,6 +309,9 @@ export interface Acta {
   /** Texto de cómo se confirmó («Confirmada por ti y por …»). */
   confirmacion: string;
   historia?: string;
+  notasCamino?: string;
+  notasEntrega?: string;
+  notasRecibe?: string;
   /** La entrega de la que sale, para abrir sus fotos. */
   origen: { tipo: 'solicitud' | 'recibida'; id: number };
 }

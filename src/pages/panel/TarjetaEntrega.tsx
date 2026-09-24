@@ -319,11 +319,12 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
   );
 }
 
-/** El ⋮ de ayuda recibida: comunicarse con la organización que entrega. */
+/** El ⋮ de ayuda recibida: comunicarse con la organización que entrega o cancelar compromiso. */
 export function menuDeRecibida(
   r: EntregaRecibida,
   flotante = false,
-  onVerPublicacion?: (r: EntregaRecibida) => void
+  onVerPublicacion?: (r: EntregaRecibida) => void,
+  onCancelar?: (r: EntregaRecibida) => void
 ): React.ReactNode {
   const contacto = buscarContactoEntidad(r.org);
   const items: { texto: string; icono: React.ReactNode; tono?: 'peligro'; onElegir: () => void }[] = [];
@@ -353,6 +354,15 @@ export function menuDeRecibida(
         },
       });
     }
+  }
+
+  if (r.estado === 'aceptada' && onCancelar) {
+    items.push({
+      texto: 'Cancelar compromiso de ayuda',
+      icono: <X aria-hidden="true" className="h-4.5 w-4.5" />,
+      tono: 'peligro',
+      onElegir: () => onCancelar(r),
+    });
   }
 
   if (items.length === 0) return null;
@@ -419,10 +429,11 @@ export const TarjetaRecibida: React.FC<{
   onVerFotos: (r: EntregaRecibida, i: number) => void;
   onAceptar?: (id: number) => void;
   onRechazar?: (id: number) => void;
+  onCancelar?: (r: EntregaRecibida) => void;
   onVerPublicacion?: (r: EntregaRecibida) => void;
   menuFlotante?: boolean;
   arrastre?: TarjetaEntregaProps['arrastre'];
-}> = ({ r, estado, onConfirmar, onDistribuir, onArchivar, onVerFotos, onAceptar, onRechazar, onVerPublicacion, menuFlotante = false, arrastre }) => {
+}> = ({ r, estado, onConfirmar, onDistribuir, onArchivar, onVerFotos, onAceptar, onRechazar, onCancelar, onVerPublicacion, menuFlotante = false, arrastre }) => {
   const f = fotosDeRecibida(r.id);
   const contacto = buscarContactoEntidad(r.org);
   const acciones = (() => {
@@ -558,7 +569,7 @@ export const TarjetaRecibida: React.FC<{
       cierre={cierre}
       fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
       acciones={acciones}
-      menu={menuDeRecibida(r, menuFlotante, onVerPublicacion)}
+      menu={menuDeRecibida(r, menuFlotante, onVerPublicacion, onCancelar)}
       atenuada={r.estado === 'archivada'}
       arrastre={arrastre}
     />

@@ -15,7 +15,7 @@ import { INVITADOS, ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { CANALES, SESIONES, YO } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import type { DatosOrg, Invitado } from '../../types/panel';
-import { nombrePanel } from '../../utils/cuenta';
+import { entidadActual, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
 
@@ -230,17 +230,13 @@ const TusDatos: React.FC<{ yo: Persona; onGuardar: (p: Persona) => void }> = ({ 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="perfil-nombre" etiqueta="Nombre y apellidos" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} autoComplete="name" />
           <Field id="perfil-cargo" etiqueta="Cargo" opcional valor={borrador.cargo} onChange={(v) => setBorrador({ ...borrador, cargo: v })} />
-          <Field id="perfil-tel" etiqueta="Celular" tipo="tel" valor={borrador.tel} onChange={(v) => setBorrador({ ...borrador, tel: v })} autoComplete="tel" inputMode="tel" />
-          <Field id="perfil-wa" etiqueta="Este número también es WhatsApp" tipo="checkbox" marcado={borrador.mismoWa} onChangeMarcado={(m) => setBorrador({ ...borrador, mismoWa: m })} />
-          {!borrador.mismoWa && <Field id="perfil-wa-num" etiqueta="WhatsApp" tipo="tel" valor={borrador.wa} onChange={(v) => setBorrador({ ...borrador, wa: v })} inputMode="tel" />}
+          <Field id="perfil-tel" etiqueta="Celular" tipo="tel" valor={borrador.tel} onChange={(v) => setBorrador({ ...borrador, tel: v, wa: v, mismoWa: true })} autoComplete="tel" inputMode="tel" />
         </div>
       ) : (
         <>
           <FilaDato rotulo="Nombre">{yo.nombre}</FilaDato>
           <FilaDato rotulo="Cargo">{yo.cargo || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
-          <FilaDato rotulo="Celular" nota={yo.mismoWa ? 'También WhatsApp' : `WhatsApp: ${yo.wa || 'sin registrar'}`}>
-            {yo.tel}
-          </FilaDato>
+          <FilaDato rotulo="Celular">{yo.tel}</FilaDato>
           <FilaDato rotulo="País" nota="Define los formatos de fecha, hora y teléfono">
             {yo.pais}
           </FilaDato>
@@ -371,27 +367,28 @@ const DatosOrganizacion: React.FC = () => {
         )}
         <div className="mt-4">
           {org.verificacion === 'verificada' && (
-            <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo="Organización verificada" texto="La insignia sale en cada publicación." />
+            <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo={entidadActual() === 'liderazgo' ? 'Comunidad verificada' : 'Organización verificada'} texto="La insignia sale en cada publicación." />
           )}
           {org.verificacion === 'revision' && (
-            <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto="Revisamos el documento en menos de 2 días hábiles." />
+            <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto={entidadActual() === 'liderazgo' ? 'Revisamos el soporte de liderazgo en menos de 2 días hábiles.' : 'Revisamos el documento en menos de 2 días hábiles.'} />
           )}
           {org.verificacion === 'sin' && (
             <InlineNotice
               variante="neutro"
               icono={<BadgeCheck className="h-4 w-4" />}
               titulo="Sin verificar"
-              texto="Adjunta el certificado de existencia y te ponemos la insignia."
+              texto={entidadActual() === 'liderazgo' ? 'Adjunta el auto de reconocimiento de la JAC o acta comunitaria para la insignia.' : 'Adjunta el certificado de existencia y te ponemos la insignia.'}
               accion={
                 <Button
                   nivel="secundario"
                   tamano="sm"
                   onClick={() => {
                     setOrg((o) => ({ ...o, verificacion: 'revision' }));
-                    avisar('Certificado adjuntado. Tu organización quedó en estado de revisión.', { tipo: 'ok' });
+                    guardarVerificacion('revision');
+                    avisar(entidadActual() === 'liderazgo' ? 'Soporte adjuntado. Tu comunidad quedó en estado de revisión.' : 'Certificado adjuntado. Tu organización quedó en estado de revisión.', { tipo: 'ok' });
                   }}
                 >
-                  Adjuntar el certificado
+                  {entidadActual() === 'liderazgo' ? 'Adjuntar soporte' : 'Adjuntar el certificado'}
                 </Button>
               }
             />

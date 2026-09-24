@@ -17,6 +17,7 @@ import { iconoDe } from '../../components/ui/Recursos';
 import type { RecursoPedido } from '../../types/panel';
 import type { DatosPublicacionGestion } from '../panel/dialogos';
 import { useFlujo } from './useFlujo';
+import { publicacionSaleVerificada } from '../../utils/cuenta';
 
 /**
  * Pedir ayuda (mockup/*): `src/pedir.html` del prototipo. Una pregunta por pantalla. Lo que
@@ -56,7 +57,7 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
       return { item: m.item, unidad, total, tramos: [] };
     })
     .filter((r) => r.total > 0);
-  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: publicacionSaleVerificada(), lat: e.lat, lng: e.lng, zona: '', recursos };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
@@ -249,7 +250,7 @@ const Pedir: React.FC = () => {
       tipo: 'necesidad',
       titulo: pub.titulo,
       org: pub.org,
-      verificada: true,
+      verificada: pub.verificada,
       zona: e.tipoLugar || 'Cali',
       dir: e.dir || CUENTA_PEDIR.direccion,
       descripcion: `Atención de emergencia (${e.evento || 'Comunidad'}). Recursos requeridos con urgencia.`,

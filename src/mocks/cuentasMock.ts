@@ -138,7 +138,7 @@ export function estadoInicial(rapida: boolean): EstadoRegistro {
     perfil: rapida ? 'rapida' : '',
     indice: 0,
     org: { nombre: '', tipo: '', nit: '', web: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
-    com: { nombre: '', tipo: '', departamento: '', referencia: '', contacto: { ...CONTACTO_VACIO } },
+    com: { nombre: '', tipo: '', departamento: '', referencia: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
     per: { nombre: '', cargo: '', tipoDocumento: '', cedula: '', tel: '', mismoWa: true, wa: '', correo: '', captchaToken: '', terminos: false },
     ind: {
       nombre: '',

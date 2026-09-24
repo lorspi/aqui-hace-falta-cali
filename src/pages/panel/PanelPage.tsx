@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Funnel, Hand, HeartHandshake, LayoutDashboard, ListChecks, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, Eye, FileText, Funnel, Hand, HeartHandshake, LayoutDashboard, ListChecks, Megaphone, Package, Pause, Phone, Play, Radar, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, VEHICULOS, type DatosPublicacionGestion } from './dialogos';
@@ -16,10 +16,12 @@ import { Vacio } from '../../components/ui/Vacio';
 import { Caja, Conteo } from '../../components/ui/Caja';
 import { IconoRecursoDe } from '../../components/ui/Recursos';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
+import { DialogoCoincidencias, FilaSugerencias } from '../../components/ui/Coincidencias';
+import { coincidenciasDe, coincideItem, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, DEPTOS, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../mocks/panelMock';
-import { PUBLICACIONES } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
@@ -235,6 +237,17 @@ const Panel: React.FC = () => {
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
   const [editandoMiembro, setEditandoMiembro] = useState<MiembroEquipo | null>(null);
   const [miembroParaBaja, setMiembroParaBaja] = useState<MiembroEquipo | null>(null);
+  const [asignando, setAsignando] = useState<Solicitud | null>(null);
+  const [marcandoEnCamino, setMarcandoEnCamino] = useState<Solicitud | null>(null);
+  const [certificando, setCertificando] = useState<Solicitud | null>(null);
+  const [confirmando, setConfirmando] = useState<EntregaRecibida | null>(null);
+  const [distribuyendo, setDistribuyendo] = useState<EntregaRecibida | null>(null);
+  const [cancelando, setCancelando] = useState<Solicitud | null>(null);
+  const [rechazandoSolicitud, setRechazandoSolicitud] = useState<Solicitud | null>(null);
+  const [rechazandoRecibida, setRechazandoRecibida] = useState<EntregaRecibida | null>(null);
+  const [cancelandoSolicitudEnviada, setCancelandoSolicitudEnviada] = useState<SolicitudEnviada | null>(null);
+  const [cancelandoOfrecimientoEnviado, setCancelandoOfrecimientoEnviado] = useState<OfrecimientoEnviado | null>(null);
+  const [cancelandoRecibidaCompromiso, setCancelandoRecibidaCompromiso] = useState<EntregaRecibida | null>(null);
 
   const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>(() => {
     try {
@@ -380,8 +393,15 @@ const Panel: React.FC = () => {
     avisar('Solicitud aceptada. Asigna quién la lleva.', { tipo: 'ok' });
   };
   const rechazar = (id: number) => {
-    setSol((l) => l.filter((s) => s.id !== id));
-    avisar('Le avisamos que esta vez no pueden.');
+    const s = sol.find((x) => x.id === id);
+    if (s) setRechazandoSolicitud(s);
+  };
+  const confirmarRechazoSolicitud = (id: number, motivo?: string) => {
+    const s = sol.find((x) => x.id === id);
+    setSol((l) => l.filter((x) => x.id !== id));
+    if (s) {
+      avisar(motivo ? `Le avisamos a ${s.quien} que esta vez no pueden: ${motivo}` : `Le avisamos a ${s.quien} que esta vez no pueden.`);
+    }
   };
   const recordar = (id: number) => {
     const s = sol.find((x) => x.id === id);
@@ -430,24 +450,32 @@ const Panel: React.FC = () => {
     avisar(pausado ? `Necesidad de ${r.n} pausada temporalmente.` : `Necesidad de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
   };
   const cancelarSolicitudEnviada = (id: number | string) => {
+    const s = solicitudesEnviadas.find((x) => x.id === id);
+    if (s) setCancelandoSolicitudEnviada(s);
+  };
+  const confirmarCancelarSolicitudEnviada = (id: number | string, motivo?: string) => {
     setSolicitudesEnviadas((prev) => {
-      const act = prev.map((s) => (s.id === id ? { ...s, estado: 'cancelada' as const } : s));
+      const act = prev.map((s) => (s.id === id ? { ...s, estado: 'cancelada' as const, motivoCancelacion: motivo || undefined } : s));
       try {
         localStorage.setItem('rd-solicitudes-enviadas', JSON.stringify(act));
       } catch {}
       return act;
     });
-    avisar('Solicitud cancelada.', { tipo: 'ok' });
+    avisar(motivo ? `Solicitud cancelada: ${motivo}` : 'Solicitud cancelada.', { tipo: 'ok' });
   };
   const cancelarOfrecimientoEnviado = (id: number | string) => {
+    const o = ofrecimientosEnviados.find((x) => x.id === id);
+    if (o) setCancelandoOfrecimientoEnviado(o);
+  };
+  const confirmarCancelarOfrecimientoEnviado = (id: number | string, motivo?: string) => {
     setOfrecimientosEnviados((prev) => {
-      const act = prev.map((o) => (o.id === id ? { ...o, estado: 'cancelado' as const } : o));
+      const act = prev.map((o) => (o.id === id ? { ...o, estado: 'cancelado' as const, motivoCancelacion: motivo || undefined } : o));
       try {
         localStorage.setItem('rd-ofrecimientos-enviados', JSON.stringify(act));
       } catch {}
       return act;
     });
-    avisar('Ofrecimiento de ayuda cancelado.', { tipo: 'ok' });
+    avisar(motivo ? `Ofrecimiento de ayuda cancelado: ${motivo}` : 'Ofrecimiento de ayuda cancelado.', { tipo: 'ok' });
   };
   const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     const nuevo: MiembroEquipo = {
@@ -467,16 +495,6 @@ const Panel: React.FC = () => {
     setEquipo((prev) => prev.filter((x) => x.id !== id));
     avisar(`Colaborador ${m?.n ?? ''} desvinculado del equipo`);
   };
-  /* Los cierres son de los dos lados (Alejandro, 16 de septiembre de 2026): quien entrega
-     certifica con foto; quien recibe confirma con foto. Cada uno cierra por su cuenta y el
-     otro lo valida. Los tres diálogos viven aquí para que Resumen, Seguimiento y Entregas
-     recibidas los compartan. */
-  const [asignando, setAsignando] = useState<Solicitud | null>(null);
-  const [marcandoEnCamino, setMarcandoEnCamino] = useState<Solicitud | null>(null);
-  const [certificando, setCertificando] = useState<Solicitud | null>(null);
-  const [confirmando, setConfirmando] = useState<EntregaRecibida | null>(null);
-  const [distribuyendo, setDistribuyendo] = useState<EntregaRecibida | null>(null);
-  const [cancelando, setCancelando] = useState<Solicitud | null>(null);
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
   const verFotosEntrega = (s: Solicitud, inicial = 0) => {
@@ -491,6 +509,91 @@ const Panel: React.FC = () => {
   const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(' · ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
+
+  /* --- matches de necesidades y ofertas propias --- */
+  const todasLasPubs = useMemo(() => obtenerPublicaciones(), []);
+
+  const pubNecesidadComoPublicacion: Publicacion = useMemo(() => ({
+    id: pubNecesidad.id,
+    tipo: 'necesidad',
+    titulo: pubNecesidad.titulo,
+    org: ORG.nombre,
+    verificada: true,
+    lat: 4.51,
+    lng: -74.115,
+    zona: pubNecesidad.zona || 'Usme',
+    dir: pubNecesidad.dir || ORG.dir,
+    descripcion: pubNecesidad.descripcion,
+    recursos: recursosNecesidad.map((r) => ({
+      item: r.n,
+      unidad: r.unidad,
+      total: r.total,
+      tramos: [
+        ...(r.confirmada > 0 ? [{ t: 'hecho' as const, cant: r.confirmada, quien: ORG.nombre, cuando: 'Confirmado' }] : []),
+        ...(r.camino > 0 ? [{ t: 'camino' as const, cant: r.camino, quien: ORG.nombre, cuando: 'En camino' }] : []),
+      ],
+    })),
+  }), [pubNecesidad, recursosNecesidad]);
+
+  const pubOfertaComoPublicacion: Publicacion = useMemo(() => ({
+    id: pubOferta.id,
+    tipo: 'oferta',
+    titulo: pubOferta.titulo,
+    org: ORG.nombre,
+    verificada: true,
+    lat: 4.51,
+    lng: -74.115,
+    zona: pubOferta.zona || 'Usme',
+    dir: pubOferta.dir || ORG.dir,
+    descripcion: pubOferta.descripcion,
+    recursos: recursosOferta.map((r) => ({
+      item: r.n,
+      unidad: r.unidad,
+      total: r.total,
+      tramos: [],
+    })),
+  }), [pubOferta, recursosOferta]);
+
+  const matchesNecesidadPorRecurso = useMemo(() => {
+    const map = new Map<string, CoincidenciaPublicacion[]>();
+    const todasCoincidencias = coincidenciasDe(pubNecesidadComoPublicacion, todasLasPubs, 20);
+    recursosNecesidad.forEach((r) => {
+      const filtradas = todasCoincidencias.filter((c) =>
+        c.recursos.some((cr) => coincideItem(cr.item, r.n))
+      );
+      map.set(r.n, filtradas);
+    });
+    return map;
+  }, [pubNecesidadComoPublicacion, recursosNecesidad, todasLasPubs]);
+
+  const matchesOfertaPorRecurso = useMemo(() => {
+    const map = new Map<string, CoincidenciaPublicacion[]>();
+    const todasCoincidencias = coincidenciasDe(pubOfertaComoPublicacion, todasLasPubs, 20);
+    recursosOferta.forEach((r) => {
+      const filtradas = todasCoincidencias.filter((c) =>
+        c.recursos.some((cr) => coincideItem(cr.item, r.n))
+      );
+      map.set(r.n, filtradas);
+    });
+    return map;
+  }, [pubOfertaComoPublicacion, recursosOferta, todasLasPubs]);
+
+  const [matchesDialogo, setMatchesDialogo] = useState<{
+    publicacion: Publicacion;
+    coincidencias: CoincidenciaPublicacion[];
+    recursoFoco?: string;
+  } | null>(null);
+
+  const abrirMatchesRecurso = (tipo: 'necesidad' | 'oferta', recursoNombre: string) => {
+    const pub = tipo === 'necesidad' ? pubNecesidadComoPublicacion : pubOfertaComoPublicacion;
+    const map = tipo === 'necesidad' ? matchesNecesidadPorRecurso : matchesOfertaPorRecurso;
+    const coincidencias = map.get(recursoNombre) ?? [];
+    setMatchesDialogo({
+      publicacion: pub,
+      coincidencias,
+      recursoFoco: recursoNombre,
+    });
+  };
 
   const obtenerPublicacionDeSolicitud = (s: Solicitud): Publicacion => {
     const norm = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
@@ -581,7 +684,7 @@ const Panel: React.FC = () => {
       window.print();
     }, 150);
   };
-  const marcarEnCamino = (id: number, fotos: number, fotosLista?: Foto[]) => {
+  const marcarEnCamino = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
     if (!s) return;
     if (fotosLista && fotosLista.length > 0) {
@@ -603,10 +706,12 @@ const Panel: React.FC = () => {
           ? {
               ...x,
               estado: 'camino',
-              ...(fotosLista?.length || fotos > 0
+              notasCamino: notas || x.notasCamino,
+              ...(fotosLista?.length || fotos > 0 || notas
                 ? {
                     cierre: {
                       ...x.cierre,
+                      notasCamino: notas || x.cierre?.notasCamino,
                       entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
                     },
                   }
@@ -617,7 +722,7 @@ const Panel: React.FC = () => {
     );
     avisar(`Ayuda para ${s.quien} marcada en camino. Le avisamos que el recurso va en ruta.`, { tipo: 'ok' });
   };
-  const certificar = (id: number, fotos: number, fotosLista?: Foto[]) => {
+  const certificar = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
     if (fotosLista && fotosLista.length > 0) {
       if (!FOTOS_ENTREGA[id]) {
@@ -632,7 +737,24 @@ const Panel: React.FC = () => {
       }));
       FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
     }
-    setSol((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) } } } : x)));
+    const hoyIso = new Date().toISOString().slice(0, 10);
+    setSol((l) =>
+      l.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              estado: 'confirmada',
+              cerradaEl: x.cerradaEl || hoyIso,
+              notasEntrega: notas || x.notasEntrega,
+              cierre: {
+                ...x.cierre,
+                notasEntrega: notas || x.cierre?.notasEntrega,
+                entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+              },
+            }
+          : x
+      )
+    );
     if (s) avisar(s.cierre?.recibe ? `Entrega a ${s.quien} certificada. Ya la habían confirmado.` : `Entrega a ${s.quien} certificada. Le avisamos para que la confirme.`, { tipo: 'ok' });
   };
   const archivar = (id: number) => {
@@ -645,7 +767,7 @@ const Panel: React.FC = () => {
     setSol((l) => l.filter((x) => x.id !== id));
     if (s) avisar(`Compromiso con ${s.quien} cancelado: ${motivo.toLowerCase()}. Le avisamos.`);
   };
-  const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[]) => {
+  const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const r = recibidas.find((x) => x.id === id);
     if (fotosLista && fotosLista.length > 0) {
       if (!FOTOS_RECIBIDA[id]) {
@@ -659,7 +781,24 @@ const Panel: React.FC = () => {
       }));
       FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
     }
-    setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, recibe: { fotos: (x.cierre?.recibe?.fotos ?? 0) + (fotosLista?.length ?? fotos) } } } : x)));
+    const hoyIso = new Date().toISOString().slice(0, 10);
+    setRecibidas((l) =>
+      l.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              estado: 'confirmada',
+              cerradaEl: x.cerradaEl || hoyIso,
+              notasRecibe: notas || x.notasRecibe,
+              cierre: {
+                ...x.cierre,
+                notasRecibe: notas || x.cierre?.notasRecibe,
+                recibe: { fotos: (x.cierre?.recibe?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+              },
+            }
+          : x
+      )
+    );
     if (r) avisar(`Listo, quedó confirmado lo que llegó de ${r.org}.`, { tipo: 'ok' });
   };
   const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
@@ -707,8 +846,22 @@ const Panel: React.FC = () => {
     avisar('Oferta de ayuda aceptada. La organización coordinará la entrega.', { tipo: 'ok' });
   };
   const rechazarRecibida = (id: number) => {
-    setRecibidas((l) => l.filter((r) => r.id !== id));
-    avisar('Le avisamos a la organización que no necesitas este recurso.');
+    const r = recibidas.find((x) => x.id === id);
+    if (r) setRechazandoRecibida(r);
+  };
+  const confirmarRechazoRecibida = (id: number, motivo?: string) => {
+    const r = recibidas.find((x) => x.id === id);
+    setRecibidas((l) => l.filter((x) => x.id !== id));
+    if (r) {
+      avisar(motivo ? `Le avisamos a ${r.org} que no necesitas esta ayuda: ${motivo}` : `Le avisamos a ${r.org} que no necesitas este recurso.`);
+    }
+  };
+  const confirmarCancelarRecibidaCompromiso = (id: number, motivo?: string) => {
+    const r = recibidas.find((x) => x.id === id);
+    setRecibidas((l) => l.filter((x) => x.id !== id));
+    if (r) {
+      avisar(motivo ? `Compromiso de entrega de ${r.org} cancelado: ${motivo}. Le avisamos.` : `Compromiso de entrega de ${r.org} cancelado. Le avisamos.`);
+    }
   };
   /* Todo lo que se puede hacer con una solicitud, en un solo objeto: lo usan el tablero, la tabla y las tarjetas. */
   const accionesSolicitud: AccionesSolicitud = {
@@ -769,6 +922,9 @@ const Panel: React.FC = () => {
               <MisNecesidades
                 recursos={recursosNecesidad}
                 solicitudesEnviadas={solicitudesEnviadas}
+                matchesPorRecurso={matchesNecesidadPorRecurso}
+                onVerMatches={(rec) => abrirMatchesRecurso('necesidad', rec)}
+                onVerPublicacion={() => setPubDetalle(pubNecesidadComoPublicacion)}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubNecesidad,
@@ -786,6 +942,9 @@ const Panel: React.FC = () => {
                 recursos={recursosOferta}
                 sol={sol}
                 ofrecimientosEnviados={ofrecimientosEnviados}
+                matchesPorRecurso={matchesOfertaPorRecurso}
+                onVerMatches={(rec) => abrirMatchesRecurso('oferta', rec)}
+                onVerPublicacion={() => setPubDetalle(pubOfertaComoPublicacion)}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubOferta,
@@ -810,6 +969,7 @@ const Panel: React.FC = () => {
                 onVerFotosRecibida={verFotosRecibida}
                 onAceptarRecibida={aceptarRecibida}
                 onRechazarRecibida={rechazarRecibida}
+                onCancelarRecibida={(r) => setCancelandoRecibidaCompromiso(r)}
                 onVerPublicacionRecibida={(r) => setPubDetalle(obtenerPublicacionDeRecibida(r))}
               />
             )}
@@ -880,6 +1040,24 @@ const Panel: React.FC = () => {
           onCerrar={() => setPubDetalle(null)}
           onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
         />
+        {matchesDialogo && (
+          <DialogoCoincidencias
+            abierto={Boolean(matchesDialogo)}
+            publicacion={matchesDialogo.publicacion}
+            coincidencias={matchesDialogo.coincidencias}
+            recursoFoco={matchesDialogo.recursoFoco}
+            onCerrar={() => setMatchesDialogo(null)}
+            onPrimaria={(id) => {
+              setMatchesDialogo(null);
+              const target = todasLasPubs.find((p) => p.id === id);
+              if (target) setPubDetalle(target);
+            }}
+            onVerEnMapa={(id) => {
+              setMatchesDialogo(null);
+              irA(`${RUTAS.radar}?punto=${id}`);
+            }}
+          />
+        )}
         <VisorFotos abierto={fotos !== null} grupos={fotos?.grupos ?? []} inicial={fotos?.inicial ?? 0} titulo={fotos?.titulo ?? ''} onCerrar={() => setFotos(null)} />
         <Dialogo
           abierto={cancelando !== null}
@@ -890,27 +1068,259 @@ const Panel: React.FC = () => {
           onCerrar={() => setCancelando(null)}
           onEnviar={(form) => {
             if (!cancelando) return;
-            const motivo = String(new FormData(form).get('motivo') ?? '');
+            const data = new FormData(form);
+            const motivo = String(data.get('motivo') ?? '');
+            const detalle = String(data.get('detalle') ?? '').trim();
+            const id = cancelando.id;
             setCancelando(null);
-            cancelar(cancelando.id, MOTIVOS_CANCELAR.find((m) => m.valor === motivo)?.texto ?? motivo);
+            const textoMotivo = MOTIVOS_CANCELAR.find((m) => m.valor === motivo)?.texto ?? motivo;
+            const motivoCompleto = detalle ? `${textoMotivo}: ${detalle}` : textoMotivo;
+            cancelar(id, motivoCompleto);
           }}
         >
           <p className="mb-4 text-rd-14 text-rd-ink-2">{cancelando?.quien} recibe el aviso en este momento y su necesidad vuelve a mostrar lo que le falta.</p>
           <Opciones nombre="motivo" etiqueta="Por qué" opciones={MOTIVOS_CANCELAR} columna />
+          <div className="mt-3">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="cancelar-compromiso-detalle" className="block text-rd-13 font-semibold text-rd-ink">
+                Detalle o mensaje adicional
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="cancelar-compromiso-detalle"
+              name="detalle"
+              rows={2}
+              placeholder="Explica brevemente para que la contraparte esté informada..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+          </div>
+        </Dialogo>
+        <Dialogo
+          abierto={rechazandoSolicitud !== null}
+          titulo={rechazandoSolicitud ? `¿Confirmar que no pueden atender a ${rechazandoSolicitud.quien}?` : ''}
+          accion="Confirmar y avisar"
+          nivelAccion="secundario"
+          textoAlterno="Volver"
+          onCerrar={() => setRechazandoSolicitud(null)}
+          onEnviar={(form) => {
+            if (!rechazandoSolicitud) return;
+            const motivo = String(new FormData(form).get('motivo') ?? '').trim();
+            const id = rechazandoSolicitud.id;
+            setRechazandoSolicitud(null);
+            confirmarRechazoSolicitud(id, motivo);
+          }}
+        >
+          <p className="mb-4 text-rd-14 text-rd-ink-2">
+            {rechazandoSolicitud ? (
+              <>
+                Solicitud de <strong>{cifra(rechazandoSolicitud.cant)} {rechazandoSolicitud.u}</strong> de{' '}
+                <strong>{rechazandoSolicitud.rec.toLowerCase()}</strong>. Le notificaremos a {rechazandoSolicitud.quien} para que pueda buscar otras opciones en el Radar.
+              </>
+            ) : null}
+          </p>
+          <div className="mb-2">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="motivo-rechazo-solicitud" className="block text-rd-13 font-semibold text-rd-ink">
+                Mensaje o motivo para la contraparte
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="motivo-rechazo-solicitud"
+              name="motivo"
+              rows={3}
+              placeholder="Ej. En este momento no contamos con capacidad logística para cubrir esta zona o fecha..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+            <p className="mt-1 text-rd-11-5 text-rd-ink-meta">
+              Este mensaje se incluirá en la notificación para mantener la transparencia en la red.
+            </p>
+          </div>
+        </Dialogo>
+        <Dialogo
+          abierto={rechazandoRecibida !== null}
+          titulo={rechazandoRecibida ? `¿Rechazar la ayuda ofrecida por ${rechazandoRecibida.org}?` : ''}
+          accion="Confirmar rechazo"
+          nivelAccion="secundario"
+          textoAlterno="Volver"
+          onCerrar={() => setRechazandoRecibida(null)}
+          onEnviar={(form) => {
+            if (!rechazandoRecibida) return;
+            const motivo = String(new FormData(form).get('motivo') ?? '').trim();
+            const id = rechazandoRecibida.id;
+            setRechazandoRecibida(null);
+            confirmarRechazoRecibida(id, motivo);
+          }}
+        >
+          <p className="mb-4 text-rd-14 text-rd-ink-2">
+            {rechazandoRecibida ? (
+              <>
+                Ofrecimiento de <strong>{cifra(rechazandoRecibida.cant)} {rechazandoRecibida.u}</strong> de{' '}
+                <strong>{rechazandoRecibida.rec.toLowerCase()}</strong>. Le notificaremos a {rechazandoRecibida.org} para que pueda reasignar este recurso a otra comunidad que lo necesite.
+              </>
+            ) : null}
+          </p>
+          <div className="mb-2">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="motivo-rechazo-recibida" className="block text-rd-13 font-semibold text-rd-ink">
+                Mensaje o motivo para la organización
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="motivo-rechazo-recibida"
+              name="motivo"
+              rows={3}
+              placeholder="Ej. Ya cubrimos esta necesidad con otra donación y queremos que la ayuda llegue a quienes aún les falta..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+            <p className="mt-1 text-rd-11-5 text-rd-ink-meta">
+              Un mensaje opcional ayuda a que la organización entienda el motivo y reasigne la ayuda rápidamente.
+            </p>
+          </div>
+        </Dialogo>
+        <Dialogo
+          abierto={cancelandoSolicitudEnviada !== null}
+          titulo={cancelandoSolicitudEnviada ? `¿Cancelar solicitud a ${cancelandoSolicitudEnviada.donante}?` : ''}
+          accion="Confirmar cancelación"
+          nivelAccion="secundario"
+          textoAlterno="Mantener solicitud"
+          onCerrar={() => setCancelandoSolicitudEnviada(null)}
+          onEnviar={(form) => {
+            if (!cancelandoSolicitudEnviada) return;
+            const motivo = String(new FormData(form).get('motivo') ?? '').trim();
+            const id = cancelandoSolicitudEnviada.id;
+            setCancelandoSolicitudEnviada(null);
+            confirmarCancelarSolicitudEnviada(id, motivo);
+          }}
+        >
+          <p className="mb-4 text-rd-14 text-rd-ink-2">
+            {cancelandoSolicitudEnviada ? (
+              <>
+                Solicitud de <strong>{cifra(cancelandoSolicitudEnviada.cant)} {cancelandoSolicitudEnviada.u}</strong> de{' '}
+                <strong>{cancelandoSolicitudEnviada.rec.toLowerCase()}</strong>. La solicitud dejará de estar en revisión y el donante será notificado.
+              </>
+            ) : null}
+          </p>
+          <div className="mb-2">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="motivo-cancelar-sol-env" className="block text-rd-13 font-semibold text-rd-ink">
+                Motivo o mensaje de cancelación
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="motivo-cancelar-sol-env"
+              name="motivo"
+              rows={3}
+              placeholder="Ej. Recibimos apoyo por otra fuente o ya no requerimos este recurso..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+            <p className="mt-1 text-rd-11-5 text-rd-ink-meta">
+              Este motivo quedará visible en el historial de solicitudes enviadas.
+            </p>
+          </div>
+        </Dialogo>
+        <Dialogo
+          abierto={cancelandoOfrecimientoEnviado !== null}
+          titulo={cancelandoOfrecimientoEnviado ? `¿Cancelar ayuda ofrecida a ${cancelandoOfrecimientoEnviado.comunidad}?` : ''}
+          accion="Confirmar cancelación"
+          nivelAccion="secundario"
+          textoAlterno="Mantener ofrecimiento"
+          onCerrar={() => setCancelandoOfrecimientoEnviado(null)}
+          onEnviar={(form) => {
+            if (!cancelandoOfrecimientoEnviado) return;
+            const motivo = String(new FormData(form).get('motivo') ?? '').trim();
+            const id = cancelandoOfrecimientoEnviado.id;
+            setCancelandoOfrecimientoEnviado(null);
+            confirmarCancelarOfrecimientoEnviado(id, motivo);
+          }}
+        >
+          <p className="mb-4 text-rd-14 text-rd-ink-2">
+            {cancelandoOfrecimientoEnviado ? (
+              <>
+                Ofrecimiento de <strong>{cifra(cancelandoOfrecimientoEnviado.cant)} {cancelandoOfrecimientoEnviado.u}</strong> de{' '}
+                <strong>{cancelandoOfrecimientoEnviado.rec.toLowerCase()}</strong>. La comunidad será notificada y su necesidad volverá a mostrar que le falta este recurso.
+              </>
+            ) : null}
+          </p>
+          <div className="mb-2">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="motivo-cancelar-ofrec-env" className="block text-rd-13 font-semibold text-rd-ink">
+                Motivo o mensaje de cancelación
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="motivo-cancelar-ofrec-env"
+              name="motivo"
+              rows={3}
+              placeholder="Ej. Inconvenientes de logística o cambio en la disponibilidad de insumos..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+            <p className="mt-1 text-rd-11-5 text-rd-ink-meta">
+              Este motivo quedará visible en el historial de ayudas ofrecidas.
+            </p>
+          </div>
+        </Dialogo>
+        <Dialogo
+          abierto={cancelandoRecibidaCompromiso !== null}
+          titulo={cancelandoRecibidaCompromiso ? `¿Cancelar el compromiso de ayuda con ${cancelandoRecibidaCompromiso.org}?` : ''}
+          accion="Cancelar compromiso"
+          nivelAccion="secundario"
+          textoAlterno="Dejar como está"
+          onCerrar={() => setCancelandoRecibidaCompromiso(null)}
+          onEnviar={(form) => {
+            if (!cancelandoRecibidaCompromiso) return;
+            const motivo = String(new FormData(form).get('motivo') ?? '').trim();
+            const id = cancelandoRecibidaCompromiso.id;
+            setCancelandoRecibidaCompromiso(null);
+            confirmarCancelarRecibidaCompromiso(id, motivo);
+          }}
+        >
+          <p className="mb-4 text-rd-14 text-rd-ink-2">
+            {cancelandoRecibidaCompromiso ? (
+              <>
+                Entrega de <strong>{cifra(cancelandoRecibidaCompromiso.cant)} {cancelandoRecibidaCompromiso.u}</strong> de{' '}
+                <strong>{cancelandoRecibidaCompromiso.rec.toLowerCase()}</strong>. Le notificaremos de inmediato a {cancelandoRecibidaCompromiso.org} para que no despache el transporte y pueda redirigir la ayuda.
+              </>
+            ) : null}
+          </p>
+          <div className="mb-2">
+            <div className="mb-1 flex items-baseline justify-between">
+              <label htmlFor="motivo-cancelar-recibida-comp" className="block text-rd-13 font-semibold text-rd-ink">
+                Motivo de cancelación
+              </label>
+              <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+            </div>
+            <textarea
+              id="motivo-cancelar-recibida-comp"
+              name="motivo"
+              rows={3}
+              placeholder="Ej. Cambio de planes en el territorio o ya no es posible recibir la ayuda en este momento..."
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+          </div>
         </Dialogo>
         <DialogoCierre
           abierto={marcandoEnCamino !== null}
           titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()} · ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho para evidenciar que la ayuda va en ruta.`
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()} · ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
               : ''
           }
           accion="Marcar en camino"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
+          nota={{
+            etiqueta: 'Detalles de despacho o transporte (vehículo, conductor, ruta)',
+            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, llegada estimada 2:30 PM...',
+            ayuda: 'Estas notas quedarán registradas en el seguimiento y en el acta oficial de entrega.',
+          }}
           onCerrar={() => setMarcandoEnCamino(null)}
-          onEnviar={(fotos, lista) => {
-            if (marcandoEnCamino) marcarEnCamino(marcandoEnCamino.id, fotos, lista);
+          onEnviar={(fotos, lista, notaTexto) => {
+            if (marcandoEnCamino) marcarEnCamino(marcandoEnCamino.id, fotos, lista, notaTexto);
             setMarcandoEnCamino(null);
           }}
         />
@@ -919,9 +1329,14 @@ const Panel: React.FC = () => {
           titulo={certificando ? `Certificar la entrega a ${certificando.quien}` : ''}
           texto={certificando ? `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()}. ${textoCertificar(certificando)}` : ''}
           accion="Certificar"
+          nota={{
+            etiqueta: 'Observaciones o constancia de entrega',
+            placeholder: 'Ej. Entregado a la líder comunitaria Martha en la sede comunal, insumos verificados a satisfacción...',
+            ayuda: 'Detalles de la entrega que quedarán registrados en el acta oficial bilateral.',
+          }}
           onCerrar={() => setCertificando(null)}
-          onEnviar={(fotos, lista) => {
-            if (certificando) certificar(certificando.id, fotos, lista);
+          onEnviar={(fotos, lista, notaTexto) => {
+            if (certificando) certificar(certificando.id, fotos, lista, notaTexto);
             setCertificando(null);
           }}
         />
@@ -930,9 +1345,14 @@ const Panel: React.FC = () => {
           titulo={confirmando ? `Confirmar lo que llegó de ${confirmando.org}` : ''}
           texto={confirmando ? `${cifra(confirmando.cant)} ${confirmando.u} de ${confirmando.rec.toLowerCase()} · entregado ${confirmando.cuando}. Con tu confirmación la entrega cuenta como resuelta para los dos.` : ''}
           accion="Confirmar recibido"
+          nota={{
+            etiqueta: 'Observaciones o novedades sobre lo recibido',
+            placeholder: 'Ej. Recibido a entera conformidad en buen estado, insumos completos según lo acordado...',
+            ayuda: 'Tus observaciones quedarán registradas en el acta oficial bilateral.',
+          }}
           onCerrar={() => setConfirmando(null)}
-          onEnviar={(fotos, lista) => {
-            if (confirmando) confirmarRecibido(confirmando.id, fotos, lista);
+          onEnviar={(fotos, lista, notaTexto) => {
+            if (confirmando) confirmarRecibido(confirmando.id, fotos, lista, notaTexto);
             setConfirmando(null);
           }}
         />
@@ -1344,6 +1764,9 @@ const BarraAvance: React.FC<{ hecho: number; camino: number; texto: string }> = 
 const MisNecesidades: React.FC<{
   recursos: RecursoPedido[];
   solicitudesEnviadas?: SolicitudEnviada[];
+  matchesPorRecurso?: Map<string, CoincidenciaPublicacion[]>;
+  onVerMatches?: (recursoNombre: string) => void;
+  onVerPublicacion?: () => void;
   onEditar: (r: RecursoPedido) => void;
   onTogglePausa: (r: RecursoPedido) => void;
   onCancelarSolicitudEnviada?: (id: number | string) => void;
@@ -1351,6 +1774,9 @@ const MisNecesidades: React.FC<{
 }> = ({
   recursos,
   solicitudesEnviadas = [],
+  matchesPorRecurso,
+  onVerMatches,
+  onVerPublicacion,
   onEditar,
   onTogglePausa,
   onCancelarSolicitudEnviada,
@@ -1412,16 +1838,47 @@ const MisNecesidades: React.FC<{
               k: 'acc',
               etiqueta: 'Acciones',
               acc: true,
-              celda: (r) => (
-                <>
-                  <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
-                    Editar
-                  </Button>
-                  <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
-                    {r.pausado ? 'Reanudar' : 'Pausar'}
-                  </Button>
-                </>
-              ),
+              celda: (r) => {
+                const matches = matchesPorRecurso?.get(r.n) ?? [];
+                return (
+                  <div className="flex items-center justify-end gap-2">
+                    {matches.length > 0 && (
+                      <FilaSugerencias
+                        n={matches.length}
+                        total={(matches as any).total ?? matches.length}
+                        onVer={() => onVerMatches?.(r.n)}
+                        compacta
+                        tamano="sm"
+                        variante="suave"
+                        brillo={false}
+                      />
+                    )}
+                    <MenuAcciones
+                      items={[
+                        {
+                          texto: 'Ver publicación',
+                          icono: <Eye className="h-4 w-4" />,
+                          onElegir: () => onVerPublicacion?.(),
+                        },
+                        {
+                          texto: 'Editar recurso',
+                          icono: <Edit3 className="h-4 w-4" />,
+                          onElegir: () => onEditar(r),
+                        },
+                        {
+                          texto: r.pausado ? 'Reanudar recurso' : 'Pausar recurso',
+                          icono: r.pausado ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />,
+                          onElegir: () => onTogglePausa(r),
+                        },
+                      ]}
+                      etiqueta={`Acciones de ${r.n}`}
+                      tamano="sm"
+                      nivel="secundario"
+                      flotante
+                    />
+                  </div>
+                );
+              },
             },
           ]}
         />
@@ -1525,9 +1982,14 @@ const MisNecesidades: React.FC<{
                     );
                   }
                   return (
-                    <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
-                      Cancelada
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
+                        Cancelada
+                      </span>
+                      {s.motivoCancelacion && (
+                        <small className="mt-1 block text-rd-11 text-rd-ink-meta leading-tight">{s.motivoCancelacion}</small>
+                      )}
+                    </div>
                   );
                 },
               },
@@ -1838,6 +2300,42 @@ const DialogoActa: React.FC<{
             </div>
           </div>
 
+          {/* Observaciones y constancia operativa */}
+          {(a.notasCamino || a.notasEntrega || a.notasRecibe) && (
+            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5 mb-3.5 space-y-2.5">
+              <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                Observaciones y constancia operativa
+              </span>
+              {a.notasCamino && (
+                <div className="text-rd-12">
+                  <span className="font-semibold text-rd-ink flex items-center gap-1.5 mb-0.5">
+                    <Truck className="h-3.5 w-3.5 text-rd-navy" />
+                    Notas de despacho y transporte en ruta:
+                  </span>
+                  <p className="m-0 text-rd-ink-2 pl-5 italic">«{a.notasCamino}»</p>
+                </div>
+              )}
+              {a.notasEntrega && (
+                <div className="text-rd-12">
+                  <span className="font-semibold text-rd-ink flex items-center gap-1.5 mb-0.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-rd-green" />
+                    Constancia al certificar entrega ({a.entrego}):
+                  </span>
+                  <p className="m-0 text-rd-ink-2 pl-5 italic">«{a.notasEntrega}»</p>
+                </div>
+              )}
+              {a.notasRecibe && (
+                <div className="text-rd-12">
+                  <span className="font-semibold text-rd-ink flex items-center gap-1.5 mb-0.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-rd-navy" />
+                    Constancia al confirmar recepción ({a.recibio}):
+                  </span>
+                  <p className="m-0 text-rd-ink-2 pl-5 italic">«{a.notasRecibe}»</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Historia de impacto humano y beneficiarios */}
           {(a.historia || a.cierre.personasBeneficiadas) && (
             <div className="rounded-rd-md border-l-3 border-brand-yellow bg-rd-sunken/60 p-3.5 mb-3.5">
@@ -1909,6 +2407,9 @@ const MisOfertas: React.FC<{
   recursos: RecursoOfrecido[];
   sol: Solicitud[];
   ofrecimientosEnviados?: OfrecimientoEnviado[];
+  matchesPorRecurso?: Map<string, CoincidenciaPublicacion[]>;
+  onVerMatches?: (recursoNombre: string) => void;
+  onVerPublicacion?: () => void;
   onEditar: (r: RecursoOfrecido) => void;
   onTogglePausa: (r: RecursoOfrecido) => void;
   onCancelarOfrecimientoEnviado?: (id: number | string) => void;
@@ -1917,6 +2418,9 @@ const MisOfertas: React.FC<{
   recursos,
   sol,
   ofrecimientosEnviados = [],
+  matchesPorRecurso,
+  onVerMatches,
+  onVerPublicacion,
   onEditar,
   onTogglePausa,
   onCancelarOfrecimientoEnviado,
@@ -1988,16 +2492,47 @@ const MisOfertas: React.FC<{
               k: 'acc',
               etiqueta: 'Acciones',
               acc: true,
-              celda: (r) => (
-                <>
-                  <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
-                    Editar
-                  </Button>
-                  <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
-                    {r.pausado ? 'Reanudar' : 'Pausar'}
-                  </Button>
-                </>
-              ),
+              celda: (r) => {
+                const matches = matchesPorRecurso?.get(r.n) ?? [];
+                return (
+                  <div className="flex items-center justify-end gap-2">
+                    {matches.length > 0 && (
+                      <FilaSugerencias
+                        n={matches.length}
+                        total={(matches as any).total ?? matches.length}
+                        onVer={() => onVerMatches?.(r.n)}
+                        compacta
+                        tamano="sm"
+                        variante="suave"
+                        brillo={false}
+                      />
+                    )}
+                    <MenuAcciones
+                      items={[
+                        {
+                          texto: 'Ver publicación',
+                          icono: <Eye className="h-4 w-4" />,
+                          onElegir: () => onVerPublicacion?.(),
+                        },
+                        {
+                          texto: 'Editar recurso',
+                          icono: <Edit3 className="h-4 w-4" />,
+                          onElegir: () => onEditar(r),
+                        },
+                        {
+                          texto: r.pausado ? 'Reanudar recurso' : 'Pausar recurso',
+                          icono: r.pausado ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />,
+                          onElegir: () => onTogglePausa(r),
+                        },
+                      ]}
+                      etiqueta={`Acciones de ${r.n}`}
+                      tamano="sm"
+                      nivel="secundario"
+                      flotante
+                    />
+                  </div>
+                );
+              },
             },
           ]}
         />
@@ -2096,9 +2631,14 @@ const MisOfertas: React.FC<{
                     );
                   }
                   return (
-                    <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
-                      Cancelado
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
+                        Cancelado
+                      </span>
+                      {o.motivoCancelacion && (
+                        <small className="mt-1 block text-rd-11 text-rd-ink-meta leading-tight">{o.motivoCancelacion}</small>
+                      )}
+                    </div>
                   );
                 },
               },
@@ -2196,6 +2736,7 @@ const Seguimiento: React.FC<{
   onVerFotosRecibida: (r: EntregaRecibida, i: number) => void;
   onAceptarRecibida: (id: number) => void;
   onRechazarRecibida: (id: number) => void;
+  onCancelarRecibida?: (r: EntregaRecibida) => void;
   onVerPublicacionRecibida?: (r: EntregaRecibida) => void;
 }> = ({
   modulos,
@@ -2208,6 +2749,7 @@ const Seguimiento: React.FC<{
   onVerFotosRecibida,
   onAceptarRecibida,
   onRechazarRecibida,
+  onCancelarRecibida,
   onVerPublicacionRecibida,
 }) => {
   const tieneAmbos = modulos.pide && modulos.ofrece;
@@ -2533,6 +3075,7 @@ const Seguimiento: React.FC<{
                     onVerFotos={onVerFotosRecibida}
                     onAceptar={onAceptarRecibida}
                     onRechazar={onRechazarRecibida}
+                    onCancelar={onCancelarRecibida}
                     onVerPublicacion={onVerPublicacionRecibida}
                     menuFlotante
                     arrastre={{

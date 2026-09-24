@@ -773,10 +773,10 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
             <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
             <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
           </span>
-          Buscando sugerencias cerca…
+          Buscando matches…
         </p>
       ) : coincidencias.length > 0 ? (
-        <FilaSugerencias n={coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => setVista('sugerencias')} className="mt-6" />
+        <FilaSugerencias n={coincidencias.length} total={(coincidencias as any).total ?? coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => setVista('sugerencias')} className="mt-6" />
       ) : null}
 
       {/* Tres acciones sobre lo que acabas de publicar, en icono. Nivel 2 (223): cambian de

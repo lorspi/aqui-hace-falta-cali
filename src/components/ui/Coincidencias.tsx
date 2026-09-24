@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BadgeCheck, ChevronRight, Map as MapIcon, Radar, X } from 'lucide-react';
+import { BadgeCheck, ChevronRight, Map as MapIcon, Monitor, Package, Radar, X } from 'lucide-react';
 import type { Publicacion } from '../../types/publicacion';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { cifra, distanciaTexto, iniciales, unidad } from '../../utils/publicaciones';
@@ -11,18 +11,27 @@ import { Button } from './Button';
  * (`components/RadarMatchModal.tsx`) con nuestro cruce por recurso y distancia
  * (`utils/cruce.ts`). En la interfaz se llaman sugerencias (manual § vocabulario) y el icono es
  * el radar de la marca, el que busca ayuda cerca en la cortinilla (76). Piezas:
- *   `Puntaje`             el porcentaje de compatibilidad, en píldora verde.
- *   `ListaCoincidencias`  una fila por publicación sugerida: quién, compatibilidad, distancia, qué
- *                         tiene en común, y las dos acciones (comprometerse, ver en el mapa).
+ *   `Puntaje`             el porcentaje de compatibilidad, en píldora con color según nivel.
+ *   `ListaCoincidencias`  una fila por publicación sugerida: quién, compatibilidad, distancia o modalidad,
+ *                         qué tiene en común, y las dos acciones (comprometerse, ver en el mapa).
  *   `DialogoCoincidencias` la lista en un `<dialog>`, para abrirla desde una tarjeta.
  *   `FilaSugerencias`     la fila que anuncia cuántas hay y abre la lista.
  *   `ResumenCoincidencias` esa fila dentro de la tarjeta, cuando hay sugerencias.
  */
-export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: string }> = ({ n, compacto = false, className = '' }) => (
-  <span className={`inline-flex shrink-0 items-center rounded-full border border-rd-green-line bg-rd-green-soft px-2 py-0.5 text-rd-11-5 font-semibold text-rd-green tabular-nums ${className}`}>
-    {n} %{compacto ? <span className="sr-only"> de compatibilidad</span> : ' de compatibilidad'}
-  </span>
-);
+export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: string }> = ({ n, compacto = false, className = '' }) => {
+  const color =
+    n >= 80
+      ? 'border-rd-green-line bg-rd-green-soft text-rd-green'
+      : n >= 65
+      ? 'border-rd-navy-line bg-rd-navy-soft text-rd-navy'
+      : 'border-rd-amber-line bg-rd-amber-soft text-rd-amber-ink';
+
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-rd-11-5 font-semibold tabular-nums ${color} ${className}`}>
+      {n} %{compacto ? <span className="sr-only"> de compatibilidad</span> : ' de compatibilidad'}
+    </span>
+  );
+};
 
 /** «Ofrece 800 L de agua potable, 20 kits de alimentos». Con coma y no con punto medio: el
  *  manual de estilo lo admite para separar datos de una línea, pero Alejandro lo prohibió en
@@ -40,11 +49,13 @@ export interface ListaCoincidenciasProps {
   hechas?: string[];
   onPrimaria: (id: string) => void;
   onVerEnMapa: (id: string) => void;
+  /** Recurso específico filtrado al abrir desde la tabla del panel */
+  recursoFoco?: string;
 }
 
 export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicacion, coincidencias, hechas = [], onPrimaria, onVerEnMapa }) => {
   const pide = publicacion.tipo === 'necesidad';
-  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">Todavía no hay sugerencias cerca. La publicación ya está en el mapa y te avisamos apenas aparezca una.</p>;
+  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">Todavía no hay matches disponibles. La publicación ya está en el mapa y te avisamos apenas aparezca uno.</p>;
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {coincidencias.map((c) => {
@@ -58,7 +69,11 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
             </div>
             <p className="mt-2 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-rd-12-5 text-rd-ink-meta tabular-nums">
               <Puntaje n={c.puntaje} />
-              {distanciaTexto(c.km)}
+              <span className="inline-flex items-center gap-1">
+                {c.alcance === 'remoto' && <Monitor aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
+                {c.alcance === 'nacional' && <Package aria-hidden="true" className="h-3.5 w-3.5 text-rd-amber-ink" />}
+                <span>{c.etiquetaAlcance || distanciaTexto(c.km)}</span>
+              </span>
             </p>
             <p className="m-0 text-rd-13 text-rd-ink">
               <span className="font-medium text-rd-ink-2">{pide ? 'Ofrece' : 'Necesita'}</span> {loQueTiene(c)}
@@ -81,7 +96,7 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
   );
 };
 
-/** La lista en un diálogo: «Coincidencias para {quién}». */
+/** La lista en un diálogo: «Matches para {quién}». */
 export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => void } & ListaCoincidenciasProps> = ({ abierto, onCerrar, ...lista }) => {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -99,9 +114,9 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
             <div className="min-w-0 flex-1">
               <h2 id="rd-coincidencias-t" className="font-rd m-0 flex items-center gap-2 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">
                 <Radar aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
-                Sugerencias para {lista.publicacion.org}
+                Matches {lista.recursoFoco ? `para ${lista.recursoFoco} · ` : 'para '}{lista.publicacion.org}
               </h2>
-              <p className="mt-1 mb-0 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas a menos de 20 km que tienen algo de lo que le falta.' : 'Necesidades a menos de 20 km que piden algo de lo que ofrece.'}</p>
+              <p className="mt-1 mb-0 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas compatibles que tienen lo que hace falta en tu zona o a nivel nacional.' : 'Necesidades compatibles que piden lo que ofreces en tu zona o a nivel nacional.'}</p>
             </div>
             <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
               <X aria-hidden="true" className="h-5 w-5" />
@@ -116,34 +131,57 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
   );
 };
 
-/** «3 sugerencias cerca». El manual no admite «match»: en la interfaz es «sugerencia». */
-export function textoSugerencias(n: number, corto = false): string {
-  return `${n} ${n === 1 ? 'sugerencia' : 'sugerencias'}${corto ? '' : ' cerca'}`;
+export const TOPE_MATCHES_DEFECTO = 5;
+
+/** «1 match», «5 matches» o «5+ matches». Texto unificado para todas las vistas de Radar Match. */
+export function textoMatches(n: number, total?: number, maximo: number = TOPE_MATCHES_DEFECTO): string {
+  const conteo = total ?? n;
+  if (conteo > maximo) {
+    return `${maximo}+ matches`;
+  }
+  return `${conteo} ${conteo === 1 ? 'match' : 'matches'}`;
 }
 
+/** Alias para compatibilidad con código existente */
+export const textoSugerencias = (n: number, _corto?: boolean) => textoMatches(n);
+
 /**
- * Dentro de la tarjeta: la fila que dice que el cruce encontró sugerencias y abre la lista
- * (Alejandro, 21 de septiembre de 2026). No es un chip (los chips de la tarjeta dicen tipo y
- * estado): es una fila a lo ancho con el radar de la marca, el texto y el chevron de «esto
- * abre algo». Va en un degradado coral → navy, el único sitio de la herramienta donde los dos
- * colores tienen razón para tocarse: una necesidad (coral) y una oferta (navy) que se
- * encuentran (gramática de color, 139). El brillo la recorre una sola vez al aparecer.
+ * Dentro de la tarjeta: la fila que dice que el cruce encontró sugerencias y abre la lista.
+ * Muestra el número unificado de matches (ej. '1 match', '5 matches', '5+ matches').
  */
 export const ResumenCoincidencias: React.FC<{ publicacion: Publicacion; coincidencias?: CoincidenciaPublicacion[]; onVer: () => void; compacta?: boolean; className?: string }> = ({ publicacion: _p, coincidencias, onVer, compacta = false, className = '' }) => {
   if (!coincidencias || !coincidencias.length) return null;
-  return <FilaSugerencias n={coincidencias.length} onVer={onVer} compacta={compacta} className={className} />;
+  const total = (coincidencias as any).total ?? coincidencias.length;
+  return <FilaSugerencias n={coincidencias.length} total={total} onVer={onVer} compacta={compacta} className={className} />;
 };
 
 /**
- * La fila de sugerencias, sola: la usa la tarjeta y la pantalla de éxito al publicar. Dos
- * variantes (Alejandro, 21 de septiembre de 2026): `suave` (la de la tarjeta: el degradado
- * coral → navy pleno en el contorno y al 85 % por dentro, texto en blanco, y el degradado se
- * desplaza despacio y sin parar) y `relleno` (solo la sugerencia fuerte al publicar: el degradado
- * pleno llena la fila, texto en blanco, y una luz la recorre). Interpolan en sRGB para que el
- * medio no se lave. `brillo` (por defecto sí) es ese movimiento, una sola vez.
+ * La fila de sugerencias/matches: la usa la tarjeta y la pantalla de éxito al publicar.
+ * Unificada con la etiqueta «1 match» o «N matches» (o «5+ matches» si supera el tope).
  */
-export const FilaSugerencias: React.FC<{ n: number; onVer: () => void; variante?: 'suave' | 'relleno'; brillo?: boolean; compacta?: boolean; className?: string }> = ({ n, onVer, variante = 'suave', brillo = true, compacta = false, className = '' }) => {
+export const FilaSugerencias: React.FC<{
+  n: number;
+  total?: number;
+  onVer: () => void;
+  variante?: 'suave' | 'relleno';
+  brillo?: boolean;
+  compacta?: boolean;
+  tamano?: 'sm' | 'md';
+  className?: string;
+  maximo?: number;
+}> = ({
+  n,
+  total,
+  onVer,
+  variante = 'suave',
+  brillo = true,
+  compacta = false,
+  tamano = 'md',
+  className = '',
+  maximo = TOPE_MATCHES_DEFECTO,
+}) => {
   const relleno = variante === 'relleno';
+  const esSm = tamano === 'sm';
   return (
     <button
       type="button"
@@ -151,8 +189,12 @@ export const FilaSugerencias: React.FC<{ n: number; onVer: () => void; variante?
         ev.stopPropagation();
         onVer();
       }}
-      className={`font-rd relative flex cursor-pointer items-center overflow-hidden rounded-rd-lg text-left font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${
-        compacta ? 'w-auto gap-1.5 px-2.5 py-1.5 text-rd-12-5' : 'w-full gap-2.5 px-3.5 py-2.5 text-rd-13 pointer-coarse:min-h-rd-tactil'
+      className={`font-rd relative flex cursor-pointer items-center overflow-hidden text-left font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${
+        esSm
+          ? 'h-7 w-auto gap-1 px-2 text-rd-11-5 rounded-rd-md leading-none'
+          : compacta
+            ? 'w-auto gap-1.5 px-2.5 py-1.5 text-rd-12-5 rounded-rd-lg'
+            : 'w-full gap-2.5 px-3.5 py-2.5 text-rd-13 rounded-rd-lg pointer-coarse:min-h-rd-tactil'
       } ${
         relleno
           ? 'bg-linear-to-r/srgb from-rd-coral to-rd-navy text-white hover:brightness-95'
@@ -160,9 +202,9 @@ export const FilaSugerencias: React.FC<{ n: number; onVer: () => void; variante?
       } ${className}`}
     >
       {relleno && brillo && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-linear-to-r from-transparent via-white/30 to-transparent animate-rd-brillo motion-reduce:animate-none" />}
-      <Radar aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white' : 'text-rd-navy'}`} />
-      <span className={compacta ? 'whitespace-nowrap' : 'min-w-0 flex-1'}>{textoSugerencias(n, compacta)}</span>
-      <ChevronRight aria-hidden="true" className={`${compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white/80' : 'text-rd-ink-meta'}`} />
+      <Radar aria-hidden="true" className={`${esSm ? 'h-3.5 w-3.5' : compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white' : 'text-rd-navy'}`} />
+      <span className={esSm || compacta ? 'whitespace-nowrap' : 'min-w-0 flex-1'}>{textoMatches(n, total, maximo)}</span>
+      <ChevronRight aria-hidden="true" className={`${esSm ? 'h-3.5 w-3.5' : compacta ? 'h-4 w-4' : 'h-4.5 w-4.5'} shrink-0 ${relleno ? 'text-white/80' : 'text-rd-ink-meta'}`} />
     </button>
   );
 };

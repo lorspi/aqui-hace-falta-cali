@@ -454,7 +454,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
       <div className="space-y-4">
         <div>
           <h3 className="font-rd mb-2.5 text-rd-12 font-semibold uppercase tracking-wider text-rd-ink-meta">
-            Datos de contacto
+            Datos y acceso en RaDAR
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -473,25 +473,6 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
                 requerido
               />
             </div>
-            <Field
-              id="miembro-tel"
-              etiqueta="Celular"
-              tipo="tel"
-              inputMode="tel"
-              valor={tel}
-              onChange={(v) => {
-                setTel(v);
-                if (errorTel) {
-                  const clean = v.replace(/\D/g, '');
-                  if (v.trim() && clean.length >= 10) setErrorTel(null);
-                }
-              }}
-              onBlur={onBlurTel}
-              error={errorTel}
-              placeholder="300 000 0000"
-              autoComplete="tel"
-              requerido
-            />
             <Field
               id="miembro-correo"
               etiqueta="Correo electrónico"
@@ -523,6 +504,55 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
                   : 'Requerido para acceder a RaDAR.'
               }
             />
+            <Field
+              id="miembro-tel"
+              etiqueta="Celular"
+              tipo="tel"
+              inputMode="tel"
+              valor={tel}
+              onChange={(v) => {
+                setTel(v);
+                if (errorTel) {
+                  const clean = v.replace(/\D/g, '');
+                  if (v.trim() && clean.length >= 10) setErrorTel(null);
+                }
+              }}
+              onBlur={onBlurTel}
+              error={errorTel}
+              placeholder="300 000 0000"
+              autoComplete="tel"
+              requerido
+            />
+            <div className="sm:col-span-2">
+              <Field
+                id="miembro-acceso"
+                etiqueta="Acceso en RaDAR"
+                tipo="select"
+                requerido
+                valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
+                placeholder="Seleccionar nivel de acceso"
+                opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
+                error={errorRolPlataforma}
+                onBlur={() => {
+                  if (!rolPlataforma) setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
+                }}
+                onChange={(v) => {
+                  const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
+                  const nuevo = match ? match.valor : '';
+                  setRolPlataforma(nuevo);
+                  if (nuevo) setErrorRolPlataforma(null);
+                  if (nuevo === 'terreno' && errorCorreo === 'Escribe el correo electrónico para el acceso a RaDAR') {
+                    setErrorCorreo(null);
+                  }
+                }}
+              />
+              {rolPlataforma && (
+                <p className="mt-1.5 flex items-start gap-1.5 rounded-rd-md bg-rd-sunken px-2.5 py-1.5 text-rd-12 text-rd-ink-2">
+                  <span className="font-semibold text-rd-ink">Permisos:</span>
+                  <span>{ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.descripcion}</span>
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -571,36 +601,6 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
                 setDisp(match ? match.valor : '');
               }}
             />
-            <div className="sm:col-span-2">
-              <Field
-                id="miembro-acceso"
-                etiqueta="Acceso en RaDAR"
-                tipo="select"
-                requerido
-                valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
-                placeholder="Seleccionar nivel de acceso"
-                opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
-                error={errorRolPlataforma}
-                onBlur={() => {
-                  if (!rolPlataforma) setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
-                }}
-                onChange={(v) => {
-                  const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
-                  const nuevo = match ? match.valor : '';
-                  setRolPlataforma(nuevo);
-                  if (nuevo) setErrorRolPlataforma(null);
-                  if (nuevo === 'terreno' && errorCorreo === 'Escribe el correo electrónico para el acceso a RaDAR') {
-                    setErrorCorreo(null);
-                  }
-                }}
-              />
-              {rolPlataforma && (
-                <p className="mt-1.5 flex items-start gap-1.5 rounded-rd-md bg-rd-sunken px-2.5 py-1.5 text-rd-12 text-rd-ink-2">
-                  <span className="font-semibold text-rd-ink">Permisos:</span>
-                  <span>{ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.descripcion}</span>
-                </p>
-              )}
-            </div>
           </div>
         </div>
       </div>
