@@ -73,7 +73,7 @@ export function cantidadPorEstado(sol: Solicitud[], rec: string, estados: Solici
 /** Lo que queda de un recurso ofrecido: el total menos todo lo comprometido, en camino,
  *  entregado o confirmado. */
 export function quedan(sol: Solicitud[], r: RecursoOfrecido): number {
-  return Math.max(0, r.total - cantidadPorEstado(sol, r.n, ['aceptada', 'camino', 'entregada', 'confirmada', 'archivada']));
+  return Math.max(0, r.total - cantidadPorEstado(sol, r.n, ['aceptada', 'camino', 'entregada', 'confirmada', 'distribuida', 'archivada']));
 }
 
 export function nuevas(sol: Solicitud[]): number {
@@ -114,7 +114,7 @@ export function kpisDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol: Soli
     const camino = cuenta(d.recibidas, 'camino');
     const porConf = recibidasPorConfirmar(d.recibidas).length;
     /* Cada cuadrito es un tramo de la barra, con la misma cifra: las archivadas van aparte. */
-    const conf = cuenta(d.recibidas, 'confirmada');
+    const conf = cuenta(d.recibidas, 'confirmada') + cuenta(d.recibidas, 'distribuida');
     k.push({ k: 'Comprometidas', v: comp, d: comp === 1 ? 'entrega que alguien va a traer' : 'entregas que alguien va a traer', estado: 'aceptada' });
     k.push({ k: 'En camino', v: camino, d: 'hacia ti', estado: 'camino' });
     k.push({ k: 'Por confirmar', v: porConf, d: 'te llegaron, falta tu confirmación', estado: 'entregada' });
@@ -129,7 +129,7 @@ export function kpisDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol: Soli
   return k;
 }
 
-const TEXTO_TRAMO: Record<EstadoSolicitud, string> = { nueva: 'Nuevas', aceptada: 'Comprometidas', camino: 'En camino', entregada: 'Por confirmar', confirmada: 'Confirmadas', archivada: 'Archivadas' };
+const TEXTO_TRAMO: Record<EstadoSolicitud, string> = { nueva: 'Nuevas', aceptada: 'Comprometidas', camino: 'En camino', entregada: 'Por confirmar', confirmada: 'Confirmadas', distribuida: 'Distribuidas', archivada: 'Archivadas' };
 
 /** Cuántas entregas hay en cada estado, en el orden del ciclo, sin los estados vacíos. */
 export function tramosPorEstado(lista: { estado: EstadoSolicitud }[]): TramoBarra[] {
@@ -241,7 +241,7 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
   }
   if (m.pide) {
     d.recibidas
-      .filter((r) => (r.estado === 'confirmada' || r.estado === 'archivada') && r.cerradaEl)
+      .filter((r) => (r.estado === 'confirmada' || r.estado === 'distribuida' || r.estado === 'archivada') && r.cerradaEl)
       .forEach((r) => {
         lista.push({ lado: 'pide', fecha: r.cerradaEl!, fechaTexto: fechaCorta(r.cerradaEl!), entrego: r.org, recibio: d.org, rec: r.rec, cant: r.cant, u: r.u, lleva: r.vol ?? undefined, cierre: r.cierre ?? {}, confirmacion: textoCierreRecibida(r), historia: r.cierre?.historia, origen: { tipo: 'recibida', id: r.id } });
       });
@@ -254,8 +254,9 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
 }
 
 /** El cierre visto desde quien recibe: quién confirmó. */
-export function textoCierreRecibida(r: Pick<EntregaRecibida, 'org' | 'cierre'>): string {
+export function textoCierreRecibida(r: Pick<EntregaRecibida, 'org' | 'cierre'> & { estado?: EstadoSolicitud }): string {
   const c = r.cierre ?? {};
+  if (r.estado === 'distribuida') return 'Distribuida en la comunidad';
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${r.org}`;
   if (c.recibe) return 'Confirmada por ti';
   if (c.entrega) return `Certificada por ${r.org} · falta tu confirmación`;
@@ -272,6 +273,7 @@ export function textoActa(a: Acta): string {
     `Qué: ${a.cant} ${a.u} de ${a.rec.toLowerCase()}`,
     a.lleva ? `La llevó: ${a.lleva}` : '',
     `Cierre: ${a.confirmacion}`,
+    a.cierre?.personasBeneficiadas ? `Personas beneficiadas: ${a.cierre.personasBeneficiadas}` : '',
     a.historia ? `Lo que permitió: ${a.historia}` : '',
   ];
   return lineas.filter(Boolean).join('\n');

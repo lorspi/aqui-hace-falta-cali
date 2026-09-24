@@ -39,6 +39,12 @@ export const FOTOS_ENTREGA: Record<number, FotosEntrega> = {
     ],
     recibe: [{ url: `${RUTA}baldes-escombros.jpg`, alt: 'Tanques llenos en la cocina del albergue', quien: 'Esperanza Gómez · Albergue Bosa', cuando: '12 sep, 10:05 a. m.' }],
   },
+  2: {
+    entrega: [
+      { url: `${RUTA}brigadistas-camion.jpg`, alt: 'Carrotanque cargado en ruta al comedor', quien: 'Andrés Peña · Bomberos Voluntarios Usme', cuando: 'Hoy, 5:45 p. m.' },
+    ],
+    recibe: [],
+  },
   3: { entrega: [], recibe: [{ url: `${RUTA}voluntarios-accion.jpg`, alt: 'Los kits de alimentos en la despensa del comedor', quien: 'Luz Marina Silva · Comedor Villa Gloria', cuando: '13 sep, 11:20 a. m.' }] },
   8: {
     entrega: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Entrega del agua en la vereda', quien: 'Mateo Rojas · Bomberos Voluntarios Usme', cuando: '2 ago, 3:50 p. m.' }],

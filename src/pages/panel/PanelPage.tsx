@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, ListChecks, Map as MapIcon, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, FileText, Hand, HeartHandshake, ListChecks, Megaphone, Package, Phone, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, VEHICULOS, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
-import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
+import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos, FOTOS_ENTREGA, FOTOS_RECIBIDA } from '../../mocks/fotosMock';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { Button } from '../../components/ui/Button';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
@@ -16,11 +16,12 @@ import { IconoRecursoDe } from '../../components/ui/Recursos';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, DEPTOS, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES } from '../../mocks/panelMock';
+import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../mocks/panelMock';
 import { PUBLICACIONES } from '../../mocks/publicacionesMock';
 import type { ModulosCuenta } from '../../types/cuenta';
-import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud } from '../../types/panel';
-import type { Publicacion } from '../../types/publicacion';
+import type { Foto } from '../../types/flujo';
+import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
+import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
@@ -69,6 +70,20 @@ const Panel: React.FC = () => {
       if (guardado) return JSON.parse(guardado);
     } catch {}
     return NECESIDAD.recursos;
+  });
+  const [solicitudesEnviadas, setSolicitudesEnviadas] = useState<SolicitudEnviada[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-solicitudes-enviadas');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return SOLICITUDES_ENVIADAS;
+  });
+  const [ofrecimientosEnviados, setOfrecimientosEnviados] = useState<OfrecimientoEnviado[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-ofrecimientos-enviados');
+      if (guardado) return JSON.parse(guardado);
+    } catch {}
+    return OFRECIMIENTOS_ENVIADOS;
   });
   const [equipo, setEquipo] = useState<MiembroEquipo[]>(EQUIPO);
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
@@ -270,6 +285,26 @@ const Panel: React.FC = () => {
     });
     avisar(pausado ? `Necesidad de ${r.n} pausada temporalmente.` : `Necesidad de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
   };
+  const cancelarSolicitudEnviada = (id: number | string) => {
+    setSolicitudesEnviadas((prev) => {
+      const act = prev.map((s) => (s.id === id ? { ...s, estado: 'cancelada' as const } : s));
+      try {
+        localStorage.setItem('rd-solicitudes-enviadas', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+    avisar('Solicitud cancelada.', { tipo: 'ok' });
+  };
+  const cancelarOfrecimientoEnviado = (id: number | string) => {
+    setOfrecimientosEnviados((prev) => {
+      const act = prev.map((o) => (o.id === id ? { ...o, estado: 'cancelado' as const } : o));
+      try {
+        localStorage.setItem('rd-ofrecimientos-enviados', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+    avisar('Ofrecimiento de ayuda cancelado.', { tipo: 'ok' });
+  };
   const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     const nuevo: MiembroEquipo = {
       ...m,
@@ -293,8 +328,10 @@ const Panel: React.FC = () => {
      otro lo valida. Los tres diálogos viven aquí para que Resumen, Seguimiento y Entregas
      recibidas los compartan. */
   const [asignando, setAsignando] = useState<Solicitud | null>(null);
+  const [marcandoEnCamino, setMarcandoEnCamino] = useState<Solicitud | null>(null);
   const [certificando, setCertificando] = useState<Solicitud | null>(null);
   const [confirmando, setConfirmando] = useState<EntregaRecibida | null>(null);
+  const [distribuyendo, setDistribuyendo] = useState<EntregaRecibida | null>(null);
   const [cancelando, setCancelando] = useState<Solicitud | null>(null);
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
@@ -400,9 +437,58 @@ const Panel: React.FC = () => {
       window.print();
     }, 150);
   };
-  const certificar = (id: number, fotos: number) => {
+  const marcarEnCamino = (id: number, fotos: number, fotosLista?: Foto[]) => {
     const s = sol.find((x) => x.id === id);
-    setSol((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, entrega: { fotos } } } : x)));
+    if (!s) return;
+    if (fotosLista && fotosLista.length > 0) {
+      if (!FOTOS_ENTREGA[id]) {
+        FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
+      }
+      const quien = quienLleva(s, equipo) ?? 'Bomberos Voluntarios Usme';
+      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
+        url: f.url,
+        alt: `En camino a ${s.quien} - ${f.nombre}`,
+        quien,
+        cuando: 'Hoy en camino',
+      }));
+      FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
+    }
+    setSol((l) =>
+      l.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              estado: 'camino',
+              ...(fotosLista?.length || fotos > 0
+                ? {
+                    cierre: {
+                      ...x.cierre,
+                      entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+                    },
+                  }
+                : {}),
+            }
+          : x
+      )
+    );
+    avisar(`Ayuda para ${s.quien} marcada en camino. Le avisamos que el recurso va en ruta.`, { tipo: 'ok' });
+  };
+  const certificar = (id: number, fotos: number, fotosLista?: Foto[]) => {
+    const s = sol.find((x) => x.id === id);
+    if (fotosLista && fotosLista.length > 0) {
+      if (!FOTOS_ENTREGA[id]) {
+        FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
+      }
+      const quien = (s ? quienLleva(s, equipo) : null) ?? 'Bomberos Voluntarios Usme';
+      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
+        url: f.url,
+        alt: `Certificación de entrega - ${f.nombre}`,
+        quien,
+        cuando: 'Hoy cert.',
+      }));
+      FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
+    }
+    setSol((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) } } } : x)));
     if (s) avisar(s.cierre?.recibe ? `Entrega a ${s.quien} certificada. Ya la habían confirmado.` : `Entrega a ${s.quien} certificada. Le avisamos para que la confirme.`, { tipo: 'ok' });
   };
   const archivar = (id: number) => {
@@ -415,10 +501,62 @@ const Panel: React.FC = () => {
     setSol((l) => l.filter((x) => x.id !== id));
     if (s) avisar(`Compromiso con ${s.quien} cancelado: ${motivo.toLowerCase()}. Le avisamos.`);
   };
-  const confirmarRecibido = (id: number, fotos: number) => {
+  const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[]) => {
     const r = recibidas.find((x) => x.id === id);
-    setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, recibe: { fotos } } } : x)));
+    if (fotosLista && fotosLista.length > 0) {
+      if (!FOTOS_RECIBIDA[id]) {
+        FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
+      }
+      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
+        url: f.url,
+        alt: `Confirmación de recibido - ${f.nombre}`,
+        quien: 'Carlos Peña · Bomberos Voluntarios Usme',
+        cuando: 'Hoy conf.',
+      }));
+      FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
+    }
+    setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'confirmada', cierre: { ...x.cierre, recibe: { fotos: (x.cierre?.recibe?.fotos ?? 0) + (fotosLista?.length ?? fotos) } } } : x)));
     if (r) avisar(`Listo, quedó confirmado lo que llegó de ${r.org}.`, { tipo: 'ok' });
+  };
+  const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
+    const r = recibidas.find((x) => x.id === id);
+    if (!r) return;
+    if (fotosLista && fotosLista.length > 0) {
+      if (!FOTOS_RECIBIDA[id]) {
+        FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
+      }
+      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
+        url: f.url,
+        alt: `Distribución en comunidad - ${f.nombre}`,
+        quien: 'JAC / Comunidad receptora',
+        cuando: 'Hoy dist.',
+      }));
+      FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
+    }
+    setRecibidas((l) =>
+      l.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              estado: 'distribuida',
+              cierre: {
+                ...x.cierre,
+                historia: nota || x.cierre?.historia,
+                personasBeneficiadas: personasBeneficiadas ?? x.cierre?.personasBeneficiadas,
+                recibe: {
+                  fotos: (x.cierre?.recibe?.fotos ?? 0) + (fotosLista?.length ?? fotos),
+                },
+              },
+            }
+          : x
+      )
+    );
+    avisar(`Distribución de ayuda de ${r.org} certificada en comunidad.`, { tipo: 'ok' });
+  };
+  const archivarRecibida = (id: number) => {
+    const r = recibidas.find((x) => x.id === id);
+    setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'archivada' } : x)));
+    if (r) avisar(`Entrega de ${r.org} archivada.`);
   };
   const aceptarRecibida = (id: number) => {
     setRecibidas((l) => l.map((r) => (r.id === id ? { ...r, estado: 'aceptada' } : r)));
@@ -433,6 +571,7 @@ const Panel: React.FC = () => {
     onAceptar: aceptar,
     onRechazar: rechazar,
     onMover: mover,
+    onEnCamino: setMarcandoEnCamino,
     onAsignar: setAsignando,
     onRecordar: recordar,
     onCertificar: setCertificando,
@@ -452,6 +591,10 @@ const Panel: React.FC = () => {
     if (que === 'aceptar-recibida') aceptarRecibida(id);
     if (que === 'rechazar-recibida') rechazarRecibida(id);
     if (que === 'asignar') setAsignando(sol.find((s) => s.id === id) ?? null);
+    if (que === 'camino') {
+      const s = sol.find((x) => x.id === id);
+      if (s) setMarcandoEnCamino(s);
+    }
     if (que === 'certificar') setCertificando(sol.find((s) => s.id === id) ?? null);
   };
 
@@ -481,7 +624,7 @@ const Panel: React.FC = () => {
             {actual === 'necesidades' && (
               <MisNecesidades
                 recursos={recursosNecesidad}
-                idPublicacion={pubNecesidad.id}
+                solicitudesEnviadas={solicitudesEnviadas}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubNecesidad,
@@ -490,19 +633,15 @@ const Panel: React.FC = () => {
                   })
                 }
                 onTogglePausa={togglePausaNecesidad}
-                onGestionarPublicacion={() =>
-                  setGestionandoPublicacion({
-                    publicacion: pubNecesidad,
-                    modoInicial: 'vista',
-                  })
-                }
+                onCancelarSolicitudEnviada={cancelarSolicitudEnviada}
+                onIrASeguimiento={() => cambiarTab('seguimiento')}
               />
             )}
             {actual === 'ofertas' && (
               <MisOfertas
                 recursos={recursosOferta}
                 sol={sol}
-                idPublicacion={pubOferta.id}
+                ofrecimientosEnviados={ofrecimientosEnviados}
                 onEditar={(r) =>
                   setGestionandoPublicacion({
                     publicacion: pubOferta,
@@ -511,12 +650,8 @@ const Panel: React.FC = () => {
                   })
                 }
                 onTogglePausa={togglePausaOferta}
-                onGestionarPublicacion={() =>
-                  setGestionandoPublicacion({
-                    publicacion: pubOferta,
-                    modoInicial: 'vista',
-                  })
-                }
+                onCancelarOfrecimientoEnviado={cancelarOfrecimientoEnviado}
+                onIrASeguimiento={() => cambiarTab('seguimiento')}
               />
             )}
             {actual === 'seguimiento' && (
@@ -526,6 +661,8 @@ const Panel: React.FC = () => {
                 recibidas={recibidas}
                 acciones={accionesSolicitud}
                 onConfirmarRecibido={(id) => accion(`confirmar:${id}`)}
+                onDistribuirRecibida={setDistribuyendo}
+                onArchivarRecibida={archivarRecibida}
                 onVerFotosRecibida={verFotosRecibida}
                 onAceptarRecibida={aceptarRecibida}
                 onRechazarRecibida={rechazarRecibida}
@@ -618,13 +755,29 @@ const Panel: React.FC = () => {
           <Opciones nombre="motivo" etiqueta="Por qué" opciones={MOTIVOS_CANCELAR} columna />
         </Dialogo>
         <DialogoCierre
+          abierto={marcandoEnCamino !== null}
+          titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
+          texto={
+            marcandoEnCamino
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()} · ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho para evidenciar que la ayuda va en ruta.`
+              : ''
+          }
+          accion="Marcar en camino"
+          etiquetaFotos="Fotos del cargue o salida (opcionales)"
+          onCerrar={() => setMarcandoEnCamino(null)}
+          onEnviar={(fotos, lista) => {
+            if (marcandoEnCamino) marcarEnCamino(marcandoEnCamino.id, fotos, lista);
+            setMarcandoEnCamino(null);
+          }}
+        />
+        <DialogoCierre
           abierto={certificando !== null}
           titulo={certificando ? `Certificar la entrega a ${certificando.quien}` : ''}
           texto={certificando ? `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()}. ${textoCertificar(certificando)}` : ''}
           accion="Certificar"
           onCerrar={() => setCertificando(null)}
-          onEnviar={(fotos) => {
-            if (certificando) certificar(certificando.id, fotos);
+          onEnviar={(fotos, lista) => {
+            if (certificando) certificar(certificando.id, fotos, lista);
             setCertificando(null);
           }}
         />
@@ -634,9 +787,36 @@ const Panel: React.FC = () => {
           texto={confirmando ? `${cifra(confirmando.cant)} ${confirmando.u} de ${confirmando.rec.toLowerCase()} · entregado ${confirmando.cuando}. Con tu confirmación la entrega cuenta como resuelta para los dos.` : ''}
           accion="Confirmar recibido"
           onCerrar={() => setConfirmando(null)}
-          onEnviar={(fotos) => {
-            if (confirmando) confirmarRecibido(confirmando.id, fotos);
+          onEnviar={(fotos, lista) => {
+            if (confirmando) confirmarRecibido(confirmando.id, fotos, lista);
             setConfirmando(null);
+          }}
+        />
+        <DialogoCierre
+          abierto={distribuyendo !== null}
+          titulo={distribuyendo ? `Certificar distribución en la comunidad` : ''}
+          texto={
+            distribuyendo
+              ? `${cifra(distribuyendo.cant)} ${distribuyendo.u} de ${distribuyendo.rec.toLowerCase()} recibidos de ${distribuyendo.org}. Registra la historia de impacto, el número de personas beneficiadas y las evidencias de entrega en territorio.`
+              : ''
+          }
+          accion="Certificar distribución"
+          etiquetaFotos="Fotos de la entrega o planilla comunitaria (opcionales)"
+          nota={{
+            etiqueta: 'Historia de impacto (a quién benefició y cómo los ayudó)',
+            placeholder: 'Describe a quién benefició esta entrega, cómo les ayudó en el territorio, testimonios o detalles del impacto...',
+            ayuda: 'Cuéntanos cómo transformó esta ayuda a la comunidad o a las familias que la recibieron.',
+          }}
+          beneficiarios={{
+            etiqueta: 'Número de personas beneficiadas',
+            placeholder: 'Ej. 45',
+            ayuda: 'Selecciona una cantidad rápida o escribe el número aproximado de personas o familias atendidas.',
+            sugerencias: [10, 25, 50, 100, 200],
+          }}
+          onCerrar={() => setDistribuyendo(null)}
+          onEnviar={(fotos, lista, notaTexto, personasBeneficiadas) => {
+            if (distribuyendo) distribuirRecibida(distribuyendo.id, fotos, lista, notaTexto, personasBeneficiadas);
+            setDistribuyendo(null);
           }}
         />
       </div>
@@ -1004,89 +1184,219 @@ const BarraAvance: React.FC<{ hecho: number; camino: number; texto: string }> = 
 
 const MisNecesidades: React.FC<{
   recursos: RecursoPedido[];
-  idPublicacion?: string;
+  solicitudesEnviadas?: SolicitudEnviada[];
   onEditar: (r: RecursoPedido) => void;
   onTogglePausa: (r: RecursoPedido) => void;
-  onGestionarPublicacion?: () => void;
-}> = ({ recursos, idPublicacion, onEditar, onTogglePausa, onGestionarPublicacion }) => (
-  <Caja
-    titulo="Mis necesidades"
-    accion={
-      <div className="flex items-center gap-2">
-        {onGestionarPublicacion && (
-          <Button nivel="secundario" tamano="md" onClick={onGestionarPublicacion}>
-            Gestionar publicación
-          </Button>
-        )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${idPublicacion || NECESIDAD.id}`)}>
-          <MapIcon aria-hidden="true" className="h-5 w-5" />
-        </Button>
-      </div>
-    }
-  >
-    <Tabla
-      etiqueta="Mis necesidades"
-      filas={recursos}
-      clave={(r) => r.n}
-      columnas={[
-        {
-          k: 'recurso',
-          etiqueta: 'Recurso',
-          celda: (r) => (
-            <span className="flex items-start gap-2">
-              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
-                <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5">
-                  <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
-                  {r.pausado && (
-                    <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
-                      Pausada
+  onCancelarSolicitudEnviada?: (id: number | string) => void;
+  onIrASeguimiento?: () => void;
+}> = ({
+  recursos,
+  solicitudesEnviadas = [],
+  onEditar,
+  onTogglePausa,
+  onCancelarSolicitudEnviada,
+}) => {
+  // Las solicitudes aceptadas pasan 100% al tablero de Seguimiento (Ayuda que recibo)
+  const solicitudesVisibles = useMemo(
+    () => solicitudesEnviadas.filter((s) => s.estado !== 'aceptada'),
+    [solicitudesEnviadas],
+  );
+
+  return (
+    <>
+      <Caja titulo="Mis necesidades">
+        <Tabla
+          etiqueta="Mis necesidades"
+          filas={recursos}
+          clave={(r) => r.n}
+          columnas={[
+            {
+              k: 'recurso',
+              etiqueta: 'Recurso',
+              celda: (r) => (
+                <span className="flex items-start gap-2">
+                  <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
+                    <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5">
+                      <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
+                      {r.pausado && (
+                        <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
+                          Pausada
+                        </span>
+                      )}
                     </span>
-                  )}
+                    <small className="block text-rd-12 text-rd-ink-meta">{r.para}</small>
+                  </span>
                 </span>
-                <small className="block text-rd-12 text-rd-ink-meta">{r.para}</small>
-              </span>
-            </span>
-          ),
-        },
-        {
-          k: 'falta',
-          etiqueta: 'Falta',
-          num: true,
-          celda: (r) => {
-            /* Una sola línea, «N de M», como manda el manual: apilar cifra y total se veía
-               apeñuscado (Alejandro, 16 de septiembre de 2026). */
-            const falta = Math.max(0, r.total - r.confirmada - r.camino);
-            return <b className="font-semibold">{falta === 0 ? 'Nada' : `${cifra(falta)} de ${cifra(r.total)} ${r.unidad}`}</b>;
-          },
-        },
-        {
-          k: 'avance',
-          etiqueta: 'Avance',
-          ancha: true,
-          celda: (r) => <BarraAvance hecho={Math.round((r.confirmada / r.total) * 100)} camino={Math.round((r.camino / r.total) * 100)} texto={`${cifra(r.confirmada)} confirmado · ${cifra(r.camino)} en camino`} />,
-        },
-        {
-          k: 'acc',
-          etiqueta: 'Acciones',
-          acc: true,
-          celda: (r) => (
-            <>
-              <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
-                Editar
+              ),
+            },
+            {
+              k: 'falta',
+              etiqueta: 'Falta',
+              num: true,
+              celda: (r) => {
+                /* Una sola línea, «N de M», como manda el manual: apilar cifra y total se veía
+                   apeñuscado (Alejandro, 16 de septiembre de 2026). */
+                const falta = Math.max(0, r.total - r.confirmada - r.camino);
+                return <b className="font-semibold">{falta === 0 ? 'Nada' : `${cifra(falta)} de ${cifra(r.total)} ${r.unidad}`}</b>;
+              },
+            },
+            {
+              k: 'avance',
+              etiqueta: 'Avance',
+              ancha: true,
+              celda: (r) => <BarraAvance hecho={Math.round((r.confirmada / r.total) * 100)} camino={Math.round((r.camino / r.total) * 100)} texto={`${cifra(r.confirmada)} confirmado · ${cifra(r.camino)} en camino`} />,
+            },
+            {
+              k: 'acc',
+              etiqueta: 'Acciones',
+              acc: true,
+              celda: (r) => (
+                <>
+                  <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
+                    Editar
+                  </Button>
+                  <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
+                    {r.pausado ? 'Reanudar' : 'Pausar'}
+                  </Button>
+                </>
+              ),
+            },
+          ]}
+        />
+      </Caja>
+
+      <Caja
+        titulo={
+          <span className="flex items-center gap-2">
+            <span>Mis solicitudes a organizaciones</span>
+            {solicitudesVisibles.length > 0 && <Conteo n={solicitudesVisibles.length} />}
+          </span>
+        }
+      >
+        {solicitudesVisibles.length === 0 ? (
+          <Vacio
+            icono={<Megaphone className="h-6 w-6 text-rd-ink-2" />}
+            titulo="Sin solicitudes directas enviadas"
+            texto="Cuando encuentres una oferta de ayuda en el Radar y pidas recursos directamente a una organización, podrás ver aquí el estado de tu solicitud."
+            accion={
+              <Button nivel="secundario" tamano="md" onClick={() => irA(`${RUTAS.radar}?tipo=oferta`)}>
+                Ver ofertas en el Radar
               </Button>
-              <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
-                {r.pausado ? 'Reanudar' : 'Pausar'}
-              </Button>
-            </>
-          ),
-        },
-      ]}
-    />
-  </Caja>
-);
+            }
+          />
+        ) : (
+          <Tabla
+            etiqueta="Solicitudes a organizaciones"
+            filas={solicitudesVisibles}
+            clave={(s) => String(s.id)}
+            columnas={[
+              {
+                k: 'donante',
+                etiqueta: 'Organización donante',
+                celda: (s) => (
+                  <div className="min-w-0">
+                    <b className="block font-semibold text-rd-ink">{s.donante}</b>
+                    {s.donanteTipo && <small className="block text-rd-12 text-rd-ink-meta">{s.donanteTipo}</small>}
+                    {s.contacto?.tel && (
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-rd-12 text-rd-ink-2">
+                        <Phone className="h-3 w-3 text-rd-ink-3" />
+                        {s.contacto.tel}
+                        {s.contacto.wa && <IconoWhatsApp className="h-3 w-3 text-rd-whatsapp" />}
+                      </span>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                k: 'recurso',
+                etiqueta: 'Recurso solicitado',
+                celda: (s) => (
+                  <span className="flex items-center gap-2">
+                    {s.icono && (
+                      <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
+                        <IconoRecursoDe nombre={s.icono} className="h-3.75 w-3.75" />
+                      </span>
+                    )}
+                    <span className="min-w-0">
+                      <b className="font-semibold text-rd-ink">{cifra(s.cant)} {s.u}</b>
+                      <small className="block text-rd-12 text-rd-ink-meta">{s.rec}</small>
+                    </span>
+                  </span>
+                ),
+              },
+              {
+                k: 'cuando',
+                etiqueta: 'Radicado',
+                celda: (s) => (
+                  <span className="text-rd-12-5 text-rd-ink-2 inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 text-rd-ink-3" />
+                    {s.cuando}
+                  </span>
+                ),
+              },
+              {
+                k: 'estado',
+                etiqueta: 'Estado',
+                estado: true,
+                celda: (s) => {
+                  if (s.estado === 'en_revision') {
+                    return (
+                      <div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rd-amber-soft px-2.5 py-0.5 text-rd-11 font-semibold text-rd-amber-ink">
+                          <Clock className="h-3 w-3" />
+                          En revisión
+                        </span>
+                        <small className="mt-1 block text-rd-11 text-rd-ink-meta">Esperando respuesta de la entidad</small>
+                      </div>
+                    );
+                  }
+                  if (s.estado === 'declinada') {
+                    return (
+                      <div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
+                          <X className="h-3 w-3" />
+                          Declinada
+                        </span>
+                        {s.motivo && <small className="mt-1 block text-rd-11 text-rd-ink-meta leading-tight">{s.motivo}</small>}
+                      </div>
+                    );
+                  }
+                  return (
+                    <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
+                      Cancelada
+                    </span>
+                  );
+                },
+              },
+              {
+                k: 'acc',
+                etiqueta: 'Acción',
+                acc: true,
+                celda: (s) => {
+                  if (s.estado === 'en_revision') {
+                    return (
+                      <Button
+                        nivel="secundario"
+                        tamano="sm"
+                        onClick={() => onCancelarSolicitudEnviada?.(s.id)}
+                      >
+                        Cancelar
+                      </Button>
+                    );
+                  }
+                  return null;
+                },
+              },
+            ]}
+          />
+        )}
+      </Caja>
+    </>
+  );
+};
 
 
 
@@ -1331,15 +1641,24 @@ const DialogoActa: React.FC<{
             </div>
           </div>
 
-          {/* Historia de impacto humano */}
-          {a.historia && (
+          {/* Historia de impacto humano y beneficiarios */}
+          {(a.historia || a.cierre.personasBeneficiadas) && (
             <div className="rounded-rd-md border-l-3 border-brand-yellow bg-rd-sunken/60 p-3.5 mb-3.5">
-              <p className="m-0 mb-1 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                Impacto en territorio · Lo que permitió
-              </p>
-              <blockquote className="m-0 text-rd-13 leading-relaxed text-rd-ink italic">
-                «{a.historia}»
-              </blockquote>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                <p className="m-0 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
+                  Impacto en territorio · Lo que permitió
+                </p>
+                {a.cierre.personasBeneficiadas && (
+                  <span className="rounded-rd-full bg-rd-green-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-green">
+                    {a.cierre.personasBeneficiadas} {a.cierre.personasBeneficiadas === 1 ? 'persona beneficiada' : 'personas beneficiadas'}
+                  </span>
+                )}
+              </div>
+              {a.historia && (
+                <blockquote className="m-0 text-rd-13 leading-relaxed text-rd-ink italic">
+                  «{a.historia}»
+                </blockquote>
+              )}
             </div>
           )}
 
@@ -1392,131 +1711,267 @@ const DialogoActa: React.FC<{
 const MisOfertas: React.FC<{
   recursos: RecursoOfrecido[];
   sol: Solicitud[];
-  idPublicacion?: string;
+  ofrecimientosEnviados?: OfrecimientoEnviado[];
   onEditar: (r: RecursoOfrecido) => void;
   onTogglePausa: (r: RecursoOfrecido) => void;
-  onGestionarPublicacion?: () => void;
-}> = ({ recursos, sol, idPublicacion, onEditar, onTogglePausa, onGestionarPublicacion }) => (
-  <Caja
-    titulo="Mis ofertas"
-    accion={
-      <div className="flex items-center gap-2">
-        {onGestionarPublicacion && (
-          <Button nivel="secundario" tamano="md" onClick={onGestionarPublicacion}>
-            Gestionar publicación
-          </Button>
-        )}
-        <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" title="Ver en el mapa" onClick={() => irA(`${RUTAS.radar}?punto=${idPublicacion || OFERTA.id}`)}>
-          <MapIcon aria-hidden="true" className="h-5 w-5" />
-        </Button>
-      </div>
-    }
-  >
-    <Tabla
-      etiqueta="Mis ofertas"
-      filas={recursos}
-      clave={(r) => r.n}
-      columnas={[
-        {
-          k: 'recurso',
-          etiqueta: 'Recurso',
-          celda: (r) => (
-            <span className="flex items-start gap-2">
-              <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
-                <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5">
-                  <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
-                  {r.pausado && (
-                    <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
-                      Pausada
+  onCancelarOfrecimientoEnviado?: (id: number | string) => void;
+  onIrASeguimiento?: () => void;
+}> = ({
+  recursos,
+  sol,
+  ofrecimientosEnviados = [],
+  onEditar,
+  onTogglePausa,
+  onCancelarOfrecimientoEnviado,
+}) => {
+  // Los ofrecimientos aceptados pasan 100% al tablero de Seguimiento (Ayuda que entrego)
+  const ofrecimientosVisibles = useMemo(
+    () => ofrecimientosEnviados.filter((o) => o.estado !== 'aceptado'),
+    [ofrecimientosEnviados],
+  );
+
+  return (
+    <>
+      <Caja titulo="Mis ofertas">
+        <Tabla
+          etiqueta="Mis ofertas"
+          filas={recursos}
+          clave={(r) => r.n}
+          columnas={[
+            {
+              k: 'recurso',
+              etiqueta: 'Recurso',
+              celda: (r) => (
+                <span className="flex items-start gap-2">
+                  <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
+                    <IconoRecursoDe nombre={r.icono} className="h-3.75 w-3.75" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5">
+                      <b className={`font-semibold ${r.pausado ? 'text-rd-ink-meta line-through' : ''}`}>{r.n}</b>
+                      {r.pausado && (
+                        <span className="rounded-full bg-rd-sunken px-1.5 py-0.5 text-rd-10 font-semibold text-rd-amber-ink uppercase tracking-wider">
+                          Pausada
+                        </span>
+                      )}
                     </span>
-                  )}
+                    <small className="block text-rd-12 text-rd-ink-meta">{r.pres}</small>
+                  </span>
                 </span>
-                <small className="block text-rd-12 text-rd-ink-meta">{r.pres}</small>
-              </span>
-            </span>
-          ),
-        },
-        {
-          k: 'quedan',
-          etiqueta: 'Quedan',
-          num: true,
-          celda: (r) => {
-            const q = quedan(sol, r);
-            return (
-              <b className="font-semibold">
-                {cifra(q)} de {cifra(r.total)} {unidad(r.total, r.unidad)}
-              </b>
-            );
-          },
-        },
-        {
-          k: 'avance',
-          etiqueta: 'Avance',
-          ancha: true,
-          celda: (r) => {
-            const conf = cantidadPorEstado(sol, r.n, ['confirmada']);
-            const porConf = cantidadPorEstado(sol, r.n, ['entregada']);
-            const camino = cantidadPorEstado(sol, r.n, ['camino']);
-            const texto = [`${cifra(conf)} confirmado`, porConf ? `${cifra(porConf)} entregado por confirmar` : '', camino ? `${cifra(camino)} en camino` : ''].filter(Boolean).join(' · ');
-            return <BarraAvance hecho={Math.round((conf / r.total) * 100)} camino={Math.round(((porConf + camino) / r.total) * 100)} texto={texto} />;
-          },
-        },
-        { k: 'disp', etiqueta: 'Disponible', celda: (r) => r.disp },
-        { k: 'como', etiqueta: 'Cómo', celda: () => 'Lo llevamos · 15 km' },
-        {
-          k: 'acc',
-          etiqueta: 'Acciones',
-          acc: true,
-          celda: (r) => (
-            <>
-              <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
-                Editar
-              </Button>
-              <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
-                {r.pausado ? 'Reanudar' : 'Pausar'}
-              </Button>
-            </>
-          ),
-        },
-      ]}
-    />
-  </Caja>
-);
+              ),
+            },
+            {
+              k: 'quedan',
+              etiqueta: 'Quedan',
+              num: true,
+              celda: (r) => {
+                const q = quedan(sol, r);
+                return (
+                  <b className="font-semibold">
+                    {cifra(q)} de {cifra(r.total)} {unidad(r.total, r.unidad)}
+                  </b>
+                );
+              },
+            },
+            {
+              k: 'avance',
+              etiqueta: 'Avance',
+              ancha: true,
+              celda: (r) => {
+                const conf = cantidadPorEstado(sol, r.n, ['confirmada']);
+                const porConf = cantidadPorEstado(sol, r.n, ['entregada']);
+                const camino = cantidadPorEstado(sol, r.n, ['camino']);
+                const texto = [`${cifra(conf)} confirmado`, porConf ? `${cifra(porConf)} entregado por confirmar` : '', camino ? `${cifra(camino)} en camino` : ''].filter(Boolean).join(' · ');
+                return <BarraAvance hecho={Math.round((conf / r.total) * 100)} camino={Math.round(((porConf + camino) / r.total) * 100)} texto={texto} />;
+              },
+            },
+            { k: 'disp', etiqueta: 'Disponible', celda: (r) => r.disp },
+            { k: 'como', etiqueta: 'Cómo', celda: () => 'Lo llevamos · 15 km' },
+            {
+              k: 'acc',
+              etiqueta: 'Acciones',
+              acc: true,
+              celda: (r) => (
+                <>
+                  <Button nivel="secundario" tamano="sm" onClick={() => onEditar(r)}>
+                    Editar
+                  </Button>
+                  <Button nivel="secundario" tamano="sm" onClick={() => onTogglePausa(r)}>
+                    {r.pausado ? 'Reanudar' : 'Pausar'}
+                  </Button>
+                </>
+              ),
+            },
+          ]}
+        />
+      </Caja>
+
+      <Caja
+        titulo={
+          <span className="flex items-center gap-2">
+            <span>Ayudas ofrecidas a comunidades</span>
+            {ofrecimientosVisibles.length > 0 && <Conteo n={ofrecimientosVisibles.length} />}
+          </span>
+        }
+      >
+        {ofrecimientosVisibles.length === 0 ? (
+          <Vacio
+            icono={<HeartHandshake className="h-6 w-6 text-rd-ink-2" />}
+            titulo="Sin ofrecimientos directos a comunidades"
+            texto="Cuando encuentres una necesidad urgente en el Radar y ofrezcas ayuda directamente a una comunidad, podrás ver aquí el estado de tu propuesta."
+          />
+        ) : (
+          <Tabla
+            etiqueta="Ayudas ofrecidas a comunidades"
+            filas={ofrecimientosVisibles}
+            clave={(o) => String(o.id)}
+            columnas={[
+              {
+                k: 'comunidad',
+                etiqueta: 'Comunidad / Necesidad',
+                celda: (o) => (
+                  <div className="min-w-0">
+                    <b className="block font-semibold text-rd-ink">{o.comunidad}</b>
+                    {o.lugar && <small className="block text-rd-12 text-rd-ink-meta">{o.lugar}</small>}
+                    {o.contacto?.tel && (
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-rd-12 text-rd-ink-2">
+                        <Phone className="h-3 w-3 text-rd-ink-3" />
+                        {o.contacto.nombre ? `${o.contacto.nombre} · ${o.contacto.tel}` : o.contacto.tel}
+                        {o.contacto.wa && <IconoWhatsApp className="h-3 w-3 text-rd-whatsapp" />}
+                      </span>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                k: 'recurso',
+                etiqueta: 'Recurso ofrecido',
+                celda: (o) => (
+                  <span className="flex items-center gap-2">
+                    {o.icono && (
+                      <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
+                        <IconoRecursoDe nombre={o.icono} className="h-3.75 w-3.75" />
+                      </span>
+                    )}
+                    <span className="min-w-0">
+                      <b className="font-semibold text-rd-ink">{cifra(o.cant)} {o.u}</b>
+                      <small className="block text-rd-12 text-rd-ink-meta">{o.rec}</small>
+                    </span>
+                  </span>
+                ),
+              },
+              {
+                k: 'cuando',
+                etiqueta: 'Ofrecido',
+                celda: (o) => (
+                  <span className="text-rd-12-5 text-rd-ink-2 inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 text-rd-ink-3" />
+                    {o.cuando}
+                  </span>
+                ),
+              },
+              {
+                k: 'estado',
+                etiqueta: 'Estado',
+                estado: true,
+                celda: (o) => {
+                  if (o.estado === 'pendiente') {
+                    return (
+                      <div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rd-amber-soft px-2.5 py-0.5 text-rd-11 font-semibold text-rd-amber-ink">
+                          <Clock className="h-3 w-3" />
+                          En espera de respuesta
+                        </span>
+                        <small className="mt-1 block text-rd-11 text-rd-ink-meta">Esperando respuesta del líder comunitario</small>
+                      </div>
+                    );
+                  }
+                  if (o.estado === 'declinado') {
+                    return (
+                      <div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-semibold text-rd-ink-2">
+                          <X className="h-3 w-3" />
+                          Declinado
+                        </span>
+                        {o.motivo && <small className="mt-1 block text-rd-11 text-rd-ink-meta leading-tight">{o.motivo}</small>}
+                      </div>
+                    );
+                  }
+                  return (
+                    <span className="inline-flex items-center rounded-full bg-rd-sunken px-2.5 py-0.5 text-rd-11 font-medium text-rd-ink-meta">
+                      Cancelado
+                    </span>
+                  );
+                },
+              },
+              {
+                k: 'acc',
+                etiqueta: 'Acción',
+                acc: true,
+                celda: (o) => {
+                  if (o.estado === 'pendiente') {
+                    return (
+                      <Button
+                        nivel="secundario"
+                        tamano="sm"
+                        onClick={() => onCancelarOfrecimientoEnviado?.(o.id)}
+                      >
+                        Cancelar
+                      </Button>
+                    );
+                  }
+                  return null;
+                },
+              },
+            ]}
+          />
+        )}
+      </Caja>
+    </>
+  );
+};
 
 
 const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
   { estado: 'nueva', nombre: 'Solicitudes', vacia: 'Sin solicitudes por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
   { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
   { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
-  { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Nada por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
-  { estado: 'confirmada', nombre: 'Confirmada', vacia: 'Sin entregas confirmadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
-  { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las confirmadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
+  { estado: 'entregada', nombre: 'Entregada', vacia: 'Sin entregas pendientes por certificar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
+  { estado: 'confirmada', nombre: 'Completada', vacia: 'Sin entregas completadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
+  { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las completadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
 ];
 
-const COLUMNAS_RECIBIDAS: { estado: EntregaRecibida['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
-  { estado: 'nueva', nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
-  { estado: 'aceptada', nombre: 'Comprometidas', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
-  { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
-  { estado: 'entregada', nombre: 'Por confirmar', vacia: 'Sin entregas por confirmar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
-  { estado: 'confirmada', nombre: 'Confirmadas', vacia: 'Sin entregas confirmadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
-  { estado: 'archivada', nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
+const COLUMNAS_RECIBIDAS: {
+  id: 'ofertas' | 'aceptada' | 'camino' | 'recibido' | 'distribuido' | 'archivadas';
+  estados: EntregaRecibida['estado'][];
+  nombre: string;
+  vacia: string;
+  clase: string;
+  titulo: string;
+  icono: React.ReactNode;
+  soloConAlgo?: boolean;
+}[] = [
+  { id: 'ofertas', estados: ['nueva'], nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
+  { id: 'aceptada', estados: ['aceptada'], nombre: 'Comprometido', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
+  { id: 'camino', estados: ['camino', 'entregada'], nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Truck className="h-4 w-4" /> },
+  { id: 'recibido', estados: ['confirmada'], nombre: 'Recibido', vacia: 'Nada recibido todavía', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Package className="h-4 w-4" /> },
+  { id: 'distribuido', estados: ['distribuida'], nombre: 'Distribuido', vacia: 'Nada distribuido todavía', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Users className="h-4 w-4" /> },
+  { id: 'archivadas', estados: ['archivada'], nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
 ];
 
-const ORDEN_CICLO: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, archivada: 5 };
-const NOMBRE_ESTADO: Record<Solicitud['estado'], string> = { nueva: 'Nueva', aceptada: 'Comprometida', camino: 'En camino', entregada: 'Por confirmar', confirmada: 'Confirmada', archivada: 'Archivada' };
+const ORDEN_CICLO: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, distribuida: 5, archivada: 6 };
+const NOMBRE_ESTADO: Record<Solicitud['estado'], string> = { nueva: 'Nueva', aceptada: 'Comprometida', camino: 'En camino', entregada: 'Entregada', confirmada: 'Completada', distribuida: 'Distribuido', archivada: 'Archivada' };
 
 /** Las reglas de mover una tarjeta (`puedeMover` del prototipo): arrastrar hace lo mismo que
- *  el botón. Lo nuevo se responde, no se arrastra; a Confirmada no se llega (la cierran los dos
- *  lados con foto) y a Archivadas se llega con «Archivar»; de a un paso; a En camino solo con
+ *  el botón. Lo nuevo se responde, no se arrastra; a Confirmada/Completada se llega certificando con foto
+ *  y a Archivadas se llega con «Archivar»; de a un paso; a En camino solo con
  *  alguien asignado. Devuelve el motivo si no se puede, `null` si sí. */
 function puedeMover(s: Solicitud, a: Solicitud['estado']): string | null {
   if (a === s.estado) return '';
   if (s.estado === 'nueva' || a === 'nueva') return 'Las solicitudes nuevas se aceptan o se declinan';
-  if (a === 'archivada' || s.estado === 'archivada') return 'Las confirmadas se archivan con el botón';
-  if (a === 'confirmada' || s.estado === 'confirmada') return 'Las confirmadas se cierran con foto, no se arrastran';
+  if (a === 'archivada' || s.estado === 'archivada') return 'Las completadas se archivan con el botón';
+  if (a === 'confirmada') return null; // Arrastrar a Completada abre la certificación
+  if (s.estado === 'confirmada') return 'Las completadas se archivan con el botón';
   if (a === 'camino' && !s.vol) return 'Asigna primero a alguien';
   if (Math.abs(ORDEN_CICLO[a] - ORDEN_CICLO[s.estado]) > 1) return 'De a un paso';
   return null;
@@ -1538,6 +1993,8 @@ const Seguimiento: React.FC<{
   recibidas: EntregaRecibida[];
   acciones: AccionesSolicitud;
   onConfirmarRecibido: (id: number) => void;
+  onDistribuirRecibida?: (r: EntregaRecibida) => void;
+  onArchivarRecibida?: (id: number) => void;
   onVerFotosRecibida: (r: EntregaRecibida, i: number) => void;
   onAceptarRecibida: (id: number) => void;
   onRechazarRecibida: (id: number) => void;
@@ -1548,6 +2005,8 @@ const Seguimiento: React.FC<{
   recibidas,
   acciones,
   onConfirmarRecibido,
+  onDistribuirRecibida,
+  onArchivarRecibida,
   onVerFotosRecibida,
   onAceptarRecibida,
   onRechazarRecibida,
@@ -1555,9 +2014,12 @@ const Seguimiento: React.FC<{
 }) => {
   const tieneAmbos = modulos.pide && modulos.ofrece;
   const [vista, setVista] = useState<'entrego' | 'recibo'>(() => (modulos.ofrece ? 'entrego' : 'recibo'));
-  const [nuevasColapsadas, setNuevasColapsadas] = useState(false);
-  const [confirmadasColapsadas, setConfirmadasColapsadas] = useState(false);
-  const [archivadasColapsadas, setArchivadasColapsadas] = useState(false);
+  const [nuevasEntregoColapsadas, setNuevasEntregoColapsadas] = useState<boolean>(() => sol.filter((s) => s.estado === 'nueva').length === 0);
+  const [confirmadasEntregoColapsadas, setConfirmadasEntregoColapsadas] = useState<boolean>(() => sol.filter((s) => s.estado === 'confirmada').length === 0);
+  const [archivadasEntregoColapsadas, setArchivadasEntregoColapsadas] = useState<boolean>(true);
+
+  const [ofertasReciboColapsadas, setOfertasReciboColapsadas] = useState<boolean>(() => recibidas.filter((r) => r.estado === 'nueva').length === 0);
+  const [archivadasReciboColapsadas, setArchivadasReciboColapsadas] = useState<boolean>(true);
   const { onMover } = acciones;
   const avisar = useAviso();
   const [sobre, setSobre] = useState<Solicitud['estado'] | null>(null);
@@ -1569,6 +2031,10 @@ const Seguimiento: React.FC<{
     if (motivo === '') return;
     if (motivo) return avisar(motivo);
     if (ORDEN_CICLO[a] < ORDEN_CICLO[s.estado]) return setDevolviendo({ s, a });
+    if (a === 'camino' && acciones.onEnCamino) {
+      acciones.onEnCamino(s);
+      return;
+    }
     onMover(id, a);
   };
 
@@ -1628,21 +2094,31 @@ const Seguimiento: React.FC<{
             const esArchivada = c.estado === 'archivada';
 
             const estaColapsada =
-              (esNueva && (nuevasColapsadas || items.length === 0)) ||
-              (esConfirmada && (confirmadasColapsadas || items.length === 0)) ||
-              (esArchivada && archivadasColapsadas);
+              (esNueva && nuevasEntregoColapsadas) ||
+              (esConfirmada && confirmadasEntregoColapsadas) ||
+              (esArchivada && archivadasEntregoColapsadas);
 
             if (estaColapsada) {
               const expandir = () => {
-                if (esNueva) setNuevasColapsadas(false);
-                else if (esConfirmada) setConfirmadasColapsadas(false);
-                else if (esArchivada) setArchivadasColapsadas(false);
+                if (esNueva) setNuevasEntregoColapsadas(false);
+                else if (esConfirmada) setConfirmadasEntregoColapsadas(false);
+                else if (esArchivada) setArchivadasEntregoColapsadas(false);
               };
               const direccion = esNueva ? 'der' : 'izq';
               return (
                 <div
                   key={c.estado}
                   onClick={expandir}
+                  onDragOver={(e) => {
+                    if (c.estado === 'archivada') {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
+                  }}
                   title={`Clic para expandir ${c.nombre}`}
                   className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
                 >
@@ -1667,11 +2143,16 @@ const Seguimiento: React.FC<{
                 </div>
               );
             }
-            const recibe = c.estado !== 'confirmada' && c.estado !== 'nueva' && c.estado !== 'archivada';
+            const recibe = c.estado !== 'nueva' && c.estado !== 'archivada';
             return (
               <div
                 key={c.estado}
                 onDragOver={(e) => {
+                  if (c.estado === 'confirmada') {
+                    e.preventDefault();
+                    setSobre(c.estado);
+                    return;
+                  }
                   if (!recibe) return;
                   e.preventDefault();
                   setSobre(c.estado);
@@ -1680,7 +2161,13 @@ const Seguimiento: React.FC<{
                 onDrop={(e) => {
                   e.preventDefault();
                   setSobre(null);
-                  mover(Number(e.dataTransfer.getData('text/plain')), c.estado);
+                  const id = Number(e.dataTransfer.getData('text/plain'));
+                  if (c.estado === 'confirmada') {
+                    const s = sol.find((x) => x.id === id);
+                    if (s) acciones.onCertificar(s);
+                  } else {
+                    mover(id, c.estado);
+                  }
                 }}
                 className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:flex-1 sm:min-w-80 ${
                   sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-sunken'
@@ -1701,7 +2188,7 @@ const Seguimiento: React.FC<{
                       aria-label={`Colapsar columna ${c.nombre}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setNuevasColapsadas(true);
+                        setNuevasEntregoColapsadas(true);
                       }}
                       className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                     >
@@ -1715,8 +2202,8 @@ const Seguimiento: React.FC<{
                       aria-label={`Colapsar columna ${c.nombre}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (esConfirmada) setConfirmadasColapsadas(true);
-                        else setArchivadasColapsadas(true);
+                        if (esConfirmada) setConfirmadasEntregoColapsadas(true);
+                        else setArchivadasEntregoColapsadas(true);
                       }}
                       className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                     >
@@ -1752,27 +2239,42 @@ const Seguimiento: React.FC<{
           className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
         >
           {COLUMNAS_RECIBIDAS.map((c) => {
-            const items = recibidas.filter((r) => r.estado === c.estado);
-            const esNueva = c.estado === 'nueva';
-            const esConfirmada = c.estado === 'confirmada';
-            const esArchivada = c.estado === 'archivada';
+            const items = recibidas.filter((r) => c.estados.includes(r.estado));
+            const esNueva = c.id === 'ofertas';
+            const esArchivada = c.id === 'archivadas';
 
             const estaColapsada =
-              (esNueva && (nuevasColapsadas || items.length === 0)) ||
-              (esConfirmada && (confirmadasColapsadas || items.length === 0)) ||
-              (esArchivada && archivadasColapsadas);
+              (esNueva && ofertasReciboColapsadas) ||
+              (esArchivada && archivadasReciboColapsadas);
 
             if (estaColapsada) {
               const expandir = () => {
-                if (esNueva) setNuevasColapsadas(false);
-                else if (esConfirmada) setConfirmadasColapsadas(false);
-                else if (esArchivada) setArchivadasColapsadas(false);
+                if (esNueva) setOfertasReciboColapsadas(false);
+                else if (esArchivada) setArchivadasReciboColapsadas(false);
               };
               const direccion = esNueva ? 'der' : 'izq';
               return (
                 <div
-                  key={c.estado}
+                  key={c.id}
                   onClick={expandir}
+                  onDragOver={(e) => {
+                    if (c.id === 'archivadas') {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const data = e.dataTransfer.getData('text/plain');
+                    if (data.startsWith('recibida:')) {
+                      const id = Number(data.replace('recibida:', ''));
+                      const r = recibidas.find((x) => x.id === id);
+                      if (!r) return;
+                      if (c.id === 'archivadas' && r.estado === 'distribuida') {
+                        onArchivarRecibida?.(id);
+                      }
+                    }
+                  }}
                   title={`Clic para expandir ${c.nombre}`}
                   className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
                 >
@@ -1799,7 +2301,29 @@ const Seguimiento: React.FC<{
             }
             return (
               <div
-                key={c.estado}
+                key={c.id}
+                onDragOver={(e) => {
+                  if (c.id === 'recibido' || c.id === 'distribuido' || c.id === 'archivadas') {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const data = e.dataTransfer.getData('text/plain');
+                  if (data.startsWith('recibida:')) {
+                    const id = Number(data.replace('recibida:', ''));
+                    const r = recibidas.find((x) => x.id === id);
+                    if (!r) return;
+                    if (c.id === 'recibido' && r.estado === 'entregada') {
+                      onConfirmarRecibido(id);
+                    } else if (c.id === 'distribuido' && r.estado === 'confirmada') {
+                      onDistribuirRecibida?.(r);
+                    } else if (c.id === 'archivadas' && r.estado === 'distribuida') {
+                      onArchivarRecibida?.(id);
+                    }
+                  }
+                }}
                 className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-sunken p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
               >
                 <div
@@ -1817,22 +2341,21 @@ const Seguimiento: React.FC<{
                       aria-label={`Colapsar columna ${c.nombre}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setNuevasColapsadas(true);
+                        setOfertasReciboColapsadas(true);
                       }}
                       className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                   )}
-                  {(esConfirmada || esArchivada) && (
+                  {esArchivada && (
                     <button
                       type="button"
                       title="Colapsar columna"
                       aria-label={`Colapsar columna ${c.nombre}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (esConfirmada) setConfirmadasColapsadas(true);
-                        else setArchivadasColapsadas(true);
+                        setArchivadasReciboColapsadas(true);
                       }}
                       className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                     >
@@ -1845,11 +2368,20 @@ const Seguimiento: React.FC<{
                     key={r.id}
                     r={r}
                     onConfirmar={onConfirmarRecibido}
+                    onDistribuir={onDistribuirRecibida}
+                    onArchivar={onArchivarRecibida}
                     onVerFotos={onVerFotosRecibida}
                     onAceptar={onAceptarRecibida}
                     onRechazar={onRechazarRecibida}
                     onVerPublicacion={onVerPublicacionRecibida}
                     menuFlotante
+                    arrastre={{
+                      draggable: r.estado === 'entregada' || r.estado === 'confirmada' || r.estado === 'distribuida',
+                      onDragStart: (e) => {
+                        e.dataTransfer.setData('text/plain', `recibida:${r.id}`);
+                        e.dataTransfer.effectAllowed = 'move';
+                      },
+                    }}
                   />
                 ))}
                 {items.length === 0 && <p className="m-0 px-1 py-3 text-center text-rd-12-5 text-rd-ink-meta">{c.vacia}</p>}

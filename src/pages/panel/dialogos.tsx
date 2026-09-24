@@ -573,12 +573,26 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
 
 export const DialogoRegistrarMiembro = DialogoMiembro;
 
-export const DialogoCierre: React.FC<{ abierto: boolean; titulo: string; texto: string; accion: string; onCerrar: () => void; onEnviar: (fotos: number) => void }> = ({ abierto, titulo, texto, accion, onCerrar, onEnviar }) => {
+export const DialogoCierre: React.FC<{
+  abierto: boolean;
+  titulo: string;
+  texto: string;
+  accion: string;
+  etiquetaFotos?: string;
+  nota?: { etiqueta: string; placeholder?: string; ayuda?: string };
+  beneficiarios?: { etiqueta?: string; placeholder?: string; ayuda?: string; sugerencias?: number[] };
+  onCerrar: () => void;
+  onEnviar: (fotos: number, fotosLista?: Foto[], notaTexto?: string, personasBeneficiadas?: number) => void;
+}> = ({ abierto, titulo, texto, accion, etiquetaFotos, nota, beneficiarios, onCerrar, onEnviar }) => {
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [pesados, setPesados] = useState(0);
+  const [textoNota, setTextoNota] = useState('');
+  const [numBeneficiarios, setNumBeneficiarios] = useState('');
   const cerrar = () => {
     setFotos([]);
     setPesados(0);
+    setTextoNota('');
+    setNumBeneficiarios('');
     onCerrar();
   };
   return (
@@ -589,17 +603,87 @@ export const DialogoCierre: React.FC<{ abierto: boolean; titulo: string; texto: 
       onCerrar={cerrar}
       onEnviar={() => {
         const n = fotos.length;
+        const lista = [...fotos];
+        const valNota = textoNota.trim();
+        const parsed = parseInt(numBeneficiarios, 10);
+        const valBeneficiarios = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
         setFotos([]);
         setPesados(0);
-        onEnviar(n);
+        setTextoNota('');
+        setNumBeneficiarios('');
+        onEnviar(n, lista, valNota || undefined, valBeneficiarios);
       }}
     >
       <p className="mb-4 text-rd-14 text-rd-ink-2">{texto}</p>
-      <p className="mb-2 text-rd-13 font-semibold text-rd-ink">Fotos de la entrega (opcionales)</p>
-      <CampoFotos fotos={fotos} onAgregar={(nuevas, p) => {
-        setFotos((l) => [...l, ...nuevas]);
-        setPesados(p);
-      }} onQuitar={(i) => setFotos((l) => l.filter((_, k) => k !== i))} error={pesados ? `${pesados === 1 ? 'Un archivo pesa' : `${pesados} archivos pesan`} más de 25 MB y no ${pesados === 1 ? 'se adjuntó' : 'se adjuntaron'}.` : null} />
+      {nota && (
+        <div className="mb-4">
+          <div className="mb-1 flex items-baseline justify-between">
+            <label className="block text-rd-13 font-semibold text-rd-ink">{nota.etiqueta}</label>
+            <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+          </div>
+          <textarea
+            value={textoNota}
+            onChange={(e) => setTextoNota(e.target.value)}
+            placeholder={nota.placeholder}
+            rows={3}
+            className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+          />
+          {nota.ayuda && <p className="mt-1 text-rd-11-5 text-rd-ink-meta">{nota.ayuda}</p>}
+        </div>
+      )}
+      {beneficiarios && (
+        <div className="mb-4">
+          <div className="mb-1 flex items-baseline justify-between">
+            <label htmlFor="cierre-beneficiarios-input" className="block text-rd-13 font-semibold text-rd-ink">
+              {beneficiarios.etiqueta ?? 'Número de personas beneficiadas'}
+            </label>
+            <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              id="cierre-beneficiarios-input"
+              type="number"
+              min={1}
+              step={1}
+              value={numBeneficiarios}
+              onChange={(e) => setNumBeneficiarios(e.target.value)}
+              placeholder={beneficiarios.placeholder ?? 'Ej. 45'}
+              className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+            />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-rd-11-5 text-rd-ink-meta">Sugerencias rápidas:</span>
+              {(beneficiarios.sugerencias ?? [10, 25, 50, 100, 200]).map((n) => {
+                const activo = numBeneficiarios === String(n);
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNumBeneficiarios(String(n))}
+                    className={`rounded-rd-full px-2.5 py-0.5 text-rd-12 transition-colors cursor-pointer ${
+                      activo
+                        ? 'bg-rd-navy text-white font-medium shadow-xs'
+                        : 'border border-rd-line bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink'
+                    }`}
+                  >
+                    {n} personas
+                  </button>
+                );
+              })}
+            </div>
+            {beneficiarios.ayuda && <p className="text-rd-11-5 text-rd-ink-meta">{beneficiarios.ayuda}</p>}
+          </div>
+        </div>
+      )}
+      <p className="mb-2 text-rd-13 font-semibold text-rd-ink">{etiquetaFotos ?? 'Fotos de la entrega (opcionales)'}</p>
+      <CampoFotos
+        fotos={fotos}
+        onAgregar={(nuevas, p) => {
+          setFotos((l) => [...l, ...nuevas]);
+          setPesados(p);
+        }}
+        onQuitar={(i) => setFotos((l) => l.filter((_, k) => k !== i))}
+        error={pesados ? `${pesados === 1 ? 'Un archivo pesa' : `${pesados} archivos pesan`} más de 25 MB y no ${pesados === 1 ? 'se adjuntó' : 'se adjuntaron'}.` : null}
+      />
     </Dialogo>
   );
 };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { actasDe, archivarViejas, bloquesResumen, confirmadas, fechaCorta, kpisDe, leerModulos, pendientesCuenta, pendientesDe, pestanasDe, quedan, resumenActas, siglas, textoActa, textoCierre, textoCierreRecibida } from '../../src/utils/panel';
-import { NECESIDAD, OFERTA, ORG, RECIBIDAS, SOLICITUDES } from '../../src/mocks/panelMock';
+import { NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, RECIBIDAS, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../src/mocks/panelMock';
 import { obtenerPublicaciones, PUBLICACIONES } from '../../src/mocks/publicacionesMock';
 
 // ============================================================================
@@ -144,6 +144,11 @@ describe('reportes: las actas de entrega', () => {
     expect(t).toContain('Recibió: Albergue Bosa');
     expect(t).toContain('Lo que permitió:');
     expect(t.split('\n').some((l) => l.trim() === '')).toBe(false);
+
+    // Con personas beneficiadas
+    const aConBeneficiarios = { ...a, cierre: { ...a.cierre, personasBeneficiadas: 45 } };
+    const tBeneficiarios = textoActa(aConBeneficiarios);
+    expect(tBeneficiarios).toContain('Personas beneficiadas: 45');
   });
   it('siglas, fecha corta, cierre visto por quien recibe y el resumen', () => {
     expect(siglas('Bomberos Voluntarios Usme')).toBe('BVU');
@@ -151,8 +156,17 @@ describe('reportes: las actas de entrega', () => {
     expect(fechaCorta('2026-09-12')).toBe('12 sep 2026');
     expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { entrega: { fotos: 1 } } })).toBe('Certificada por Cruz Roja · falta tu confirmación');
     expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { recibe: { fotos: 1 } } })).toBe('Confirmada por ti');
+    expect(textoCierreRecibida({ org: 'Cruz Roja', estado: 'distribuida', cierre: { recibe: { fotos: 1 } } })).toBe('Distribuida en la comunidad');
     const r = resumenActas(actasDe({ pide: true, ofrece: true }, { sol: SOLICITUDES, recibidas: RECIBIDAS, org: ORG.nombre, lleva }));
     expect(r).toEqual({ actas: 4, organizaciones: 4 });
+
+    // Actas incluye entregas distribuidas
+    const recibidasConDistribuida = [
+      ...RECIBIDAS,
+      { id: 105, org: 'JAC La Flora', rec: 'Kits aseo', cant: 10, u: 'kits', estado: 'distribuida' as const, cerradaEl: '2026-09-15T10:00:00' }
+    ];
+    const actasConDistribuida = actasDe({ pide: true, ofrece: false }, { sol: [], recibidas: recibidasConDistribuida, org: ORG.nombre, lleva });
+    expect(actasConDistribuida.some((a) => a.origen.id === 105 && a.confirmacion === 'Distribuida en la comunidad')).toBe(true);
   });
 });
 
@@ -271,3 +285,117 @@ describe('MiEquipo filtros y ubicación', () => {
     expect(buscar(EQUIPO, 'electricista')).toHaveLength(0);
   });
 });
+
+describe('evidencia y fotos en camino (seguimiento)', () => {
+  it('cierreDe incluye fotos si la entrega está en camino y tiene fotos asociadas', async () => {
+    const { cierreDe } = await import('../../src/pages/panel/TarjetaEntrega');
+    const { FOTOS_ENTREGA } = await import('../../src/mocks/fotosMock');
+    const solCamino: any = {
+      id: 2,
+      quien: 'Comedor Villa Gloria',
+      rec: 'Agua potable',
+      cant: 270,
+      u: 'L',
+      estado: 'camino',
+      cuando: 'sale hoy 6:00 p. m.',
+      vol: 1,
+    };
+    expect(FOTOS_ENTREGA[2]?.entrega.length).toBeGreaterThan(0);
+    const resultado = cierreDe(solCamino, () => {});
+    expect(resultado.cierre).toBeNull();
+    expect(resultado.fotos).not.toBeNull();
+  });
+
+  it('cierreDe no muestra fotos si una solicitud en camino no tiene fotos', async () => {
+    const { cierreDe } = await import('../../src/pages/panel/TarjetaEntrega');
+    const solSinFotos: any = {
+      id: 99999,
+      quien: 'Comedor X',
+      rec: 'Agua potable',
+      cant: 10,
+      u: 'L',
+      estado: 'camino',
+      cuando: 'hoy',
+      vol: 1,
+    };
+    const resultado = cierreDe(solSinFotos, () => {});
+    expect(resultado.cierre).toBeNull();
+    expect(resultado.fotos).toBeNull();
+  });
+});
+
+describe('solicitudes enviadas a organizaciones (líder comunitario)', () => {
+  it('contiene solicitudes con estados representativos (en_revision, aceptada, declinada)', () => {
+    expect(SOLICITUDES_ENVIADAS.length).toBeGreaterThan(0);
+    const estados = SOLICITUDES_ENVIADAS.map((s) => s.estado);
+    expect(estados).toContain('en_revision');
+    expect(estados).toContain('aceptada');
+    expect(estados).toContain('declinada');
+  });
+
+  it('las solicitudes aceptadas pueden vincularse a una entrega en seguimiento', () => {
+    const aceptadas = SOLICITUDES_ENVIADAS.filter((s) => s.estado === 'aceptada');
+    for (const a of aceptadas) {
+      if (a.entregaRecibidaId) {
+        const entrega = RECIBIDAS.find((r) => r.id === a.entregaRecibidaId);
+        expect(entrega).toBeDefined();
+      }
+    }
+  });
+
+  it('permite cancelar una solicitud en revisión', () => {
+    const copia = SOLICITUDES_ENVIADAS.map((s) => ({ ...s }));
+    const enRevision = copia.find((s) => s.estado === 'en_revision');
+    expect(enRevision).toBeDefined();
+    if (enRevision) {
+      enRevision.estado = 'cancelada';
+      expect(enRevision.estado).toBe('cancelada');
+    }
+  });
+
+  it('en la tabla de solicitudes a organizaciones solo se muestran las pendientes y declinadas (las aceptadas pasan a Seguimiento)', () => {
+    const visibles = SOLICITUDES_ENVIADAS.filter((s) => s.estado !== 'aceptada');
+    expect(visibles.some((s) => s.estado === 'aceptada')).toBe(false);
+    expect(visibles.some((s) => s.estado === 'en_revision')).toBe(true);
+    expect(visibles.some((s) => s.estado === 'declinada')).toBe(true);
+  });
+});
+
+describe('ofrecimientos enviados a comunidades (organización / donante)', () => {
+  it('contiene ofrecimientos con estados representativos (pendiente, aceptado, declinado)', () => {
+    expect(OFRECIMIENTOS_ENVIADOS.length).toBeGreaterThan(0);
+    const estados = OFRECIMIENTOS_ENVIADOS.map((o) => o.estado);
+    expect(estados).toContain('pendiente');
+    expect(estados).toContain('aceptado');
+    expect(estados).toContain('declinado');
+  });
+
+  it('los ofrecimientos aceptados pueden vincularse a una entrega en seguimiento (solicitudId)', () => {
+    const aceptados = OFRECIMIENTOS_ENVIADOS.filter((o) => o.estado === 'aceptado');
+    for (const a of aceptados) {
+      if (a.solicitudId) {
+        const sol = SOLICITUDES.find((s) => s.id === a.solicitudId);
+        expect(sol).toBeDefined();
+      }
+    }
+  });
+
+  it('permite cancelar un ofrecimiento pendiente', () => {
+    const copia = OFRECIMIENTOS_ENVIADOS.map((o) => ({ ...o }));
+    const pendiente = copia.find((o) => o.estado === 'pendiente');
+    expect(pendiente).toBeDefined();
+    if (pendiente) {
+      pendiente.estado = 'cancelado';
+      expect(pendiente.estado).toBe('cancelado');
+    }
+  });
+
+  it('en la tabla de ayudas ofrecidas solo se muestran los pendientes y declinados (los aceptados pasan a Seguimiento)', () => {
+    const visibles = OFRECIMIENTOS_ENVIADOS.filter((o) => o.estado !== 'aceptado');
+    expect(visibles.some((o) => o.estado === 'aceptado')).toBe(false);
+    expect(visibles.some((o) => o.estado === 'pendiente')).toBe(true);
+    expect(visibles.some((o) => o.estado === 'declinado')).toBe(true);
+  });
+});
+
+

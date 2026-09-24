@@ -4,7 +4,8 @@
  * de agua, 50 kits, 2 plantas) y con `avisosMock.ts`. Origen: `src/organizacion.html` y
  * `src/comunidad.html` del prototipo. Hoy es 14 de septiembre.
  */
-import type { Actividad, DatosOrg, EntregaRecibida, Invitado, MiembroEquipo, NecesidadPublicada, OfertaPublicada, PermisosRol, Solicitud } from '../types/panel';
+import type { Actividad, DatosOrg, EntregaRecibida, Invitado, MetricasImpactoPanel, MiembroEquipo, NecesidadPublicada, OfertaPublicada, OfrecimientoEnviado, PermisosRol, Solicitud, SolicitudEnviada, TransicionEstado } from '../types/panel';
+import { calcularActividadRed, calcularTiemposPorColumna } from '../utils/impacto';
 
 /** Dos contactos, y no se mezclan: `contacto` es el de la organización y es el único que
  *  ven los demás; `enlace` es la persona a la que RaDAR le escribe. */
@@ -61,6 +62,91 @@ export const NECESIDAD: NecesidadPublicada = {
 export const RECIBIDAS: EntregaRecibida[] = [
   { id: 101, org: 'Cruz Roja seccional', rec: 'Equipos de bombeo', cant: 2, u: 'motobombas', estado: 'entregada', cuando: 'hace 12 min', dist: '9,1 km', detalle: 'Dos motobombas de 3 pulgadas', vol: 'Camilo Torres' },
   { id: 102, org: 'Alcaldía local de Usme', rec: 'Protección respiratoria', cant: 100, u: 'unidades', estado: 'confirmada', cuando: '11 sep, 10:00 a. m.', dist: '1,7 km', detalle: 'Respiradores N95', vol: 'Transporte de la alcaldía', cerradaEl: '2026-09-11', cierre: { entrega: { fotos: 1 }, recibe: { fotos: 1 }, historia: 'Con los respiradores el equipo pudo entrar a remover el lodo de la calle 91 sur el mismo día, sin esperar dotación.' } },
+];
+
+/** Solicitudes directas que el líder o la organización envió a ofertas en el Radar. */
+export const SOLICITUDES_ENVIADAS: SolicitudEnviada[] = [
+  {
+    id: 'sol-env-1',
+    publicacionId: 'oferta-cruz-roja',
+    donante: 'Cruz Roja seccional',
+    donanteTipo: 'Cuerpo de socorro',
+    rec: 'Equipos de bombeo',
+    icono: 'bolt',
+    cant: 2,
+    u: 'motobombas',
+    cuando: 'ayer 2:30 p. m.',
+    estado: 'aceptada',
+    contacto: { tel: '+57 312 456 7890', wa: true },
+    entregaRecibidaId: 101,
+  },
+  {
+    id: 'sol-env-2',
+    donante: 'Fundación Éxito · Acopio Sur',
+    donanteTipo: 'Fundación',
+    rec: 'Alimentos no perecederos',
+    icono: 'bowl',
+    cant: 50,
+    u: 'mercados',
+    cuando: 'hoy 10:15 a. m.',
+    estado: 'en_revision',
+    contacto: { tel: '+57 300 123 4567', wa: true },
+  },
+  {
+    id: 'sol-env-3',
+    donante: 'Defensa Civil Colombiana',
+    donanteTipo: 'Organismo de socorro',
+    rec: 'Frazadas y colchonetas',
+    icono: 'package',
+    cant: 80,
+    u: 'unidades',
+    cuando: 'hace 3 días',
+    estado: 'declinada',
+    motivo: 'Capacidad de stock asignada a contingencia prioritaria en zona rural.',
+  },
+];
+
+/** Ofrecimientos directos de ayuda que la organización envió a necesidades comunitarias en el Radar. */
+export const OFRECIMIENTOS_ENVIADOS: OfrecimientoEnviado[] = [
+  {
+    id: 'ofr-env-1',
+    necesidadId: 'nec-comedor-san-jose',
+    comunidad: 'Comedor Comunitario Siloé',
+    lugar: 'Siloé, Comuna 20 · Cali',
+    rec: 'Tanques de agua potable',
+    icono: 'drop',
+    cant: 2,
+    u: 'tanques 500L',
+    cuando: 'ayer 4:00 p. m.',
+    estado: 'aceptado',
+    contacto: { nombre: 'Gladys Mina (Líder comunitaria)', tel: '+57 312 849 2031', wa: true },
+    solicitudId: 1,
+  },
+  {
+    id: 'ofr-env-2',
+    necesidadId: 'nec-albergue-bosa',
+    comunidad: 'Albergue Infantil Bosa',
+    lugar: 'Bosa Centro · Bogotá D. C.',
+    rec: 'Kits de primeros auxilios',
+    icono: 'package',
+    cant: 40,
+    u: 'kits',
+    cuando: 'hoy 11:30 a. m.',
+    estado: 'pendiente',
+    contacto: { nombre: 'Carlos Ruiz (Coordinador)', tel: '+57 315 987 6543', wa: true },
+  },
+  {
+    id: 'ofr-env-3',
+    comunidad: 'Junta de Acción Comunal Terrón Colorado',
+    lugar: 'Terrón Colorado · Cali',
+    rec: 'Ropa térmica y cobijas',
+    icono: 'package',
+    cant: 60,
+    u: 'unidades',
+    cuando: 'hace 2 días',
+    estado: 'declinado',
+    motivo: 'Meta de abrigo ya cubierta en su totalidad por donación comunitaria previa.',
+  },
 ];
 
 export const EQUIPO: MiembroEquipo[] = [
@@ -165,6 +251,7 @@ export const ESTADO_SOLICITUD: Record<Solicitud['estado'], { texto: string; tono
   camino: { texto: 'En camino', tono: 'proceso' },
   entregada: { texto: 'Entregada · por confirmar', tono: 'proceso' },
   confirmada: { texto: 'Confirmada', tono: 'completo' },
+  distribuida: { texto: 'Distribuida', tono: 'completo' },
   archivada: { texto: 'Archivada', tono: 'completo' },
 };
 
@@ -177,7 +264,8 @@ export const ESTADO_RECIBIDA: Record<EntregaRecibida['estado'], { texto: string;
   aceptada: { texto: 'Comprometida', tono: 'inicial' },
   camino: { texto: 'En camino', tono: 'proceso' },
   entregada: { texto: 'Por confirmar', tono: 'proceso' },
-  confirmada: { texto: 'Confirmada', tono: 'completo' },
+  confirmada: { texto: 'Recibido', tono: 'completo' },
+  distribuida: { texto: 'Distribuida', tono: 'completo' },
   archivada: { texto: 'Archivada', tono: 'completo' },
 };
 
@@ -193,4 +281,61 @@ export const PUERTAS = {
     texto: 'Publica lo que tienen disponible y sigue aquí quién te lo pide, a quién asignas cada entrega y cómo va cada una.',
     abre: ['Mis ofertas', 'Seguimiento'],
   },
+};
+
+/**
+ * Historial de auditoría simulado para el desarrollador.
+ * En producción (Supabase), esta información se llena automáticamente con el trigger
+ * `trg_solicitud_cambio_estado` sobre la tabla `solicitud_historial`.
+ */
+export const HISTORIAL_TRANSICIONES_MOCK: TransicionEstado[] = [
+  // Solicitud 1: Albergue Bosa (Agua)
+  { id: 'ev-1', solicitudId: 1, tipo: 'solicitud', estadoAnterior: null, estadoNuevo: 'nueva', actor: 'Albergue Bosa', creadoEl: '2026-09-10T08:00:00Z' },
+  { id: 'ev-2', solicitudId: 1, tipo: 'solicitud', estadoAnterior: 'nueva', estadoNuevo: 'aceptada', actor: 'Bomberos Voluntarios Usme', creadoEl: '2026-09-10T10:30:00Z' },
+  { id: 'ev-3', solicitudId: 1, tipo: 'solicitud', estadoAnterior: 'aceptada', estadoNuevo: 'camino', actor: 'Mateo Rojas', creadoEl: '2026-09-11T14:00:00Z' },
+  { id: 'ev-4', solicitudId: 1, tipo: 'solicitud', estadoAnterior: 'camino', estadoNuevo: 'entregada', actor: 'Andrés Peña', creadoEl: '2026-09-11T16:30:00Z' },
+  { id: 'ev-5', solicitudId: 1, tipo: 'solicitud', estadoAnterior: 'entregada', estadoNuevo: 'confirmada', actor: 'Albergue Bosa', creadoEl: '2026-09-12T09:40:00Z' },
+
+  // Solicitud 3: Comedor Villa Gloria (Alimentos)
+  { id: 'ev-6', solicitudId: 3, tipo: 'solicitud', estadoAnterior: null, estadoNuevo: 'nueva', actor: 'Comedor Villa Gloria', creadoEl: '2026-09-11T09:00:00Z' },
+  { id: 'ev-7', solicitudId: 3, tipo: 'solicitud', estadoAnterior: 'nueva', estadoNuevo: 'aceptada', actor: 'Bomberos Voluntarios Usme', creadoEl: '2026-09-11T10:00:00Z' },
+  { id: 'ev-8', solicitudId: 3, tipo: 'solicitud', estadoAnterior: 'aceptada', estadoNuevo: 'camino', actor: 'Laura Díaz', creadoEl: '2026-09-12T08:00:00Z' },
+  { id: 'ev-9', solicitudId: 3, tipo: 'solicitud', estadoAnterior: 'camino', estadoNuevo: 'entregada', actor: 'Laura Díaz', creadoEl: '2026-09-12T10:30:00Z' },
+  { id: 'ev-10', solicitudId: 3, tipo: 'solicitud', estadoAnterior: 'entregada', estadoNuevo: 'confirmada', actor: 'Comedor Villa Gloria', creadoEl: '2026-09-13T11:20:00Z' },
+
+  // Entrega Recibida 102: Protección respiratoria (confirmada)
+  { id: 'ev-11', solicitudId: 102, tipo: 'recibida', estadoAnterior: null, estadoNuevo: 'nueva', actor: 'Bomberos Voluntarios Usme', creadoEl: '2026-09-09T08:00:00Z' },
+  { id: 'ev-12', solicitudId: 102, tipo: 'recibida', estadoAnterior: 'nueva', estadoNuevo: 'aceptada', actor: 'Alcaldía local de Usme', creadoEl: '2026-09-09T11:00:00Z' },
+  { id: 'ev-13', solicitudId: 102, tipo: 'recibida', estadoAnterior: 'aceptada', estadoNuevo: 'camino', actor: 'Transporte de la alcaldía', creadoEl: '2026-09-10T14:00:00Z' },
+  { id: 'ev-14', solicitudId: 102, tipo: 'recibida', estadoAnterior: 'camino', estadoNuevo: 'entregada', actor: 'Transporte de la alcaldía', creadoEl: '2026-09-10T16:00:00Z' },
+  { id: 'ev-15', solicitudId: 102, tipo: 'recibida', estadoAnterior: 'entregada', estadoNuevo: 'confirmada', actor: 'Bomberos Voluntarios Usme', creadoEl: '2026-09-11T10:00:00Z' },
+];
+
+/**
+ * Métricas consolidadas para el equipo de impacto.
+ * Permite que cualquier componente o pantalla consulte los 4 indicadores clave.
+ */
+export const METRICAS_IMPACTO_MOCK: MetricasImpactoPanel = {
+  tiemposPorColumna: calcularTiemposPorColumna(HISTORIAL_TRANSICIONES_MOCK),
+  certificacionLideres: {
+    totalDistribuidas: 18,
+    conFoto: 16,
+    conHistoria: 15,
+    conBeneficiarios: 17,
+    certificacionCompleta: 14,
+    porcentajeCertificacionCompleta: 78,
+    totalPersonasBeneficiadas: 1420,
+  },
+  cumplimientoOrganizaciones: {
+    totalAceptadas: 24,
+    completadas: 21,
+    tasaCumplimientoPorcentaje: 88,
+    canceladasEnProceso: 3,
+    tasaCancelacionPorcentaje: 12,
+    motivosFrecuentes: [
+      { motivo: 'Falta de transporte o vehículo disponible', conteo: 2 },
+      { motivo: 'Insumos averiados durante el alistamiento', conteo: 1 },
+    ],
+  },
+  actividadRed: calcularActividadRed(42, 34, 58, 47),
 };

@@ -14,7 +14,7 @@ import type { IconoRecurso } from './publicacion';
  *  La confirmación es de los dos lados (Alejandro, 16 de septiembre de 2026, sobre la rama de
  *  Fede): quien entrega la certifica con foto y quien recibe la confirma con foto; cualquiera
  *  de los dos la cierra y el otro la valida. */
-export type EstadoSolicitud = 'nueva' | 'aceptada' | 'camino' | 'entregada' | 'confirmada' | 'archivada';
+export type EstadoSolicitud = 'nueva' | 'aceptada' | 'camino' | 'entregada' | 'confirmada' | 'distribuida' | 'archivada';
 
 /** Cómo se cerró una entrega: quién confirmó y con cuántas fotos cada lado. */
 export interface Cierre {
@@ -22,6 +22,8 @@ export interface Cierre {
   recibe?: { fotos: number };
   /** Lo que esa ayuda permitió, contado por quien entregó (historia de impacto). */
   historia?: string;
+  /** Número de personas o familias beneficiadas con la entrega/distribución comunitaria. */
+  personasBeneficiadas?: number;
 }
 
 export interface Solicitud {
@@ -36,6 +38,10 @@ export interface Solicitud {
   vol: number | null;
   dist?: string;
   cierre?: Cierre;
+  /** Motivo si la solicitud fue cancelada o desistida en algún punto del ciclo. */
+  motivoCancelacion?: string;
+  /** En qué estado se encontraba cuando fue cancelada (ej. 'aceptada', 'camino'). */
+  canceladaEnEstado?: EstadoSolicitud;
   /** Fecha (AAAA-MM-DD) en que quedó confirmada. Las confirmadas se archivan a mano con
    *  «Archivar» o solas a los 30 días (Alejandro, 16 de septiembre de 2026), para que no se
    *  acumulen en el tablero. */
@@ -92,8 +98,50 @@ export interface EntregaRecibida {
   detalle?: string;
   vol: string | null;
   cierre?: Cierre;
-  /** Fecha (AAAA-MM-DD) en que la confirmaste. */
+  /** Motivo si fue cancelada o no recibida. */
+  motivoCancelacion?: string;
+  /** Fecha (AAAA-MM-DD) en que la confirmaste o distribuiste. */
   cerradaEl?: string;
+}
+
+/** Estado de una solicitud directa que el líder comunitario envió a la oferta de un donante. */
+export type EstadoSolicitudEnviada = 'en_revision' | 'aceptada' | 'declinada' | 'cancelada';
+
+/** Una solicitud directa que la comunidad u organización hizo sobre la oferta de un tercero. */
+export interface SolicitudEnviada {
+  id: number | string;
+  publicacionId?: string;
+  donante: string;
+  donanteTipo?: string;
+  rec: string;
+  icono?: IconoRecurso;
+  cant: number;
+  u: string;
+  cuando: string;
+  estado: EstadoSolicitudEnviada;
+  motivo?: string;
+  contacto?: { tel?: string; wa?: boolean };
+  entregaRecibidaId?: number;
+}
+
+/** Estado de un ofrecimiento directo que la organización hizo sobre la necesidad de una comunidad. */
+export type EstadoOfrecimientoEnviado = 'pendiente' | 'aceptado' | 'declinado' | 'cancelado';
+
+/** Un ofrecimiento directo de ayuda que la organización envió a una necesidad comunitaria en el Radar. */
+export interface OfrecimientoEnviado {
+  id: number | string;
+  necesidadId?: string;
+  comunidad: string;
+  lugar?: string;
+  rec: string;
+  icono?: IconoRecurso;
+  cant: number;
+  u: string;
+  cuando: string;
+  estado: EstadoOfrecimientoEnviado;
+  motivo?: string;
+  contacto?: { nombre?: string; tel?: string; wa?: boolean };
+  solicitudId?: number;
 }
 
 export type RolPlataforma = 'admin' | 'coordinador' | 'voluntario' | 'auditor' | 'terreno';
@@ -243,4 +291,63 @@ export interface Acta {
   historia?: string;
   /** La entrega de la que sale, para abrir sus fotos. */
   origen: { tipo: 'solicitud' | 'recibida'; id: number };
+}
+
+/**
+ * Evento en la tabla de historial de auditoría (`solicitud_historial` en PostgreSQL).
+ * Permite calcular tiempos de permanencia en cada columna, lead times y abandonos.
+ */
+export interface TransicionEstado {
+  id: string;
+  solicitudId: number;
+  tipo: 'solicitud' | 'recibida';
+  estadoAnterior: EstadoSolicitud | null;
+  estadoNuevo: EstadoSolicitud;
+  actor: string;
+  creadoEl: string; // ISO 8601 string
+  motivo?: string;
+}
+
+/**
+ * Métricas requeridas por el equipo de impacto:
+ * 1. Tiempos en cada columna
+ * 2. % de certificación completa (foto + historia + beneficiarios) y cobertura
+ * 3. Cumplimiento de compromisos vs cancelaciones
+ * 4. Activos vs Inscritos
+ */
+export interface MetricasImpactoPanel {
+  /** 1. Tiempo promedio en horas y días que pasa cada ítem en cada columna */
+  tiemposPorColumna: Record<EstadoSolicitud, { horasPromedio: number; diasPromedio: number; muestra: number }>;
+  /** 2. % de entregas que certifican con foto + historia + beneficiarios */
+  certificacionLideres: {
+    totalDistribuidas: number;
+    conFoto: number;
+    conHistoria: number;
+    conBeneficiarios: number;
+    certificacionCompleta: number;
+    porcentajeCertificacionCompleta: number;
+    totalPersonasBeneficiadas: number;
+  };
+  /** 3. Cumplimiento de compromisos por organizaciones vs cancelaciones */
+  cumplimientoOrganizaciones: {
+    totalAceptadas: number;
+    completadas: number;
+    tasaCumplimientoPorcentaje: number;
+    canceladasEnProceso: number;
+    tasaCancelacionPorcentaje: number;
+    motivosFrecuentes: { motivo: string; conteo: number }[];
+  };
+  /** 4. Activos vs Inscritos en la red */
+  actividadRed: {
+    organizaciones: {
+      inscritas: number;
+      activas30d: number;
+      porcentajeActivas: number;
+    };
+    lideresComunitarios: {
+      inscritos: number;
+      activos30d: number;
+      porcentajeActivos: number;
+    };
+  };
 }

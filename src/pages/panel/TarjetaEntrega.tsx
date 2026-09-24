@@ -1,5 +1,4 @@
-import React from 'react';
-import { Archive, Check, Clock, Eye, MapPin, Phone, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, CircleDashed, CircleDot, Clock, Eye, MapPin, Package, Phone, Truck, Users, X } from 'lucide-react';
 import type { EntregaRecibida, MiembroEquipo, Solicitud } from '../../types/panel';
 import { EQUIPO } from '../../mocks/panelMock';
 import { ENTIDADES } from '../../mocks/directorioMock';
@@ -95,9 +94,9 @@ export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({
     <article
       draggable={arrastre?.draggable}
       onDragStart={arrastre?.onDragStart}
-      className={`flex flex-col rounded-rd-md border bg-rd-surface p-3 text-rd-13 transition-transform hover:-translate-y-px ${
+      className={`flex flex-col rounded-rd-md border border-rd-line bg-rd-surface p-3 text-rd-13 transition-transform hover:-translate-y-px ${
         arrastre?.draggable ? 'cursor-grab active:cursor-grabbing' : ''
-      } ${sinAsignar ? 'border-dashed border-rd-ink-3' : 'border-rd-line'} ${atenuada ? 'opacity-70' : ''}`}
+      } ${atenuada ? 'opacity-70' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <b className="text-rd-13-5 leading-snug font-semibold text-rd-ink">{titulo}</b>
@@ -150,6 +149,7 @@ export interface AccionesSolicitud {
   onAceptar: (id: number) => void;
   onRechazar: (id: number) => void;
   onMover: (id: number, e: Solicitud['estado']) => void;
+  onEnCamino?: (s: Solicitud) => void;
   onAsignar: (s: Solicitud) => void;
   onRecordar: (id: number) => void;
   onCertificar: (s: Solicitud) => void;
@@ -187,7 +187,13 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
               Asignar
             </Button>
           )}
-          <Button nivel={v ? 'primario' : 'secundario'} tamano="sm" disabled={!v} title={v ? undefined : 'Asigna primero a alguien'} onClick={() => a.onMover(s.id, 'camino')}>
+          <Button
+            nivel={v ? 'primario' : 'secundario'}
+            tamano="sm"
+            disabled={!v}
+            title={v ? undefined : 'Asigna primero a alguien'}
+            onClick={() => (a.onEnCamino ? a.onEnCamino(s) : a.onMover(s.id, 'camino'))}
+          >
             Marcar en camino
           </Button>
         </>
@@ -202,7 +208,7 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
       return (
         <>
           <Button nivel="primario" tamano="sm" onClick={() => a.onCertificar(s)}>
-            Certificar
+            Certificar entrega
           </Button>
           <Button nivel="secundario" tamano="sm" onClick={() => a.onRecordar(s.id)}>
             Recordar
@@ -211,16 +217,9 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
       );
     case 'confirmada':
       return (
-        <>
-          {!s.cierre?.entrega && (
-            <Button nivel="primario" tamano="sm" onClick={() => a.onCertificar(s)}>
-              Certificar
-            </Button>
-          )}
-          <Button nivel="secundario" tamano="sm" onClick={() => a.onArchivar(s.id)}>
-            Archivar
-          </Button>
-        </>
+        <Button nivel="secundario" tamano="sm" onClick={() => a.onArchivar(s.id)}>
+          Archivar
+        </Button>
       );
     case 'archivada':
       return (
@@ -263,6 +262,31 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
         onElegir: () => {
           window.open(`https://wa.me/${contacto.tel.replace(/\D/g, '')}`, '_blank', 'noopener');
         },
+      });
+    }
+  }
+
+  if (s.estado === 'camino') {
+    items.push({
+      texto: 'Entregar y certificar',
+      icono: <Check className="h-4 w-4" />,
+      onElegir: () => a.onCertificar(s),
+    });
+  }
+
+  if (s.estado === 'confirmada') {
+    if (!s.cierre?.recibe) {
+      items.push({
+        texto: 'Recordar confirmación a la entidad',
+        icono: <Clock className="h-4 w-4" />,
+        onElegir: () => a.onRecordar(s.id),
+      });
+    }
+    if (!s.cierre?.entrega) {
+      items.push({
+        texto: 'Adjuntar soporte / certificación',
+        icono: <Check className="h-4 w-4" />,
+        onElegir: () => a.onCertificar(s),
       });
     }
   }
@@ -345,8 +369,9 @@ export function menuDeRecibida(
 
 /** El cierre de una entrega confirmada o archivada: quién confirmó, y las fotos como galería. */
 export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => void): { cierre: React.ReactNode; fotos: React.ReactNode } {
-  if (s.estado !== 'confirmada' && s.estado !== 'archivada') return { cierre: null, fotos: null };
   const f = fotosDeEntrega(s.id);
+  const fotosNodo = cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(s, i)} className="mt-2" /> : null;
+  if (s.estado !== 'confirmada' && s.estado !== 'archivada') return { cierre: null, fotos: fotosNodo };
   return {
     cierre: (
       <span className={`mt-2 flex items-start gap-1 text-rd-11-5 font-semibold ${s.cierre?.entrega && s.cierre.recibe ? 'text-rd-green' : 'text-rd-ink-2'}`}>
@@ -354,7 +379,7 @@ export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => 
         <span>{textoCierre(s)}</span>
       </span>
     ),
-    fotos: cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(s, i)} className="mt-2" /> : null,
+    fotos: fotosNodo,
   };
 }
 
@@ -389,12 +414,15 @@ export const TarjetaRecibida: React.FC<{
   r: EntregaRecibida;
   estado?: React.ReactNode;
   onConfirmar: (id: number) => void;
+  onDistribuir?: (r: EntregaRecibida) => void;
+  onArchivar?: (id: number) => void;
   onVerFotos: (r: EntregaRecibida, i: number) => void;
   onAceptar?: (id: number) => void;
   onRechazar?: (id: number) => void;
   onVerPublicacion?: (r: EntregaRecibida) => void;
   menuFlotante?: boolean;
-}> = ({ r, estado, onConfirmar, onVerFotos, onAceptar, onRechazar, onVerPublicacion, menuFlotante = false }) => {
+  arrastre?: TarjetaEntregaProps['arrastre'];
+}> = ({ r, estado, onConfirmar, onDistribuir, onArchivar, onVerFotos, onAceptar, onRechazar, onVerPublicacion, menuFlotante = false, arrastre }) => {
   const f = fotosDeRecibida(r.id);
   const contacto = buscarContactoEntidad(r.org);
   const acciones = (() => {
@@ -421,16 +449,100 @@ export const TarjetaRecibida: React.FC<{
         </Button>
       );
     }
+    if (r.estado === 'confirmada') {
+      return (
+        <>
+          {onDistribuir && (
+            <Button nivel="primario" tamano="sm" onClick={() => onDistribuir(r)}>
+              Registrar distribución
+            </Button>
+          )}
+        </>
+      );
+    }
+    if (r.estado === 'distribuida') {
+      return (
+        <>
+          {onArchivar && (
+            <Button nivel="secundario" tamano="sm" onClick={() => onArchivar(r.id)}>
+              Archivar
+            </Button>
+          )}
+        </>
+      );
+    }
     return null;
   })();
 
-  const cierre =
-    r.estado === 'confirmada' || r.estado === 'archivada' ? (
-      <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-green">
-        <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
-        <span>Confirmada</span>
-      </span>
-    ) : null;
+  const badgeEstado = estado ?? (() => {
+    if (r.estado === 'aceptada') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-line bg-rd-sunken px-2 py-0.5 text-rd-11 font-medium text-rd-ink-2">
+          <CircleDashed aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-ink-3" />
+          <span>Coordinando</span>
+        </span>
+      );
+    }
+    if (r.estado === 'camino') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-amber-line bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber-ink">
+          <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
+          <span>En ruta</span>
+        </span>
+      );
+    }
+    if (r.estado === 'entregada') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
+          <CircleDot aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-navy" />
+          <span>Por confirmar</span>
+        </span>
+      );
+    }
+    return null;
+  })();
+
+  const cierre = (() => {
+    if (r.estado === 'confirmada') {
+      return (
+        <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-green">
+          <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
+          <span>Recibido en acopio</span>
+        </span>
+      );
+    }
+    if (r.estado === 'distribuida') {
+      return (
+        <div className="mt-2 flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="flex items-start gap-1 text-rd-11-5 font-semibold text-rd-green">
+              <Users aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
+              <span>Distribuido en la comunidad</span>
+            </span>
+            {r.cierre?.personasBeneficiadas && (
+              <span className="rounded-rd-full bg-rd-green-soft px-2 py-0.5 text-rd-11 font-medium text-rd-green">
+                {r.cierre.personasBeneficiadas} {r.cierre.personasBeneficiadas === 1 ? 'persona beneficiada' : 'personas beneficiadas'}
+              </span>
+            )}
+          </div>
+          {r.cierre?.historia && (
+            <p className="m-0 text-rd-12 leading-relaxed text-rd-ink-2 italic">
+              «{r.cierre.historia}»
+            </p>
+          )}
+        </div>
+      );
+    }
+    if (r.estado === 'archivada') {
+      return (
+        <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-ink-meta">
+          <Archive aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Archivada</span>
+        </span>
+      );
+    }
+    return null;
+  })();
 
   return (
     <TarjetaEntrega
@@ -442,12 +554,13 @@ export const TarjetaRecibida: React.FC<{
       lleva={r.vol}
       contacto={contacto}
       detalle={r.detalle}
-      estado={estado}
+      estado={badgeEstado}
       cierre={cierre}
       fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
       acciones={acciones}
       menu={menuDeRecibida(r, menuFlotante, onVerPublicacion)}
       atenuada={r.estado === 'archivada'}
+      arrastre={arrastre}
     />
   );
 };
