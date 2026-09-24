@@ -33,6 +33,7 @@ import { supabase } from '../lib/supabaseClient';
 import { HelpCategory, Need, Offer, PlaceType, Priority, NeedStatus } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
 import { Footer } from './Footer';
+import { CustomSelect } from './CustomSelect';
 import { DEPARTMENTS, findDepartmentByCityId, getCityDisplayName } from '../data/colombiaCities';
 
 // ==========================================
@@ -799,51 +800,44 @@ export const CifrasPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap gap-3">
                 {/* Department filter */}
-                <select
+                <CustomSelect
+                  className="min-w-[200px]"
                   value={selectedDepartment}
-                  onChange={(e) => {
-                    setSelectedDepartment(e.target.value);
+                  onChange={(val) => {
+                    setSelectedDepartment(val);
                     setSelectedCity('ALL');
                   }}
-                  className="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-[#1B3A93]/20 focus:border-[#1B3A93] outline-none"
-                >
-                  <option value="ALL">Todos los departamentos</option>
-                  {activeDepartments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: 'ALL', label: 'Todos los departamentos' },
+                    ...activeDepartments.map((dept) => ({ value: dept.id, label: dept.name })),
+                  ]}
+                />
 
                 {/* City filter */}
-                <select
+                <CustomSelect
+                  className="min-w-[200px]"
                   value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-[#1B3A93]/20 focus:border-[#1B3A93] outline-none"
-                >
-                  <option value="ALL">Todas las ciudades</option>
-                  {availableCities.map((cityId) => (
-                    <option key={cityId} value={cityId}>
-                      {getCityDisplayName(cityId)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedCity(val)}
+                  options={[
+                    { value: 'ALL', label: 'Todas las ciudades' },
+                    ...availableCities.map((cityId) => ({ value: cityId, label: getCityDisplayName(cityId) })),
+                  ]}
+                />
 
                 {/* Date range filter */}
-                <div className="flex items-center gap-1.5 border border-slate-300 rounded-lg px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-[#1B3A93]/20 focus-within:border-[#1B3A93]">
-                  <Calendar className="w-3.5 h-3.5 text-[#1B3A93]" />
-                  <select
-                    value={dateFilterType}
-                    onChange={(e) => setDateFilterType(e.target.value as any)}
-                    className="text-xs bg-transparent outline-none border-none pr-1 cursor-pointer"
-                  >
-                    <option value="ALL">Todo el tiempo</option>
-                    <option value="TODAY">Hoy</option>
-                    <option value="WEEK">Últimos 7 días</option>
-                    <option value="MONTH">Últimos 30 días</option>
-                    <option value="CUSTOM">Rango personalizado</option>
-                  </select>
-                </div>
+                <CustomSelect
+                  className="min-w-[190px]"
+                  icon={<Calendar className="w-3.5 h-3.5 text-[#1B3A93]" />}
+                  value={dateFilterType}
+                  onChange={(val) => setDateFilterType(val as any)}
+                  options={[
+                    { value: 'ALL', label: 'Todo el tiempo' },
+                    { value: 'TODAY', label: 'Hoy' },
+                    { value: 'WEEK', label: 'Últimos 7 días' },
+                    { value: 'MONTH', label: 'Últimos 30 días' },
+                    { value: 'CUSTOM', label: 'Rango personalizado' },
+                  ]}
+                />
 
                 {/* Custom Date Inputs if CUSTOM is selected */}
                 {dateFilterType === 'CUSTOM' && (
@@ -1754,7 +1748,7 @@ export const CifrasPage: React.FC = () => {
         {/* Printable Footer */}
         <div className="pt-4 border-t-2 border-slate-300 text-center text-[10px] text-slate-600">
           <p className="font-bold text-slate-800">RaDAR de Ayuda - Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
-          <p>Informe generado automáticamente desde radardeayuda.co • info@radardeayuda.co</p>
+          <p>Informe generado automáticamente desde radardeayuda.org • info@radardeayuda.org</p>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { upsertUserProfile } from '../../../lib/supabaseService';
 import { Turnstile } from '../../../components/Turnstile';
 import { findCityById, findDepartmentByCityId } from '../../../data/colombiaCities';
 import { CityFormCombobox } from '../../../components/CityFormCombobox';
+import { CustomSelect } from '../../../components/CustomSelect';
 
 interface VolunteerRegisterModalProps {
   isOpen: boolean;
@@ -336,16 +337,17 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Tipo de Documento</label>
-                    <select
+                    <CustomSelect
+                      className="w-full"
                       value={documentType}
-                      onChange={(e) => setDocumentType(e.target.value)}
-                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="cedula">Cédula de Ciudadanía</option>
-                      <option value="nit">NIT</option>
-                      <option value="pasaporte">Pasaporte</option>
-                      <option value="extrangeria">Cédula de Extranjería</option>
-                    </select>
+                      onChange={setDocumentType}
+                      options={[
+                        { value: 'cedula', label: 'Cédula de Ciudadanía' },
+                        { value: 'nit', label: 'NIT' },
+                        { value: 'pasaporte', label: 'Pasaporte' },
+                        { value: 'extrangeria', label: 'Cédula de Extranjería' },
+                      ]}
+                    />
                   </div>
 
                   <div>

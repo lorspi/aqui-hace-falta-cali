@@ -7,6 +7,7 @@ import { HelpCategory, Need, PlaceType, Priority } from '../types';
 import { CATEGORY_LABELS, PLACE_TYPE_LABELS, PRIORITY_CONFIG, getCategoryLabel, getPlaceTypeLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
 import { MiniMapPicker } from './MiniMapPicker';
+import { CustomSelect } from './CustomSelect';
 import { Turnstile } from './Turnstile';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -57,6 +58,16 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [isArchived, setIsArchived] = useState(false);
   const authToken = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_token') : null;
 
+  // Errores de validación inline por campo (patrón estándar: borde rojo + texto rojo debajo)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (field: string) =>
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
   }, []);
@@ -101,6 +112,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       setTurnstileToken(isModerator ? 'moderator-bypass' : null);
       setShowPickerMap(false);
       setIsArchived(need.verificationStatus === 'ARCHIVED');
+      setErrors({});
     }
   }, [need]);
 
@@ -182,10 +194,14 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       showAlert('Por favor completa la verificación de seguridad (reCAPTCHA/Turnstile).', { title: 'Verificación requerida', variant: 'error' });
       return;
     }
-    if (!title.trim() || !description.trim() || !address.trim() || !neighborhood.trim() || !contactPhone.trim()) {
-      showAlert('Por favor completa todos los campos requeridos (*), incluyendo el teléfono de contacto.', { title: 'Campos incompletos', variant: 'error' });
-      return;
-    }
+    const fieldErrors: Record<string, string> = {};
+    if (!title.trim()) fieldErrors.title = 'El título es obligatorio';
+    if (!description.trim()) fieldErrors.description = 'La descripción es obligatoria';
+    if (!neighborhood.trim()) fieldErrors.neighborhood = 'El barrio es obligatorio';
+    if (!address.trim()) fieldErrors.address = 'La dirección o referencia es obligatoria';
+    if (!contactPhone.trim()) fieldErrors.contactPhone = 'El teléfono de contacto es obligatorio';
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
 
     setIsSubmitting(true);
     try {
@@ -334,40 +350,37 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
               </label>
               <input
                 type="text"
-                required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }}
                 placeholder="Ej: Edificio residencial - Remoción de escombros en San Fernando"
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white text-sm"
+                className={`w-full p-2.5 bg-slate-50 border rounded-lg focus:bg-white text-sm ${errors.title ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                aria-invalid={errors.title ? true : undefined}
               />
+              {errors.title && <p className="form-error">{errors.title}</p>}
             </div>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">Descripción detallada *</label>
               <textarea
-                required
                 rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }}
                 placeholder="Explica detalladamente la situación, accesos, requerimientos especiales..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs"
+                className={`w-full p-2.5 bg-slate-50 border rounded-lg text-xs ${errors.description ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                aria-invalid={errors.description ? true : undefined}
               />
+              {errors.description && <p className="form-error">{errors.description}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Tipo de lugar *</label>
-                <select
+                <CustomSelect
+                  className="w-full"
                   value={placeType}
-                  onChange={(e) => setPlaceType(e.target.value as PlaceType)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold"
-                >
-                  {placeTypesList.map((pt) => (
-                    <option key={pt} value={pt}>
-                      {PLACE_TYPE_LABELS[pt]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPlaceType(val as PlaceType)}
+                  options={placeTypesList.map((pt) => ({ value: pt, label: PLACE_TYPE_LABELS[pt] }))}
+                />
               </div>
 
               <div>
@@ -414,24 +427,26 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                 <label className="block font-bold text-slate-700 mb-1">Barrio *</label>
                 <input
                   type="text"
-                  required
                   value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
+                  onChange={(e) => { setNeighborhood(e.target.value); clearFieldError('neighborhood'); }}
                   placeholder="Ej: San Fernando, Siloé, Granada, El Peñón..."
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.neighborhood ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.neighborhood ? true : undefined}
                 />
+                {errors.neighborhood && <p className="form-error">{errors.neighborhood}</p>}
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Dirección / Referencia *</label>
                 <input
                   type="text"
-                  required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => { setAddress(e.target.value); clearFieldError('address'); }}
                   placeholder="Ej: Calle 5 con Carrera 44, o Calle 5 # 34-12"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.address ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.address ? true : undefined}
                 />
+                {errors.address && <p className="form-error">{errors.address}</p>}
                 {isGeocoding && (
                   <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Buscando ubicación...
@@ -519,21 +534,16 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
 
               {resources.map((res, idx) => (
                 <div key={res.id || idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2">
-                  <select
+                  <CustomSelect
+                    className="w-full sm:w-44"
                     value={res.type}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const updated = [...resources];
-                      updated[idx] = { ...updated[idx], type: e.target.value as HelpCategory };
+                      updated[idx] = { ...updated[idx], type: val as HelpCategory };
                       setResources(updated);
                     }}
-                    className="p-1.5 bg-white border border-slate-300 rounded text-xs w-full sm:w-auto"
-                  >
-                    {categoriesList.map((c) => (
-                      <option key={c} value={c}>
-                        {CATEGORY_LABELS[c]?.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={categoriesList.map((c) => ({ value: c, label: CATEGORY_LABELS[c]?.label ?? c }))}
+                  />
 
                   <input
                     type="text"
@@ -634,12 +644,13 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                   type="tel"
                   inputMode="numeric"
                   maxLength={15}
-                  required
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                  onChange={(e) => { setContactPhone(e.target.value.replace(/[^0-9+]/g, '')); clearFieldError('contactPhone'); }}
                   placeholder="Ej: 3124448821"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.contactPhone ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
+                  aria-invalid={errors.contactPhone ? true : undefined}
                 />
+                {errors.contactPhone && <p className="form-error">{errors.contactPhone}</p>}
               </div>
 
               <div>

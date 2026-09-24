@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, CreditCard, FileText, Building2 } from 'lucide-react';
 import { DocumentType, UserRole } from '../../schemas/registerSchema';
+import { CustomSelect } from '../../../../components/CustomSelect';
 
 interface Step3IdentityProps {
   role?: UserRole;
@@ -217,26 +218,20 @@ export const Step3Identity: React.FC<Step3IdentityProps> = ({
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Tipo de Documento
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <CreditCard className="w-4 h-4 text-blue-600" />
-            </div>
-            <select
-              value={documentType}
-              onChange={(e) => onChangeDocumentType(e.target.value as DocumentType)}
-              className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all appearance-none cursor-pointer shadow-xs"
-            >
-              <option value="cedula">Cédula de Ciudadanía (CC)</option>
-              <option value="cedula_extranjeria">Cédula de Extranjería (CE)</option>
-              <option value="pasaporte">Pasaporte (PA)</option>
-              <option value="ppt_pep">Permiso por Protección Temporal (PPT / PEP)</option>
-              <option value="nit">NIT (Identificación Tributaria)</option>
-              <option value="tarjeta_identidad">Tarjeta de Identidad (TI)</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400 text-xs">
-              ▼
-            </div>
-          </div>
+          <CustomSelect
+            className="w-full"
+            icon={<CreditCard className="w-4 h-4 text-blue-600" />}
+            value={documentType}
+            onChange={(val) => onChangeDocumentType(val as DocumentType)}
+            options={[
+              { value: 'cedula', label: 'Cédula de Ciudadanía (CC)' },
+              { value: 'cedula_extranjeria', label: 'Cédula de Extranjería (CE)' },
+              { value: 'pasaporte', label: 'Pasaporte (PA)' },
+              { value: 'ppt_pep', label: 'Permiso por Protección Temporal (PPT / PEP)' },
+              { value: 'nit', label: 'NIT (Identificación Tributaria)' },
+              { value: 'tarjeta_identidad', label: 'Tarjeta de Identidad (TI)' },
+            ]}
+          />
         </div>
 
         {/* Número de Documento */}

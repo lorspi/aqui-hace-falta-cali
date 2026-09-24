@@ -38,6 +38,7 @@ import {
   getCategoryLabel,
 } from '../utils/formatters';
 import { ChatbotReportDetail } from './ChatbotReportDetail';
+import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
 
 interface ChatbotReportsListProps {
@@ -252,16 +253,17 @@ function QuickTicketCard({ ticket, onStatusChange }: { ticket: QuickTicket; onSt
         {/* Cambiar Estado */}
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-bold text-slate-400 uppercase">Estado:</span>
-          <select
+          <CustomSelect
+            className="min-w-[140px]"
             value={ticket.status}
-            onChange={(e) => onStatusChange(ticket.id, e.target.value)}
-            className="bg-slate-100 border border-slate-300 rounded-lg text-xs font-bold py-1 px-2 text-slate-800 cursor-pointer"
-          >
-            <option value="PENDING">Pendiente</option>
-            <option value="IN_REVIEW">En Revisión</option>
-            <option value="CONVERTED">Convertido</option>
-            <option value="ARCHIVED">Archivado</option>
-          </select>
+            onChange={(val) => onStatusChange(ticket.id, val)}
+            options={[
+              { value: 'PENDING', label: 'Pendiente' },
+              { value: 'IN_REVIEW', label: 'En Revisión' },
+              { value: 'CONVERTED', label: 'Convertido' },
+              { value: 'ARCHIVED', label: 'Archivado' },
+            ]}
+          />
         </div>
       </div>
     </div>
@@ -386,17 +388,18 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
           <div className="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center gap-2">
               <label className="text-xs font-bold text-slate-700">Filtrar por estado:</label>
-              <select
+              <CustomSelect
+                className="min-w-[200px]"
                 value={quickTicketFilter}
-                onChange={(e) => setQuickTicketFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold py-1.5 px-3 text-slate-800"
-              >
-                <option value="ALL">Todos los tickets ({quickTickets.length})</option>
-                <option value="PENDING">Pendientes</option>
-                <option value="IN_REVIEW">En Revisión</option>
-                <option value="CONVERTED">Convertidos</option>
-                <option value="ARCHIVED">Archivados</option>
-              </select>
+                onChange={setQuickTicketFilter}
+                options={[
+                  { value: 'ALL', label: `Todos los tickets (${quickTickets.length})` },
+                  { value: 'PENDING', label: 'Pendientes' },
+                  { value: 'IN_REVIEW', label: 'En Revisión' },
+                  { value: 'CONVERTED', label: 'Convertidos' },
+                  { value: 'ARCHIVED', label: 'Archivados' },
+                ]}
+              />
             </div>
 
             <button
@@ -444,48 +447,50 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
                 <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
                   Verificación
                 </label>
-                <select
+                <CustomSelect
+                  className="w-full"
                   value={verificationFilter}
-                  onChange={(e) => setVerificationFilter(e.target.value as ChatbotVerificationFilter)}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800"
-                >
-                  <option value="ALL">Todos los estados</option>
-                  <option value="PENDING_VERIFICATION">Pendientes</option>
-                  <option value="VERIFIED">Verificados</option>
-                  <option value="REJECTED">Rechazados</option>
-                </select>
+                  onChange={(val) => setVerificationFilter(val as ChatbotVerificationFilter)}
+                  options={[
+                    { value: 'ALL', label: 'Todos los estados' },
+                    { value: 'PENDING_VERIFICATION', label: 'Pendientes' },
+                    { value: 'VERIFIED', label: 'Verificados' },
+                    { value: 'REJECTED', label: 'Rechazados' },
+                  ]}
+                />
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
                   Prioridad
                 </label>
-                <select
+                <CustomSelect
+                  className="w-full"
                   value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value as Priority | 'ALL')}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800"
-                >
-                  <option value="ALL">Todas las prioridades</option>
-                  {PRIORITY_OPTIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {PRIORITY_CONFIG[p].dot} {PRIORITY_CONFIG[p].label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPriorityFilter(val as Priority | 'ALL')}
+                  options={[
+                    { value: 'ALL', label: 'Todas las prioridades' },
+                    ...PRIORITY_OPTIONS.map((p) => ({
+                      value: p,
+                      label: `${PRIORITY_CONFIG[p].dot} ${PRIORITY_CONFIG[p].label}`,
+                    })),
+                  ]}
+                />
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
                   Orden
                 </label>
-                <select
+                <CustomSelect
+                  className="w-full"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as ChatbotSortOption)}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800"
-                >
-                  <option value="RECENT">Más recientes</option>
-                  <option value="PRIORITY">Mayor prioridad</option>
-                </select>
+                  onChange={(val) => setSortBy(val as ChatbotSortOption)}
+                  options={[
+                    { value: 'RECENT', label: 'Más recientes' },
+                    { value: 'PRIORITY', label: 'Mayor prioridad' },
+                  ]}
+                />
               </div>
             </div>
           </div>

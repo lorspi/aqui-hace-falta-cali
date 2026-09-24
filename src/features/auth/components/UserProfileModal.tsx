@@ -4,6 +4,7 @@ import { X, User, Phone, MapPin, Building2, ShieldCheck, CheckCircle2, AlertCirc
 import { fetchUserProfile, upsertUserProfile, fetchUserOrganization, upsertOrganization } from '../../../lib/supabaseService';
 import { supabase } from '../../../lib/supabaseClient';
 import { CityFormCombobox } from '../../../components/CityFormCombobox';
+import { CustomSelect } from '../../../components/CustomSelect';
 import { ALL_CITIES, findCityById, findDepartmentByCityId } from '../../../data/colombiaCities';
 import { DocumentType, userRoleEnum } from '../schemas/registerSchema';
 
@@ -433,18 +434,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         Tipo de Documento
                       </label>
-                      <select
+                      <CustomSelect
+                        className="w-full"
                         value={documentType}
-                        onChange={(e) => setValue('documentType', e.target.value as DocumentType)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 transition-all"
-                      >
-                        <option value="cedula">Cédula de Ciudadanía (CC)</option>
-                        <option value="cedula_extranjeria">Cédula de Extranjería (CE)</option>
-                        <option value="pasaporte">Pasaporte</option>
-                        <option value="nit">NIT (Identificación Tributaria)</option>
-                        <option value="ppt_pep">PPT / PEP</option>
-                        <option value="tarjeta_identidad">Tarjeta de Identidad (TI)</option>
-                      </select>
+                        onChange={(val) => setValue('documentType', val as DocumentType)}
+                        options={[
+                          { value: 'cedula', label: 'Cédula de Ciudadanía (CC)' },
+                          { value: 'cedula_extranjeria', label: 'Cédula de Extranjería (CE)' },
+                          { value: 'pasaporte', label: 'Pasaporte' },
+                          { value: 'nit', label: 'NIT (Identificación Tributaria)' },
+                          { value: 'ppt_pep', label: 'PPT / PEP' },
+                          { value: 'tarjeta_identidad', label: 'Tarjeta de Identidad (TI)' },
+                        ]}
+                      />
                     </div>
 
                     {/* Número de Documento */}
