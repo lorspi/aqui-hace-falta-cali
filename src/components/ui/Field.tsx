@@ -43,9 +43,11 @@ export interface FieldProps {
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   valorInicial?: string;
+  list?: string;
   forma?: 'base' | 'pildora';
   etiquetaOculta?: boolean;
   verComoTexto?: boolean;
+  deshabilitado?: boolean;
   className?: string;
 }
 
@@ -72,9 +74,11 @@ export const Field: React.FC<FieldProps> = ({
   autoComplete,
   inputMode,
   valorInicial,
+  list,
   forma = 'base',
   etiquetaOculta = false,
   verComoTexto = false,
+  deshabilitado = false,
   className = '',
 }) => {
   const [visible, setVisible] = useState(false);
@@ -113,15 +117,16 @@ export const Field: React.FC<FieldProps> = ({
   if (tipo === 'checkbox') {
     return (
       <div className={className}>
-        <label htmlFor={id} className="font-rd flex cursor-pointer items-center gap-2.5 py-1.75 text-rd-13-5 text-rd-ink pointer-coarse:min-h-rd-tactil">
+        <label htmlFor={id} className={`font-rd flex items-center gap-2.5 py-1.75 text-rd-13-5 text-rd-ink pointer-coarse:min-h-rd-tactil ${deshabilitado ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
           <input
             id={id}
             type="checkbox"
             checked={marcado}
+            disabled={deshabilitado}
             onChange={(e) => onChangeMarcado?.(e.target.checked)}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
-            className="m-0 h-4 w-4 shrink-0 cursor-pointer accent-rd-sel focus-visible:rounded-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
+            className="m-0 h-4 w-4 shrink-0 cursor-pointer accent-rd-sel focus-visible:rounded-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy disabled:cursor-not-allowed"
           />
           <span>{etiquetaNodo}</span>
         </label>
@@ -162,11 +167,12 @@ export const Field: React.FC<FieldProps> = ({
             <select
               id={id}
               value={valor}
+              disabled={deshabilitado}
               onChange={(e) => onChange?.(e.target.value)}
               onBlur={(e) => onBlur?.(e.target.value)}
               aria-describedby={describedBy}
               aria-invalid={error ? true : undefined}
-              className={`${claseControl} appearance-none pr-10 cursor-pointer ${
+              className={`${claseControl} appearance-none pr-10 ${deshabilitado ? 'cursor-not-allowed' : 'cursor-pointer'} ${
                 !valor ? 'text-rd-ink-meta' : 'text-rd-ink font-normal'
               }`}
             >
@@ -193,6 +199,7 @@ export const Field: React.FC<FieldProps> = ({
             id={id}
             value={valor}
             rows={filas}
+            disabled={deshabilitado}
             onChange={(e) => onChange?.(e.target.value)}
             onBlur={(e) => onBlur?.(e.target.value)}
             placeholder={placeholderFinal}
@@ -207,6 +214,7 @@ export const Field: React.FC<FieldProps> = ({
               ref={passRef}
               id={id}
               type={visible ? 'text' : 'password'}
+              disabled={deshabilitado}
               onChange={(e) => onChange?.(e.target.value)}
               onBlur={(e) => onBlur?.(e.target.value)}
               placeholder={placeholderFinal}
@@ -222,6 +230,7 @@ export const Field: React.FC<FieldProps> = ({
             {verComoTexto ? (
               <button
                 type="button"
+                disabled={deshabilitado}
                 onClick={() => setVisible((v) => !v)}
                 aria-pressed={visible}
                 className="font-rd absolute inset-y-0 right-2 flex cursor-pointer items-center px-3 text-rd-12-5 font-medium text-rd-ink-meta hover:text-rd-ink focus-visible:rounded-full focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
@@ -231,6 +240,7 @@ export const Field: React.FC<FieldProps> = ({
             ) : (
               <button
                 type="button"
+                disabled={deshabilitado}
                 onClick={() => setVisible((v) => !v)}
                 aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 aria-pressed={visible}
@@ -245,11 +255,13 @@ export const Field: React.FC<FieldProps> = ({
             id={id}
             type={tipo}
             value={valor}
+            disabled={deshabilitado}
             onChange={(e) => onChange?.(e.target.value)}
             onBlur={(e) => onBlur?.(e.target.value)}
             placeholder={placeholderFinal}
             autoComplete={autoComplete}
             inputMode={inputMode}
+            list={list}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
             aria-required={requerido || undefined}

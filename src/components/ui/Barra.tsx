@@ -12,7 +12,7 @@ import React from 'react';
  *     (`CLASE_TONO`): lo confirmado en verde, lo que va en camino en ámbar y RAYADO (todavía
  *     no llegó), lo nuevo en coral, lo comprometido en gris, lo entregado por confirmar en navy.
  */
-export type TonoTramo = 'nueva' | 'comprometida' | 'camino' | 'porConfirmar' | 'confirmada' | 'archivada';
+export type TonoTramo = 'nueva' | 'comprometida' | 'camino' | 'porConfirmar' | 'confirmada' | 'distribuida' | 'archivada';
 
 export interface Tramo {
   tono: TonoTramo;
@@ -26,6 +26,7 @@ export const CLASE_TONO: Record<TonoTramo, string> = {
   camino: 'bg-rd-amber bg-rd-rayado',
   porConfirmar: 'bg-rd-navy',
   confirmada: 'bg-rd-green',
+  distribuida: 'bg-rd-green',
   archivada: 'bg-rd-line',
 };
 

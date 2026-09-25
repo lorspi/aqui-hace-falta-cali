@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { FotoPublicada } from '../../types/publicacion';
+import { Divisor } from './Divisor';
 
 /**
  * Las fotos ya cargadas, accesibles desde donde están (Alejandro, 16 de septiembre de 2026).
@@ -101,7 +102,12 @@ export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial
               <p className="m-0 truncate text-rd-14 font-semibold">{titulo}</p>
               <p className="m-0 text-rd-12-5 text-white/70 tabular-nums">
                 {i + 1} de {lista.length}
-                {f.grupo ? ` · ${f.grupo}` : ''}
+                {f.grupo ? (
+                  <>
+                    <Divisor className="bg-white/25" />
+                    {f.grupo}
+                  </>
+                ) : null}
               </p>
             </div>
             <button type="button" aria-label="Cerrar" onClick={onCerrar} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-rd-md text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
@@ -124,7 +130,9 @@ export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial
           <div className="flex-none px-4 py-3">
             <p className="m-0 text-rd-13 leading-snug">{f.alt}</p>
             <p className="m-0 mt-0.5 text-rd-12 text-white/70">
-              {f.quien} · {f.cuando}
+              {f.quien}
+              <Divisor className="bg-white/25" />
+              {f.cuando}
             </p>
           </div>
         </div>

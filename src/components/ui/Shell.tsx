@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogOut, MapPin, Menu, Plus, Users, X } from 'lucide-react';
 import { Avatar, Contador } from './Etiqueta';
+import { Divisor } from './Divisor';
 
 /**
  * El cascarón de la app con sesión (`rd-shell` del prototipo), con utilidades sobre los
@@ -94,7 +95,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
   };
 
   return (
-    <div className={`font-rd flex min-h-dvh gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
+    <div className={`rd-app font-rd flex min-h-dvh gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
       {/* ---- side nav (solo ≥ 1024) ---- */}
       <nav
         aria-label="Secciones"
@@ -111,7 +112,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
             <ChevronLeft aria-hidden="true" className={`h-4.5 w-4.5 transition-transform duration-200 ${plegado ? 'rotate-180' : ''}`} />
           </button>
           {!plegado && (
-            <a href={rutas.inicio} aria-label="RaDAR de ayuda · inicio" className="flex w-full items-center px-1 focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy">
+            <a href={rutas.inicio} aria-label="RaDAR de ayuda, inicio" className="flex w-full items-center px-1 focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy">
               <img src="/logo-radar.svg" alt="" className="block h-9.5 w-auto" />
             </a>
           )}
@@ -128,7 +129,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
               <span className="flex min-w-0 flex-col">
                 <b className="truncate text-rd-13 font-semibold">{cuenta.entidad}</b>
                 <span className="truncate text-rd-11-5 text-rd-ink-meta">
-                  {cuenta.persona} · {cuenta.rol}
+                  {cuenta.persona}
+                  <Divisor />
+                  {cuenta.rol}
                 </span>
               </span>
             )}
@@ -180,7 +183,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
           <button type="button" aria-label="Cerrar el menú" onClick={onCerrarCajon} className="absolute inset-0 cursor-default bg-rd-ink/40" />
           <div role="dialog" aria-modal="true" aria-label="Menú" className="absolute top-0 right-0 bottom-0 flex w-4/5 max-w-90 flex-col overflow-auto rounded-l-rd-md bg-rd-surface shadow-rd-2">
             <div className="flex min-h-16 items-center justify-between border-b border-rd-line px-4 py-3 sm:px-6">
-              <a href={rutas.inicio} aria-label="RaDAR de ayuda · inicio">
+              <a href={rutas.inicio} aria-label="RaDAR de ayuda, inicio">
                 <img src="/logo-radar.svg" alt="" className="block h-7.5 w-auto" />
               </a>
               <button type="button" onClick={onCerrarCajon} aria-label="Cerrar el menú" className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-sunken text-rd-ink focus-visible:outline-2 focus-visible:outline-rd-navy">
@@ -206,7 +209,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
               <span className="flex min-w-0 flex-col">
                 <b className="truncate text-rd-14 font-semibold">{cuenta.entidad}</b>
                 <span className="truncate text-rd-12 text-rd-ink-meta">
-                  {cuenta.persona} · {cuenta.rol}
+                  {cuenta.persona}
+                  <Divisor />
+                  {cuenta.rol}
                 </span>
               </span>
             </a>

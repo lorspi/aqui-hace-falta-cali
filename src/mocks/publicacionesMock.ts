@@ -6,6 +6,7 @@
  */
 import type { CategoriaRecurso, IconoRecurso, Publicacion, Ubicacion } from '../types/publicacion';
 import { FOTOS_PUBLICACION } from './fotosMock';
+import { tituloPublicacion } from '../utils/publicaciones';
 
 /** La taxonomía de recursos. La misma para pedir, ofrecer y filtrar. */
 export const TAXONOMIA: CategoriaRecurso[] = [
@@ -33,8 +34,10 @@ export const ICONO_ITEM: Record<string, IconoRecurso> = {
   'Alojamiento temporal': 'house',
 };
 
-/** Ubicación simulada de la persona que mira. En producción la da el dispositivo. */
-export const UBICACION: Ubicacion = { lat: 4.53, lng: -74.12, zona: 'Usme', simulada: true };
+/** Ubicación simulada de la persona que mira. En producción la da el dispositivo. Lleva la
+ *  ciudad explícita porque `detectCityFromCoords` de producción solo reconoce Bogotá a 20 km
+ *  del centro, y Usme queda a 22. */
+export const UBICACION: Ubicacion = { lat: 4.53, lng: -74.12, ciudad: 'bogota', zona: 'Usme', simulada: true };
 
 /* Las fotos viven en `fotosMock.ts`; se cuelgan aquí para que cada publicación las lleve. */
 const SIN_FOTOS: Publicacion[] = [
@@ -61,7 +64,7 @@ const SIN_FOTOS: Publicacion[] = [
         ],
         ficha: [
           ['Disponibilidad', 'Hasta agotar'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
       {
@@ -71,7 +74,7 @@ const SIN_FOTOS: Publicacion[] = [
         tramos: [{ t: 'hecho', cant: 30, quien: 'Comedor Villa Gloria', cuando: '13 sep, 11:20 a. m.' }],
         ficha: [
           ['Disponibilidad', 'Hasta el 20 sep'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
       {
@@ -81,7 +84,7 @@ const SIN_FOTOS: Publicacion[] = [
         tramos: [{ t: 'camino', cant: 1, quien: 'Hospital de Usme', cuando: 'Ayer 4:10 p. m.' }],
         ficha: [
           ['Disponibilidad', '48 horas'],
-          ['Cómo se entrega', 'Lo llevamos · 15 km'],
+          ['Cómo se entrega', 'Lo llevamos hasta 15 km'],
         ],
       },
     ],
@@ -134,16 +137,63 @@ const SIN_FOTOS: Publicacion[] = [
   },
   /* Las demás publicaciones del mapa. Menos detalle, mismas reglas. */
   { id: 'm1', tipo: 'necesidad', titulo: 'Albergue Bosa', org: 'Albergue Bosa', verificada: false, lat: 4.608, lng: -74.19, zona: 'Bosa', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 50, tramos: [{ t: 'camino', cant: 20, quien: 'Parroquia San Bernardino', cuando: 'Llega hoy 5:00 p. m.' }] }] },
-  { id: 'm2', tipo: 'oferta', titulo: 'Cruz Roja seccional', org: 'Cruz Roja · seccional Bogotá', verificada: true, lat: 4.612, lng: -74.185, zona: 'Teusaquillo', recursos: [{ item: 'Atención médica', unidad: 'profesionales', total: 5, tramos: [{ t: 'hecho', cant: 3, quien: 'Albergue Bosa', cuando: '12 sep' }] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 600, tramos: [{ t: 'hecho', cant: 420, quien: 'Varias', cuando: '11 sep' }] }] },
+  { id: 'm2', tipo: 'oferta', titulo: 'Cruz Roja seccional', org: 'Cruz Roja seccional Bogotá', verificada: true, lat: 4.612, lng: -74.185, zona: 'Teusaquillo', recursos: [{ item: 'Atención médica', unidad: 'profesionales', total: 5, tramos: [{ t: 'hecho', cant: 3, quien: 'Albergue Bosa', cuando: '12 sep' }] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 600, tramos: [{ t: 'hecho', cant: 420, quien: 'Varias', cuando: '11 sep' }] }, { item: 'Protección respiratoria', unidad: 'unidades', total: 200, tramos: [] }] },
   { id: 'm3', tipo: 'necesidad', titulo: 'JAC El Recuerdo', org: 'JAC El Recuerdo', verificada: false, lat: 4.615, lng: -74.196, zona: 'Bosa', recursos: [{ item: 'Agua potable', unidad: 'L', total: 600, tramos: [] }] },
   { id: 'm4', tipo: 'necesidad', titulo: 'Comedor Villa Gloria', org: 'Comedor Villa Gloria', verificada: false, lat: 4.601, lng: -74.183, zona: 'Ciudad Bolívar', recursos: [{ item: 'Alimentos', unidad: 'kits', total: 100, tramos: [{ t: 'hecho', cant: 20, quien: 'Bomberos Voluntarios Usme', cuando: '13 sep' }, { t: 'camino', cant: 30, quien: 'Fundación Manos Unidas', cuando: 'Llega mañana' }] }] },
   { id: 'm5', tipo: 'oferta', titulo: 'Parroquia San Bernardino', org: 'Parroquia San Bernardino', verificada: false, lat: 4.604, lng: -74.199, zona: 'Bosa', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 60, tramos: [] }, { item: 'Ropa y calzado', unidad: 'mudas', total: 300, tramos: [] }] },
   { id: 'm6', tipo: 'necesidad', titulo: 'Hospital de Usme', org: 'Hospital de Usme', verificada: true, lat: 4.514, lng: -74.121, zona: 'Usme', recursos: [{ item: 'Plantas eléctricas / Generadores', unidad: 'plantas', total: 2, tramos: [{ t: 'camino', cant: 1, quien: 'Bomberos Voluntarios Usme', cuando: 'Ayer 4:10 p. m.' }] }] },
   { id: 'm7', tipo: 'oferta', titulo: 'Fundación Manos Unidas', org: 'Fundación Manos Unidas', verificada: true, lat: 4.506, lng: -74.108, zona: 'Kennedy', recursos: [{ item: 'Agua potable', unidad: 'L', total: 1500, tramos: [] }, { item: 'Implementos de aseo e higiene', unidad: 'kits', total: 80, tramos: [] }] },
   { id: 'm8', tipo: 'necesidad', titulo: 'Vereda El Destino', org: 'JAC Vereda El Destino', verificada: false, lat: 4.499, lng: -74.13, zona: 'Usme rural', localidad: 'Usme', recursos: [{ item: 'Transporte terrestre', unidad: 'viajes', total: 4, tramos: [] }] },
-  { id: 'm9', tipo: 'oferta', titulo: 'Alcaldía local de Usme', org: 'Alcaldía local de Usme', verificada: true, lat: 4.517, lng: -74.112, zona: 'Usme', recursos: [{ item: 'Transporte terrestre', unidad: 'viajes', total: 6, tramos: [{ t: 'hecho', cant: 6, quien: 'Vereda El Destino', cuando: '10 sep' }] }] },
+  { id: 'm9', tipo: 'oferta', titulo: 'Alcaldía local de Usme', org: 'Alcaldía local de Usme', verificada: true, lat: 4.517, lng: -74.112, zona: 'Usme', recursos: [{ item: 'Transporte terrestre', unidad: 'viajes', total: 6, tramos: [{ t: 'hecho', cant: 6, quien: 'Vereda El Destino', cuando: '10 sep' }] }, { item: 'Equipos de bombeo', unidad: 'motobombas', total: 4, tramos: [] }] },
   { id: 'm10', tipo: 'necesidad', titulo: 'Colegio Rafael Uribe Uribe', org: 'Colegio Rafael Uribe Uribe', verificada: true, lat: 4.571, lng: -74.118, zona: 'Rafael Uribe Uribe', recursos: [{ item: 'Alimentos', unidad: 'kits', total: 80, tramos: [{ t: 'camino', cant: 48, quien: 'Fundación Manos Unidas', cuando: 'Llega hoy' }] }] },
   { id: 'm11', tipo: 'oferta', titulo: 'Bomberos Marichuela', org: 'Bomberos Marichuela', verificada: true, lat: 4.565, lng: -74.123, zona: 'Marichuela', localidad: 'Usme', recursos: [{ item: 'Agua potable', unidad: 'L', total: 800, tramos: [] }, { item: 'Atención médica', unidad: 'profesionales', total: 2, tramos: [] }] },
+  /* Fuera de Bogotá, para que el filtro de ciudad (el de producción) tenga qué mostrar:
+     Cali, Medellín y Mocoa (Alejandro, 21 de septiembre de 2026). */
+  { id: 'c1', tipo: 'necesidad', titulo: 'JAC Potrero Grande', org: 'JAC Potrero Grande', verificada: false, lat: 3.418, lng: -76.478, ciudad: 'cali', zona: 'Potrero Grande', localidad: 'Aguablanca', recursos: [{ item: 'Agua potable', unidad: 'L', total: 900, tramos: [{ t: 'camino', cant: 300, quien: 'Cruz Roja seccional Valle', cuando: 'Llega mañana' }] }, { item: 'Alimentos', unidad: 'kits', total: 120, tramos: [] }] },
+  { id: 'c2', tipo: 'oferta', titulo: 'Cruz Roja seccional Valle', org: 'Cruz Roja seccional Valle', verificada: true, lat: 3.452, lng: -76.532, ciudad: 'cali', zona: 'San Fernando', recursos: [{ item: 'Agua potable', unidad: 'L', total: 2000, tramos: [{ t: 'camino', cant: 300, quien: 'JAC Potrero Grande', cuando: 'Llega mañana' }] }, { item: 'Atención médica', unidad: 'profesionales', total: 6, tramos: [] }] },
+  { id: 'c3', tipo: 'oferta', titulo: 'Fundación Antioquia Presente', org: 'Fundación Antioquia Presente', verificada: true, lat: 6.244, lng: -75.581, ciudad: 'medellin', zona: 'La Candelaria', recursos: [{ item: 'Cobijas y colchonetas', unidad: 'juegos', total: 150, tramos: [] }, { item: 'Transporte terrestre', unidad: 'vehículos', total: 3, tramos: [] }] },
+  { id: 'c4', tipo: 'necesidad', titulo: 'Albergue San Miguel', org: 'Albergue San Miguel', verificada: false, lat: 1.149, lng: -76.652, ciudad: 'mocoa', zona: 'San Miguel', recursos: [{ item: 'Alojamiento temporal', unidad: 'cupos', total: 60, tramos: [] }, { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 40, tramos: [] }] },
 ];
 
-export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => (FOTOS_PUBLICACION[p.id] ? { ...p, fotos: FOTOS_PUBLICACION[p.id] } : p));
+export const PUBLICACIONES: Publicacion[] = SIN_FOTOS.map((p) => {
+  const fotos = FOTOS_PUBLICACION[p.id];
+  const conFotos: Publicacion = fotos ? { ...p, fotos } : { ...p };
+  return {
+    ...conFotos,
+    titulo: tituloPublicacion(conFotos),
+  };
+});
+
+/** Obtiene las publicaciones del mock más cualquier necesidad u oferta guardada en localStorage */
+export function obtenerPublicaciones(): Publicacion[] {
+  let lista = [...PUBLICACIONES];
+  try {
+    const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+    if (creadasRaw) {
+      const creadas = JSON.parse(creadasRaw) as Publicacion[];
+      if (Array.isArray(creadas)) {
+        const ids = new Set(creadas.map((p) => p.id));
+        lista = [...creadas, ...lista.filter((p) => !ids.has(p.id))];
+      }
+    }
+  } catch {}
+  try {
+    const extraN = localStorage.getItem('rd-necesidad-publicacion');
+    if (extraN) {
+      const p = JSON.parse(extraN) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  try {
+    const extraO = localStorage.getItem('rd-oferta-publicacion');
+    if (extraO) {
+      const p = JSON.parse(extraO) as Publicacion;
+      if (!lista.some((x) => x.id === p.id)) {
+        lista = [p, ...lista.filter((x) => x.id !== p.id)];
+      }
+    }
+  } catch {}
+  return lista;
+}

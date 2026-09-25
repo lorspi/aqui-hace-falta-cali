@@ -20,7 +20,7 @@ export const AVISOS: Aviso[] = [
     quien: 'Cruz Roja seccional',
     titulo: 'Cruz Roja seccional te entregó 2 motobombas',
     detalle: 'Van para tu necesidad de equipos de bombeo. Confirma que llegaron.',
-    accion: { texto: 'Confirmar recibido', nivel: 'primario', al: 'confirmar' },
+    accion: { texto: 'Confirmar', nivel: 'primario', al: 'confirmar' },
   },
   {
     id: 2,
@@ -31,7 +31,7 @@ export const AVISOS: Aviso[] = [
     quien: 'Fundación Colombia Unida',
     titulo: 'Fundación Colombia Unida te pide 200 L de agua potable',
     detalle: 'A 9,1 km. Sale de tu oferta de agua potable.',
-    accion: { texto: 'Ver la solicitud', nivel: 'terciario', al: RUTAS.miOrganizacion },
+    accion: { texto: 'Ver', nivel: 'terciario', al: RUTAS.miOrganizacion },
   },
   {
     id: 3,
@@ -53,7 +53,7 @@ export const AVISOS: Aviso[] = [
     quien: 'Cruz Roja seccional',
     titulo: 'Cruz Roja seccional se comprometió con 2 motobombas',
     detalle: 'Para tu necesidad de equipos de bombeo. Te avisamos cuando vayan en camino.',
-    accion: { texto: 'Ver la necesidad', nivel: 'terciario', al: RUTAS.miOrganizacion },
+    accion: { texto: 'Ver', nivel: 'terciario', al: RUTAS.miOrganizacion },
   },
   {
     id: 5,
@@ -75,7 +75,7 @@ export const AVISOS: Aviso[] = [
     quien: 'RaDAR',
     titulo: 'Tu oferta de alimentos deja de estar disponible el 20 de septiembre',
     detalle: 'Quedan 20 kits. Si siguen disponibles, amplía la fecha.',
-    accion: { texto: 'Ampliar la fecha', nivel: 'secundario', al: RUTAS.miOrganizacion },
+    accion: { texto: 'Ampliar', nivel: 'secundario', al: RUTAS.miOrganizacion },
   },
   {
     id: 7,
@@ -86,7 +86,7 @@ export const AVISOS: Aviso[] = [
     quien: 'Hospital de Usme',
     titulo: 'Hospital de Usme devolvió a En camino la planta eléctrica',
     detalle: 'Ya no cuenta como entregada. Vuelve a aparecer en camino en tu oferta.',
-    accion: { texto: 'Ver la entrega', nivel: 'terciario', al: RUTAS.miOrganizacion },
+    accion: { texto: 'Ver', nivel: 'terciario', al: RUTAS.miOrganizacion },
   },
   {
     id: 8,
@@ -97,7 +97,7 @@ export const AVISOS: Aviso[] = [
     quien: 'RaDAR',
     titulo: 'Tu necesidad de equipos de bombeo lleva 5 días sin avance',
     detalle: '¿Sigue haciendo falta? Si no confirmas, baja en el orden del mapa.',
-    accion: { texto: 'Confirmar que sigue haciendo falta', nivel: 'primario', al: 'revalidar' },
+    accion: { texto: 'Confirmar', nivel: 'primario', al: 'revalidar' },
   },
   {
     id: 9,
