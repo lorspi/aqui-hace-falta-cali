@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Hand, HeartHandshake, Map, Menu, X } from 'lucide-react';
+import { Hand, HeartHandshake, Map, Menu, X, User, UserPlus } from 'lucide-react';
 import { LanguageSelector } from '../../../components/LanguageSelector';
 import { useTranslation } from '../../../i18n/LanguageContext';
 
@@ -61,6 +61,15 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
             <span>{t('landingHeroCtaOffer')}</span>
           </a>
 
+          {/* Botón: Ingresar / Registrarse (Versión 2) */}
+          <a
+            href="/registro-v2"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 active:scale-98 shadow-2xs hover:shadow-xs transition-all cursor-pointer font-sans"
+          >
+            <User className="w-4 h-4 text-slate-600" />
+            <span>Ingresar / Registrarse</span>
+          </a>
+
           {/* Menú Hamburguesa en Computador: A LA DERECHA de Pedir ayuda */}
           <div className="relative" ref={desktopMenuRef}>
             <button
@@ -92,6 +101,15 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
                 >
                   <Map className="w-3 h-3 text-brand-blue" />
                   <span>{t('landingNavGoToApp')}</span>
+                </a>
+                <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
+                <a
+                  href="/registro-v2?modo=registro"
+                  onClick={() => setIsDesktopMenuOpen(false)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 hover:bg-emerald-50 inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <UserPlus className="w-3 h-3 text-emerald-600" />
+                  <span>Crear cuenta</span>
                 </a>
                 <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
                 <a
@@ -191,6 +209,16 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
             >
               <HeartHandshake className="w-4 h-4 text-white" />
               <span>{t('landingHeroCtaOffer')}</span>
+            </a>
+
+            {/* Ingresar / Registrarse en móvil */}
+            <a
+              href="/registro-v2"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 active:scale-98 shadow-2xs transition-all font-sans"
+            >
+              <User className="w-4 h-4 text-slate-600" />
+              <span>Ingresar / Registrarse</span>
             </a>
           </div>
         </div>

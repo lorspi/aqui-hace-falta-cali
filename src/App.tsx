@@ -128,8 +128,7 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'panel') return { type: 'panel' };
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
-  if (path === 'registro') return { type: 'reg2' };
-  if (path === 'registro-v2') return { type: 'registro-v2' };
+  if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -1096,8 +1095,8 @@ function MainApp() {
         onOpenCreateOfferModal={() => setShowCreateOffer(true)}
         onOpenAdminModal={() => { window.location.href = '/panel'; }}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
-        onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        onOpenRegisterModal={() => { window.location.href = '/registro-v2?modo=registro'; }}
+        onOpenLoginModal={() => { window.location.href = '/registro-v2?modo=login'; }}
         onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
         onScrollToMap={() => {
           setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
@@ -1647,7 +1646,7 @@ function MainApp() {
           listCount={needs.length + offers.length}
           isLoggedIn={isModeratorLoggedIn}
           userName={(sessionUser as any)?.name}
-          onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+          onOpenRegisterModal={() => { window.location.href = '/registro-v2?modo=registro'; }}
           onLogout={async () => {
             try {
               await supabase.auth.signOut();
@@ -1667,7 +1666,7 @@ function MainApp() {
         onClose={() => setIsLoginModalOpen(false)}
         onOpenRegisterModal={() => {
           setIsLoginModalOpen(false);
-          setIsRegisterModalOpen(true);
+          window.location.href = '/registro-v2?modo=registro';
         }}
         onSuccess={(userObj) => {
           setIsLoginModalOpen(false);

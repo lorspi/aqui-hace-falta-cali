@@ -151,22 +151,29 @@ const UserMenu: React.FC<UserMenuProps> = ({
             </>
           ) : (
             <>
-              {onOpenRegisterModal && (
-                <button
-                  type="button"
-                  onClick={() => { setIsOpen(false); onOpenRegisterModal(); }}
-                  className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-semibold">{t('userMenuRegister')}</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  if (onOpenRegisterModal) {
+                    onOpenRegisterModal();
+                  } else {
+                    window.location.href = '/registro-v2?modo=registro';
+                  }
+                }}
+                className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-semibold">{t('userMenuRegister')}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
                   if (onOpenLoginModal) {
                     onOpenLoginModal();
+                  } else {
+                    window.location.href = '/registro-v2?modo=login';
                   }
                 }}
                 className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"

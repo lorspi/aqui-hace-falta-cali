@@ -33,6 +33,8 @@ import type { EstadoRegistro, IconoCuenta, ModoRegistro, PerfilCuenta } from '..
 import { camino, esCorreo, listo, loginListo, pasoActual, validar, type Contrasenas, type Regla } from './pasos';
 import { RegistroCarrusel } from './RegistroCarrusel';
 import { TEXTOS as T } from './textos';
+import { supabase } from '../../lib/supabaseClient';
+import { fetchUserProfile } from '../../lib/supabaseService';
 
 /**
  * Registro (mockup/registro-v2). Réplica de `Producto/src/registro-v2.html` del prototipo de
@@ -84,6 +86,8 @@ export const RegistroPage: React.FC = () => {
   const tituloRef = useRef<HTMLHeadingElement>(null);
 
   const [correoRecuperar, setCorreoRecuperar] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState<string | null>(null);
 
   const paso = pasoActual(e);
   const c = camino(e.perfil);
@@ -159,14 +163,201 @@ export const RegistroPage: React.FC = () => {
   };
 
   const irAModo = (modo: ModoRegistro) => {
+    setErrorAuth(null);
     patch({ modo, indice: modo === 'registro' ? 0 : e.indice });
-    /* El conmutador no se destruye: el foco se queda en el botón pulsado. */
   };
   const siguiente = () => patch({ indice: Math.min(indice + 1, c.length - 1) });
   const atras = () => patch({ indice: Math.max(indice - 1, 0) });
-  const terminar = () => {
-    if (e.perfil) guardarEntidad(e.perfil);
-    patch({ listo: true });
+
+  const hacerLogin = async () => {
+    setErrorAuth(null);
+    const email = e.login.correo.trim();
+    const password = pass.current.lp || '';
+    if (!email || !password) return;
+
+    try {
+      setCargandoAuth(true);
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        throw new Error(
+          authError?.message === 'Invalid login credentials'
+            ? 'Correo o contraseña incorrectos.'
+            : (authError?.message || 'Error al iniciar sesión.')
+        );
+      }
+
+      const profile = await fetchUserProfile(authData.user.id);
+      const userObj = {
+        id: authData.user.id,
+        email: authData.user.email || email,
+        name: profile?.full_name || authData.user.user_metadata?.full_name || 'Usuario',
+        role: profile?.role || authData.user.user_metadata?.role || 'voluntario',
+        createdAt: profile?.created_at || authData.user.created_at,
+      };
+
+      localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+      window.location.assign(RUTAS.mapa);
+    } catch (err: any) {
+      console.error('Error al iniciar sesión:', err);
+      setErrorAuth(err.message || 'Error al iniciar sesión.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  };
+
+  const hacerRecuperar = async () => {
+    setErrorAuth(null);
+    const email = correoRecuperar.trim();
+    if (!email || !esCorreo(email)) return;
+
+    try {
+      setCargandoAuth(true);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/registro-v2?modo=nueva_contrasena`,
+      });
+      if (resetError) throw resetError;
+      patch({ modo: 'recuperar_enviado' });
+    } catch (err: any) {
+      console.error('Error al solicitar recuperación:', err);
+      setErrorAuth(err.message || 'Error al solicitar recuperación de contraseña.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  };
+
+  const hacerActualizarContrasena = async () => {
+    setErrorAuth(null);
+    const newPassword = pass.current.np || '';
+    if (!newPassword || pass.current.np !== pass.current.nq) return;
+
+    try {
+      setCargandoAuth(true);
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+      window.location.assign(RUTAS.mapa);
+    } catch (err: any) {
+      console.error('Error al actualizar contraseña:', err);
+      setErrorAuth(err.message || 'Error al actualizar contraseña.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  };
+
+  const terminar = async () => {
+    setErrorAuth(null);
+    try {
+      setCargandoAuth(true);
+
+      let email = '';
+      let password = '';
+      let metadata: Record<string, any> = {};
+
+      if (e.perfil === 'organizacion') {
+        email = e.org.contacto.correo.trim();
+        password = pass.current.org_p || '';
+        metadata = {
+          full_name: e.org.nombre.trim(),
+          phone: e.org.contacto.tel,
+          whatsapp: e.org.contacto.mismoWa ? e.org.contacto.tel : e.org.contacto.wa,
+          profile_type: 'organizacion',
+          role: 'voluntario',
+          document_type: 'nit',
+          document_number: e.org.nit,
+          accept_terms: true,
+        };
+      } else if (e.perfil === 'liderazgo') {
+        email = e.com.contacto.correo.trim();
+        password = pass.current.com_p || '';
+        metadata = {
+          full_name: e.com.nombre.trim(),
+          phone: e.com.contacto.tel,
+          whatsapp: e.com.contacto.mismoWa ? e.com.contacto.tel : e.com.contacto.wa,
+          profile_type: 'liderazgo',
+          community_type: e.com.tipo,
+          role: 'moderador',
+          department: e.com.departamento,
+          moderator_community_collective: e.com.nombre,
+          moderator_motivation: e.com.referencia,
+          accept_terms: true,
+        };
+      } else {
+        const isInd = e.perfil === 'persona' && Boolean(e.ind.correo);
+        email = (isInd ? e.ind.correo : e.per.correo).trim();
+        password = (isInd ? pass.current.ind_p : pass.current.per_p) || '';
+        const fullName = isInd
+          ? `${e.ind.nombre} ${e.ind.apellido}`.trim()
+          : e.per.nombre.trim();
+        metadata = {
+          first_name: isInd ? e.ind.nombre.trim() : e.per.nombre.trim(),
+          last_name: isInd ? e.ind.apellido.trim() : '',
+          full_name: fullName,
+          phone: isInd ? e.ind.celular : e.per.tel,
+          whatsapp: isInd ? e.ind.celular : (e.per.mismoWa ? e.per.tel : e.per.wa),
+          document_type: isInd ? e.ind.tipoDocumento : e.per.tipoDocumento,
+          document_number: isInd ? e.ind.numeroDocumento : e.per.cedula,
+          cargo: isInd ? '' : e.per.cargo,
+          profile_type: 'persona',
+          role: 'voluntario',
+          accept_terms: true,
+        };
+      }
+
+      if (!email || !password) {
+        throw new Error('Por favor completa todos los campos requeridos.');
+      }
+
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata,
+        },
+      });
+
+      if (signUpError) {
+        if (signUpError.message?.includes('already registered')) {
+          throw new Error('Este correo electrónico ya se encuentra registrado. Por favor inicia sesión.');
+        }
+        throw signUpError;
+      }
+
+      if (authData.user) {
+        if (e.perfil === 'organizacion') {
+          await supabase.from('organizations').upsert({
+            user_id: authData.user.id,
+            org_name: e.org.nombre.trim(),
+            organization_type: e.org.tipo || 'ONG',
+            website_or_social: e.org.web.trim() || undefined,
+            document_type: 'nit',
+            document_number: e.org.nit,
+            contact_phone: e.org.contacto.tel,
+            contact_whatsapp: e.org.contacto.mismoWa ? e.org.contacto.tel : e.org.contacto.wa,
+            contact_email: email,
+          }, { onConflict: 'user_id' });
+        }
+
+        const userObj = {
+          id: authData.user.id,
+          email: authData.user.email || email,
+          name: metadata.full_name || 'Usuario',
+          role: metadata.role || 'voluntario',
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+      }
+
+      if (e.perfil) guardarEntidad(e.perfil);
+      patch({ listo: true });
+    } catch (err: any) {
+      console.error('Error al registrar usuario en Supabase:', err);
+      setErrorAuth(err.message || 'Error al completar el registro.');
+    } finally {
+      setCargandoAuth(false);
+    }
   };
 
   const puedeContinuar = listo(paso, e, pass.current);
@@ -178,11 +369,11 @@ export const RegistroPage: React.FC = () => {
     if (t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
     ev.preventDefault();
     if (e.modo === 'login') {
-      if (loginListo(e.login.correo, pass.current)) window.location.assign(RUTAS.mapa);
+      if (loginListo(e.login.correo, pass.current) && !cargandoAuth) hacerLogin();
       return;
     }
     if (e.modo === 'recuperar') {
-      if (esCorreo(correoRecuperar)) patch({ modo: 'recuperar_enviado' });
+      if (esCorreo(correoRecuperar) && !cargandoAuth) hacerRecuperar();
       return;
     }
     if (e.modo === 'recuperar_enviado') {
@@ -194,10 +385,10 @@ export const RegistroPage: React.FC = () => {
         Boolean(pass.current.np) &&
         contrasenaCumple(pass.current.np || '', correoRecuperar) &&
         pass.current.np === pass.current.nq;
-      if (nuevaLista) window.location.assign(RUTAS.mapa);
+      if (nuevaLista && !cargandoAuth) hacerActualizarContrasena();
       return;
     }
-    if (!puedeContinuar) return;
+    if (!puedeContinuar || cargandoAuth) return;
     if (ultimo) terminar();
     else siguiente();
   };
@@ -246,14 +437,21 @@ export const RegistroPage: React.FC = () => {
 
   const pie = (
     <div className="mt-6 flex flex-col-reverse gap-2">
+      {errorAuth && (
+        <div className="mb-2">
+          <InlineNotice variante="error" titulo="Atención">{errorAuth}</InlineNotice>
+        </div>
+      )}
       {indice > 0 && (
-        <Button nivel="terciario" tamano="md" ancho icono={<ArrowLeft className="h-4 w-4" />} onClick={atras}>
+        <Button nivel="terciario" tamano="md" ancho icono={<ArrowLeft className="h-4 w-4" />} onClick={atras} disabled={cargandoAuth}>
           {T.pie.volver}
         </Button>
       )}
       {ultimo ? (
-        <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={terminar}>
-          {e.perfil === 'rapida' ? T.rapida.crear : e.perfil === 'individual' ? 'Registrar' : T.pie.crear}
+        <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar || cargandoAuth} onClick={terminar}>
+          {cargandoAuth
+            ? 'Creando cuenta...'
+            : (e.perfil === 'rapida' ? T.rapida.crear : e.perfil === 'individual' ? 'Registrar' : T.pie.crear)}
         </Button>
       ) : (
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={siguiente}>
@@ -269,6 +467,11 @@ export const RegistroPage: React.FC = () => {
     <>
       {portada}
       {conmutador}
+      {errorAuth && (
+        <div className="mb-3">
+          <InlineNotice variante="error" titulo="Atención">{errorAuth}</InlineNotice>
+        </div>
+      )}
       <div ref={cuerpoRef} className="space-y-3 text-left">
         <Field
           {...PILDORA}
@@ -294,14 +497,21 @@ export const RegistroPage: React.FC = () => {
         />
       </div>
       <div className="mt-6">
-        <Button nivel="primario" tamano="lg" ancho disabled={!loginListo(e.login.correo, pass.current)} onClick={() => window.location.assign(RUTAS.mapa)}>
-          {T.login.entrar}
+        <Button
+          nivel="primario"
+          tamano="lg"
+          ancho
+          disabled={!loginListo(e.login.correo, pass.current) || cargandoAuth}
+          onClick={hacerLogin}
+        >
+          {cargandoAuth ? 'Iniciando sesión...' : T.login.entrar}
         </Button>
       </div>
       <p className="mt-4 text-rd-14 text-rd-ink-2">
         <button
           type="button"
           onClick={() => {
+            setErrorAuth(null);
             setCorreoRecuperar(e.login.correo || '');
             patch({ modo: 'recuperar' });
           }}
@@ -323,6 +533,11 @@ export const RegistroPage: React.FC = () => {
         <Mail className="h-6.5 w-6.5" />
       </span>
       {titulo(T.recuperar.titulo, T.recuperar.sub)}
+      {errorAuth && (
+        <div className="mb-3">
+          <InlineNotice variante="error" titulo="Atención">{errorAuth}</InlineNotice>
+        </div>
+      )}
       <div ref={cuerpoRef} className="space-y-3 text-left mt-5">
         <Field
           {...PILDORA}
@@ -342,17 +557,17 @@ export const RegistroPage: React.FC = () => {
           nivel="primario"
           tamano="lg"
           ancho
-          disabled={!esCorreo(correoRecuperar)}
-          onClick={() => patch({ modo: 'recuperar_enviado' })}
+          disabled={!esCorreo(correoRecuperar) || cargandoAuth}
+          onClick={hacerRecuperar}
         >
-          {T.recuperar.enviar}
+          {cargandoAuth ? 'Enviando...' : T.recuperar.enviar}
         </Button>
         <Button
           nivel="terciario"
           tamano="md"
           ancho
           icono={<ArrowLeft className="h-4 w-4" />}
-          onClick={() => patch({ modo: 'login' })}
+          onClick={() => { setErrorAuth(null); patch({ modo: 'login' }); }}
         >
           {T.recuperar.volver}
         </Button>

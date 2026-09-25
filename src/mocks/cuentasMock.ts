@@ -133,8 +133,17 @@ export const RUTAS_SHELL = {
 const CONTACTO_VACIO: ContactoPublico = { tel: '', mismoWa: true, wa: '', correo: '' };
 
 export function estadoInicial(rapida: boolean): EstadoRegistro {
+  let modoInicial: ModoRegistro = rapida ? 'registro' : 'login';
+  if (typeof window !== 'undefined') {
+    const search = window.location.search;
+    if (/[?&]modo=registro/.test(search)) {
+      modoInicial = 'registro';
+    } else if (/[?&]modo=login/.test(search)) {
+      modoInicial = 'login';
+    }
+  }
   return {
-    modo: rapida ? 'registro' : 'login',
+    modo: modoInicial,
     perfil: rapida ? 'rapida' : '',
     indice: 0,
     org: { nombre: '', tipo: '', nit: '', web: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
