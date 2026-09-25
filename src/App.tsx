@@ -171,7 +171,6 @@ export default function App() {
     content = <OfrecerPage />;
   } else if (specialRoute?.type === 'radar-v2') {
     content = <RadarPage />;
-  }
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {

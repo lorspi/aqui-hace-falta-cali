@@ -59,6 +59,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
             {/* Pedir ayuda */}
             <button
+              type="button"
               onClick={() => { setIsMenuOpen(false); onOpenCreateModal(); }}
               className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"
             >
@@ -73,6 +74,7 @@ export const MobileBottomBar: React.FC<MobileBottomBarProps> = ({
 
             {/* Ofrecer ayuda */}
             <button
+              type="button"
               onClick={() => { setIsMenuOpen(false); onOpenCreateOfferModal(); }}
               className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-lg border border-slate-100 w-full text-left cursor-pointer transition-all hover:bg-slate-50"
             >

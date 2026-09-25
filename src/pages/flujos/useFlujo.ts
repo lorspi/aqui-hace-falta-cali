@@ -17,7 +17,15 @@ interface EstadoBase {
   fotos: { url: string }[];
 }
 
-export function useFlujo<E extends EstadoBase>(clave: string, modulo: keyof ModulosCuenta, estadoInicial: () => E, camino: (e: E) => SubPaso[], listo: (e: E, sub: SubPaso) => boolean) {
+export function useFlujo<E extends EstadoBase>(
+  clave: string,
+  modulo: keyof ModulosCuenta,
+  estadoInicial: () => E,
+  camino: (e: E) => SubPaso[],
+  listo: (e: E, sub: SubPaso) => boolean,
+  onGuardar?: (e: E) => Promise<void>,
+  onCerrarOverride?: () => void
+) {
   const claveBorrador = `rd-borrador-${clave}`;
   const [e, setE] = useState<E>(() => {
     const base = estadoInicial();
@@ -37,6 +45,8 @@ export function useFlujo<E extends EstadoBase>(clave: string, modulo: keyof Modu
   });
   const tocado = useRef(false);
   const [salida, setSalida] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorPublicar, setErrorPublicar] = useState<string | null>(null);
 
   /** Cambiar algo del estado: marca «tocado» para preguntar antes de salir. */
   const set = useCallback((cambio: Partial<E> | ((prev: E) => Partial<E>)) => {
@@ -69,17 +79,24 @@ export function useFlujo<E extends EstadoBase>(clave: string, modulo: keyof Modu
   };
 
   /* Guarda de verdad: se comprueba el camino entero, no el paso actual. */
-  const publicar = () => {
+  const publicar = async () => {
     if (!pasos.every((p) => listo(e, p))) return;
+    setGuardando(true);
+    setErrorPublicar(null);
     try {
+      if (onGuardar) {
+        await onGuardar(e);
+      }
       localStorage.removeItem(claveBorrador);
-    } catch {
-      /* nada */
+      tocado.current = false;
+      activarModulo(modulo);
+      setE((prev) => ({ ...prev, publicado: true }));
+    } catch (err: any) {
+      console.error('❌ Error al publicar en Supabase:', err);
+      setErrorPublicar(err?.message || 'Error guardando en la base de datos.');
+    } finally {
+      setGuardando(false);
     }
-    tocado.current = false;
-    /* Publicar abre el módulo del panel que corresponde: es lo que arma «Mi organización». */
-    activarModulo(modulo);
-    setE((prev) => ({ ...prev, publicado: true }));
   };
 
   const guardarBorrador = () => {
@@ -98,7 +115,11 @@ export function useFlujo<E extends EstadoBase>(clave: string, modulo: keyof Modu
         /* nada */
       }
     });
-    window.location.href = RUTAS.radar;
+    if (onCerrarOverride) {
+      onCerrarOverride();
+    } else {
+      window.location.href = RUTAS.radar;
+    }
   };
   const cerrar = () => {
     if (!tocado.current || e.publicado) return salir();
@@ -110,5 +131,5 @@ export function useFlujo<E extends EstadoBase>(clave: string, modulo: keyof Modu
     setE(estadoInicial());
   };
 
-  return { e, set, pasos, sub, i, listoActual: sub ? listo(e, sub) : false, siguiente, atras, irA, irAFase, publicar, cerrar, salida, setSalida, guardarBorrador, salir, reiniciar };
+  return { e, set, pasos, sub, i, listoActual: sub ? listo(e, sub) : false, siguiente, atras, irA, irAFase, publicar, cerrar, salida, setSalida, guardarBorrador, salir, reiniciar, guardando, errorPublicar };
 }

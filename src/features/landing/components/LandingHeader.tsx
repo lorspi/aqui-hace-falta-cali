@@ -43,18 +43,17 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
         {/* Acciones principales de escritorio */}
         <div className="hidden md:flex items-center gap-2.5 sm:gap-3">
           {/* Botón primario: Pedir ayuda (Rojo con manito levantada Hand) */}
-          <button
-            type="button"
-            onClick={onOpenChat}
+          <a
+            href="/pedir-v2"
             className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-red/90 active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
           >
             <Hand className="w-4 h-4 text-white" />
             <span>{t('landingHeroCtaNeed')}</span>
-          </button>
+          </a>
 
           {/* Botón: Ofrecer ayuda (Azul con letra blanca y HeartHandshake) */}
           <a
-            href="/mapa-ayudas-necesidades?ofrecer=true"
+            href="/ofrecer-v2"
             className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
           >
             <HeartHandshake className="w-4 h-4 text-white" />
@@ -189,21 +188,18 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
 
           <div className="pt-1 flex flex-col gap-2.5 font-sans">
             {/* Pedir ayuda en móvil (Rojo con manito Hand) */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                onOpenChat();
-              }}
+            <a
+              href="/pedir-v2"
+              onClick={() => setIsMobileMenuOpen(false)}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-red/90 active:scale-98 shadow-sm transition-all font-sans"
             >
               <Hand className="w-4 h-4 text-white" />
               <span>{t('landingHeroCtaNeed')}</span>
-            </button>
+            </a>
 
             {/* Ofrecer ayuda en móvil (Azul con HeartHandshake) */}
             <a
-              href="/mapa-ayudas-necesidades?ofrecer=true"
+              href="/ofrecer-v2"
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-sm transition-all font-sans"
             >
