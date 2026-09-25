@@ -123,8 +123,22 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'radar-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const params = new URLSearchParams(search);
+
+  // If path or query param triggers map + modal, return null so MainApp (the map) renders
+  if (
+    path === 'pedir-v2' ||
+    path === 'ofrecer-v2' ||
+    path === 'mapa' ||
+    path === 'radar' ||
+    ((path === '' || path === 'landing') && (params.has('accion') || params.has('pedir') || params.has('ofrecer')))
+  ) {
+    return null;
+  }
+
   if (path === '' || path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
@@ -132,8 +146,6 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
-  if (path === 'pedir-v2') return { type: 'pedir-v2' };
-  if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
   if (path === 'radar-v2') return { type: 'radar-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
@@ -388,8 +400,10 @@ function MainApp() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
+      const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
       const params = new URLSearchParams(window.location.search);
       return (
+        path === 'pedir-v2' ||
         params.get('pedir') === 'true' ||
         params.get('reportar') === 'true' ||
         params.get('accion') === 'pedir' ||
@@ -404,8 +418,13 @@ function MainApp() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(() => {
     if (typeof window !== 'undefined') {
+      const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
       const params = new URLSearchParams(window.location.search);
-      return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
+      return (
+        path === 'ofrecer-v2' ||
+        params.get('ofrecer') === 'true' ||
+        params.get('accion') === 'ofrecer'
+      );
     }
     return false;
   });
