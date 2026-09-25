@@ -55,6 +55,9 @@ const LandingPage = lazy(() => import("./features/landing/LandingPage").then(m =
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const SimulatedRegisterPage = lazy(() => import("./components/SimulatedRegisterPage").then(m => ({ default: m.SimulatedRegisterPage })));
 const RegistroPage = lazy(() => import("./pages/registro/RegistroPage").then(m => ({ default: m.RegistroPage })));
+const PedirPage = lazy(() => import("./pages/flujos/PedirPage").then(m => ({ default: m.PedirPage })));
+const OfrecerPage = lazy(() => import("./pages/flujos/OfrecerPage").then(m => ({ default: m.OfrecerPage })));
+const RadarPage = lazy(() => import("./pages/radar/RadarPage").then(m => ({ default: m.RadarPage })));
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
@@ -120,7 +123,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'radar-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   if (path === '' || path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
@@ -129,6 +132,9 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
+  if (path === 'pedir-v2') return { type: 'pedir-v2' };
+  if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
+  if (path === 'radar-v2') return { type: 'radar-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -159,6 +165,13 @@ export default function App() {
     content = <SimulatedRegisterPage />;
   } else if (specialRoute?.type === 'registro-v2') {
     content = <RegistroPage />;
+  } else if (specialRoute?.type === 'pedir-v2') {
+    content = <PedirPage />;
+  } else if (specialRoute?.type === 'ofrecer-v2') {
+    content = <OfrecerPage />;
+  } else if (specialRoute?.type === 'radar-v2') {
+    content = <RadarPage />;
+  }
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {
