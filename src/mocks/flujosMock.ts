@@ -9,16 +9,16 @@ import type { CuentaFlujo, EstadoOfrecer, EstadoPedir, ModoEntrega } from '../ty
 
 /** Quien pide: llega con su contacto y su dirección resueltos. */
 export const CUENTA_PEDIR: CuentaFlujo = {
-  organizacion: 'Fundación Colombia Unida',
-  contacto: 'Ana Ruiz',
-  telefono: '+57 300 123 4567',
-  direccion: 'Cra. 80 #57-40 sur, Bosa',
-  lat: 4.6197,
-  lng: -74.202,
-  ciudad: 'Bogotá',
+  organizacion: '',
+  contacto: '',
+  telefono: '',
+  direccion: '',
+  lat: 3.4516,
+  lng: -76.5320,
+  ciudad: 'Cali',
 };
 
-export const EMERGENCIA = { activa: 'Inundación', ciudad: 'Bogotá' };
+export const EMERGENCIA = { activa: 'Inundación', ciudad: 'Cali' };
 
 export type IconoEvento = 'waves' | 'pulse' | 'wind' | 'fire' | 'mountains' | 'virus' | 'warning';
 
@@ -74,12 +74,12 @@ export function estadoInicialPedir(): EstadoPedir {
     dias: 3,
     metas: {},
     det: {},
-    dir: CUENTA_PEDIR.direccion,
-    lat: CUENTA_PEDIR.lat,
-    lng: CUENTA_PEDIR.lng,
+    dir: '',
+    lat: 3.4516,
+    lng: -76.5320,
     fotos: [],
-    contacto: CUENTA_PEDIR.contacto,
-    tel: CUENTA_PEDIR.telefono,
+    contacto: '',
+    tel: '',
     wa: '',
     mismoWa: true,
     telAlt: '',
@@ -100,17 +100,13 @@ export function estadoInicialPedir(): EstadoPedir {
 /** Quien ofrece: una organización registrada ya dijo qué tiene. Eso llega marcado y con su
  *  cantidad; solo confirma o ajusta. */
 export const CUENTA_OFRECER: CuentaFlujo = {
-  organizacion: 'Bomberos Voluntarios Usme',
-  direccion: 'Estación Usme, Cl. 91 sur #3-20',
-  lat: 4.479,
-  lng: -74.1263,
-  contacto: 'Carlos Peña',
-  telefono: '+57 310 555 0199',
-  inventario: {
-    'Agua potable': { cantidad: 450, pres: 'Carrotanque' },
-    Alimentos: { cantidad: 20, pres: 'Kits de mercado' },
-    'Plantas eléctricas / Generadores': { cantidad: 2, potencia: '5 a 20 kW' },
-  },
+  organizacion: '',
+  direccion: '',
+  lat: 3.4516,
+  lng: -76.5320,
+  contacto: '',
+  telefono: '',
+  inventario: {},
 };
 
 export const REGISTRADO = 'Registrado por tu organización';
@@ -136,11 +132,11 @@ export function estadoInicialOfrecer(): EstadoOfrecer {
     envio: 'Gratis',
     canales: [],
     horario: '',
-    dir: CUENTA_OFRECER.direccion,
-    lat: CUENTA_OFRECER.lat,
-    lng: CUENTA_OFRECER.lng,
-    contacto: CUENTA_OFRECER.contacto,
-    tel: CUENTA_OFRECER.telefono,
+    dir: '',
+    lat: 3.4516,
+    lng: -76.5320,
+    contacto: '',
+    tel: '',
     wa: '',
     mismoWa: true,
     telAlt: '',

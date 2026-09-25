@@ -292,8 +292,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center gap-2">
             {/* 1. CTA Pedir Ayuda */}
             <button
+              type="button"
               onClick={onOpenCreateModal}
-              className="btn-secondary text-[13px] font-bold px-4 py-2 h-[40px] shrink-0"
+              className="btn-secondary text-[13px] font-bold px-4 py-2 h-[40px] shrink-0 inline-flex items-center gap-2 cursor-pointer"
               id="btn-create-need"
             >
               <Hand className="w-4.5 h-4.5 text-slate-600" />
@@ -302,8 +303,9 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* 2. CTA Ofrecer Ayuda */}
             <button
+              type="button"
               onClick={onOpenCreateOfferModal}
-              className="btn-primary-blue text-[13px] font-extrabold px-4 py-2 h-[40px] shadow-xs shrink-0"
+              className="btn-primary-blue text-[13px] font-extrabold px-4 py-2 h-[40px] shadow-xs shrink-0 inline-flex items-center gap-2 cursor-pointer"
               id="btn-quiero-ayudar"
             >
               <HeartHandshake className="w-4.5 h-4.5" />
