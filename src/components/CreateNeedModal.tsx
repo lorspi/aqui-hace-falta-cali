@@ -6,6 +6,7 @@ interface CreateNeedModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit?: (data: Partial<Need>) => Promise<void>;
+  onSuccess?: (createdNeed?: Need) => void;
   isSubmitting?: boolean;
   initialCityId?: string;
   onRequireAuth?: () => void;
@@ -14,23 +15,26 @@ interface CreateNeedModalProps {
 export const CreateNeedModal: React.FC<CreateNeedModalProps> = ({
   isOpen,
   onClose,
-  onSubmit,
+  onSuccess,
+  initialCityId,
+  onRequireAuth,
 }) => {
   if (!isOpen) return null;
 
   return (
     <PedirPage
       isModal
+      initialCityId={initialCityId}
       onClose={onClose}
-      onSuccess={async () => {
-        if (onSubmit) {
+      onRequireAuth={onRequireAuth}
+      onSuccess={(createdNeed) => {
+        if (onSuccess) {
           try {
-            await onSubmit({});
+            onSuccess(createdNeed);
           } catch {
             /* Handled upstream */
           }
         }
-        onClose();
       }}
     />
   );

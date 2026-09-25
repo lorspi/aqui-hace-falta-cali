@@ -65,33 +65,54 @@ export async function geocodeAddress(
   cityName?: string
 ): Promise<GeocodingResult | null> {
   try {
-    const city = cityName || "Cali";
     const cleanAddress = address.trim();
+    if (!cleanAddress) return null;
+
+    const city = cityName || "Cali";
     const cleanNeighborhood = neighborhood?.trim() || "";
 
-    // 1. Full attempt: Address + Neighborhood + City
+    // Check if user already typed a specific city name or Colombia
+    const hasExplicitLocation = /colombia|cali|armenia|quimbaya|bogot[aá]|medell[ií]n|barranquilla|bucaramanga|manizales|pereira|pasto|popay[aá]n|c[uú]cuta|cartagena|santa marta|ibagu[eé]/i.test(cleanAddress);
+
+    // 1. Full attempt
     let query1 = cleanAddress;
-    if (cleanNeighborhood && !query1.toLowerCase().includes(cleanNeighborhood.toLowerCase())) {
-      query1 += `, ${cleanNeighborhood}`;
-    }
-    if (!query1.toLowerCase().includes(city.toLowerCase())) {
+    if (!hasExplicitLocation) {
+      if (cleanNeighborhood && !query1.toLowerCase().includes(cleanNeighborhood.toLowerCase())) {
+        query1 += `, ${cleanNeighborhood}`;
+      }
       query1 += `, ${city}, Colombia`;
+    } else if (!query1.toLowerCase().includes('colombia')) {
+      query1 += `, Colombia`;
     }
 
     let res = await fetchNominatim(query1);
     if (res) return res;
 
-    // 2. Fallback 1: Neighborhood + City (helpful when exact house/manzana is not mapped in OpenStreetMap)
+    // 2. Fallback: Strip specific house/building detail modifiers like "Torre X", "Apto Y", "Casa Z"
+    const sansDetails = cleanAddress.replace(/(torre|apto|apartamento|casa|local|piso|manzana)\s+[a-z0-9\-]+/gi, "").trim();
+    if (sansDetails && sansDetails !== cleanAddress) {
+      let queryDetails = hasExplicitLocation ? `${sansDetails}, Colombia` : `${sansDetails}, ${city}, Colombia`;
+      res = await fetchNominatim(queryDetails);
+      if (res) return res;
+    }
+
+    // 3. Fallback: Strip common prefixes like "Barrio", "B/", "Sector"
+    const sansPrefix = cleanAddress.replace(/^(barrio|b\/|sector)\s+/i, "").trim();
+    if (sansPrefix && sansPrefix !== cleanAddress) {
+      let querySans = hasExplicitLocation ? `${sansPrefix}, Colombia` : `${sansPrefix}, ${city}, Colombia`;
+      res = await fetchNominatim(querySans);
+      if (res) return res;
+    }
+
+    // 4. Fallback: Neighborhood + City
     if (cleanNeighborhood) {
       let query2 = `${cleanNeighborhood}, ${city}, Colombia`;
       res = await fetchNominatim(query2);
       if (res) return res;
     }
 
-    // 3. Fallback 2: City + Colombia
-    let query3 = `${city}, Colombia`;
-    res = await fetchNominatim(query3);
-    return res;
+    // NOTE: We intentionally do NOT fallback to city-center coordinates when an exact address fails!
+    return null;
   } catch (error) {
     console.warn("[Geocoding] Error:", error);
     return null;
@@ -140,7 +161,6 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
     if (!result || !result.address) return null;
 
     const address = result.address;
-    // Nominatim returns city/town/municipality in various keys
     const city = address.city || address.town || address.municipality || address.village || '';
     const department = address.state || '';
     const country = address.country || '';
@@ -151,6 +171,68 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
       country,
       displayName: result.display_name || '',
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reverse geocode lat/lng to a friendly Colombian street address string for input fields.
+ */
+export async function reverseGeocodeAddress(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?${new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      format: "json",
+      addressdetails: "1",
+      zoom: "18",
+    })}`;
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "AquiHaceFalta-Cali/1.0 (Emergency Coordination Platform)",
+      },
+    });
+
+    if (!response.ok) return null;
+    const result = await response.json();
+    if (!result || !result.address) return null;
+
+    const addr = result.address;
+    const road = addr.road || addr.pedestrian || addr.footway || addr.path || '';
+    const houseNumber = addr.house_number || '';
+    
+    // Clean up technical city strings like "Perímetro Urbano Armenia" -> "Armenia"
+    let cityClean = (addr.city || addr.town || addr.municipality || addr.village || '')
+      .replace(/perímetro urbano\s*/i, '')
+      .trim();
+
+    // Clean up technical neighbourhood / commune strings
+    let neighbourhoodClean = (addr.suburb || addr.neighbourhood || addr.quarter || addr.residential || '')
+      .replace(/^comuna\s+[a-z0-9\s]+/i, '')
+      .replace(/^comuna\s*/i, '')
+      .trim();
+
+    if (neighbourhoodClean.toLowerCase() === cityClean.toLowerCase()) {
+      neighbourhoodClean = '';
+    }
+
+    const parts = [];
+    if (road) {
+      parts.push(houseNumber ? `${road} #${houseNumber}` : road);
+    }
+    if (neighbourhoodClean) {
+      parts.push(neighbourhoodClean.toLowerCase().startsWith('barrio') ? neighbourhoodClean : `Barrio ${neighbourhoodClean}`);
+    }
+    if (cityClean) {
+      parts.push(cityClean);
+    }
+
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+    return result.display_name || null;
   } catch {
     return null;
   }

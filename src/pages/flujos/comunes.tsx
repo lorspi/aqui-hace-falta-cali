@@ -92,13 +92,15 @@ export interface MarcoFlujoProps {
   onPublicar: () => void;
   onCerrar: () => void;
   isModal?: boolean;
+  guardando?: boolean;
+  errorPublicar?: string | null;
   children: React.ReactNode;
 }
 
 /** El marco: la ventana del flujo (a ≥ 1024, una tarjeta de 680 centrada sobre el fondo,
  *  como el modal del prototipo; bajo 1024, la pantalla entera), el progreso fijo arriba,
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
-export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, children }) => {
+export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, guardando = false, errorPublicar, children }) => {
   const cuerpo = useRef<HTMLDivElement>(null);
   useEffect(() => {
     cuerpo.current?.scrollTo({ top: 0 });
@@ -150,18 +152,28 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
               <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((t, j) => ({ nombre: t.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
             <div ref={cuerpo} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
+              {errorPublicar && (
+                <div className="mb-4 flex items-center gap-2 rounded-rd-md border border-red-300 bg-red-50 p-3 text-rd-13 text-red-800">
+                  <CircleAlert className="h-5 w-5 shrink-0 text-red-600" />
+                  <span>{errorPublicar}</span>
+                </div>
+              )}
               {children}
             </div>
             <div className="flex flex-none items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3 sm:px-6">
               {i > 0 ? (
-                <Button nivel="terciario" tamano="md" icono={<ChevronLeft className="h-4 w-4" />} onClick={onAtras}>
+                <Button nivel="terciario" tamano="md" icono={<ChevronLeft className="h-4 w-4" />} onClick={onAtras} disabled={guardando}>
                   Volver
                 </Button>
               ) : (
                 <span />
               )}
-              <Button nivel="primario" tamano="lg" disabled={!listo} onClick={ultimo ? onPublicar : onSiguiente}>
-                {ultimo ? textoPublicar : 'Continuar'}
+              <Button nivel="primario" tamano="lg" disabled={!listo || guardando} onClick={ultimo ? onPublicar : onSiguiente}>
+                {guardando ? (
+                  <span className="flex items-center gap-2"><CircleDashed className="h-4 w-4 animate-spin" /> Guardando...</span>
+                ) : (
+                  ultimo ? textoPublicar : 'Continuar'
+                )}
               </Button>
             </div>
           </>
@@ -486,28 +498,57 @@ export const AlgoMas: React.FC<{ titulo: string; children: React.ReactNode }> = 
   );
 };
 
-/** El mapa pequeño con el punto que se arrastra (`miniMapa`). */
 export const MiniMapa: React.FC<{ lat: number; lng: number; onMover: (lat: number, lng: number) => void }> = ({ lat, lng, onMover }) => {
   const nodo = useRef<HTMLDivElement>(null);
+  const mapaRef = useRef<L.Map | null>(null);
+  const pinRef = useRef<L.Marker | null>(null);
   const alMover = useRef(onMover);
   alMover.current = onMover;
+
   useEffect(() => {
     if (!nodo.current) return;
-    const m = L.map(nodo.current, { zoomControl: false, attributionControl: false }).setView([lat, lng], 15);
+    const safeLat = typeof lat === 'number' && !isNaN(lat) && lat !== 0 ? lat : 3.4516;
+    const safeLng = typeof lng === 'number' && !isNaN(lng) && lng !== 0 ? lng : -76.5320;
+
+    const m = L.map(nodo.current, { zoomControl: false, attributionControl: false }).setView([safeLat, safeLng], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-    const pin = L.marker([lat, lng], { draggable: true, title: 'El punto donde llega la ayuda; arrástralo si es otro' }).addTo(m);
+    const pin = L.marker([safeLat, safeLng], { draggable: true, title: 'El punto donde llega la ayuda; arrástralo si es otro' }).addTo(m);
+    
     pin.on('dragend', () => {
       const p = pin.getLatLng();
       alMover.current(p.lat, p.lng);
     });
+
+    m.on('click', (e: L.LeafletMouseEvent) => {
+      pin.setLatLng(e.latlng);
+      alMover.current(e.latlng.lat, e.latlng.lng);
+    });
+
     requestAnimationFrame(() => m.invalidateSize());
+
+    mapaRef.current = m;
+    pinRef.current = pin;
+
     return () => {
       m.remove();
+      mapaRef.current = null;
+      pinRef.current = null;
     };
-    // Se crea una vez con el punto inicial; el arrastre lo actualiza desde el mapa.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <div ref={nodo} aria-label="Mapa para ajustar el punto" className="rd-mapa mt-2 min-h-70 flex-1 overflow-hidden rounded-rd-md border border-rd-line bg-rd-mapa" />;
+
+  useEffect(() => {
+    if (mapaRef.current && pinRef.current && typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+      mapaRef.current.invalidateSize();
+      const actualPos = pinRef.current.getLatLng();
+      if (Math.abs(actualPos.lat - lat) > 0.00001 || Math.abs(actualPos.lng - lng) > 0.00001) {
+        pinRef.current.setLatLng([lat, lng]);
+        mapaRef.current.setView([lat, lng], 15, { animate: true });
+      }
+    }
+  }, [lat, lng]);
+
+  return <div ref={nodo} aria-label="Mapa para ajustar el punto" className="rd-mapa mt-2 min-h-70 flex-1 overflow-hidden rounded-rd-md border border-rd-line bg-rd-mapa relative z-0" />;
 };
 
 /** Fotos: el input de archivo no se rellena desde el estado; la lista vive aparte y la

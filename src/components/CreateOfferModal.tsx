@@ -14,22 +14,25 @@ export const CreateOfferModal: React.FC<CreateOfferModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  selectedCityId,
+  onRequireAuth,
 }) => {
   if (!isOpen) return null;
 
   return (
     <OfrecerPage
       isModal
+      initialCityId={selectedCityId}
       onClose={onClose}
-      onSuccess={() => {
+      onRequireAuth={onRequireAuth}
+      onSuccess={(createdOffer) => {
         if (onSuccess) {
           try {
-            onSuccess();
+            onSuccess(createdOffer);
           } catch {
             /* Handled upstream */
           }
         }
-        onClose();
       }}
     />
   );

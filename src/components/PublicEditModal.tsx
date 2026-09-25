@@ -442,6 +442,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                   type="text"
                   value={address}
                   onChange={(e) => { setAddress(e.target.value); clearFieldError('address'); }}
+                  onBlur={handleGeocode}
                   placeholder="Ej: Calle 5 con Carrera 44, o Calle 5 # 34-12"
                   className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.address ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
                   aria-invalid={errors.address ? true : undefined}

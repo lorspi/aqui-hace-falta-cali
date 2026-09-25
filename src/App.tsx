@@ -914,7 +914,28 @@ function MainApp() {
     }
   };
 
-  // Create Need Submit
+  // Create Need Success Callback
+  const handleNeedCreated = async (createdNeed?: Need) => {
+    if (refetchNeeds) await refetchNeeds();
+
+    const targetCity = createdNeed?.cityId;
+    if (targetCity && targetCity !== selectedCityId) {
+      handleCityChange(targetCity);
+    }
+
+    setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
+
+    if (createdNeed?.id) {
+      setHoveredItemId(createdNeed.id);
+      setRadarMatchState({
+        isOpen: true,
+        type: 'NEED_PUBLISHED',
+        item: createdNeed,
+      });
+    }
+  };
+
+  // Create Need Submit (Legacy direct creation fallback)
   const handleCreateNeed = async (data: Partial<Need>) => {
     setIsSubmittingCreate(true);
     try {
@@ -950,24 +971,7 @@ function MainApp() {
       });
 
       setIsCreateModalOpen(false);
-
-      if (refetchNeeds) await refetchNeeds();
-
-      const targetCity = createdNeed?.cityId || data.cityId;
-      if (targetCity && targetCity !== selectedCityId) {
-        handleCityChange(targetCity);
-      }
-
-      setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
-
-      if (createdNeed?.id) {
-        setHoveredItemId(createdNeed.id);
-        setRadarMatchState({
-          isOpen: true,
-          type: 'NEED_PUBLISHED',
-          item: createdNeed,
-        });
-      }
+      handleNeedCreated(createdNeed);
     } catch (err: any) {
       console.error("❌ Error al crear necesidad:", err);
       const msg = err?.message || err?.details || String(err);
@@ -978,10 +982,10 @@ function MainApp() {
   };
 
   // Create Offer Success Callback
-  const handleOfferCreated = async (createdOffer: Offer) => {
+  const handleOfferCreated = async (createdOffer?: Offer) => {
     if (refetchOffers) await refetchOffers();
 
-    const targetCity = createdOffer.cityId;
+    const targetCity = createdOffer?.cityId;
     if (targetCity && targetCity !== selectedCityId) {
       handleCityChange(targetCity);
     }
@@ -1557,9 +1561,10 @@ function MainApp() {
       <CreateNeedModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateNeed}
+        onSuccess={handleNeedCreated}
         isSubmitting={isSubmittingCreate}
         initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
+        onRequireAuth={() => setIsLoginModalOpen(true)}
       />
 
       <ReportModal
@@ -1602,6 +1607,7 @@ function MainApp() {
         onClose={() => setShowCreateOffer(false)}
         onSuccess={handleOfferCreated}
         selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
+        onRequireAuth={() => setIsLoginModalOpen(true)}
       />
 
       <OfferDetailModal

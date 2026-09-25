@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
-import { Info, MapPin, Monitor, Package, Truck } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Compass, Info, Loader2, MapPin, Monitor, Package, Truck } from 'lucide-react';
 import { Field } from '../../components/ui/Field';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
@@ -16,9 +16,12 @@ import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
 
-import { createOffer } from '../../lib/supabaseService';
+import { createOfferWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
-import type { HelpCategory } from '../../types';
+import type { HelpCategory, Offer } from '../../types';
+import { mapItemToCatalog, mapItemsToHelpCategories } from '../../utils/enumMappers';
+import { uploadEvidencePhotos } from '../../utils/storageUpload';
+import { geocodeAddress, reverseGeocodeAddress } from '../../utils/geocoding';
 
 /**
  * Ofrecer ayuda (mockup/*): `src/ofrecer-v2.html` del prototipo. Una organización registrada
@@ -79,8 +82,10 @@ function irA(ruta: string): void {
 
 export interface OfrecerProps {
   onClose?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (createdOffer?: Offer) => void;
   isModal?: boolean;
+  initialCityId?: string;
+  onRequireAuth?: () => void;
 }
 
 export const OfrecerPage: React.FC<OfrecerProps> = (props) => (
@@ -96,29 +101,58 @@ function publicacionDe(e: EstadoOfrecer): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false }) => {
+export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+  const [createdOffer, setCreatedOffer] = useState<Offer | undefined>(undefined);
+  const [nombreOrg, setNombreOrg] = useState<string>('');
+
   const guardarEnSupabase = useCallback(async (estado: EstadoOfrecer) => {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = user ? await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle() : { data: null };
-    const { data: org } = user ? await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle() : { data: null };
+    if (!user) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      throw new Error('AUTH_REQUIRED');
+    }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
 
     const pub = publicacionDe(estado);
 
-    await createOffer({
-      cityId: profile?.city || 'cali',
+    // Subir fotos a Supabase Storage
+    const photoUrls = await uploadEvidencePhotos(estado.fotos);
+
+    const categoriesList = mapItemsToHelpCategories(estado.sel);
+
+    // Mapear ítems desglosados para offer_items
+    const itemsPayload = estado.sel.map((it) => {
+      const cat = mapItemToCatalog(it);
+      return {
+        resourceId: cat.resourceId,
+        categoryId: cat.categoryId,
+        resourceName: it,
+        unit: unidadOferta(it) || cat.defaultUnit,
+        availableQuantity: estado.cant[it] ?? 0,
+      };
+    });
+
+    const offerPayload = {
+      cityId: initialCityId || profile?.city || 'cali',
       departmentId: profile?.department,
       title: pub.titulo,
       description: estado.condiciones || pub.titulo,
-      categories: Array.from(new Set(estado.sel)) as HelpCategory[],
-      resources: estado.sel.map((it) => ({
-        id: it,
-        type: it as HelpCategory,
-        description: it,
-        quantity: estado.cant[it] ?? 0,
-        fulfilledQuantity: 0,
-        unit: unidadOferta(it),
-        status: 'AVAILABLE',
-      })),
+      categories: categoriesList,
+      resources: estado.sel.map((it) => {
+        const cat = mapItemToCatalog(it);
+        return {
+          id: cat.resourceId,
+          type: cat.canonicalCategory,
+          description: it,
+          quantity: estado.cant[it] ?? 0,
+          fulfilledQuantity: 0,
+          unit: unidadOferta(it) || cat.defaultUnit,
+          status: 'AVAILABLE' as const,
+        };
+      }),
       address: estado.dir || 'Sin dirección especificada',
       neighborhood: estado.dir || 'Cali',
       latitude: estado.lat,
@@ -128,20 +162,33 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       contactWhatsapp: estado.tel,
       contactEmail: user?.email,
       organizationName: org?.org_name || profile?.cargo || 'Organización Oferente',
-      deliveryMode: estado.modoEntrega,
-      deliveryRadius: estado.radioEntrega,
+      deliveryMode: estado.entrega,
+      coverageRadius: estado.radio,
+      shippingCost: estado.envio,
       userId: user?.id,
-    });
-  }, []);
+      evidenceUrl: photoUrls.join(','),
+    };
+
+    const inserted = await createOfferWithItems(offerPayload, itemsPayload);
+    if (inserted) {
+      setCreatedOffer(inserted);
+    }
+  }, [initialCityId, onRequireAuth]);
 
   const f = useFlujo<EstadoOfrecer>('ofrecer', 'ofrece', () => conParametros(estadoInicialOfrecer()), caminoOfrecer, listoOfrecer, guardarEnSupabase, onClose);
   const { e, set, sub } = f;
 
+  const hasNotifiedSuccessRef = useRef(false);
+
   useEffect(() => {
-    if (e.publicado && onSuccess) {
-      onSuccess();
+    if (e.publicado && onSuccess && !hasNotifiedSuccessRef.current) {
+      hasNotifiedSuccessRef.current = true;
+      onSuccess(createdOffer);
     }
-  }, [e.publicado, onSuccess]);
+    if (!e.publicado) {
+      hasNotifiedSuccessRef.current = false;
+    }
+  }, [e.publicado, onSuccess, createdOffer]);
   const errores = useErrores(sub?.id ?? '');
 
   useEffect(() => {
@@ -155,7 +202,9 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
       const nombreContacto = profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user.email || '';
       const telefono = profile?.phone || profile?.whatsapp || '';
-      const direccion = org?.city || profile?.city || '';
+      const direccion = org?.address || profile?.city || '';
+      const orgName = org?.org_name || profile?.cargo || '';
+      if (orgName) setNombreOrg(orgName);
 
       set((prev) => ({
         contacto: prev.contacto || nombreContacto,
@@ -165,6 +214,75 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     }
     autocompletarPerfil();
   }, [set]);
+
+  const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
+  const [cargandoGps, setCargandoGps] = useState(false);
+  const [errorGps, setErrorGps] = useState<string | null>(null);
+  const omitirAutoGeocodificacionRef = useRef(false);
+
+  const obtenerUbicacionGPS = useCallback(() => {
+    if (!navigator.geolocation) {
+      setErrorGps('Tu navegador no soporta geolocalización por GPS.');
+      return;
+    }
+    setCargandoGps(true);
+    setErrorGps(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        omitirAutoGeocodificacionRef.current = true;
+        set({ lat: latitude, lng: longitude });
+
+        try {
+          const direccionFormateada = await reverseGeocodeAddress(latitude, longitude);
+          if (direccionFormateada) {
+            set({ dir: direccionFormateada });
+            errores.limpiar('dir');
+          }
+        } catch {
+          /* Mantener coordenadas */
+        } finally {
+          setCargandoGps(false);
+        }
+      },
+      (err) => {
+        setCargandoGps(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setErrorGps('Permiso de ubicación denegado. Escribe la dirección o mueve el mapa manualmente.');
+        } else {
+          setErrorGps('No se pudo obtener tu ubicación actual por GPS.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [set, errores]);
+
+  const geocodificarDireccion = useCallback(async (direccion: string) => {
+    if (!direccion || direccion.trim().length < 3) return;
+    setCargandoGeocodificacion(true);
+    try {
+      const res = await geocodeAddress(direccion, undefined, 'Cali');
+      if (res) {
+        set({ lat: res.lat, lng: res.lng });
+      }
+    } finally {
+      setCargandoGeocodificacion(false);
+    }
+  }, [set]);
+
+  useEffect(() => {
+    if (omitirAutoGeocodificacionRef.current) {
+      omitirAutoGeocodificacionRef.current = false;
+      return;
+    }
+    if (sub?.id === 'donde' && e.dir && e.dir.trim().length >= 3) {
+      const timer = setTimeout(() => {
+        geocodificarDireccion(e.dir);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sub?.id, e.dir, geocodificarDireccion]);
 
   const toggle = (it: string) =>
     set((p) => {
@@ -241,9 +359,41 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'donde') {
     pantalla = (
       <>
-        <Pregunta titulo={e.entrega === 'llevamos' ? '¿De dónde sale?' : '¿Dónde se recoge?'} sub="Pusimos la dirección de tu cuenta. Si el recurso está en otro punto, corrígela o mueve el punto en el mapa." />
-        <Field id="dir" etiqueta="Dirección o sector" valor={e.dir} autoComplete="street-address" requerido onChange={(v) => { set({ dir: v }); errores.limpiar('dir'); }} onBlur={(v) => errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda')} error={errores.errores.dir} className="mb-3" />
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={(lat, lng) => set({ lat, lng })} />
+        <Pregunta titulo={e.entrega === 'llevamos' ? '¿De dónde sale?' : '¿Dónde se recoge?'} sub="Pusimos la dirección de tu cuenta. Si el recurso está en otro punto, usa tu ubicación GPS, corrígela o mueve el punto en el mapa." />
+        
+        <button
+          type="button"
+          onClick={obtenerUbicacionGPS}
+          disabled={cargandoGps}
+          className="mb-3.5 flex w-full items-center justify-center gap-2 rounded-rd-md border border-rd-navy/30 bg-rd-navy/5 px-3 py-2.5 text-rd-13 font-semibold text-rd-navy transition-colors hover:bg-rd-navy/10 disabled:opacity-60 cursor-pointer"
+        >
+          {cargandoGps ? (
+            <Loader2 className="h-4 w-4 animate-spin text-rd-navy" />
+          ) : (
+            <Compass className="h-4 w-4 text-rd-navy" />
+          )}
+          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS)'}</span>
+        </button>
+        {errorGps && <p className="mb-2 text-rd-12 text-rd-coral">{errorGps}</p>}
+
+        <Field
+          id="dir"
+          etiqueta="Dirección o sector"
+          valor={e.dir}
+          autoComplete="street-address"
+          requerido
+          onChange={(v) => { omitirAutoGeocodificacionRef.current = false; set({ dir: v }); errores.limpiar('dir'); }}
+          onBlur={(v) => {
+            errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda');
+            if (v && v.trim().length >= 3) {
+              geocodificarDireccion(v);
+            }
+          }}
+          error={errores.errores.dir}
+          className="mb-3"
+        />
+        {cargandoGeocodificacion && <p className="text-rd-12 text-rd-navy animate-pulse mb-1">Buscando ubicación en el mapa...</p>}
+        <MiniMapa lat={e.lat} lng={e.lng} onMover={(lat, lng) => { omitirAutoGeocodificacionRef.current = true; set({ lat, lng }); }} />
       </>
     );
   } else if (sub.id === 'contacto') {
@@ -252,7 +402,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
         <Pregunta titulo="¿Quién ofrece la ayuda?" sub="Es a quien van a escribir para pedirlo. Pusimos tu contacto; cámbialo si lo coordina alguien más." />
         <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoOfrecer>)} errores={errores} />
         <label className="mb-4 flex cursor-pointer items-center justify-between gap-3 rounded-rd-md border border-rd-line px-3 py-2.5 text-rd-13-5 text-rd-ink">
-          <span>Mostrar el nombre de {CUENTA_OFRECER.organizacion} en el mapa</span>
+          <span>Mostrar el nombre de {nombreOrg || CUENTA_OFRECER.organizacion || 'tu organización'} en el mapa</span>
           <input type="checkbox" role="switch" checked={e.mostrarNombre} onChange={(ev) => set({ mostrarNombre: ev.target.checked })} className="m-0 h-4.5 w-4.5 shrink-0 cursor-pointer accent-rd-sel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy" />
         </label>
         <AlgoMas titulo="Algo más sobre la oferta">
@@ -309,10 +459,10 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
   return (
     <>
-      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal}>
+      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
-      <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />
+      <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />
     </>
   );
 };

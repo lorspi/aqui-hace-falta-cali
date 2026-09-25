@@ -93,7 +93,13 @@ export function useFlujo<E extends EstadoBase>(
       setE((prev) => ({ ...prev, publicado: true }));
     } catch (err: any) {
       console.error('❌ Error al publicar en Supabase:', err);
-      setErrorPublicar(err?.message || 'Error guardando en la base de datos.');
+      guardarBorrador();
+      const msg = err?.message || 'Error guardando en la base de datos.';
+      if (msg === 'AUTH_REQUIRED' || msg.includes('AUTH_REQUIRED')) {
+        setErrorPublicar('Debes iniciar sesión para publicar. Tu formulario fue guardado en borrador.');
+      } else {
+        setErrorPublicar(msg);
+      }
     } finally {
       setGuardando(false);
     }
@@ -105,6 +111,21 @@ export function useFlujo<E extends EstadoBase>(
     } catch {
       /* sin espacio */
     }
+  };
+
+  const descartarBorrador = () => {
+    try {
+      localStorage.removeItem(claveBorrador);
+    } catch {
+      /* nada */
+    }
+  };
+
+  const descartarYSalir = () => {
+    descartarBorrador();
+    tocado.current = false;
+    setE(estadoInicial());
+    salir();
   };
 
   const salir = () => {
@@ -127,9 +148,10 @@ export function useFlujo<E extends EstadoBase>(
   };
 
   const reiniciar = () => {
+    descartarBorrador();
     tocado.current = false;
     setE(estadoInicial());
   };
 
-  return { e, set, pasos, sub, i, listoActual: sub ? listo(e, sub) : false, siguiente, atras, irA, irAFase, publicar, cerrar, salida, setSalida, guardarBorrador, salir, reiniciar, guardando, errorPublicar };
+  return { e, set, pasos, sub, i, listoActual: sub ? listo(e, sub) : false, siguiente, atras, irA, irAFase, publicar, cerrar, salida, setSalida, guardarBorrador, descartarBorrador, descartarYSalir, salir, reiniciar, guardando, errorPublicar };
 }

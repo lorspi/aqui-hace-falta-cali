@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Activity, Bug, Flame, Info, Mountain, TriangleAlert, Waves, Wind } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Activity, Bug, Compass, Flame, Info, Loader2, Mountain, TriangleAlert, Waves, Wind } from 'lucide-react';
 import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
@@ -15,9 +15,12 @@ import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Co
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import { useFlujo } from './useFlujo';
 
-import { createNeed } from '../../lib/supabaseService';
+import { createNeedWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
-import type { HelpCategory, PlaceType } from '../../types';
+import type { HelpCategory, Need, PlaceType } from '../../types';
+import { mapEmergencyEventToId, mapItemToCatalog, mapItemsToHelpCategories, mapTipoLugarToPlaceType } from '../../utils/enumMappers';
+import { uploadEvidencePhotos } from '../../utils/storageUpload';
+import { geocodeAddress, reverseGeocodeAddress } from '../../utils/geocoding';
 
 /**
  * Pedir ayuda (mockup/*): `src/pedir.html` del prototipo. Una pregunta por pantalla. Lo que
@@ -44,8 +47,10 @@ function irA(ruta: string): void {
 
 export interface PedirProps {
   onClose?: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (createdNeed?: Need) => void;
   isModal?: boolean;
+  initialCityId?: string;
+  onRequireAuth?: () => void;
 }
 
 export const PedirPage: React.FC<PedirProps> = (props) => (
@@ -67,32 +72,64 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false }) => {
+export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+  const [createdNeed, setCreatedNeed] = useState<Need | undefined>(undefined);
+
   const guardarEnSupabase = useCallback(async (estado: EstadoPedir) => {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = user ? await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle() : { data: null };
-    const { data: org } = user ? await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle() : { data: null };
+    if (!user) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      }
+      throw new Error('AUTH_REQUIRED');
+    }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
 
     const metas = calcularMetas(estado.sel, estado.grupo, estado.dias);
     const pub = publicacionDe(estado, metas);
 
-    await createNeed({
-      cityId: profile?.city || 'cali',
+    // Subir fotos a Supabase Storage
+    const photoUrls = await uploadEvidencePhotos(estado.fotos);
+
+    const categoriesList = mapItemsToHelpCategories(estado.sel);
+    const placeTypeEnum = mapTipoLugarToPlaceType(estado.tipoLugar);
+    const emergencyIdStr = mapEmergencyEventToId(estado.evento);
+
+    // Mapear ítems desglosados para need_items
+    const itemsPayload = metas.map((m) => {
+      const cat = mapItemToCatalog(m.item);
+      const targetQty = m.meta === null ? (declarado(m.item, estado.det[m.item])?.valor ?? 0) : (estado.metas[m.item] ?? m.meta ?? 0);
+      return {
+        resourceId: cat.resourceId,
+        categoryId: cat.categoryId,
+        resourceName: m.item,
+        unit: m.unidad || cat.defaultUnit,
+        targetQuantity: targetQty,
+      };
+    });
+
+    const needPayload = {
+      cityId: initialCityId || profile?.city || 'cali',
       departmentId: profile?.department,
-      emergencyId: estado.evento || 'general',
+      emergencyId: emergencyIdStr,
+      emergencyEvent: emergencyIdStr,
       title: pub.titulo,
       description: estado.detalles || estado.comoLlegar || pub.titulo,
-      placeType: (estado.tipoLugar as PlaceType) || 'EDIFICIO_AFECTADO',
-      categories: Array.from(new Set(metas.map((m) => m.item))) as HelpCategory[],
-      resources: metas.map((m) => ({
-        id: m.item,
-        type: m.item as HelpCategory,
-        description: m.item,
-        requestedQuantity: m.meta === null ? (declarado(m.item, estado.det[m.item])?.valor ?? 0) : (estado.metas[m.item] ?? m.meta ?? 0),
-        fulfilledQuantity: 0,
-        unit: m.unidad || '',
-        status: 'PENDING',
-      })),
+      placeType: placeTypeEnum,
+      categories: categoriesList,
+      resources: metas.map((m) => {
+        const cat = mapItemToCatalog(m.item);
+        return {
+          id: cat.resourceId,
+          type: cat.canonicalCategory,
+          description: m.item,
+          requestedQuantity: m.meta === null ? (declarado(m.item, estado.det[m.item])?.valor ?? 0) : (estado.metas[m.item] ?? m.meta ?? 0),
+          fulfilledQuantity: 0,
+          unit: m.unidad || cat.defaultUnit,
+          status: 'PENDING' as const,
+        };
+      }),
       address: estado.dir || 'Sin dirección especificada',
       neighborhood: estado.dir || 'Cali',
       latitude: estado.lat,
@@ -105,18 +142,29 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       comoLlegar: estado.comoLlegar,
       paraQuien: estado.paraQuien,
       userId: user?.id,
-      evidenceUrl: estado.fotos.map((f) => f.url).filter((u) => !u.startsWith('blob:')).join(','),
-    });
-  }, []);
+      evidenceUrl: photoUrls.join(','),
+    };
+
+    const inserted = await createNeedWithItems(needPayload, itemsPayload);
+    if (inserted) {
+      setCreatedNeed(inserted);
+    }
+  }, [initialCityId, onRequireAuth]);
 
   const f = useFlujo<EstadoPedir>('pedir', 'pide', estadoInicialPedir, caminoPedir, listoPedir, guardarEnSupabase, onClose);
   const { e, set, sub } = f;
 
+  const hasNotifiedSuccessRef = useRef(false);
+
   useEffect(() => {
-    if (e.publicado && onSuccess) {
-      onSuccess();
+    if (e.publicado && onSuccess && !hasNotifiedSuccessRef.current) {
+      hasNotifiedSuccessRef.current = true;
+      onSuccess(createdNeed);
     }
-  }, [e.publicado, onSuccess]);
+    if (!e.publicado) {
+      hasNotifiedSuccessRef.current = false;
+    }
+  }, [e.publicado, onSuccess, createdNeed]);
   const errores = useErrores(sub?.id ?? '');
 
   useEffect(() => {
@@ -130,7 +178,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
       const nombreContacto = profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user.email || '';
       const telefono = profile?.phone || profile?.whatsapp || '';
-      const direccion = org?.city || profile?.city || '';
+      const direccion = org?.address || profile?.city || '';
 
       set((prev) => ({
         contacto: prev.contacto || nombreContacto,
@@ -140,6 +188,75 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     }
     autocompletarPerfil();
   }, [set]);
+
+  const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
+  const [cargandoGps, setCargandoGps] = useState(false);
+  const [errorGps, setErrorGps] = useState<string | null>(null);
+  const omitirAutoGeocodificacionRef = useRef(false);
+
+  const obtenerUbicacionGPS = useCallback(() => {
+    if (!navigator.geolocation) {
+      setErrorGps('Tu navegador no soporta geolocalización por GPS.');
+      return;
+    }
+    setCargandoGps(true);
+    setErrorGps(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        omitirAutoGeocodificacionRef.current = true;
+        set({ lat: latitude, lng: longitude });
+
+        try {
+          const direccionFormateada = await reverseGeocodeAddress(latitude, longitude);
+          if (direccionFormateada) {
+            set({ dir: direccionFormateada });
+            errores.limpiar('dir');
+          }
+        } catch {
+          /* Mantener coordenadas */
+        } finally {
+          setCargandoGps(false);
+        }
+      },
+      (err) => {
+        setCargandoGps(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setErrorGps('Permiso de ubicación denegado. Escribe la dirección o mueve el mapa manualmente.');
+        } else {
+          setErrorGps('No se pudo obtener tu ubicación actual por GPS.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [set, errores]);
+
+  const geocodificarDireccion = useCallback(async (direccion: string) => {
+    if (!direccion || direccion.trim().length < 3) return;
+    setCargandoGeocodificacion(true);
+    try {
+      const res = await geocodeAddress(direccion, undefined, 'Cali');
+      if (res) {
+        set({ lat: res.lat, lng: res.lng });
+      }
+    } finally {
+      setCargandoGeocodificacion(false);
+    }
+  }, [set]);
+
+  useEffect(() => {
+    if (omitirAutoGeocodificacionRef.current) {
+      omitirAutoGeocodificacionRef.current = false;
+      return;
+    }
+    if (sub?.id === 'donde' && e.dir && e.dir.trim().length >= 3) {
+      const timer = setTimeout(() => {
+        geocodificarDireccion(e.dir);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sub?.id, e.dir, geocodificarDireccion]);
 
   const metas = calcularMetas(e.sel, e.grupo, e.dias);
   const toggle = (it: string) => set((p) => ({ sel: p.sel.includes(it) ? p.sel.filter((x) => x !== it) : [...p.sel, it] }));
@@ -232,10 +349,42 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'donde') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Dónde llega la ayuda?" sub="Pusimos la dirección de tu cuenta. Si la ayuda va a otro punto, corrígela o mueve el punto en el mapa." />
-        <Field id="dir" etiqueta="Dirección o sector" valor={e.dir} autoComplete="street-address" requerido onChange={(v) => { set({ dir: v }); errores.limpiar('dir'); }} onBlur={(v) => errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda')} error={errores.errores.dir} className="mb-3" />
+        <Pregunta titulo="¿Dónde llega la ayuda?" sub="Pusimos la dirección de tu cuenta. Si la ayuda va a otro punto, usa tu ubicación GPS, corrígela o mueve el punto en el mapa." />
+        
+        <button
+          type="button"
+          onClick={obtenerUbicacionGPS}
+          disabled={cargandoGps}
+          className="mb-3.5 flex w-full items-center justify-center gap-2 rounded-rd-md border border-rd-navy/30 bg-rd-navy/5 px-3 py-2.5 text-rd-13 font-semibold text-rd-navy transition-colors hover:bg-rd-navy/10 disabled:opacity-60 cursor-pointer"
+        >
+          {cargandoGps ? (
+            <Loader2 className="h-4 w-4 animate-spin text-rd-navy" />
+          ) : (
+            <Compass className="h-4 w-4 text-rd-navy" />
+          )}
+          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS)'}</span>
+        </button>
+        {errorGps && <p className="mb-2 text-rd-12 text-rd-coral">{errorGps}</p>}
+
+        <Field
+          id="dir"
+          etiqueta="Dirección o sector"
+          valor={e.dir}
+          autoComplete="street-address"
+          requerido
+          onChange={(v) => { omitirAutoGeocodificacionRef.current = false; set({ dir: v }); errores.limpiar('dir'); }}
+          onBlur={(v) => {
+            errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda');
+            if (v && v.trim().length >= 3) {
+              geocodificarDireccion(v);
+            }
+          }}
+          error={errores.errores.dir}
+          className="mb-3"
+        />
         <Field id="tl" etiqueta="Tipo de lugar o referencia" tipo="select" opciones={TIPOS_LUGAR} placeholder="Elige uno" valor={e.tipoLugar} onChange={(v) => set({ tipoLugar: v })} className="mb-3" />
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={(lat, lng) => set({ lat, lng })} />
+        {cargandoGeocodificacion && <p className="text-rd-12 text-rd-navy animate-pulse mb-1">Buscando ubicación en el mapa...</p>}
+        <MiniMapa lat={e.lat} lng={e.lng} onMover={(lat, lng) => { omitirAutoGeocodificacionRef.current = true; set({ lat, lng }); }} />
         <Field id="cl" etiqueta={<>Cómo llegar<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder="Por ejemplo: subiendo por la estación, casa esquinera azul, la vía solo sirve para moto…" onChange={(v) => set({ comoLlegar: v })} className="mt-3" />
       </>
     );
@@ -292,10 +441,10 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   return (
     <>
-      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal}>
+      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
-      <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />
+      <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />
     </>
   );
 };
