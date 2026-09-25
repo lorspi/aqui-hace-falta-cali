@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS needs (
   evidence_url TEXT,
   source_event_id TEXT,
   conversation_id TEXT,
-  location_enrichment_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  como_llegar TEXT,
+  para_quien TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   last_updated_by TEXT,
@@ -55,6 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_needs_priority ON needs(priority);
 CREATE INDEX IF NOT EXISTS idx_needs_verification ON needs(verification_status);
 CREATE INDEX IF NOT EXISTS idx_needs_created_at ON needs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_needs_location_enrichment_status ON needs(location_enrichment_status);
+CREATE INDEX IF NOT EXISTS idx_needs_user_id ON needs(user_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_needs_source_event_id ON needs(source_event_id) WHERE source_event_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_needs_conversation_id ON needs(conversation_id) WHERE conversation_id IS NOT NULL;
@@ -64,6 +67,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_needs_conversation_id ON needs(conversatio
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS offers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   city_id VARCHAR(100) NOT NULL DEFAULT 'cali',
   department_id VARCHAR(100),
   title TEXT NOT NULL,
@@ -74,6 +78,8 @@ CREATE TABLE IF NOT EXISTS offers (
   neighborhood TEXT NOT NULL,
   latitude DOUBLE PRECISION NOT NULL DEFAULT 3.4516,
   longitude DOUBLE PRECISION NOT NULL DEFAULT -76.5320,
+  delivery_mode VARCHAR(50),
+  delivery_radius VARCHAR(100),
   offer_status VARCHAR(50) DEFAULT 'AVAILABLE',
   verification_status VARCHAR(50) DEFAULT 'PENDING_VERIFICATION',
   verified_by TEXT,
@@ -91,6 +97,7 @@ CREATE TABLE IF NOT EXISTS offers (
 CREATE INDEX IF NOT EXISTS idx_offers_city_id ON offers(city_id);
 CREATE INDEX IF NOT EXISTS idx_offers_verification ON offers(verification_status);
 CREATE INDEX IF NOT EXISTS idx_offers_created_at ON offers(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_offers_user_id ON offers(user_id);
 
 -- ---------------------------------------------------------------------
 -- 3. TABLA: reports (Reportes ciudadanos sobre necesidades)

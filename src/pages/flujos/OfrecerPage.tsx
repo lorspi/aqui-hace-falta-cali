@@ -16,6 +16,10 @@ import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
 
+import { createOffer } from '../../lib/supabaseService';
+import { supabase } from '../../lib/supabaseClient';
+import type { HelpCategory } from '../../types';
+
 /**
  * Ofrecer ayuda (mockup/*): `src/ofrecer-v2.html` del prototipo. Una organización registrada
  * ya dijo qué tiene: eso llega primero, con su cantidad, y solo confirma o ajusta. Lo que no
@@ -73,9 +77,15 @@ function irA(ruta: string): void {
   window.location.href = ruta;
 }
 
-export const OfrecerPage: React.FC = () => (
+export interface OfrecerProps {
+  onClose?: () => void;
+  onSuccess?: () => void;
+  isModal?: boolean;
+}
+
+export const OfrecerPage: React.FC<OfrecerProps> = (props) => (
   <AvisosProvider>
-    <Ofrecer />
+    <Ofrecer {...props} />
   </AvisosProvider>
 );
 
@@ -86,14 +96,75 @@ function publicacionDe(e: EstadoOfrecer): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-const Ofrecer: React.FC = () => {
-  const f = useFlujo<EstadoOfrecer>('ofrecer', 'ofrece', () => conParametros(estadoInicialOfrecer()), caminoOfrecer, listoOfrecer);
+export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false }) => {
+  const guardarEnSupabase = useCallback(async (estado: EstadoOfrecer) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = user ? await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle() : { data: null };
+    const { data: org } = user ? await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle() : { data: null };
+
+    const pub = publicacionDe(estado);
+
+    await createOffer({
+      cityId: profile?.city || 'cali',
+      departmentId: profile?.department,
+      title: pub.titulo,
+      description: estado.condiciones || pub.titulo,
+      categories: Array.from(new Set(estado.sel)) as HelpCategory[],
+      resources: estado.sel.map((it) => ({
+        id: it,
+        type: it as HelpCategory,
+        description: it,
+        quantity: estado.cant[it] ?? 0,
+        fulfilledQuantity: 0,
+        unit: unidadOferta(it),
+        status: 'AVAILABLE',
+      })),
+      address: estado.dir || 'Sin dirección especificada',
+      neighborhood: estado.dir || 'Cali',
+      latitude: estado.lat,
+      longitude: estado.lng,
+      contactName: estado.contacto || profile?.full_name || 'Contacto',
+      contactPhone: estado.tel,
+      contactWhatsapp: estado.tel,
+      contactEmail: user?.email,
+      organizationName: org?.org_name || profile?.cargo || 'Organización Oferente',
+      deliveryMode: estado.modoEntrega,
+      deliveryRadius: estado.radioEntrega,
+      userId: user?.id,
+    });
+  }, []);
+
+  const f = useFlujo<EstadoOfrecer>('ofrecer', 'ofrece', () => conParametros(estadoInicialOfrecer()), caminoOfrecer, listoOfrecer, guardarEnSupabase, onClose);
   const { e, set, sub } = f;
-  const errores = useErrores(sub.id);
+
+  useEffect(() => {
+    if (e.publicado && onSuccess) {
+      onSuccess();
+    }
+  }, [e.publicado, onSuccess]);
+  const errores = useErrores(sub?.id ?? '');
 
   useEffect(() => {
     document.title = 'RaDAR · Ofrecer ayuda';
-  }, []);
+
+    async function autocompletarPerfil() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
+
+      const nombreContacto = profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user.email || '';
+      const telefono = profile?.phone || profile?.whatsapp || '';
+      const direccion = org?.city || profile?.city || '';
+
+      set((prev) => ({
+        contacto: prev.contacto || nombreContacto,
+        tel: prev.tel || telefono,
+        dir: prev.dir || direccion,
+      }));
+    }
+    autocompletarPerfil();
+  }, [set]);
 
   const toggle = (it: string) =>
     set((p) => {
@@ -238,7 +309,7 @@ const Ofrecer: React.FC = () => {
 
   return (
     <>
-      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar}>
+      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />

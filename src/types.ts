@@ -93,6 +93,9 @@ export interface Need {
   sourceEventId?: string | null;
   conversationId?: string | null;
   locationEnrichmentStatus?: string | null;
+  userId?: string;
+  comoLlegar?: string;
+  paraQuien?: string;
 }
 
 export interface Report {
@@ -187,6 +190,9 @@ export interface Offer {
   createdAt: string;
   updatedAt: string;
   lastUpdatedBy?: string;
+  userId?: string;
+  deliveryMode?: string;
+  deliveryRadius?: string;
 }
 
 export interface FilterState {

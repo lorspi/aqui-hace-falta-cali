@@ -171,7 +171,6 @@ export default function App() {
     content = <OfrecerPage />;
   } else if (specialRoute?.type === 'radar-v2') {
     content = <RadarPage />;
-  }
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {
@@ -403,7 +402,13 @@ function MainApp() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [showCreateOffer, setShowCreateOffer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
+    }
+    return false;
+  });
   const [isLandingOfferModalOpen, setIsLandingOfferModalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);

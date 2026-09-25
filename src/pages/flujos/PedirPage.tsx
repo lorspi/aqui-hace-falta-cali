@@ -15,6 +15,10 @@ import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Co
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import { useFlujo } from './useFlujo';
 
+import { createNeed } from '../../lib/supabaseService';
+import { supabase } from '../../lib/supabaseClient';
+import type { HelpCategory, PlaceType } from '../../types';
+
 /**
  * Pedir ayuda (mockup/*): `src/pedir.html` del prototipo. Una pregunta por pantalla. Lo que
  * la cuenta ya sabe (dónde, contacto) llega resuelto y se confirma con un toque. Las
@@ -38,9 +42,15 @@ function irA(ruta: string): void {
   window.location.href = ruta;
 }
 
-export const PedirPage: React.FC = () => (
+export interface PedirProps {
+  onClose?: () => void;
+  onSuccess?: () => void;
+  isModal?: boolean;
+}
+
+export const PedirPage: React.FC<PedirProps> = (props) => (
   <AvisosProvider>
-    <Pedir />
+    <Pedir {...props} />
   </AvisosProvider>
 );
 
@@ -57,14 +67,79 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-const Pedir: React.FC = () => {
-  const f = useFlujo<EstadoPedir>('pedir', 'pide', estadoInicialPedir, caminoPedir, listoPedir);
+export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false }) => {
+  const guardarEnSupabase = useCallback(async (estado: EstadoPedir) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = user ? await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle() : { data: null };
+    const { data: org } = user ? await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle() : { data: null };
+
+    const metas = calcularMetas(estado.sel, estado.grupo, estado.dias);
+    const pub = publicacionDe(estado, metas);
+
+    await createNeed({
+      cityId: profile?.city || 'cali',
+      departmentId: profile?.department,
+      emergencyId: estado.evento || 'general',
+      title: pub.titulo,
+      description: estado.detalles || estado.comoLlegar || pub.titulo,
+      placeType: (estado.tipoLugar as PlaceType) || 'EDIFICIO_AFECTADO',
+      categories: Array.from(new Set(metas.map((m) => m.item))) as HelpCategory[],
+      resources: metas.map((m) => ({
+        id: m.item,
+        type: m.item as HelpCategory,
+        description: m.item,
+        requestedQuantity: m.meta === null ? (declarado(m.item, estado.det[m.item])?.valor ?? 0) : (estado.metas[m.item] ?? m.meta ?? 0),
+        fulfilledQuantity: 0,
+        unit: m.unidad || '',
+        status: 'PENDING',
+      })),
+      address: estado.dir || 'Sin dirección especificada',
+      neighborhood: estado.dir || 'Cali',
+      latitude: estado.lat,
+      longitude: estado.lng,
+      contactName: estado.contacto || profile?.full_name || 'Contacto',
+      contactPhone: estado.tel,
+      contactWhatsapp: estado.telAlt || estado.tel,
+      contactEmail: user?.email,
+      organizationName: org?.org_name || profile?.cargo || 'Organización / Comunidad',
+      comoLlegar: estado.comoLlegar,
+      paraQuien: estado.paraQuien,
+      userId: user?.id,
+      evidenceUrl: estado.fotos.map((f) => f.url).filter((u) => !u.startsWith('blob:')).join(','),
+    });
+  }, []);
+
+  const f = useFlujo<EstadoPedir>('pedir', 'pide', estadoInicialPedir, caminoPedir, listoPedir, guardarEnSupabase, onClose);
   const { e, set, sub } = f;
-  const errores = useErrores(sub.id);
+
+  useEffect(() => {
+    if (e.publicado && onSuccess) {
+      onSuccess();
+    }
+  }, [e.publicado, onSuccess]);
+  const errores = useErrores(sub?.id ?? '');
 
   useEffect(() => {
     document.title = 'RaDAR · Pedir ayuda';
-  }, []);
+
+    async function autocompletarPerfil() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
+
+      const nombreContacto = profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user.email || '';
+      const telefono = profile?.phone || profile?.whatsapp || '';
+      const direccion = org?.city || profile?.city || '';
+
+      set((prev) => ({
+        contacto: prev.contacto || nombreContacto,
+        tel: prev.tel || telefono,
+        dir: prev.dir || direccion,
+      }));
+    }
+    autocompletarPerfil();
+  }, [set]);
 
   const metas = calcularMetas(e.sel, e.grupo, e.dias);
   const toggle = (it: string) => set((p) => ({ sel: p.sel.includes(it) ? p.sel.filter((x) => x !== it) : [...p.sel, it] }));
@@ -217,7 +292,7 @@ const Pedir: React.FC = () => {
 
   return (
     <>
-      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar}>
+      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.salir} />

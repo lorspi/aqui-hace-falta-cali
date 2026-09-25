@@ -91,13 +91,14 @@ export interface MarcoFlujoProps {
   onSiguiente: () => void;
   onPublicar: () => void;
   onCerrar: () => void;
+  isModal?: boolean;
   children: React.ReactNode;
 }
 
 /** El marco: la ventana del flujo (a ≥ 1024, una tarjeta de 680 centrada sobre el fondo,
  *  como el modal del prototipo; bajo 1024, la pantalla entera), el progreso fijo arriba,
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
-export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, children }) => {
+export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, children }) => {
   const cuerpo = useRef<HTMLDivElement>(null);
   useEffect(() => {
     cuerpo.current?.scrollTo({ top: 0 });
@@ -123,13 +124,9 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
     return () => mq.removeEventListener('change', alCambiar);
   }, []);
 
-  /* Desde 1024 el flujo es una ventana sobre la Radar, como en la app real: detrás va la Radar
-     inerte y atenuada (Alejandro, 16 de septiembre de 2026: «un dimmer detrás, no un fondo
-     gris»). La tarjeta ocupa el alto de la ventana menos el margen, estable entre pasos: el
-     cuerpo centra o desplaza por dentro y el pie con Volver y Continuar queda a la vista. */
   return (
-    <div className="font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:items-stretch lg:justify-center lg:bg-transparent lg:py-6">
-      {escritorio && (
+    <div className={isModal ? "fixed inset-0 z-50 flex items-center justify-center bg-rd-ink/60 backdrop-blur-xs p-0 lg:p-6 font-rd text-rd-ink overflow-y-auto" : "font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:items-stretch lg:justify-center lg:bg-transparent lg:py-6"}>
+      {escritorio && !isModal && (
         <div aria-hidden="true" inert className="fixed inset-0 -z-1 overflow-hidden">
           <RadarPage />
           {/* Por encima de las capas de Leaflet (llegan a 1000). */}
