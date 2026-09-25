@@ -36,7 +36,7 @@ export const RadarSplitCtaSection: React.FC<RadarSplitCtaSectionProps> = ({ onOp
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
               {/* Botón Primario: Pedir ayuda */}
               <a
-                href="/pedir-v2"
+                href="/?accion=pedir"
                 className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-red hover:bg-brand-red/90 active:scale-98 shadow-md shadow-brand-red/30 transition-all cursor-pointer font-sans"
               >
                 <Hand className="w-5 h-5 text-white shrink-0" />
@@ -45,7 +45,7 @@ export const RadarSplitCtaSection: React.FC<RadarSplitCtaSectionProps> = ({ onOp
 
               {/* Botón Secundario: Ofrecer ayuda */}
               <a
-                href="/ofrecer-v2"
+                href="/?accion=ofrecer"
                 className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-sm sm:text-base font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-md shadow-brand-blue/30 transition-all cursor-pointer font-sans"
               >
                 <HeartHandshake className="w-5 h-5 text-white shrink-0" />

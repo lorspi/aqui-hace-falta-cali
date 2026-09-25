@@ -402,7 +402,13 @@ function MainApp() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [showCreateOffer, setShowCreateOffer] = useState(false);
+  const [showCreateOffer, setShowCreateOffer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
+    }
+    return false;
+  });
   const [isLandingOfferModalOpen, setIsLandingOfferModalOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
