@@ -1,24 +1,43 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronRight, Funnel, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Funnel, Search, X } from 'lucide-react';
 
 /**
  * Las piezas de la barra de consulta (`rd-consulta` del prototipo, decisión 70): una sola
  * para la Radar y el Directorio. El botón Filtros con su conteo, la zona de chips aplicados
  * (en una fila que se desplaza, con › cuando desborda en móvil) y el campo de búsqueda.
  */
-/** El botón que abre la hoja. Dice «Filtrar y ordenar» porque la hoja trae las dos cosas
- *  (Alejandro, 21 de septiembre de 2026; el prototipo decía «Filtros» con el orden escondido). */
-export const BotonFiltros: React.FC<{ aplicados: number; abierta: boolean; onClick: () => void }> = ({ aplicados, abierta, onClick }) => (
+/** El botón que abre los filtros. Dice «Filtrar y ordenar» porque la hoja de la Radar y del
+ *  Directorio trae las dos cosas (Alejandro, 21 de septiembre de 2026; el prototipo decía
+ *  «Filtros» con el orden escondido); donde solo se filtra, `etiqueta` lo dice.
+ *
+ *  Es el estándar de filtro de toda la herramienta (Alejandro, 25 de septiembre de 2026: «revisa
+ *  que todos los botones de filtro sean del mismo tamaño y tengan los mismos estilos… el estándar
+ *  es radar»). Mi equipo tenía su propia copia, con otro tamaño de texto, otro relleno, el activo
+ *  en navy y el conteo en navy sobre blanco; en vez de repintarla se borró y usa esta. Quien abra
+ *  un desplegable en vez de una hoja pide `chevron` y pasa `refBoton` para su clic afuera.
+ *
+ *  Activo no significa color: el marco pasa a tinta (`rd-sel`) y el conteo se queda en hundido.
+ *  Pintar el botón de navy lo hacía competir con el botón primario de la sección. */
+export const BotonFiltros: React.FC<{
+  aplicados: number;
+  abierta: boolean;
+  onClick: () => void;
+  etiqueta?: string;
+  chevron?: boolean;
+  refBoton?: React.RefObject<HTMLButtonElement | null>;
+}> = ({ aplicados, abierta, onClick, etiqueta = 'Filtrar y ordenar', chevron = false, refBoton }) => (
   <button
+    ref={refBoton}
     type="button"
     onClick={onClick}
     aria-expanded={abierta}
-    aria-label={aplicados ? `Filtrar y ordenar, ${aplicados} aplicados` : 'Filtrar y ordenar'}
+    aria-label={aplicados ? `${etiqueta}, ${aplicados} aplicados` : etiqueta}
     className={`font-rd inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border bg-rd-surface px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${aplicados ? 'border-rd-sel' : 'border-rd-line'}`}
   >
     <Funnel aria-hidden="true" className="h-3.75 w-3.75 text-rd-ink-3" />
-    Filtrar y ordenar
+    {etiqueta}
     {aplicados > 0 && <span aria-hidden="true" className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{aplicados}</span>}
+    {chevron && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 text-rd-ink-3 transition-transform duration-150 ${abierta ? 'rotate-180' : ''}`} />}
   </button>
 );
 
@@ -142,11 +161,27 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
 /** El campo de búsqueda de la consulta (decisión 70): desde 1024 vive a la derecha de la barra,
  *  el último de la fila (`pantalla.css:240`: `margin-left:auto`, 360 de ancho). Bajo 1024 solo
  *  aparece cuando la lupa de la cabecera lo abre (`abierto`), a lo ancho y primero en la fila
- *  (146). Su sitio no lo decide quien lo usa: es el mismo en toda la herramienta. */
+ *  (146). Su sitio no lo decide quien lo usa: es el mismo en toda la herramienta.
+ *  Al foco el marco va en tinta (`rd-sel`), el mismo negro con el que Filtros marca que tiene
+ *  algo aplicado, porque comparten fila y el navy desentonaba (Alejandro, 24 de septiembre de
+ *  2026). El halo acompaña en tinta al 10 %, no en navy. */
 export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => (
-  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft ${className ? className : 'lg:ml-auto lg:w-72 xl:w-90'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
+  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-72 xl:w-90'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
     <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
     <span className="sr-only">Buscar</span>
+    <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+  </label>
+);
+
+/** El buscador que vive dentro de una hoja o de un bloque, no en la barra de consulta: el mismo
+ *  dibujo de `CampoBuscar` —alto 40, esquina redonda, marco en tinta al foco— sin la lógica de
+ *  sitio de la barra. Las hojas de filtros y el selector de recursos de los flujos tenían cada
+ *  uno su propio campo, los dos enfocando en navy contra la decisión del 24 de septiembre, con
+ *  la lupa a 14 en uno y a 16 en el otro (Alejandro, 25 de septiembre de 2026). */
+export const CampoBuscarEnBloque: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; etiqueta: string; className?: string }> = ({ valor, onChange, placeholder, etiqueta, className = '' }) => (
+  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
+    <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+    <span className="sr-only">{etiqueta}</span>
     <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
   </label>
 );

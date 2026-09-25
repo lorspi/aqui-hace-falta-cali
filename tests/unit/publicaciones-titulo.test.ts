@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { Publicacion } from '../../src/types/publicacion';
 import { actorPublicacion, tituloPublicacion } from '../../src/utils/publicaciones';
 
+/* El título en texto plano une con «, de» y nunca con punto medio, que Alejandro prohibió en
+   toda la herramienta (16 de septiembre de 2026). Donde el título se pinta, quien separa es un
+   divisor vertical (`components/ui/TituloPublicacion.tsx`). */
 describe('Reglas de generación de títulos institucionales de publicaciones', () => {
+  it('nunca usa punto medio, en ningún caso', async () => {
+    const { PUBLICACIONES } = await import('../../src/mocks/publicacionesMock');
+    PUBLICACIONES.forEach((p) => expect(tituloPublicacion(p)).not.toContain(' · '));
+  });
+
   it('genera título para necesidad con 1 solo recurso de organización', () => {
     const pub: Publicacion = {
       id: 'p1',
@@ -17,7 +25,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       recursos: [{ item: 'Agua potable', unidad: 'L', total: 900, tramos: [] }],
     };
     expect(actorPublicacion(pub)).toBe('Albergue Bosa');
-    expect(tituloPublicacion(pub)).toBe('Agua potable · Albergue Bosa');
+    expect(tituloPublicacion(pub)).toBe('Agua potable, de Albergue Bosa');
   });
 
   it('genera título para necesidad con 2 recursos de organización', () => {
@@ -35,7 +43,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
         { item: 'Alimentos', unidad: 'kits', total: 50, tramos: [] },
       ],
     };
-    expect(tituloPublicacion(pub)).toBe('Agua potable y Alimentos · Bomberos Voluntarios Usme');
+    expect(tituloPublicacion(pub)).toBe('Agua potable y Alimentos, de Bomberos Voluntarios Usme');
   });
 
   it('genera título para necesidad con 3 o más recursos comunitarios', () => {
@@ -56,7 +64,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
         { item: 'Medicamentos / Botiquín', unidad: 'botiquines', total: 10, tramos: [] },
       ],
     };
-    expect(tituloPublicacion(pub)).toBe('Alimentos y 4 más · JAC El Recuerdo');
+    expect(tituloPublicacion(pub)).toBe('Alimentos y 4 más, de JAC El Recuerdo');
   });
 
   it('genera título simétrico para oferta institucional sin "Disponibilidad de"', () => {
@@ -71,7 +79,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       zona: 'Usme',
       recursos: [{ item: 'Agua potable', unidad: 'L', total: 1500, tramos: [] }],
     };
-    expect(tituloPublicacion(pub)).toBe('Agua potable · Bomberos Voluntarios Usme');
+    expect(tituloPublicacion(pub)).toBe('Agua potable, de Bomberos Voluntarios Usme');
   });
 
   it('genera título para oferta con múltiples recursos', () => {
@@ -90,7 +98,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
         { item: 'Implementos de aseo e higiene', unidad: 'kits', total: 50, tramos: [] },
       ],
     };
-    expect(tituloPublicacion(pub)).toBe('Atención médica y 2 más · Cruz Roja seccional');
+    expect(tituloPublicacion(pub)).toBe('Atención médica y 2 más, de Cruz Roja seccional');
   });
 
   it('protege la privacidad de una persona individual en necesidad con contexto geográfico', () => {
@@ -111,7 +119,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       ],
     };
     expect(actorPublicacion(pub)).toBe('Familia en Bosa');
-    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y 2 más · Familia en Bosa');
+    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y 2 más, de Familia en Bosa');
   });
 
   it('protege la privacidad de una persona individual en necesidad sin zona', () => {
@@ -131,7 +139,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       ],
     };
     expect(actorPublicacion(pub)).toBe('Familia afectada');
-    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y Alimentos · Familia afectada');
+    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y Alimentos, de Familia afectada');
   });
 
   it('protege la privacidad de una persona individual en oferta con zona', () => {
@@ -148,7 +156,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       recursos: [{ item: 'Ropa y calzado', unidad: 'mudas', total: 30, tramos: [] }],
     };
     expect(actorPublicacion(pub)).toBe('Donante en Chapinero');
-    expect(tituloPublicacion(pub)).toBe('Ropa y calzado · Donante en Chapinero');
+    expect(tituloPublicacion(pub)).toBe('Ropa y calzado, de Donante en Chapinero');
   });
 
   it('protege la privacidad de una persona individual en oferta sin zona', () => {
@@ -165,6 +173,6 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       recursos: [{ item: 'Herramientas de mano', unidad: 'unidades', total: 10, tramos: [] }],
     };
     expect(actorPublicacion(pub)).toBe('Donante particular');
-    expect(tituloPublicacion(pub)).toBe('Herramientas de mano · Donante particular');
+    expect(tituloPublicacion(pub)).toBe('Herramientas de mano, de Donante particular');
   });
 });

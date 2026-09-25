@@ -3,6 +3,7 @@ import { BadgeCheck, Bell, Check, Clock, Hand, HeartHandshake, RefreshCw, Triang
 import { DIAS } from '../../mocks/avisosMock';
 import type { Aviso, TipoAviso } from '../../types/aviso';
 import { Button } from './Button';
+import { ROTULO_GRUPO } from './tipografia';
 import { Contador } from './Etiqueta';
 import { Segmented } from './Segmented';
 
@@ -74,7 +75,8 @@ export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAcci
         if (!del.length) return null;
         return (
           <React.Fragment key={d.id}>
-            <h3 className="font-rd mx-3 mt-3 mb-1 text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase first:mt-0">{d.nombre}</h3>
+            {/* Sin `uppercase`: ningún rótulo de la herramienta va en altas (decisión 242). */}
+            <h3 className={`${ROTULO_GRUPO} mx-3 mt-3 mb-1 first:mt-0`}>{d.nombre}</h3>
             {del.map((a) => (
               <FilaAviso key={a.id} aviso={a} compacta={compacta} onAccion={onAccion} />
             ))}
@@ -87,7 +89,7 @@ export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAcci
 
 /**
  * La campana con su panel (≥ 1024): conteo de los sin leer, Todos · Sin leer, la lista
- * compacta, «Marcar todos como leídos» y «Ver todos». Se cierra con Escape (el foco vuelve
+ * compacta, «Marcar leídos» y «Ver todos». Se cierra con Escape (el foco vuelve
  * a la campana) o tocando fuera (el foco se queda donde la persona tocó).
  */
 export interface CampanaAvisosProps {
@@ -142,7 +144,7 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
       {abierto && (
         <div role="dialog" aria-label="Avisos" className="absolute top-full right-0 z-900 mt-2 w-100 overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface text-left shadow-rd-2">
           <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-            <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Avisos</h2>
+            <h2 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink">Avisos</h2>
             <Segmented<'todos' | 'nuevos'>
               etiquetaGrupo="Qué avisos ver"
               valor={filtro}
@@ -158,7 +160,7 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-rd-line px-3 py-2">
             <Button nivel="terciario" tamano="sm" onClick={onLeerTodos} disabled={sinLeer === 0}>
-              Marcar todos como leídos
+              Marcar leídos
             </Button>
             <a href={rutaAvisos} className="font-rd inline-flex h-rd-h-sm items-center rounded-rd-sm px-2.75 text-rd-12-5 font-semibold text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
               Ver todos

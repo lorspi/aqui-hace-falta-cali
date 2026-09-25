@@ -6,8 +6,8 @@
  * El i18n no entra en T12 (solo español).
  */
 export const TEXTOS = {
-  titulo: 'RaDAR · Registro',
-  logoAria: 'RaDAR de ayuda · inicio',
+  titulo: 'Registro, RaDAR de ayuda',
+  logoAria: 'RaDAR de ayuda, inicio',
 
   portada: {
     linea1: 'Lo que hace falta',

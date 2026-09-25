@@ -59,7 +59,7 @@ const Perfil: React.FC = () => {
   const [confirmando, setConfirmando] = useState<'salir' | 'eliminar' | null>(null);
 
   useEffect(() => {
-    document.title = 'RaDAR · Perfil';
+    document.title = 'Perfil, RaDAR de ayuda';
   }, []);
 
   const cambiarTab = (id: string) => {
@@ -77,7 +77,7 @@ const Perfil: React.FC = () => {
     if (!c) return;
     const nuevo = { ...c, [k]: v };
     if (c.fijo && !nuevo.wa && !nuevo.correo) {
-      avisar('Este aviso te pide hacer algo: deja WhatsApp o correo encendido', { tipo: 'error' });
+      avisar('Deja encendido WhatsApp o correo', { tipo: 'error' });
       return;
     }
     setCanales((l) => l.map((x) => (x.id === id ? nuevo : x)));
@@ -103,14 +103,16 @@ const Perfil: React.FC = () => {
         </header>
         <Pestanas etiqueta="Pestañas del perfil" pestanas={PESTANAS} actual={actual} onCambiar={cambiarTab} className="px-4 sm:px-6 lg:px-8" />
 
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
             {/* quién: la cabecera del perfil, en todas las pestañas */}
             <section aria-label="Resumen del perfil" className="flex flex-wrap items-start gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
               <Avatar iniciales={iniciales(yo.nombre)} tamano="lg" />
               <div className="min-w-0 flex-1">
-                <h2 className="font-rd m-0 text-rd-16 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
-                <p className="m-0 text-rd-12-5 text-rd-ink-2">{yo.cargo}</p>
+                <h2 className="font-rd m-0 text-rd-15 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
+                {/* El cargo es el subtítulo del nombre, así que va al rd-13-5 del estándar; la
+                    línea de abajo (organización y antigüedad) es metadato y se queda en rd-12-5. */}
+                <p className="m-0 text-rd-13-5 text-rd-ink-2">{yo.cargo}</p>
                 <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-1.5 text-rd-12-5 text-rd-ink-2">
                   {ORG.verificacion === 'verificada' && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
                   <b className="font-semibold text-rd-ink">{ORG.nombre}</b>
@@ -131,7 +133,7 @@ const Perfil: React.FC = () => {
             {actual === 'acceso' && (
               <>
                 <Caja titulo="Correo y contraseña">
-                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras y a él llegan las confirmaciones" accion={<Button nivel="secundario" tamano="sm" onClick={() => avisar('Te enviamos un enlace de confirmación al correo', { tipo: 'ok' })}>Cambiar</Button>}>
+                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras y a él llegan las confirmaciones" accion={<Button nivel="secundario" tamano="sm" onClick={() => avisar('Te enviamos un enlace al correo', { tipo: 'ok' })}>Cambiar</Button>}>
                     {yo.correo}
                   </FilaDato>
                   <FilaDato rotulo="Contraseña" nota="Protegida con cifrado" accion={<Button nivel="secundario" tamano="sm" onClick={() => avisar('Te enviamos un enlace para restablecerla', { tipo: 'ok' })}>Cambiar</Button>}>
@@ -251,7 +253,7 @@ const TusDatos: React.FC<{ yo: Persona; onGuardar: (p: Persona) => void }> = ({ 
 const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, k: 'wa' | 'correo', v: boolean) => void }> = ({ canales, onCambiar }) => (
   <Caja titulo="Canales de notificación">
     <p className="m-0 mb-3 text-rd-12-5 text-rd-ink-2">En RaDAR llegan siempre. Elige cuáles quieres además por WhatsApp o por correo.</p>
-    <div className="hidden grid-cols-12 gap-3 border-b border-rd-line pb-2 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase sm:grid">
+    <div className="hidden grid-cols-12 gap-3 border-b border-rd-line pb-2 text-rd-13 font-semibold text-rd-ink sm:grid">
       <span className="col-span-8">Aviso</span>
       <span className="col-span-2 text-center">WhatsApp</span>
       <span className="col-span-2 text-center">Correo</span>
@@ -322,16 +324,17 @@ const DatosOrganizacion: React.FC = () => {
         accion={
           editando ? (
             <div className="flex items-center gap-2">
-              <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
-                Cancelar
-              </Button>
+              {/* De mayor a menor jerarquía: primero la que mueve la aguja. */}
               <Button nivel="primario" tamano="md" onClick={guardar}>
                 Guardar
+              </Button>
+              <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
+                Cancelar
               </Button>
             </div>
           ) : (
             <Button nivel="secundario" tamano="md" onClick={empezar}>
-              Editar datos
+              Editar
             </Button>
           )
         }
@@ -354,7 +357,7 @@ const DatosOrganizacion: React.FC = () => {
               ['Tipo', org.tipo],
               ['NIT', org.nit],
               ['Dirección', org.dir],
-              ['Contacto público', `${org.contacto.tel}${org.contacto.wa ? ' · también WhatsApp' : ''} · ${org.contacto.correo}`],
+              ['Contacto público', `${org.contacto.tel}${org.contacto.wa ? ' (también WhatsApp)' : ''}, ${org.contacto.correo}`],
               ['Enlace con RaDAR', org.enlace],
               ['Web', org.web],
             ].map(([k, v]) => (
@@ -385,7 +388,7 @@ const DatosOrganizacion: React.FC = () => {
                   onClick={() => {
                     setOrg((o) => ({ ...o, verificacion: 'revision' }));
                     guardarVerificacion('revision');
-                    avisar(entidadActual() === 'liderazgo' ? 'Soporte adjuntado. Tu comunidad quedó en estado de revisión.' : 'Certificado adjuntado. Tu organización quedó en estado de revisión.', { tipo: 'ok' });
+                    avisar(entidadActual() === 'liderazgo' ? 'Soporte enviado. Queda en revisión' : 'Certificado enviado. Queda en revisión', { tipo: 'ok' });
                   }}
                 >
                   {entidadActual() === 'liderazgo' ? 'Adjuntar soporte' : 'Adjuntar el certificado'}
@@ -415,14 +418,14 @@ const DatosOrganizacion: React.FC = () => {
           </div>
         ))}
         <Button nivel="secundario" tamano="md" className="mt-3" onClick={() => setInvitando(true)}>
-          Invitar a alguien
+          Invitar
         </Button>
       </Caja>
 
       <Dialogo
         abierto={invitando}
-        titulo="Invitar a alguien a esta cuenta"
-        accion="Enviar invitación"
+        titulo="Invitar a esta cuenta"
+        accion="Enviar"
         onCerrar={() => setInvitando(false)}
         onEnviar={enviarInvitacion}
       >

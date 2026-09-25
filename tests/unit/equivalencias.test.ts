@@ -103,7 +103,7 @@ describe('caminoOfrecer', () => {
   });
 
   it('dice la entrega como frase', () => {
-    expect(textoEntrega(estadoInicialOfrecer())).toBe('Lo llevamos · 10 km · envío gratis');
+    expect(textoEntrega(estadoInicialOfrecer())).toBe('Lo llevamos, 10 km, envío gratis');
   });
 });
 
@@ -143,23 +143,30 @@ describe('coincidenciasDe (el «Radar Match» con nuestro cruce)', () => {
   });
 });
 
-describe('textoMatches (etiquetas y límites de Radar Match)', () => {
-  it('unifica la nomenclatura en singular y plural («1 match», «N matches»)', async () => {
-    const { textoMatches } = await import('../../src/components/ui/Coincidencias');
-    expect(textoMatches(1)).toBe('1 match');
-    expect(textoMatches(2)).toBe('2 matches');
-    expect(textoMatches(5)).toBe('5 matches');
+/* La interfaz dice «compatible», nunca «match» (Alejandro, 24 de septiembre de 2026). «Radar
+   Match» sigue siendo el nombre del motor, no la palabra que se lee en pantalla. */
+describe('textoSugerencias (etiquetas y límites del cruce)', () => {
+  it('unifica la nomenclatura en singular y plural («1 compatible», «N compatibles»)', async () => {
+    const { textoSugerencias } = await import('../../src/components/ui/Coincidencias');
+    expect(textoSugerencias(1)).toBe('1 compatible');
+    expect(textoSugerencias(2)).toBe('2 compatibles');
+    expect(textoSugerencias(5)).toBe('5 compatibles');
   });
 
-  it('aplica el tope máximo mostrando «5+ matches» cuando hay más sugerencias disponibles', async () => {
-    const { textoMatches, TOPE_MATCHES_DEFECTO } = await import('../../src/components/ui/Coincidencias');
-    expect(TOPE_MATCHES_DEFECTO).toBe(5);
+  it('aplica el tope máximo mostrando «5+ compatibles» cuando hay más disponibles', async () => {
+    const { textoSugerencias, TOPE_SUGERENCIAS_DEFECTO } = await import('../../src/components/ui/Coincidencias');
+    expect(TOPE_SUGERENCIAS_DEFECTO).toBe(5);
     // n=5 pero total=8 en base de datos
-    expect(textoMatches(5, 8)).toBe('5+ matches');
+    expect(textoSugerencias(5, 8)).toBe('5+ compatibles');
     // n=5 y total=5 exactos
-    expect(textoMatches(5, 5)).toBe('5 matches');
+    expect(textoSugerencias(5, 5)).toBe('5 compatibles');
     // directo con n > 5
-    expect(textoMatches(9)).toBe('5+ matches');
+    expect(textoSugerencias(9)).toBe('5+ compatibles');
+  });
+
+  it('no deja pasar la palabra en inglés en ningún caso', async () => {
+    const { textoSugerencias } = await import('../../src/components/ui/Coincidencias');
+    [0, 1, 2, 5, 9].forEach((n) => expect(textoSugerencias(n)).not.toMatch(/match/i));
   });
 });
 

@@ -90,9 +90,9 @@ describe('cifras y pendientes', () => {
 describe('el resumen en dos niveles y el cierre de dos lados (rama de Fede, 16 de septiembre)', () => {
   it('las decisiones son responder y confirmar lo recibido; lo demás es operación', () => {
     const p = pendientesDe({ pide: true, ofrece: true }, datos);
-    expect(p.filter((x) => x.grupo === 'decision').map((x) => x.accion.texto)).toEqual(['Confirmar recibido', 'Aceptar', 'Aceptar']);
-    expect(p.find((x) => x.id === 'nueva-5')?.secundaria?.texto).toBe('No podemos');
-    expect(p.filter((x) => x.grupo === 'operacion').map((x) => x.accion.texto)).toEqual(['Asignar', 'Ver el seguimiento', 'Certificar', 'Ampliar la fecha']);
+    expect(p.filter((x) => x.grupo === 'decision').map((x) => x.accion.texto)).toEqual(['Confirmar', 'Aceptar', 'Aceptar']);
+    expect(p.find((x) => x.id === 'nueva-5')?.secundaria?.texto).toBe('Rechazar');
+    expect(p.filter((x) => x.grupo === 'operacion').map((x) => x.accion.texto)).toEqual(['Asignar', 'Ver', 'Certificar', 'Ampliar']);
   });
   it('la pestaña Seguimiento cuenta lo nuevo, porque el tablero arranca en «Nuevas»', () => {
     expect(pestanasDe({ pide: false, ofrece: true }, conteos).find((x) => x.id === 'seguimiento')?.n).toBe(2);
@@ -118,7 +118,7 @@ describe('el resumen en dos niveles y el cierre de dos lados (rama de Fede, 16 d
   it('el cierre dice quién confirmó (las fotos van aparte, como galería)', () => {
     expect(textoCierre({ quien: 'Albergue Bosa', cierre: { entrega: { fotos: 2 }, recibe: { fotos: 1 } } })).toBe('Confirmada por ti y por Albergue Bosa');
     expect(textoCierre({ quien: 'Comedor', cierre: { recibe: { fotos: 1 } } })).toBe('Confirmada por Comedor');
-    expect(textoCierre({ quien: 'Comedor', cierre: { entrega: { fotos: 0 } } })).toBe('Certificada por ti · Comedor aún no confirma');
+    expect(textoCierre({ quien: 'Comedor', cierre: { entrega: { fotos: 0 } } })).toBe('Certificada por ti. Comedor aún no confirma');
     expect(textoCierre({ quien: 'Comedor' })).toBe('Confirmada');
   });
 });
@@ -141,7 +141,7 @@ describe('reportes: las actas de entrega', () => {
   it('el texto del acta lleva todo lo que se va a mostrar, sin líneas vacías', () => {
     const a = actasDe({ pide: true, ofrece: true }, { sol: SOLICITUDES, recibidas: RECIBIDAS, org: ORG.nombre, lleva }).find((x) => x.origen.id === 1)!;
     const t = textoActa(a);
-    expect(t.split('\n')[0]).toBe(`Acta de entrega ${a.codigo} · RaDAR de ayuda`);
+    expect(t.split('\n')[0]).toBe(`Acta de entrega ${a.codigo}, RaDAR de ayuda`);
     expect(t).toContain('Recibió: Albergue Bosa');
     expect(t).toContain('Lo que permitió:');
     expect(t.split('\n').some((l) => l.trim() === '')).toBe(false);
@@ -189,7 +189,7 @@ describe('reportes: las actas de entrega', () => {
     expect(siglas('Bomberos Voluntarios Usme')).toBe('BVU');
     expect(siglas('Cruz Roja · seccional Bogotá')).toBe('CRS');
     expect(fechaCorta('2026-09-12')).toBe('12 sep 2026');
-    expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { entrega: { fotos: 1 } } })).toBe('Certificada por Cruz Roja · falta tu confirmación');
+    expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { entrega: { fotos: 1 } } })).toBe('Certificada por Cruz Roja. Falta tu confirmación');
     expect(textoCierreRecibida({ org: 'Cruz Roja', cierre: { recibe: { fotos: 1 } } })).toBe('Confirmada por ti');
     expect(textoCierreRecibida({ org: 'Cruz Roja', estado: 'distribuida', cierre: { recibe: { fotos: 1 } } })).toBe('Distribuida en la comunidad');
     const r = resumenActas(actasDe({ pide: true, ofrece: true }, { sol: SOLICITUDES, recibidas: RECIBIDAS, org: ORG.nombre, lleva }));

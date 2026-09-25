@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, Eye, FileText, Funnel, Hand, HeartHandshake, LayoutDashboard, ListChecks, Megaphone, Package, Pause, Phone, Play, Radar, Search, TriangleAlert, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, Eye, FileText, Funnel, Hand, HeartHandshake, ListChecks, Megaphone, Package, Pause, Phone, Play, Radar, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, VEHICULOS, type DatosPublicacionGestion } from './dialogos';
+import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos, FOTOS_ENTREGA, FOTOS_RECIBIDA } from '../../mocks/fotosMock';
@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
 import { Pestanas } from '../../components/ui/Pestanas';
 import { Segmented } from '../../components/ui/Segmented';
+import { Divisor } from '../../components/ui/Divisor';
 import { Vacio } from '../../components/ui/Vacio';
 import { Caja, Conteo } from '../../components/ui/Caja';
 import { IconoRecursoDe } from '../../components/ui/Recursos';
@@ -19,7 +20,7 @@ import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { DialogoCoincidencias, FilaSugerencias } from '../../components/ui/Coincidencias';
 import { coincidenciasDe, coincideItem, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { AVISOS } from '../../mocks/avisosMock';
-import { CUENTA_SESION as CUENTA, DEPTOS, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
+import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../mocks/panelMock';
 import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
@@ -34,7 +35,8 @@ import { Tabla } from '../../components/ui/Tabla';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Barra } from '../../components/ui/Barra';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
-import { CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
+import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
+import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -50,19 +52,11 @@ function irA(ruta: string): void {
   window.location.href = ruta;
 }
 
-const ICONO_PESTANA: Record<string, React.ReactNode> = {
-  resumen: <LayoutDashboard className="h-4 w-4" />,
-  necesidades: <Hand className="h-4 w-4" />,
-  ofertas: <HeartHandshake className="h-4 w-4" />,
-  seguimiento: <Truck className="h-4 w-4" />,
-  reportes: <FileText className="h-4 w-4" />,
-  equipo: <Users className="h-4 w-4" />,
-};
-
 /**
  * Conmutador horizontal de módulos del panel en pestañas:
- * Sigue los tokens canónicos y el diseño de la app: esquinas cuadradas (rounded-rd-md) y
- * modo seleccionado en overlay claro (bg-rd-navy-soft, border-rd-navy-line, texto e icono en rd-navy).
+ * Mismo patrón que `Pestanas` (el estándar de la app): fila sobre la línea inferior, activa en
+ * tinta con la línea abajo (border-rd-sel) e inactivas en rd-ink-meta. Solo texto, sin icono.
+ * Alto 46 (h-11.5), que es también el objetivo táctil en móvil.
  * Si desborda hacia la derecha (en móviles o pantallas medianas), activa la máscara degradada
  * (`zona-rd-chips`) y muestra la flecha › flotante que avanza el scroll suavemente al tocarla.
  */
@@ -110,22 +104,27 @@ const PestanasPanel: React.FC<{
   };
 
   const alTeclear = (e: React.KeyboardEvent, i: number) => {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const k =
+      e.key === 'ArrowRight' ? (i + 1) % pestanas.length
+      : e.key === 'ArrowLeft' ? (i - 1 + pestanas.length) % pestanas.length
+      : e.key === 'Home' ? 0
+      : e.key === 'End' ? pestanas.length - 1
+      : -1;
+    if (k === -1) return;
     e.preventDefault();
-    const k = (i + (e.key === 'ArrowRight' ? 1 : -1) + pestanas.length) % pestanas.length;
     onCambiar(pestanas[k].id);
     (e.currentTarget.parentElement?.children[k] as HTMLElement | undefined)?.focus();
   };
 
   return (
-    <div className="flex flex-none items-center border-b border-rd-line bg-rd-surface px-4 py-2 sm:px-6 lg:px-8">
-      <div className="relative h-9.5 w-full min-w-0 flex-1 pointer-coarse:h-rd-tactil">
+    <div className="min-w-0 flex-none bg-rd-surface px-4 sm:px-6 lg:px-8">
+      <div className="relative flex h-11.5 w-full min-w-0 items-stretch border-b border-rd-line">
         <div
           ref={zonaRef}
           role="tablist"
           aria-label={`Pestañas de ${nombrePanel}`}
-          className={`zona-rd-scroll absolute inset-0 flex flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden ${
-            desborda ? 'zona-rd-chips pr-12' : 'pr-2'
+          className={`zona-rd-scroll absolute inset-0 flex flex-nowrap items-stretch gap-5 overflow-x-auto overflow-y-hidden ${
+            desborda ? 'zona-rd-chips pr-12' : ''
           }`}
         >
           {pestanas.map((p, i) => {
@@ -137,19 +136,18 @@ const PestanasPanel: React.FC<{
                 role="tab"
                 id={`pestana-${p.id}`}
                 aria-selected={sel}
-                aria-controls={`panel-${p.id}`}
+                /* Solo el panel de la activa existe en el árbol: apuntar al de las demás
+                   dejaría un `aria-controls` colgando. */
+                aria-controls={sel ? `panel-${p.id}` : undefined}
                 tabIndex={sel ? 0 : -1}
                 onClick={() => onCambiar(p.id)}
                 onKeyDown={(e) => alTeclear(e, i)}
-                className={`font-rd inline-flex h-9 flex-none cursor-pointer items-center gap-2 rounded-rd-md border px-3 text-rd-13-5 whitespace-nowrap transition-colors pointer-coarse:h-rd-tactil focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:translate-y-px ${
+                className={`font-rd inline-flex h-11.5 flex-none cursor-pointer items-center gap-2 border-b-2 whitespace-nowrap text-rd-13-5 transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${
                   sel
-                    ? 'border-rd-navy-line bg-rd-navy-soft font-semibold text-rd-navy shadow-xs'
-                    : 'border-rd-line bg-rd-sunken font-medium text-rd-ink-2 hover:border-rd-navy-line hover:bg-rd-surface hover:text-rd-ink'
+                    ? 'border-rd-sel font-semibold text-rd-ink'
+                    : 'border-transparent font-medium text-rd-ink-meta hover:border-rd-line hover:text-rd-ink'
                 }`}
               >
-                <span aria-hidden="true" className={sel ? 'text-rd-navy' : 'text-rd-ink-meta'}>
-                  {ICONO_PESTANA[p.id] ?? <LayoutDashboard className="h-4 w-4" />}
-                </span>
                 <span>{p.nombre}</span>
                 {p.n ? (
                   <>
@@ -163,17 +161,17 @@ const PestanasPanel: React.FC<{
             );
           })}
         </div>
+        {desborda && (
+          <button
+            type="button"
+            aria-label="Ver más pestañas a la derecha"
+            onClick={avanzar}
+            className="absolute top-1/2 right-0 z-1 flex h-8.5 w-8.5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink shadow-xs transition-colors hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:scale-95"
+          >
+            <ChevronRight aria-hidden="true" className="h-4.5 w-4.5 text-rd-ink" />
+          </button>
+        )}
       </div>
-      {desborda && (
-        <button
-          type="button"
-          aria-label="Ver más pestañas a la derecha"
-          onClick={avanzar}
-          className="relative z-1 -ml-9 flex h-8.5 w-8.5 flex-none cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink shadow-xs transition-colors hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy active:scale-95"
-        >
-          <ChevronRight aria-hidden="true" className="h-4.5 w-4.5 text-rd-ink" />
-        </button>
-      )}
     </div>
   );
 };
@@ -257,15 +255,15 @@ const Panel: React.FC = () => {
     return {
       id: 'oferta-usme',
       tipo: 'oferta',
-      titulo: 'Bomberos Voluntarios Usme · Recursos de estación',
+      titulo: 'Bomberos Voluntarios Usme, recursos de estación',
       org: ORG.nombre,
       verificada: true,
       zona: 'Usme',
       dir: ORG.dir,
       descripcion: 'Recursos de la estación disponibles para la emergencia de la quebrada. Coordinamos por radio con el puesto de mando.',
-      personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+      personaContacto: ORG.enlace.split(', ')[0] || 'Carlos Peña',
       telContacto: ORG.contacto.tel,
-      comoEntrega: 'Lo llevamos · Cobertura 15 km',
+      comoEntrega: 'Lo llevamos, cobertura 15 km',
       horario: 'Lunes a domingo 8:00 a 18:00',
       recursos: OFERTA.recursos.map((r) => ({
         item: r.n,
@@ -290,13 +288,13 @@ const Panel: React.FC = () => {
     return {
       id: 'necesidad-usme',
       tipo: 'necesidad',
-      titulo: 'Equipos de bombeo y protección · Emergencia Usme',
+      titulo: 'Equipos de bombeo y protección, emergencia Usme',
       org: ORG.nombre,
       verificada: true,
       zona: 'Usme',
       dir: ORG.dir,
       descripcion: 'Equipos y dotación requeridos con urgencia para atender las inundaciones y remoción de lodo en la calle 91 sur.',
-      personaContacto: ORG.enlace.split(' · ')[0] || 'Carlos Peña',
+      personaContacto: ORG.enlace.split(', ')[0] || 'Carlos Peña',
       telContacto: ORG.contacto.tel,
       comoEntrega: 'Recepción en Estación Usme',
       horario: 'Atención 24 horas',
@@ -337,7 +335,7 @@ const Panel: React.FC = () => {
         localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(datos));
         localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(nuevos));
       } catch {}
-      avisar('Oferta actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
+      avisar('Oferta actualizada', { tipo: 'ok' });
     } else {
       setPubNecesidad(datos);
       const nuevos = datos.recursos.map((r) => ({
@@ -355,7 +353,7 @@ const Panel: React.FC = () => {
         localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(datos));
         localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(nuevos));
       } catch {}
-      avisar('Necesidad actualizada. Los cambios se guardaron y se reflejan en el Radar.', { tipo: 'ok' });
+      avisar('Necesidad actualizada', { tipo: 'ok' });
     }
   };
   const [cajon, setCajon] = useState(false);
@@ -363,7 +361,7 @@ const Panel: React.FC = () => {
   const [tab, setTab] = useState(() => (window.location.hash || '#resumen').slice(1));
 
   useEffect(() => {
-    document.title = `RaDAR · ${nombrePanel()}`;
+    document.title = `${nombrePanel()}, RaDAR de ayuda`;
   }, []);
   useEffect(() => {
     const alCambiar = () => setTab((window.location.hash || '#resumen').slice(1));
@@ -396,16 +394,21 @@ const Panel: React.FC = () => {
     const s = sol.find((x) => x.id === id);
     if (s) setRechazandoSolicitud(s);
   };
+  /* PENDIENTE: el motivo no se guarda. Antes solo se repetía en el aviso, que dura 3,6 s y se
+     lo lleva; al acortar los avisos (Alejandro, 24 de septiembre de 2026) quedó a la vista que
+     nunca llegó a ninguna parte. Debería persistirse como `motivoCancelacion` —lo hacen
+     `confirmarCancelarSolicitudEnviada` y `confirmarCancelarOfrecimientoEnviado`— y viajar en
+     el aviso que recibe la otra organización. */
   const confirmarRechazoSolicitud = (id: number, motivo?: string) => {
     const s = sol.find((x) => x.id === id);
     setSol((l) => l.filter((x) => x.id !== id));
     if (s) {
-      avisar(motivo ? `Le avisamos a ${s.quien} que esta vez no pueden: ${motivo}` : `Le avisamos a ${s.quien} que esta vez no pueden.`);
+      avisar(`Le avisamos a ${s.quien}`);
     }
   };
   const recordar = (id: number) => {
     const s = sol.find((x) => x.id === id);
-    if (s) avisar(`Le recordamos a ${s.quien} que confirme la entrega.`, { tipo: 'ok' });
+    if (s) avisar(`Le recordamos a ${s.quien}`, { tipo: 'ok' });
   };
   const guardarOferta = (r: RecursoOfrecido) => {
     setRecursosOferta((prev) => {
@@ -415,7 +418,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(`Oferta de ${r.n} actualizada con éxito`, { tipo: 'ok' });
+    avisar(`Oferta de ${r.n} actualizada`, { tipo: 'ok' });
   };
   const togglePausaOferta = (r: RecursoOfrecido) => {
     const pausado = !r.pausado;
@@ -426,7 +429,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(pausado ? `Oferta de ${r.n} pausada. No recibirá nuevas solicitudes en el Radar.` : `Oferta de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
+    avisar(pausado ? `Oferta de ${r.n} pausada` : `Oferta de ${r.n} reactivada`, { tipo: 'ok' });
   };
   const guardarNecesidad = (r: RecursoPedido) => {
     setRecursosNecesidad((prev) => {
@@ -436,7 +439,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(`Necesidad de ${r.n} actualizada con éxito`, { tipo: 'ok' });
+    avisar(`Necesidad de ${r.n} actualizada`, { tipo: 'ok' });
   };
   const togglePausaNecesidad = (r: RecursoPedido) => {
     const pausado = !r.pausado;
@@ -447,7 +450,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(pausado ? `Necesidad de ${r.n} pausada temporalmente.` : `Necesidad de ${r.n} reactivada en el Radar.`, { tipo: 'ok' });
+    avisar(pausado ? `Necesidad de ${r.n} pausada` : `Necesidad de ${r.n} reactivada`, { tipo: 'ok' });
   };
   const cancelarSolicitudEnviada = (id: number | string) => {
     const s = solicitudesEnviadas.find((x) => x.id === id);
@@ -461,7 +464,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(motivo ? `Solicitud cancelada: ${motivo}` : 'Solicitud cancelada.', { tipo: 'ok' });
+    avisar('Solicitud cancelada', { tipo: 'ok' });
   };
   const cancelarOfrecimientoEnviado = (id: number | string) => {
     const o = ofrecimientosEnviados.find((x) => x.id === id);
@@ -475,7 +478,7 @@ const Panel: React.FC = () => {
       } catch {}
       return act;
     });
-    avisar(motivo ? `Ofrecimiento de ayuda cancelado: ${motivo}` : 'Ofrecimiento de ayuda cancelado.', { tipo: 'ok' });
+    avisar('Oferta cancelada', { tipo: 'ok' });
   };
   const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     const nuevo: MiembroEquipo = {
@@ -484,7 +487,7 @@ const Panel: React.FC = () => {
       hechas: 0,
     };
     setEquipo((prev) => [nuevo, ...prev]);
-    avisar(`${nuevo.n} registrado en tu equipo. Ahora puedes asignarle entregas.`, { tipo: 'ok' });
+    avisar(`${nuevo.n} ya está en tu equipo`, { tipo: 'ok' });
   };
   const editarMiembro = (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     setEquipo((prev) => prev.map((x) => (x.id === id ? { ...x, ...m } : x)));
@@ -493,20 +496,20 @@ const Panel: React.FC = () => {
   const eliminarMiembro = (id: number) => {
     const m = equipo.find((x) => x.id === id);
     setEquipo((prev) => prev.filter((x) => x.id !== id));
-    avisar(`Colaborador ${m?.n ?? ''} desvinculado del equipo`);
+    avisar(`${m?.n ?? 'Ya'} salió de tu equipo`);
   };
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
   const verFotosEntrega = (s: Solicitud, inicial = 0) => {
     const f = fotosDeEntrega(s.id);
-    setFotos({ inicial, titulo: `Entrega a ${s.quien} · ${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`, grupos: [{ titulo: 'Las de quien entregó', fotos: f.entrega }, { titulo: `Las de ${s.quien}`, fotos: f.recibe }] });
+    setFotos({ inicial, titulo: `Entrega a ${s.quien}, ${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`, grupos: [{ titulo: 'Las de quien entregó', fotos: f.entrega }, { titulo: `Las de ${s.quien}`, fotos: f.recibe }] });
   };
   const verFotosRecibida = (r: EntregaRecibida, inicial = 0) => {
     const f = fotosDeRecibida(r.id);
-    setFotos({ inicial, titulo: `Entrega de ${r.org} · ${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`, grupos: [{ titulo: `Las de ${r.org}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
+    setFotos({ inicial, titulo: `Entrega de ${r.org}, ${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`, grupos: [{ titulo: `Las de ${r.org}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
   };
   /* --- reportes: las actas --- */
-  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(' · ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
+  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(', ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
 
@@ -720,7 +723,7 @@ const Panel: React.FC = () => {
           : x
       )
     );
-    avisar(`Ayuda para ${s.quien} marcada en camino. Le avisamos que el recurso va en ruta.`, { tipo: 'ok' });
+    avisar(`En camino. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
   const certificar = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
@@ -755,17 +758,18 @@ const Panel: React.FC = () => {
           : x
       )
     );
-    if (s) avisar(s.cierre?.recibe ? `Entrega a ${s.quien} certificada. Ya la habían confirmado.` : `Entrega a ${s.quien} certificada. Le avisamos para que la confirme.`, { tipo: 'ok' });
+    if (s) avisar(s.cierre?.recibe ? 'Entrega certificada. Ya la habían confirmado' : `Entrega certificada. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
   const archivar = (id: number) => {
     const s = sol.find((x) => x.id === id);
     mover(id, 'archivada');
-    if (s) avisar(`Entrega a ${s.quien} archivada.`);
+    if (s) avisar(`Entrega a ${s.quien} archivada`);
   };
+  /* PENDIENTE: el motivo no se guarda (ver la nota de `confirmarRechazoSolicitud`). */
   const cancelar = (id: number, motivo: string) => {
     const s = sol.find((x) => x.id === id);
     setSol((l) => l.filter((x) => x.id !== id));
-    if (s) avisar(`Compromiso con ${s.quien} cancelado: ${motivo.toLowerCase()}. Le avisamos.`);
+    if (s) avisar(`Compromiso cancelado. Le avisamos a ${s.quien}`);
   };
   const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const r = recibidas.find((x) => x.id === id);
@@ -776,7 +780,7 @@ const Panel: React.FC = () => {
       const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
         url: f.url,
         alt: `Confirmación de recibido - ${f.nombre}`,
-        quien: 'Carlos Peña · Bomberos Voluntarios Usme',
+        quien: 'Carlos Peña, Bomberos Voluntarios Usme',
         cuando: 'Hoy conf.',
       }));
       FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
@@ -799,7 +803,7 @@ const Panel: React.FC = () => {
           : x
       )
     );
-    if (r) avisar(`Listo, quedó confirmado lo que llegó de ${r.org}.`, { tipo: 'ok' });
+    if (r) avisar(`Confirmaste lo que llegó de ${r.org}`, { tipo: 'ok' });
   };
   const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
     const r = recibidas.find((x) => x.id === id);
@@ -834,33 +838,35 @@ const Panel: React.FC = () => {
           : x
       )
     );
-    avisar(`Distribución de ayuda de ${r.org} certificada en comunidad.`, { tipo: 'ok' });
+    avisar('Distribución certificada', { tipo: 'ok' });
   };
   const archivarRecibida = (id: number) => {
     const r = recibidas.find((x) => x.id === id);
     setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'archivada' } : x)));
-    if (r) avisar(`Entrega de ${r.org} archivada.`);
+    if (r) avisar(`Entrega de ${r.org} archivada`);
   };
   const aceptarRecibida = (id: number) => {
     setRecibidas((l) => l.map((r) => (r.id === id ? { ...r, estado: 'aceptada' } : r)));
-    avisar('Oferta de ayuda aceptada. La organización coordinará la entrega.', { tipo: 'ok' });
+    avisar('Oferta aceptada. Coordinan la entrega contigo', { tipo: 'ok' });
   };
   const rechazarRecibida = (id: number) => {
     const r = recibidas.find((x) => x.id === id);
     if (r) setRechazandoRecibida(r);
   };
+  /* PENDIENTE: el motivo no se guarda (ver la nota de `confirmarRechazoSolicitud`). */
   const confirmarRechazoRecibida = (id: number, motivo?: string) => {
     const r = recibidas.find((x) => x.id === id);
     setRecibidas((l) => l.filter((x) => x.id !== id));
     if (r) {
-      avisar(motivo ? `Le avisamos a ${r.org} que no necesitas esta ayuda: ${motivo}` : `Le avisamos a ${r.org} que no necesitas este recurso.`);
+      avisar(`Le avisamos a ${r.org}`);
     }
   };
+  /* PENDIENTE: el motivo no se guarda (ver la nota de `confirmarRechazoSolicitud`). */
   const confirmarCancelarRecibidaCompromiso = (id: number, motivo?: string) => {
     const r = recibidas.find((x) => x.id === id);
     setRecibidas((l) => l.filter((x) => x.id !== id));
     if (r) {
-      avisar(motivo ? `Compromiso de entrega de ${r.org} cancelado: ${motivo}. Le avisamos.` : `Compromiso de entrega de ${r.org} cancelado. Le avisamos.`);
+      avisar(`Compromiso cancelado. Le avisamos a ${r.org}`);
     }
   };
   /* Todo lo que se puede hacer con una solicitud, en un solo objeto: lo usan el tablero, la tabla y las tarjetas. */
@@ -915,7 +921,7 @@ const Panel: React.FC = () => {
           </span>
         </header>
         <PestanasPanel pestanas={pestanas} actual={actual} onCambiar={cambiarTab} nombrePanel={nombrePanel()} />
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
             {actual === 'necesidades' && (
@@ -1006,7 +1012,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={miembroParaBaja !== null}
           titulo={miembroParaBaja ? `¿Desvincular a ${miembroParaBaja.n} del equipo?` : ''}
-          accion="Desvincular del equipo"
+          accion="Quitar"
           nivelAccion="secundario"
           textoAlterno="Mantener en el equipo"
           onCerrar={() => setMiembroParaBaja(null)}
@@ -1019,7 +1025,7 @@ const Panel: React.FC = () => {
           <p className="mb-3 text-rd-14 text-rd-ink-2">
             Esta persona dejará de tener acceso a la coordinación y entregas asignadas en la organización.
           </p>
-          <div className="rounded-rd-md bg-rd-sunken px-3 py-2.5 text-rd-12 text-rd-ink-2">
+          <div className="rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2.5 text-rd-12 text-rd-ink-2">
             <p className="font-semibold text-rd-ink">Protección de identidad y auditoría:</p>
             <p className="mt-0.5 text-rd-ink-meta">
               Su cuenta de usuario en RaDAR y el registro histórico de las {miembroParaBaja?.hechas ?? 0} entregas que ya realizó permanecerán intactos en los reportes y actas oficiales.
@@ -1062,7 +1068,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={cancelando !== null}
           titulo={cancelando ? `¿Cancelar el compromiso con ${cancelando.quien}?` : ''}
-          accion="Cancelar el compromiso"
+          accion="Cancelar"
           nivelAccion="secundario"
           textoAlterno="Dejar como está"
           onCerrar={() => setCancelando(null)}
@@ -1099,7 +1105,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={rechazandoSolicitud !== null}
           titulo={rechazandoSolicitud ? `¿Confirmar que no pueden atender a ${rechazandoSolicitud.quien}?` : ''}
-          accion="Confirmar y avisar"
+          accion="Confirmar"
           nivelAccion="secundario"
           textoAlterno="Volver"
           onCerrar={() => setRechazandoSolicitud(null)}
@@ -1141,7 +1147,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={rechazandoRecibida !== null}
           titulo={rechazandoRecibida ? `¿Rechazar la ayuda ofrecida por ${rechazandoRecibida.org}?` : ''}
-          accion="Confirmar rechazo"
+          accion="Confirmar"
           nivelAccion="secundario"
           textoAlterno="Volver"
           onCerrar={() => setRechazandoRecibida(null)}
@@ -1183,7 +1189,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={cancelandoSolicitudEnviada !== null}
           titulo={cancelandoSolicitudEnviada ? `¿Cancelar solicitud a ${cancelandoSolicitudEnviada.donante}?` : ''}
-          accion="Confirmar cancelación"
+          accion="Confirmar"
           nivelAccion="secundario"
           textoAlterno="Mantener solicitud"
           onCerrar={() => setCancelandoSolicitudEnviada(null)}
@@ -1225,7 +1231,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={cancelandoOfrecimientoEnviado !== null}
           titulo={cancelandoOfrecimientoEnviado ? `¿Cancelar ayuda ofrecida a ${cancelandoOfrecimientoEnviado.comunidad}?` : ''}
-          accion="Confirmar cancelación"
+          accion="Confirmar"
           nivelAccion="secundario"
           textoAlterno="Mantener ofrecimiento"
           onCerrar={() => setCancelandoOfrecimientoEnviado(null)}
@@ -1267,7 +1273,7 @@ const Panel: React.FC = () => {
         <Dialogo
           abierto={cancelandoRecibidaCompromiso !== null}
           titulo={cancelandoRecibidaCompromiso ? `¿Cancelar el compromiso de ayuda con ${cancelandoRecibidaCompromiso.org}?` : ''}
-          accion="Cancelar compromiso"
+          accion="Cancelar"
           nivelAccion="secundario"
           textoAlterno="Dejar como está"
           onCerrar={() => setCancelandoRecibidaCompromiso(null)}
@@ -1308,10 +1314,10 @@ const Panel: React.FC = () => {
           titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()} · ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}, ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
               : ''
           }
-          accion="Marcar en camino"
+          accion="Despachar"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
           nota={{
             etiqueta: 'Detalles de despacho o transporte (vehículo, conductor, ruta)',
@@ -1343,8 +1349,8 @@ const Panel: React.FC = () => {
         <DialogoCierre
           abierto={confirmando !== null}
           titulo={confirmando ? `Confirmar lo que llegó de ${confirmando.org}` : ''}
-          texto={confirmando ? `${cifra(confirmando.cant)} ${confirmando.u} de ${confirmando.rec.toLowerCase()} · entregado ${confirmando.cuando}. Con tu confirmación la entrega cuenta como resuelta para los dos.` : ''}
-          accion="Confirmar recibido"
+          texto={confirmando ? `${cifra(confirmando.cant)} ${confirmando.u} de ${confirmando.rec.toLowerCase()}, entregado ${confirmando.cuando}. Con tu confirmación la entrega cuenta como resuelta para los dos.` : ''}
+          accion="Confirmar"
           nota={{
             etiqueta: 'Observaciones o novedades sobre lo recibido',
             placeholder: 'Ej. Recibido a entera conformidad en buen estado, insumos completos según lo acordado...',
@@ -1364,7 +1370,7 @@ const Panel: React.FC = () => {
               ? `${cifra(distribuyendo.cant)} ${distribuyendo.u} de ${distribuyendo.rec.toLowerCase()} recibidos de ${distribuyendo.org}. Registra la historia de impacto, el número de personas beneficiadas y las evidencias de entrega en territorio.`
               : ''
           }
-          accion="Certificar distribución"
+          accion="Certificar"
           etiquetaFotos="Fotos de la entrega o planilla comunitaria (opcionales)"
           nota={{
             etiqueta: 'Historia de impacto (a quién benefició y cómo los ayudó)',
@@ -1418,14 +1424,15 @@ const ListaPendientes: React.FC<{ lista: Pendiente[]; vacio: { icono: React.Reac
               <span className="text-rd-12-5 text-rd-ink-2">{p.detalle}</span>
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-2 max-sm:mt-2 max-sm:w-full max-sm:pl-12 max-sm:justify-start">
+              {/* De mayor a menor jerarquía: primero la que mueve la aguja. */}
+              <Button nivel={p.accion.nivel} tamano="md" onClick={() => onAccion(p.accion.al)}>
+                {p.accion.texto}
+              </Button>
               {p.secundaria && (
-                <Button nivel="secundario" tamano="sm" onClick={() => onAccion(p.secundaria!.al)}>
+                <Button nivel="secundario" tamano="md" onClick={() => onAccion(p.secundaria!.al)}>
                   {p.secundaria.texto}
                 </Button>
               )}
-              <Button nivel={p.accion.nivel} tamano="sm" onClick={() => onAccion(p.accion.al)}>
-                {p.accion.texto}
-              </Button>
             </div>
           </div>
         );
@@ -1452,7 +1459,7 @@ const PulsoOperativo: React.FC<{
 
   let detalleAccion = 'Al día: sin decisiones pendientes';
   if (nuevasSol > 0 && porConfRec > 0) {
-    detalleAccion = `${nuevasSol} ${nuevasSol === 1 ? 'solicitud nueva' : 'solicitudes nuevas'} · ${porConfRec} por confirmar`;
+    detalleAccion = `${nuevasSol} ${nuevasSol === 1 ? 'solicitud nueva' : 'solicitudes nuevas'}, ${porConfRec} por confirmar`;
   } else if (nuevasSol > 0) {
     detalleAccion = `${nuevasSol} ${nuevasSol === 1 ? 'solicitud nueva por responder' : 'solicitudes nuevas por responder'}`;
   } else if (porConfRec > 0) {
@@ -1471,7 +1478,7 @@ const PulsoOperativo: React.FC<{
   if (enRuta > 0) partesMovimiento.push(`${enRuta} en camino`);
   if (sinAsignarOfrece > 0) partesMovimiento.push(`${sinAsignarOfrece} por asignar`);
   if (comprometidasPide > 0) partesMovimiento.push(`${comprometidasPide} comprometidas`);
-  const detalleMovimiento = partesMovimiento.length > 0 ? partesMovimiento.join(' · ') : 'Sin entregas en ruta en este momento';
+  const detalleMovimiento = partesMovimiento.length > 0 ? partesMovimiento.join(', ') : 'Sin entregas en ruta en este momento';
 
   // 3. Entregas completadas
   const confOfrece = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada').length : 0;
@@ -1593,10 +1600,10 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
   const operaciones = pendientes.filter((p) => p.grupo === 'operacion');
   const historias = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada' && s.cierre?.historia) : [];
   const pasos = [
-    { id: 'publicar', t: 'Publica lo que puedes dar o lo que te hace falta', d: 'Es lo que te pone en el mapa.', hecho: !sinModulos, accion: <Button nivel="primario" tamano="sm" onClick={() => irA(RUTAS.ofrecer)}>Ofrecer ayuda</Button> },
-    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar el certificado</Button> },
-    { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: EQUIPO.length > 0, accion: <Button nivel="terciario" tamano="sm" onClick={() => onAccion('#equipo')}>Ver mi equipo</Button> },
-    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#avisos`)}>Ver mis canales</Button> },
+    { id: 'publicar', t: 'Publica lo que puedes dar o lo que te hace falta', d: 'Es lo que te pone en el mapa.', hecho: !sinModulos, accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(RUTAS.ofrecer)}>Ofrecer ayuda</Button> },
+    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar</Button> },
+    { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: EQUIPO.length > 0, accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mi equipo" onClick={() => onAccion('#equipo')}>Ver</Button> },
+    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mis canales" onClick={() => irA(`${RUTAS.perfil}#avisos`)}>Ver</Button> },
   ];
   const listos = pasos.filter((p) => p.hecho).length;
   return (
@@ -1608,14 +1615,14 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
             {(['pedir', 'ofrecer'] as const).map((k) => {
               const p = PUERTAS[k];
               return (
-                <div key={k} className="flex flex-col gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo p-4">
+                <div key={k} className="flex flex-col gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
                   <span aria-hidden="true" className={`flex h-11 w-11 items-center justify-center rounded-rd-md text-white ${k === 'pedir' ? 'bg-rd-coral' : 'bg-rd-navy'}`}>
                     {k === 'pedir' ? <Hand className="h-5.5 w-5.5" /> : <HeartHandshake className="h-5.5 w-5.5" />}
                   </span>
-                  <h2 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink">{p.titulo}</h2>
+                  <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{p.titulo}</h2>
                   <p className="m-0 text-rd-13-5 leading-normal text-rd-ink-2">{p.texto}</p>
                   <p className="m-0 text-rd-12 text-rd-ink-meta">
-                    Abre: <b className="font-semibold text-rd-ink-2">{p.abre.join(' · ')}</b>
+                    Abre: <b className="font-semibold text-rd-ink-2">{p.abre.join(', ')}</b>
                   </p>
                   <Button nivel={k === 'pedir' ? 'pedir' : 'primario'} tamano="md" className="mt-auto self-start" onClick={() => irA(k === 'pedir' ? RUTAS.pedir : RUTAS.ofrecer)}>
                     {p.titulo}
@@ -1650,16 +1657,20 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           className="col-span-full"
           accion={
             <Button nivel="terciario" tamano="md" onClick={() => onAccion('#seguimiento')}>
-              Ver el seguimiento
+              Ver
             </Button>
           }
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {historias.map((s) => (
-              <figure key={s.id} className="m-0 flex flex-col gap-2 rounded-rd-lg border border-rd-line bg-rd-fondo p-4">
+              <figure key={s.id} className="m-0 flex flex-col gap-2 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
                 <blockquote className="m-0 text-rd-13-5 leading-normal text-rd-ink">«{s.cierre?.historia}»</blockquote>
                 <figcaption className="mt-auto text-rd-12 text-rd-ink-meta">
-                  {cifra(s.cant)} {s.u} de {s.rec.toLowerCase()} · {s.quien} · {s.cuando}
+                  {cifra(s.cant)} {s.u} de {s.rec.toLowerCase()}
+                  <Divisor />
+                  {s.quien}
+                  <Divisor />
+                  {s.cuando}
                 </figcaption>
               </figure>
             ))}
@@ -1689,7 +1700,8 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
               </span>
               <Conteo n={`${listos} de ${pasos.length}`} />
               <span className="hidden text-rd-12 font-normal text-rd-ink-meta sm:inline">
-                · Guía de puesta en marcha
+                <Divisor />
+                Guía de puesta en marcha
               </span>
             </div>
           }
@@ -1697,7 +1709,7 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
             <div className="flex items-center gap-2">
               <Button
                 nivel="secundario"
-                tamano="sm"
+                tamano="md"
                 onClick={() => setPasosDesplegados((v) => !v)}
                 iconoDespues={
                   pasosDesplegados ? (
@@ -1709,7 +1721,7 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
               >
                 {pasosDesplegados ? 'Plegar' : 'Ver pasos'}
               </Button>
-              <Button nivel="terciario" tamano="sm" onClick={onOcultarPasos}>
+              <Button nivel="terciario" tamano="md" onClick={onOcultarPasos}>
                 Ocultar
               </Button>
             </div>
@@ -1789,7 +1801,7 @@ const MisNecesidades: React.FC<{
 
   return (
     <>
-      <Caja titulo="Mis necesidades" planaMovil>
+      <Caja titulo="Mis necesidades" plana>
         <Tabla
           etiqueta="Mis necesidades"
           filas={recursos}
@@ -1820,19 +1832,18 @@ const MisNecesidades: React.FC<{
             {
               k: 'falta',
               etiqueta: 'Falta',
-              num: true,
               celda: (r) => {
                 /* Una sola línea, «N de M», como manda el manual: apilar cifra y total se veía
                    apeñuscado (Alejandro, 16 de septiembre de 2026). */
                 const falta = Math.max(0, r.total - r.confirmada - r.camino);
-                return <b className="font-semibold">{falta === 0 ? 'Nada' : `${cifra(falta)} de ${cifra(r.total)} ${r.unidad}`}</b>;
+                return <b className="font-semibold tabular-nums">{falta === 0 ? 'Nada' : `${cifra(falta)} de ${cifra(r.total)} ${r.unidad}`}</b>;
               },
             },
             {
               k: 'avance',
               etiqueta: 'Avance',
               ancha: true,
-              celda: (r) => <BarraAvance hecho={Math.round((r.confirmada / r.total) * 100)} camino={Math.round((r.camino / r.total) * 100)} texto={`${cifra(r.confirmada)} confirmado · ${cifra(r.camino)} en camino`} />,
+              celda: (r) => <BarraAvance hecho={Math.round((r.confirmada / r.total) * 100)} camino={Math.round((r.camino / r.total) * 100)} texto={`${cifra(r.confirmada)} confirmado, ${cifra(r.camino)} en camino`} />,
             },
             {
               k: 'acc',
@@ -1841,7 +1852,10 @@ const MisNecesidades: React.FC<{
               celda: (r) => {
                 const matches = matchesPorRecurso?.get(r.n) ?? [];
                 return (
-                  <div className="flex items-center justify-end gap-2">
+                  /* `max-xl:flex-1`: en móvil la celda de acciones es el pie de la tarjeta y este
+                     bloque es uno de sus hijos; sin ocupar el ancho, su `justify-end` no empuja nada
+                     y el ⋮ se quedaba a la izquierda (Alejandro, 25 de septiembre de 2026). */
+                  <div className="flex max-xl:flex-1 items-center justify-end gap-2">
                     {matches.length > 0 && (
                       <FilaSugerencias
                         n={matches.length}
@@ -1856,12 +1870,12 @@ const MisNecesidades: React.FC<{
                     <MenuAcciones
                       items={[
                         {
-                          texto: 'Ver publicación',
+                          texto: 'Ver',
                           icono: <Eye className="h-4 w-4" />,
                           onElegir: () => onVerPublicacion?.(),
                         },
                         {
-                          texto: 'Editar recurso',
+                          texto: 'Editar',
                           icono: <Edit3 className="h-4 w-4" />,
                           onElegir: () => onEditar(r),
                         },
@@ -1872,9 +1886,10 @@ const MisNecesidades: React.FC<{
                         },
                       ]}
                       etiqueta={`Acciones de ${r.n}`}
-                      tamano="sm"
+                      tamano="md"
                       nivel="secundario"
                       flotante
+                      className="shadow-2xs"
                     />
                   </div>
                 );
@@ -1885,7 +1900,8 @@ const MisNecesidades: React.FC<{
       </Caja>
 
       <Caja
-        planaMovil
+        plana
+        className="col-span-full mt-6 border-t-4 border-rd-line pt-8"
         titulo={
           <span className="flex items-center gap-2">
             <span>Mis solicitudes a organizaciones</span>
@@ -2002,7 +2018,8 @@ const MisNecesidades: React.FC<{
                     return (
                       <Button
                         nivel="secundario"
-                        tamano="sm"
+                        tamano="md"
+                        className="shadow-2xs"
                         onClick={() => onCancelarSolicitudEnviada?.(s.id)}
                       >
                         Cancelar
@@ -2038,6 +2055,7 @@ const Reportes: React.FC<{
   const r = resumenActas(actas);
   return (
     <Caja
+      plana
       titulo={
         <>
           Actas de entrega{actas.length > 0 && <Conteo n={actas.length} />}
@@ -2058,7 +2076,7 @@ const Reportes: React.FC<{
             tarjeta={(a) => (
               <div
                 key={a.codigo}
-                className="flex items-center justify-between gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-line-strong"
+                className="flex flex-col gap-2.5 rounded-rd-lg border border-rd-line bg-rd-surface p-3 transition-colors hover:border-rd-line-strong"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
@@ -2066,7 +2084,8 @@ const Reportes: React.FC<{
                       {a.codigo}
                     </span>
                     <span className="text-rd-12 text-rd-ink-meta">
-                      · {a.fechaTexto}
+                      <Divisor />
+                      {a.fechaTexto}
                     </span>
                   </div>
                   <div className="mt-0.5 truncate text-rd-13-5 font-semibold text-rd-ink">
@@ -2077,18 +2096,23 @@ const Reportes: React.FC<{
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <Button nivel="secundario" tamano="sm" onClick={() => onVer(a)}>
-                    Ver acta
+                {/* Los botones al pie de la tarjeta, con línea arriba, como en el tablero y en las
+                    filas de tabla en móvil (Alejandro, 25 de septiembre de 2026). */}
+                <div className="flex items-center gap-1.5 border-t border-rd-line-soft pt-2.5">
+                  <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVer(a)}>
+                    Ver
                   </Button>
+                  <span className="ml-auto flex">
                   <MenuAcciones
-                    tamano="sm"
+                    tamano="md"
                     flotante
                     etiqueta={`Más acciones del acta ${a.codigo}`}
                     items={[
-                      { texto: 'Descargar en PDF', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                      { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
                     ]}
+                    className="shadow-2xs"
                   />
+                  </span>
                 </div>
               </div>
             )}
@@ -2143,16 +2167,17 @@ const Reportes: React.FC<{
                 acc: true,
                 celda: (a) => (
                   <>
-                    <Button nivel="secundario" tamano="sm" onClick={() => onVer(a)}>
-                      Ver acta
+                    <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVer(a)}>
+                      Ver
                     </Button>
-                    <span className="max-xl:ml-auto">
+                    <span className="flex max-xl:ml-auto">
                       <MenuAcciones
-                        tamano="sm"
+                        tamano="md"
                         etiqueta={`Más acciones del acta ${a.codigo}`}
                         items={[
-                          { texto: 'Descargar en PDF', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                          { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
                         ]}
+                        className="shadow-2xs"
                       />
                     </span>
                   </>
@@ -2193,7 +2218,7 @@ const DialogoActa: React.FC<{
       className="font-rd m-auto w-full max-w-2xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-3 max-sm:w-auto overflow-hidden max-h-[92dvh] flex flex-col"
     >
       {/* Cabecera del diálogo en pantalla */}
-      <div className="no-print flex items-center justify-between border-b border-rd-line px-5 py-3.5 bg-rd-sunken/40 shrink-0">
+      <div className="no-print flex items-center justify-between border-b border-rd-line px-5 py-3.5 bg-rd-surface shrink-0">
         <div>
           <span className="text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta block leading-none">
             Acta oficial de entrega
@@ -2221,7 +2246,9 @@ const DialogoActa: React.FC<{
               <img src="/logo-radar.svg" alt="RaDAR" className="h-7 w-auto" />
               <div>
                 <p className="m-0 text-rd-12 font-bold tracking-tight text-rd-ink uppercase">
-                  RaDAR · Aquí Hace Falta
+                  RaDAR
+                  <Divisor />
+                  Aquí Hace Falta
                 </p>
                 <p className="m-0 text-rd-11 text-rd-ink-meta">
                   Red de Apoyo y Distribución de Ayuda
@@ -2240,10 +2267,10 @@ const DialogoActa: React.FC<{
 
           {/* Título formal del documento */}
           <div className="mt-4 mb-4">
-            <h3 className="m-0 text-rd-16 font-bold text-rd-ink tracking-tight">
+            <h3 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink tracking-tight">
               Acta de Entrega y Recepción de Ayuda
             </h3>
-            <p className="m-0 mt-0.5 text-rd-12 text-rd-ink-meta">
+            <p className="m-0 mt-0.5 text-rd-13-5 text-rd-ink-2">
               Constancia bilateral de entrega en territorio y verificación de insumos
             </p>
           </div>
@@ -2251,7 +2278,7 @@ const DialogoActa: React.FC<{
           {/* Cuadrícula bilateral de entidades intervinientes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
             {/* Lado A: Entrega */}
-            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5">
+            <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5">
               <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
                 Entidad que entrega
               </span>
@@ -2268,7 +2295,7 @@ const DialogoActa: React.FC<{
             </div>
 
             {/* Lado B: Recibe */}
-            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5">
+            <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5">
               <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
                 Entidad / Persona que recibe
               </span>
@@ -2286,7 +2313,7 @@ const DialogoActa: React.FC<{
           </div>
 
           {/* Especificación de bienes */}
-          <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5 mb-3.5">
+          <div className="border-t border-rd-line-soft pt-3.5 mb-3.5">
             <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-1">
               Recurso entregado y certificado
             </span>
@@ -2302,7 +2329,7 @@ const DialogoActa: React.FC<{
 
           {/* Observaciones y constancia operativa */}
           {(a.notasCamino || a.notasEntrega || a.notasRecibe) && (
-            <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3.5 mb-3.5 space-y-2.5">
+            <div className="border-t border-rd-line-soft pt-3.5 mb-3.5 space-y-2.5">
               <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
                 Observaciones y constancia operativa
               </span>
@@ -2338,10 +2365,12 @@ const DialogoActa: React.FC<{
 
           {/* Historia de impacto humano y beneficiarios */}
           {(a.historia || a.cierre.personasBeneficiadas) && (
-            <div className="rounded-rd-md border-l-3 border-brand-yellow bg-rd-sunken/60 p-3.5 mb-3.5">
+            <div className="border-l-3 border-brand-yellow pl-3.5 mb-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                 <p className="m-0 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                  Impacto en territorio · Lo que permitió
+                  Impacto en territorio
+                  <Divisor />
+                  Lo que permitió
                 </p>
                 {a.cierre.personasBeneficiadas && (
                   <span className="rounded-rd-full bg-rd-green-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-green">
@@ -2359,7 +2388,7 @@ const DialogoActa: React.FC<{
 
           {/* Soporte fotográfico */}
           {fotosDeActa(a).length > 0 && (
-            <div className="rounded-rd-md border border-rd-line bg-rd-surface p-3.5 mb-3.5">
+            <div className="border-t border-rd-line-soft pt-3.5 mb-3.5">
               <span className="block text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta mb-2">
                 Soporte fotográfico ({fotosDeActa(a).length} {fotosDeActa(a).length === 1 ? 'registro' : 'registros'})
               </span>
@@ -2389,12 +2418,13 @@ const DialogoActa: React.FC<{
       </div>
 
       {/* Pie de acciones del diálogo en pantalla */}
-      <div className="no-print flex items-center justify-between border-t border-rd-line px-5 py-3.5 bg-rd-sunken/40 shrink-0">
-        <Button nivel="terciario" tamano="md" onClick={onCerrar}>
-          Cerrar
-        </Button>
-        <Button nivel="primario" tamano="md" icono={<Download className="h-4 w-4" />} onClick={() => onDescargar(a)}>
-          Descargar en PDF
+      {/* Abajo solo acciones: «Cerrar» se fue porque repetía exactamente lo que hace la × de
+          arriba, y la regla del 22 de septiembre dice que esa × es la salida y la única.
+          Descargar no cambia nada que otros vean, así que no es nivel 1: la 223 C8 pone
+          «Imprimir» y «Exportar en CSV» en secundario y esto es lo mismo. */}
+      <div className="no-print flex flex-wrap items-center justify-end gap-2 border-t border-rd-line px-5 py-3.5 bg-rd-surface shrink-0 max-sm:flex-col max-sm:items-stretch">
+        <Button nivel="secundario" tamano="lg" icono={<Download className="h-4 w-4" />} onClick={() => onDescargar(a)}>
+          Descargar
         </Button>
       </div>
     </dialog>
@@ -2433,7 +2463,7 @@ const MisOfertas: React.FC<{
 
   return (
     <>
-      <Caja titulo="Mis ofertas" planaMovil>
+      <Caja titulo="Mis ofertas" plana>
         <Tabla
           etiqueta="Mis ofertas"
           filas={recursos}
@@ -2464,11 +2494,10 @@ const MisOfertas: React.FC<{
             {
               k: 'quedan',
               etiqueta: 'Quedan',
-              num: true,
               celda: (r) => {
                 const q = quedan(sol, r);
                 return (
-                  <b className="font-semibold">
+                  <b className="font-semibold tabular-nums">
                     {cifra(q)} de {cifra(r.total)} {unidad(r.total, r.unidad)}
                   </b>
                 );
@@ -2482,12 +2511,12 @@ const MisOfertas: React.FC<{
                 const conf = cantidadPorEstado(sol, r.n, ['confirmada']);
                 const porConf = cantidadPorEstado(sol, r.n, ['entregada']);
                 const camino = cantidadPorEstado(sol, r.n, ['camino']);
-                const texto = [`${cifra(conf)} confirmado`, porConf ? `${cifra(porConf)} entregado por confirmar` : '', camino ? `${cifra(camino)} en camino` : ''].filter(Boolean).join(' · ');
+                const texto = [`${cifra(conf)} confirmado`, porConf ? `${cifra(porConf)} entregado por confirmar` : '', camino ? `${cifra(camino)} en camino` : ''].filter(Boolean).join(', ');
                 return <BarraAvance hecho={Math.round((conf / r.total) * 100)} camino={Math.round(((porConf + camino) / r.total) * 100)} texto={texto} />;
               },
             },
             { k: 'disp', etiqueta: 'Disponible', celda: (r) => r.disp },
-            { k: 'como', etiqueta: 'Cómo', celda: () => 'Lo llevamos · 15 km' },
+            { k: 'como', etiqueta: 'Cómo', celda: () => 'Lo llevamos, 15 km' },
             {
               k: 'acc',
               etiqueta: 'Acciones',
@@ -2495,7 +2524,10 @@ const MisOfertas: React.FC<{
               celda: (r) => {
                 const matches = matchesPorRecurso?.get(r.n) ?? [];
                 return (
-                  <div className="flex items-center justify-end gap-2">
+                  /* `max-xl:flex-1`: en móvil la celda de acciones es el pie de la tarjeta y este
+                     bloque es uno de sus hijos; sin ocupar el ancho, su `justify-end` no empuja nada
+                     y el ⋮ se quedaba a la izquierda (Alejandro, 25 de septiembre de 2026). */
+                  <div className="flex max-xl:flex-1 items-center justify-end gap-2">
                     {matches.length > 0 && (
                       <FilaSugerencias
                         n={matches.length}
@@ -2510,12 +2542,12 @@ const MisOfertas: React.FC<{
                     <MenuAcciones
                       items={[
                         {
-                          texto: 'Ver publicación',
+                          texto: 'Ver',
                           icono: <Eye className="h-4 w-4" />,
                           onElegir: () => onVerPublicacion?.(),
                         },
                         {
-                          texto: 'Editar recurso',
+                          texto: 'Editar',
                           icono: <Edit3 className="h-4 w-4" />,
                           onElegir: () => onEditar(r),
                         },
@@ -2526,9 +2558,10 @@ const MisOfertas: React.FC<{
                         },
                       ]}
                       etiqueta={`Acciones de ${r.n}`}
-                      tamano="sm"
+                      tamano="md"
                       nivel="secundario"
                       flotante
+                      className="shadow-2xs"
                     />
                   </div>
                 );
@@ -2539,7 +2572,8 @@ const MisOfertas: React.FC<{
       </Caja>
 
       <Caja
-        planaMovil
+        plana
+        className="col-span-full mt-6 border-t-4 border-rd-line pt-8"
         titulo={
           <span className="flex items-center gap-2">
             <span>Ayudas ofrecidas a comunidades</span>
@@ -2569,7 +2603,7 @@ const MisOfertas: React.FC<{
                     {o.contacto?.tel && (
                       <span className="mt-0.5 inline-flex items-center gap-1 text-rd-12 text-rd-ink-2">
                         <Phone className="h-3 w-3 text-rd-ink-3" />
-                        {o.contacto.nombre ? `${o.contacto.nombre} · ${o.contacto.tel}` : o.contacto.tel}
+                        {o.contacto.nombre ? `${o.contacto.nombre}, ${o.contacto.tel}` : o.contacto.tel}
                         {o.contacto.wa && <IconoWhatsApp className="h-3 w-3 text-rd-whatsapp" />}
                       </span>
                     )}
@@ -2651,7 +2685,8 @@ const MisOfertas: React.FC<{
                     return (
                       <Button
                         nivel="secundario"
-                        tamano="sm"
+                        tamano="md"
+                        className="shadow-2xs"
                         onClick={() => onCancelarOfrecimientoEnviado?.(o.id)}
                       >
                         Cancelar
@@ -2671,12 +2706,36 @@ const MisOfertas: React.FC<{
 
 
 const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
-  { estado: 'nueva', nombre: 'Solicitudes', vacia: 'Sin solicitudes por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
-  { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
-  { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Clock className="h-4 w-4" /> },
-  { estado: 'entregada', nombre: 'Entregada', vacia: 'Sin entregas pendientes por certificar', clase: 'border-rd-navy-line', titulo: 'text-rd-navy', icono: <CircleDot className="h-4 w-4" /> },
-  { estado: 'confirmada', nombre: 'Completada', vacia: 'Sin entregas completadas', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Check className="h-4 w-4" /> },
-  { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las completadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
+  { estado: 'nueva', nombre: 'Solicitudes', vacia: 'Sin solicitudes por responder', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral text-white">
+        <Megaphone className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+        <CircleDashed className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber text-rd-ink">
+        <Clock className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { estado: 'entregada', nombre: 'Entregada', vacia: 'Sin entregas pendientes por certificar', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-navy text-white">
+        <CircleDot className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { estado: 'confirmada', nombre: 'Completada', vacia: 'Sin entregas completadas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+        <Check className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las completadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+        <Archive className="h-3.5 w-3.5" />
+      </span>
+    ) },
 ];
 
 const COLUMNAS_RECIBIDAS: {
@@ -2689,12 +2748,36 @@ const COLUMNAS_RECIBIDAS: {
   icono: React.ReactNode;
   soloConAlgo?: boolean;
 }[] = [
-  { id: 'ofertas', estados: ['nueva'], nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-coral/40', titulo: 'text-rd-coral', icono: <Megaphone className="h-4 w-4" /> },
-  { id: 'aceptada', estados: ['aceptada'], nombre: 'Comprometido', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink-2', icono: <CircleDashed className="h-4 w-4" /> },
-  { id: 'camino', estados: ['camino', 'entregada'], nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-amber-line', titulo: 'text-rd-amber-ink', icono: <Truck className="h-4 w-4" /> },
-  { id: 'recibido', estados: ['confirmada'], nombre: 'Recibido', vacia: 'Nada recibido todavía', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Package className="h-4 w-4" /> },
-  { id: 'distribuido', estados: ['distribuida'], nombre: 'Distribuido', vacia: 'Nada distribuido todavía', clase: 'border-rd-green-line', titulo: 'text-rd-green', icono: <Users className="h-4 w-4" /> },
-  { id: 'archivadas', estados: ['archivada'], nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink-meta', icono: <Archive className="h-4 w-4" /> },
+  { id: 'ofertas', estados: ['nueva'], nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral text-white">
+        <Megaphone className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { id: 'aceptada', estados: ['aceptada'], nombre: 'Comprometido', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+        <CircleDashed className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { id: 'camino', estados: ['camino', 'entregada'], nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber text-rd-ink">
+        <Truck className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { id: 'recibido', estados: ['confirmada'], nombre: 'Recibido', vacia: 'Nada recibido todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+        <Package className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { id: 'distribuido', estados: ['distribuida'], nombre: 'Distribuido', vacia: 'Nada distribuido todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+        <Users className="h-3.5 w-3.5" />
+      </span>
+    ) },
+  { id: 'archivadas', estados: ['archivada'], nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+        <Archive className="h-3.5 w-3.5" />
+      </span>
+    ) },
 ];
 
 const ORDEN_CICLO: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, distribuida: 5, archivada: 6 };
@@ -2792,8 +2875,14 @@ const Seguimiento: React.FC<{
   const verEntregas = !modulos.pide || (modulos.ofrece && vista === 'entrego');
 
   return (
+    /* La única sección sin contenedor (Alejandro, 25 de septiembre de 2026): el tablero ya
+       tiene sus propias columnas, y meterlo en una caja era una caja dentro de otra. Las demás
+       secciones sí conservan la suya. */
     <section className="col-span-full min-w-0">
-      <div className="mb-4 flex flex-col items-start gap-2.5">
+      {/* El conmutador va debajo del título y con aire a los dos lados (Alejandro, 25 de
+          septiembre de 2026): 20 entre el título y él, 24 entre él y el tablero. Apretados los
+          tres, no se distinguía dónde acaba la cabecera y dónde empieza el tablero. */}
+      <div className="mb-6 flex flex-col items-start gap-5">
         <h2 className="font-rd m-0 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
           Seguimiento
         </h2>
@@ -2805,12 +2894,12 @@ const Seguimiento: React.FC<{
             opciones={[
               {
                 id: 'entrego',
-                etiqueta: 'Ayuda que entrego',
+                etiqueta: 'Entrego',
                 n: sol.filter((s) => s.estado !== 'archivada').length,
               },
               {
                 id: 'recibo',
-                etiqueta: 'Ayuda que recibo',
+                etiqueta: 'Recibo',
                 n: recibidas.filter((r) => r.estado !== 'archivada').length,
               },
             ]}
@@ -2823,12 +2912,11 @@ const Seguimiento: React.FC<{
           role="region"
           aria-label="Tablero de seguimiento de entregas"
           tabIndex={0}
-          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
+          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8"
         >
           {COLUMNAS.map((c, idx) => {
             const items = sol.filter((s) => s.estado === c.estado);
             const estaColapsada = !!colapsadasEntrego[c.estado];
-            const direccion = idx < COLUMNAS.length / 2 ? 'der' : 'izq';
             const recibe = c.estado !== 'nueva' && c.estado !== 'archivada';
 
             if (estaColapsada) {
@@ -2857,7 +2945,7 @@ const Seguimiento: React.FC<{
                     expandir();
                   }}
                   title={`Clic para expandir ${c.nombre}`}
-                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
                 >
                   <button
                     type="button"
@@ -2866,15 +2954,15 @@ const Seguimiento: React.FC<{
                       e.stopPropagation();
                       expandir();
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    className="flex h-rd-h-sm w-rd-h-sm items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                   >
-                    {direccion === 'der' ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                    <ChevronRight className="h-4 w-4" />
                   </button>
-                  <span aria-hidden="true" className="text-rd-ink-meta">{c.icono}</span>
+                  <span aria-hidden="true">{c.icono}</span>
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
-                  <span className="mt-2 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta [writing-mode:vertical-rl] rotate-180">
+                  <span className="mt-2 text-rd-13 font-semibold text-rd-ink [writing-mode:vertical-rl] rotate-180">
                     {c.nombre}
                   </span>
                 </div>
@@ -2906,11 +2994,11 @@ const Seguimiento: React.FC<{
                   }
                 }}
                 className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:flex-1 sm:min-w-80 ${
-                  sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-sunken'
+                  sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-fondo'
                 } ${c.clase}`}
               >
                 <div
-                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13-5 font-semibold ${c.titulo}`}
                 >
                   <span aria-hidden="true">{c.icono}</span>
                   {c.nombre}
@@ -2925,9 +3013,9 @@ const Seguimiento: React.FC<{
                       e.stopPropagation();
                       setColapsadasEntrego((prev) => ({ ...prev, [c.estado]: true }));
                     }}
-                    className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    className="ml-1 flex h-rd-h-sm w-rd-h-sm cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                   >
-                    {direccion === 'der' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
                 {items.map((s) => (
@@ -2955,12 +3043,11 @@ const Seguimiento: React.FC<{
           role="region"
           aria-label="Tablero de seguimiento de ayuda recibida"
           tabIndex={0}
-          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
+          className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8"
         >
           {COLUMNAS_RECIBIDAS.map((c, idx) => {
             const items = recibidas.filter((r) => c.estados.includes(r.estado));
             const estaColapsada = !!colapsadasRecibo[c.id];
-            const direccion = idx < COLUMNAS_RECIBIDAS.length / 2 ? 'der' : 'izq';
 
             if (estaColapsada) {
               const expandir = () => {
@@ -2994,7 +3081,7 @@ const Seguimiento: React.FC<{
                     }
                   }}
                   title={`Clic para expandir ${c.nombre}`}
-                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-sunken py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
                 >
                   <button
                     type="button"
@@ -3003,15 +3090,15 @@ const Seguimiento: React.FC<{
                       e.stopPropagation();
                       expandir();
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    className="flex h-rd-h-sm w-rd-h-sm items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                   >
-                    {direccion === 'der' ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                    <ChevronRight className="h-4 w-4" />
                   </button>
-                  <span aria-hidden="true" className="text-rd-ink-meta">{c.icono}</span>
+                  <span aria-hidden="true">{c.icono}</span>
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
                     {items.length}
                   </span>
-                  <span className="mt-2 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta [writing-mode:vertical-rl] rotate-180">
+                  <span className="mt-2 text-rd-13 font-semibold text-rd-ink [writing-mode:vertical-rl] rotate-180">
                     {c.nombre}
                   </span>
                 </div>
@@ -3042,10 +3129,10 @@ const Seguimiento: React.FC<{
                     }
                   }
                 }}
-                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-sunken p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-fondo p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
               >
                 <div
-                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-11 font-semibold tracking-wider uppercase ${c.titulo}`}
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13-5 font-semibold ${c.titulo}`}
                 >
                   <span aria-hidden="true">{c.icono}</span>
                   {c.nombre}
@@ -3060,9 +3147,9 @@ const Seguimiento: React.FC<{
                       e.stopPropagation();
                       setColapsadasRecibo((prev) => ({ ...prev, [c.id]: true }));
                     }}
-                    className="ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
+                    className="ml-1 flex h-rd-h-sm w-rd-h-sm cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-meta hover:bg-rd-surface hover:text-rd-ink"
                   >
-                    {direccion === 'der' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
                 </div>
                 {items.map((r) => (
@@ -3114,8 +3201,11 @@ const Seguimiento: React.FC<{
             <p className="mb-3 text-rd-14 text-rd-ink">
               <b className="font-semibold">
                 {cifra(devolviendo.s.cant)} {devolviendo.s.u} de {devolviendo.s.rec.toLowerCase()}
-              </b>{' '}
-              · {devolviendo.s.quien} · hoy: {NOMBRE_ESTADO[devolviendo.s.estado]}
+              </b>
+              <Divisor />
+              {devolviendo.s.quien}
+              <Divisor />
+              hoy: {NOMBRE_ESTADO[devolviendo.s.estado]}
             </p>
             <InlineNotice
               variante="pendiente"
@@ -3143,35 +3233,12 @@ const MiEquipo: React.FC<{
   const [filtroVeh, setFiltroVeh] = useState('');
   const [filtroDisp, setFiltroDisp] = useState('');
 
-  const [panelFiltrosAbierto, setPanelFiltrosAbierto] = useState(false);
-  const popoverFiltrosRef = useRef<HTMLDivElement>(null);
-  const botonFiltrosRef = useRef<HTMLButtonElement>(null);
+  /* La hoja se cierra con Escape y con el velo, dentro de `Hoja`: aquí ya no hace falta el
+     detector de clic afuera que necesitaba el popover. */
+  const [hojaFiltros, setHojaFiltros] = useState(false);
 
   const filtrosDropdownActivos = [filtroUbicacion, filtroVeh, filtroDisp].filter(Boolean).length;
   const hayFiltros = Boolean(busqueda || filtrosDropdownActivos > 0);
-
-  useEffect(() => {
-    if (!panelFiltrosAbierto) return;
-    const alTocar = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        popoverFiltrosRef.current?.contains(target) ||
-        botonFiltrosRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setPanelFiltrosAbierto(false);
-    };
-    const alTeclear = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPanelFiltrosAbierto(false);
-    };
-    document.addEventListener('mousedown', alTocar);
-    document.addEventListener('keydown', alTeclear);
-    return () => {
-      document.removeEventListener('mousedown', alTocar);
-      document.removeEventListener('keydown', alTeclear);
-    };
-  }, [panelFiltrosAbierto]);
 
   const resetFiltros = () => {
     setBusqueda('');
@@ -3212,6 +3279,7 @@ const MiEquipo: React.FC<{
 
   return (
     <Caja
+      plana
       titulo={
         <>
           Mi equipo<Conteo n={equipo.length} />
@@ -3219,199 +3287,71 @@ const MiEquipo: React.FC<{
       }
       accion={
         <Button nivel="secundario" tamano="md" onClick={onRegistrar}>
-          Agregar persona
+          Agregar
         </Button>
       }
     >
-      <div className="mb-4 space-y-2.5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <CampoBuscar
-            valor={busqueda}
-            onChange={setBusqueda}
-            placeholder="Buscar por nombre, profesión, rol..."
-            abierto={true}
-            className="h-10 w-full sm:w-72"
-          />
-
-          <div className="relative inline-block">
-            <button
-              ref={botonFiltrosRef}
-              type="button"
-              onClick={() => setPanelFiltrosAbierto((v) => !v)}
-              aria-expanded={panelFiltrosAbierto}
-              aria-label={filtrosDropdownActivos > 0 ? `Filtros, ${filtrosDropdownActivos} aplicados` : 'Filtros'}
-              className={`font-rd inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-rd-13 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rd-navy-soft ${
-                filtrosDropdownActivos > 0
-                  ? 'border-rd-navy bg-rd-navy/5 text-rd-navy font-semibold hover:bg-rd-navy/10'
-                  : 'border-rd-line bg-rd-surface text-rd-ink hover:bg-rd-fondo'
-              }`}
-            >
-              <Funnel className={`h-3.75 w-3.75 ${filtrosDropdownActivos > 0 ? 'text-rd-navy' : 'text-rd-ink-3'}`} />
-              <span>Filtros</span>
-              {filtrosDropdownActivos > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-navy px-1.5 text-rd-11 font-semibold text-white tabular-nums">
-                  {filtrosDropdownActivos}
-                </span>
-              )}
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform duration-150 ${
-                  panelFiltrosAbierto ? 'rotate-180' : ''
-                } ${filtrosDropdownActivos > 0 ? 'text-rd-navy' : 'text-rd-ink-3'}`}
-              />
-            </button>
-
-            {/* Popover desplegable con los filtros */}
-            {panelFiltrosAbierto && (
-              <div
-                ref={popoverFiltrosRef}
-                className="absolute left-0 top-full z-40 mt-2 w-72 sm:w-80 rounded-rd-xl border border-rd-line bg-rd-surface p-4 shadow-rd-2"
-              >
-                <div className="mb-3 flex items-center justify-between border-b border-rd-line-soft pb-2.5">
-                  <span className="text-rd-13-5 font-semibold text-rd-ink">
-                    Filtros de equipo
-                  </span>
-                  {filtrosDropdownActivos > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFiltroUbicacion('');
-                        setFiltroVeh('');
-                        setFiltroDisp('');
-                      }}
-                      className="cursor-pointer text-rd-12 font-medium text-rd-navy hover:underline"
-                    >
-                      Limpiar filtros
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label
-                      htmlFor="filtro-equipo-ubicacion"
-                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
-                    >
-                      Ubicación (Departamento)
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="filtro-equipo-ubicacion"
-                        value={filtroUbicacion}
-                        onChange={(e) => setFiltroUbicacion(e.target.value)}
-                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
-                      >
-                        <option value="">Todas las ubicaciones</option>
-                        {DEPTOS.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="filtro-equipo-vehiculo"
-                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
-                    >
-                      Tipo de vehículo
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="filtro-equipo-vehiculo"
-                        value={filtroVeh}
-                        onChange={(e) => setFiltroVeh(e.target.value)}
-                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
-                      >
-                        <option value="">Todos los vehículos</option>
-                        {VEHICULOS.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="filtro-equipo-disponibilidad"
-                      className="mb-1 block text-rd-12 font-medium text-rd-ink-meta"
-                    >
-                      Disponibilidad
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="filtro-equipo-disponibilidad"
-                        value={filtroDisp}
-                        onChange={(e) => setFiltroDisp(e.target.value)}
-                        className="font-rd h-9 w-full cursor-pointer appearance-none rounded-rd-md border border-rd-line bg-rd-surface pl-3 pr-8 text-rd-13 text-rd-ink transition-colors hover:border-rd-line-strong focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
-                      >
-                        <option value="">Cualquier disponibilidad</option>
-                        {DISPONIBILIDADES.map((d) => (
-                          <option key={d.valor} value={d.valor}>
-                            {d.etiqueta}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-rd-ink-3" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex justify-end border-t border-rd-line-soft pt-3">
-                  <Button
-                    nivel="primario"
-                    tamano="sm"
-                    onClick={() => setPanelFiltrosAbierto(false)}
-                  >
-                    Listo
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {hayFiltros && (
-            <span className="ml-auto text-rd-12 text-rd-ink-meta font-medium">
-              Mostrando {filtrados.length} de {equipo.length}
-            </span>
-          )}
-        </div>
-
+      {/* La barra de consulta, en el orden de la Radar y del Directorio (decisión 70): el filtro
+          primero, los chips de lo aplicado, y el buscador al final. Mi equipo la tenía al revés
+          —buscador de primero, chips en una segunda fila— y el filtro abría un popover con tres
+          `<select>` en vez de la hoja (Alejandro, 25 de septiembre de 2026). El conteo pasa a
+          `sr-only`, como en las demás secciones: los chips ya dicen qué está aplicado. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <BotonFiltros
+          aplicados={filtrosDropdownActivos}
+          abierta={hojaFiltros}
+          onClick={() => setHojaFiltros(true)}
+          etiqueta="Filtrar"
+        />
+        <p aria-live="polite" aria-atomic="true" className="sr-only">
+          {filtrados.length} de {equipo.length} {equipo.length === 1 ? 'persona' : 'personas'}
+        </p>
         {hayFiltros && (
           <ZonaChips>
-            {busqueda && (
-              <ChipAplicado texto={`"${busqueda}"`} onQuitar={() => setBusqueda('')} />
-            )}
-            {filtroUbicacion && (
-              <ChipAplicado texto={filtroUbicacion} onQuitar={() => setFiltroUbicacion('')} />
-            )}
-            {filtroVeh && (
-              <ChipAplicado texto={filtroVeh} onQuitar={() => setFiltroVeh('')} />
-            )}
+            {busqueda && <ChipAplicado texto={`«${busqueda}»`} onQuitar={() => setBusqueda('')} />}
+            {filtroUbicacion && <ChipAplicado texto={filtroUbicacion} onQuitar={() => setFiltroUbicacion('')} />}
+            {filtroVeh && <ChipAplicado texto={filtroVeh} onQuitar={() => setFiltroVeh('')} />}
             {filtroDisp && (
-              <ChipAplicado
-                texto={DISPONIBILIDADES.find((d) => d.valor === filtroDisp)?.etiqueta || filtroDisp}
-                onQuitar={() => setFiltroDisp('')}
-              />
+              <ChipAplicado texto={DISPONIBILIDADES.find((d) => d.valor === filtroDisp)?.etiqueta || filtroDisp} onQuitar={() => setFiltroDisp('')} />
             )}
             <QuitarTodos onClick={resetFiltros} />
           </ZonaChips>
         )}
+        <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, rol o lugar" abierto className="h-10 w-full sm:ml-auto sm:w-72" />
       </div>
 
+      <HojaFiltrosEquipo
+        abierta={hojaFiltros}
+        onCerrar={() => setHojaFiltros(false)}
+        equipo={equipo}
+        ubicacion={filtroUbicacion}
+        veh={filtroVeh}
+        disp={filtroDisp}
+        onUbicacion={setFiltroUbicacion}
+        onVeh={setFiltroVeh}
+        onDisp={setFiltroDisp}
+        onQuitarTodos={() => {
+          setFiltroUbicacion('');
+          setFiltroVeh('');
+          setFiltroDisp('');
+        }}
+        aplicados={filtrosDropdownActivos}
+        resultados={filtrados.length}
+      />
+
+      {/* El vacío del sistema, el mismo de la Radar y del Directorio: icono en círculo hundido,
+          título 15/600 y texto corto. Mi equipo lo tenía a mano, en una caja de borde punteado. */}
       {filtrados.length === 0 ? (
-        <div className="rounded-rd-lg border border-dashed border-rd-line bg-rd-sunken/40 py-8 text-center">
-          <p className="text-rd-14 font-medium text-rd-ink">No se encontraron integrantes con los filtros seleccionados.</p>
-          <p className="mt-1 text-rd-12 text-rd-ink-meta">Prueba cambiando la búsqueda, ubicación, vehículo o disponibilidad.</p>
-          <Button nivel="secundario" tamano="sm" onClick={resetFiltros} className="mt-3">
-            Quitar filtros
-          </Button>
-        </div>
+        <Vacio
+          icono={<Funnel className="h-6.5 w-6.5" />}
+          titulo="Nadie coincide con estos filtros"
+          texto="Prueba con otro lugar, otro vehículo u otra disponibilidad."
+          accion={
+            <Button nivel="secundario" tamano="md" onClick={resetFiltros}>
+              Quitar los filtros
+            </Button>
+          }
+        />
       ) : (
         <Tabla
           etiqueta="Mi equipo"
@@ -3448,42 +3388,6 @@ const MiEquipo: React.FC<{
                     </div>
                   </div>
 
-                  <div className="shrink-0 -mr-1 -mt-1">
-                    <MenuAcciones
-                      tamano="sm"
-                      flotante
-                      etiqueta={`Opciones de ${e.n}`}
-                      items={[
-                        {
-                          texto: 'Escribir por WhatsApp',
-                          icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
-                          onElegir: () => {
-                            const num = e.tel.replace(/\D/g, '');
-                            const numWa = num.startsWith('57') ? num : `57${num}`;
-                            window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
-                          },
-                        },
-                        {
-                          texto: `Llamar (${e.tel})`,
-                          icono: <Phone className="h-4 w-4" />,
-                          onElegir: () => {
-                            window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
-                          },
-                        },
-                        {
-                          texto: 'Editar datos',
-                          icono: <Edit3 className="h-4 w-4" />,
-                          onElegir: () => onEditar(e),
-                        },
-                        {
-                          texto: 'Dar de baja',
-                          icono: <X className="h-4 w-4" />,
-                          tono: 'peligro',
-                          onElegir: () => onConfirmarBaja(e),
-                        },
-                      ]}
-                    />
-                  </div>
                 </div>
 
                 {/* Grid 2x2 compacto sin espacios muertos */}
@@ -3509,10 +3413,52 @@ const MiEquipo: React.FC<{
                 </div>
 
                 {/* Pie: Entregas realizadas */}
-                <div className="mt-2.5 flex items-center justify-between border-t border-rd-line-soft/60 pt-2 text-rd-11-5 text-rd-ink-meta">
+                <div className="mt-2.5 flex items-center justify-between text-rd-11-5 text-rd-ink-meta">
                   <span>Entregas realizadas</span>
                   <span className="font-semibold text-rd-ink bg-rd-sunken px-2.5 py-0.5 rounded-full text-rd-11">
                     {e.hechas} {e.hechas === 1 ? 'entrega' : 'entregas'}
+                  </span>
+                </div>
+                {/* El ⋮ al pie de la tarjeta y al extremo derecho, como en el resto (Alejandro, 25 de
+                    septiembre de 2026). Estaba suelto en la esquina superior. */}
+                <div className="mt-2.5 flex items-center border-t border-rd-line-soft pt-2.5">
+                  <span className="ml-auto flex">
+                    <MenuAcciones
+                      tamano="md"
+                      nivel="secundario"
+                      flotante
+                      etiqueta={`Opciones de ${e.n}`}
+                      items={[
+                          {
+                            texto: 'Escribir por WhatsApp',
+                            icono: <IconoWhatsApp className="h-4 w-4" />,
+                            onElegir: () => {
+                              const num = e.tel.replace(/\D/g, '');
+                              const numWa = num.startsWith('57') ? num : `57${num}`;
+                              window.open(`https://wa.me/${numWa}`, '_blank', 'noopener');
+                            },
+                          },
+                          {
+                            texto: `Llamar`,
+                            icono: <Phone className="h-4 w-4" />,
+                            onElegir: () => {
+                              window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
+                            },
+                          },
+                          {
+                            texto: 'Editar',
+                            icono: <Edit3 className="h-4 w-4" />,
+                            onElegir: () => onEditar(e),
+                          },
+                          {
+                            texto: 'Quitar',
+                            icono: <X className="h-4 w-4" />,
+                            tono: 'peligro',
+                            onElegir: () => onConfirmarBaja(e),
+                          },
+                      ]}
+                      className="shadow-2xs"
+                    />
                   </span>
                 </div>
               </div>
@@ -3558,13 +3504,14 @@ const MiEquipo: React.FC<{
               acc: true,
               celda: (e) => (
                 <MenuAcciones
-                  tamano="sm"
+                  tamano="md"
+                  nivel="secundario"
                   flotante
                   etiqueta={`Opciones de ${e.n}`}
                   items={[
                     {
                       texto: 'Escribir por WhatsApp',
-                      icono: <IconoWhatsApp className="h-4 w-4 text-rd-green" />,
+                      icono: <IconoWhatsApp className="h-4 w-4" />,
                       onElegir: () => {
                         const num = e.tel.replace(/\D/g, '');
                         const numWa = num.startsWith('57') ? num : `57${num}`;
@@ -3572,24 +3519,25 @@ const MiEquipo: React.FC<{
                       },
                     },
                     {
-                      texto: `Llamar (${e.tel})`,
+                      texto: `Llamar`,
                       icono: <Phone className="h-4 w-4" />,
                       onElegir: () => {
                         window.location.href = `tel:${e.tel.replace(/\s/g, '')}`;
                       },
                     },
                     {
-                      texto: 'Editar datos',
+                      texto: 'Editar',
                       icono: <Edit3 className="h-4 w-4" />,
                       onElegir: () => onEditar(e),
                     },
                     {
-                      texto: 'Dar de baja',
+                      texto: 'Quitar',
                       icono: <X className="h-4 w-4" />,
                       tono: 'peligro',
                       onElegir: () => onConfirmarBaja(e),
                     },
                   ]}
+                  className="shadow-2xs"
                 />
               ),
             },

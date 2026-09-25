@@ -182,7 +182,7 @@ export const LAMINAS: LaminaCarrusel[] = [
  *  ya llegó (`hecho`) y lo que va en camino (`camino`), en porcentaje. */
 export const LAMINA_CARTA = {
   organizacion: 'Fundación Colombia Unida',
-  direccion: 'Cra. 80 #57-40 sur, Bosa · a 9,1 km de tu ubicación',
+  direccion: 'Cra. 80 #57-40 sur, Bosa, a 9,1 km de tu ubicación',
   filas: [
     { recurso: 'Agua potable', falta: 'faltan 450 L', hecho: 20, camino: 30 },
     { recurso: 'Ropa y cobijas', falta: 'faltan 200 unidades', hecho: 0, camino: 0 },
@@ -191,7 +191,8 @@ export const LAMINA_CARTA = {
 };
 
 /** El chip de la tercera lámina. */
-export const LAMINA_CIERRE = 'Entregado · Albergue Bosa · 180 L · 12 sep, 9:40 a. m.';
+/* En partes: el divisor las separa al pintarlas, que el punto medio está prohibido. */
+export const LAMINA_CIERRE = ['Entregado', 'Albergue Bosa', '180 L', '12 sep, 9:40 a. m.'];
 
 /** El mapa decorativo de la primera lámina: centro y seis pines del prototipo (Bogotá).
  *  `tipo` decide el color: necesidad (rojo), oferta (azul), entregado (verde). */

@@ -34,7 +34,7 @@ export function camposTexto(campos: CampoDetalle[], d: RespuestasDetalle = {}): 
     else if (c.t === 'num' && c.k !== 'num') partes.push(`${v} ${c.u ?? ''}`.trim());
     else if (c.t === 'texto') partes.push(String(v));
   });
-  return partes.join(' · ');
+  return partes.join(', ');
 }
 
 /** Texto corto del detalle de un recurso pedido, para el resumen y la tarjeta. */
@@ -77,7 +77,7 @@ export function calcularMetas(necesidades: string[], valores: Record<string, num
     let meta = unidadesBase * eq.cantidad;
     let formula = `${eq.racion}, para ${unidadesBase} ${unidad(unidadesBase, base.unidad)}`;
     if (eq.diario) {
-      const textoDias = ` · durante ${dias} ${dias === 1 ? 'día' : 'días'}`;
+      const textoDias = `, durante ${dias} ${dias === 1 ? 'día' : 'días'}`;
       if (eq.multiplicaDias === false) {
         /* Capacidad sostenida: la misma cuadrilla y la misma gente cada día. */
         formula += textoDias + (dias === 1 ? '' : ' (la misma cantidad cada día)');

@@ -10,7 +10,9 @@ import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { Field } from '../../components/ui/Field';
 import { Combobox } from '../../components/ui/Combobox';
 import { Button } from '../../components/ui/Button';
+import { ROTULO_GRUPO } from '../../components/ui/tipografia';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { TituloPublicacion } from '../../components/ui/TituloPublicacion';
 import { CampoFotos } from '../flujos/comunes';
 
 /**
@@ -49,7 +51,7 @@ export const DialogoAsignar: React.FC<{
     <Opciones
       nombre="vol"
       etiqueta="Del equipo"
-      opciones={equipo.map((e) => ({ valor: String(e.id), texto: `${e.n} · ${e.veh}` }))}
+      opciones={equipo.map((e) => ({ valor: String(e.id), texto: `${e.n}, ${e.veh}` }))}
       inicial={String(s?.vol ?? equipo[0]?.id ?? 1)}
       columna
     />
@@ -84,7 +86,7 @@ export const DialogoEditarRecursoOfrecido: React.FC<{
     <Dialogo
       abierto={r !== null}
       titulo={`Editar oferta de ${r.n}`}
-      accion="Guardar cambios"
+      accion="Guardar"
       onCerrar={onCerrar}
       onEnviar={() => {
         const num = parseFloat(total);
@@ -171,7 +173,7 @@ export const DialogoEditarRecursoPedido: React.FC<{
     <Dialogo
       abierto={r !== null}
       titulo={`Editar necesidad de ${r.n}`}
-      accion="Guardar cambios"
+      accion="Guardar"
       onCerrar={onCerrar}
       onEnviar={() => {
         const num = parseFloat(total);
@@ -369,7 +371,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
   const onBlurCorreo = () => {
     const clean = correo.trim();
     if (esCorreoRequerido && !clean) {
-      setErrorCorreo('Escribe el correo electrónico para el acceso a RaDAR');
+      setErrorCorreo('Escribe el correo electrónico con el que entrará a RaDAR');
     } else if (clean && (!clean.includes('@') || !clean.includes('.'))) {
       setErrorCorreo('Revisa el correo: falta el @ o el dominio');
     } else {
@@ -381,7 +383,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
     <Dialogo
       abierto={abierto}
       titulo={esEdicion ? 'Editar integrante del equipo' : 'Agregar persona al equipo'}
-      accion={esEdicion ? 'Guardar cambios' : 'Agregar persona'}
+      accion={esEdicion ? 'Guardar' : 'Agregar'}
       onCerrar={cerrar}
       onEnviar={() => {
         let hayError = false;
@@ -404,7 +406,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
         }
 
         if (!rolPlataforma) {
-          setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
+          setErrorRolPlataforma('Selecciona el rol');
           hayError = true;
         } else {
           setErrorRolPlataforma(null);
@@ -412,7 +414,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
 
         const cleanCorreo = correo.trim();
         if (esCorreoRequerido && !cleanCorreo) {
-          setErrorCorreo('Escribe el correo electrónico para el acceso a RaDAR');
+          setErrorCorreo('Escribe el correo electrónico con el que entrará a RaDAR');
           hayError = true;
         } else if (cleanCorreo && (!cleanCorreo.includes('@') || !cleanCorreo.includes('.'))) {
           setErrorCorreo('Revisa el correo: falta el @ o el dominio');
@@ -447,14 +449,16 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
     >
       <p className="mb-4 text-rd-14 text-rd-ink-2">
         {esEdicion
-          ? 'Actualiza los datos de contacto, rol en terreno o nivel de acceso en RaDAR para este integrante.'
-          : 'Agrega a un colaborador o voluntario. Podrás coordinar con esta persona y asignarle entregas en el seguimiento.'}
+          ? 'Cambia los datos de contacto o el rol de esta persona.'
+          : 'Agrega a un colaborador o voluntario. Podrás asignarle entregas en el seguimiento.'}
       </p>
 
-      <div className="space-y-4">
+      {/* 20 entre grupos de campos, el mismo `mb-5` con el que `Caja` separa su título del
+          contenido; con 16 el rótulo del segundo grupo se pegaba al último campo del primero. */}
+      <div className="space-y-5">
         <div>
-          <h3 className="font-rd mb-2.5 text-rd-12 font-semibold uppercase tracking-wider text-rd-ink-meta">
-            Datos y acceso en RaDAR
+          <h3 className={ROTULO_GRUPO}>
+            Datos y rol
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -526,22 +530,22 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
             <div className="sm:col-span-2">
               <Field
                 id="miembro-acceso"
-                etiqueta="Acceso en RaDAR"
+                etiqueta="Rol"
                 tipo="select"
                 requerido
                 valor={ACCESOS_RADAR.find((a) => a.valor === rolPlataforma)?.etiqueta || ''}
-                placeholder="Seleccionar nivel de acceso"
+                placeholder="Seleccionar rol"
                 opciones={ACCESOS_RADAR.map((a) => a.etiqueta)}
                 error={errorRolPlataforma}
                 onBlur={() => {
-                  if (!rolPlataforma) setErrorRolPlataforma('Selecciona el nivel de acceso en RaDAR');
+                  if (!rolPlataforma) setErrorRolPlataforma('Selecciona el rol');
                 }}
                 onChange={(v) => {
                   const match = ACCESOS_RADAR.find((a) => a.etiqueta === v);
                   const nuevo = match ? match.valor : '';
                   setRolPlataforma(nuevo);
                   if (nuevo) setErrorRolPlataforma(null);
-                  if (nuevo === 'terreno' && errorCorreo === 'Escribe el correo electrónico para el acceso a RaDAR') {
+                  if (nuevo === 'terreno' && errorCorreo === 'Escribe el correo electrónico con el que entrará a RaDAR') {
                     setErrorCorreo(null);
                   }
                 }}
@@ -557,7 +561,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
         </div>
 
         <div className="border-t border-rd-line-soft pt-3">
-          <h3 className="font-rd mb-2.5 text-rd-12 font-semibold uppercase tracking-wider text-rd-ink-meta">
+          <h3 className={ROTULO_GRUPO}>
             Operación en terreno
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -845,7 +849,7 @@ export const DialogoGestionPublicacion: React.FC<{
           pubInicial.tipo === 'oferta'
             ? [
                 ['Disponibilidad', r.disp || 'Inmediata'],
-                ['Cómo se entrega', comoEntrega || 'Lo llevamos · 15 km'],
+                ['Cómo se entrega', comoEntrega || 'Lo llevamos, 15 km'],
               ]
             : [['Para quién', r.para || 'Comunidad afectada']],
       })),
@@ -914,13 +918,13 @@ export const DialogoGestionPublicacion: React.FC<{
       className="font-rd m-auto w-full max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
     >
       {/* Cabecera */}
-      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-surface">
         <div>
           <span className="text-rd-10 font-bold uppercase tracking-wider text-rd-ink-meta">
             {esOferta ? 'Publicación de Oferta' : 'Publicación de Necesidad'}
           </span>
-          <h2 className="text-rd-16 font-semibold text-rd-ink">
-            {publicacionParaTarjeta ? tituloPublicacion(publicacionParaTarjeta) : pubInicial.titulo}
+          <h2 className="font-rd text-rd-18 font-semibold text-rd-ink">
+            {publicacionParaTarjeta ? <TituloPublicacion publicacion={publicacionParaTarjeta} actor /> : pubInicial.titulo}
           </h2>
         </div>
         <button
@@ -981,11 +985,14 @@ export const DialogoGestionPublicacion: React.FC<{
               Así es como ven esta publicación los demás actores en el mapa del Radar.
             </span>
             <div className="flex items-center gap-2">
-              <Button nivel="secundario" tamano="md" onClick={() => onVerEnMapa?.(pubInicial.id)}>
-                Ver en el mapa
+              {/* De izquierda a derecha por jerarquía, primero la que mueve la aguja, y
+                  todos del mismo tamaño: la jerarquía la dice el color (Alejandro, 22 de
+                  septiembre de 2026, en `Dialogo.tsx`). */}
+              <Button nivel="primario" tamano="lg" onClick={() => setModo('editar')}>
+                Editar
               </Button>
-              <Button nivel="primario" tamano="md" onClick={() => setModo('editar')}>
-                Editar esta publicación
+              <Button nivel="secundario" tamano="lg" onClick={() => onVerEnMapa?.(pubInicial.id)}>
+                Ver en el mapa
               </Button>
             </div>
           </div>
@@ -996,7 +1003,7 @@ export const DialogoGestionPublicacion: React.FC<{
             {/* 1. Contexto general */}
             <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-rd-14 font-semibold text-rd-ink">
+                <h3 className="font-rd text-rd-15 font-semibold text-rd-ink">
                   1. Información general
                 </h3>
                 <span className="text-rd-12 text-rd-ink-meta">Visible en el Radar</span>
@@ -1027,7 +1034,7 @@ export const DialogoGestionPublicacion: React.FC<{
 
             {/* 2. Ubicación y Logística */}
             <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
-              <h3 className="text-rd-14 font-semibold text-rd-ink">
+              <h3 className="font-rd text-rd-15 font-semibold text-rd-ink">
                 2. Ubicación y logística de entrega
               </h3>
 
@@ -1054,7 +1061,7 @@ export const DialogoGestionPublicacion: React.FC<{
                   etiqueta={esOferta ? 'Modalidad de entrega / Cobertura' : 'Cómo se recibe la ayuda'}
                   valor={comoEntrega}
                   onChange={setComoEntrega}
-                  ayuda={esOferta ? 'Ej: Lo llevamos · 15 km o Entrega en estación' : 'Ej: Acopio en colegio o Recibimos en sitio'}
+                  ayuda={esOferta ? 'Ej: Lo llevamos, 15 km o Entrega en estación' : 'Ej: Acopio en colegio o Recibimos en sitio'}
                 />
                 <Field
                   id="pub-horario"
@@ -1070,10 +1077,10 @@ export const DialogoGestionPublicacion: React.FC<{
             <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-rd-14 font-semibold text-rd-ink">
+                  <h3 className="font-rd text-rd-15 font-semibold text-rd-ink">
                     3. Insumos y recursos de la publicación
                   </h3>
-                  <p className="text-rd-12 text-rd-ink-meta">
+                  <p className="text-rd-13-5 text-rd-ink-2">
                     Modifica metas, cantidades, unidades o añade nuevos recursos a esta publicación.
                   </p>
                 </div>
@@ -1084,7 +1091,7 @@ export const DialogoGestionPublicacion: React.FC<{
                   onClick={agregarRecurso}
                 >
                   <Plus className="mr-1 h-3.5 w-3.5" />
-                  Agregar insumo
+                  Agregar
                 </Button>
               </div>
 
@@ -1202,7 +1209,7 @@ export const DialogoGestionPublicacion: React.FC<{
 
             {/* 4. Contacto de coordinación */}
             <div className="rounded-rd-lg border border-rd-line bg-rd-surface p-4 space-y-4">
-              <h3 className="text-rd-14 font-semibold text-rd-ink">
+              <h3 className="font-rd text-rd-15 font-semibold text-rd-ink">
                 4. Contacto de coordinación para esta publicación
               </h3>
 
@@ -1224,7 +1231,7 @@ export const DialogoGestionPublicacion: React.FC<{
           </div>
 
           {/* Pie de edición */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rd-line bg-rd-sunken/40 px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rd-line bg-rd-surface px-5 py-3">
             <button
               type="button"
               onClick={() => setPausadaGlobal((p) => !p)}
@@ -1233,11 +1240,20 @@ export const DialogoGestionPublicacion: React.FC<{
               {pausadaGlobal ? 'Reanudar toda la publicación' : 'Pausar toda la publicación'}
             </button>
             <div className="flex items-center gap-2">
-              <Button type="button" nivel="terciario" tamano="md" onClick={() => setModo('vista')}>
-                Cancelar
+              {/* Dato propio y reversible: la 223 C7 cierra esos diálogos en secundario --lg
+                  (Alejandro, 24 de septiembre de 2026). «Cancelar» no repite la ×: vuelve a
+                  la vista, no cierra la ventana. Los dos en `lg`, porque la línea entera
+                  mide lo mismo y la jerarquía la dice el color. */}
+              <Button type="submit" nivel="secundario" tamano="lg">
+                Guardar
               </Button>
-              <Button type="submit" nivel="primario" tamano="md">
-                Guardar cambios
+              {/* `secundario` y no `terciario`: en `lg` el terciario no existe (223, cruce
+                  prohibido). CONFLICTO ABIERTO: con «Guardar» también en secundario por la
+                  C7, los dos quedan del mismo color y la jerarquía deja de leerse. Queda
+                  reportado a Alejandro; se resuelve subiendo «Guardar» a primario o sacando
+                  este botón y dejando que la × sea la única salida. */}
+              <Button type="button" nivel="secundario" tamano="lg" onClick={() => setModo('vista')}>
+                Cancelar
               </Button>
             </div>
           </div>
@@ -1274,7 +1290,7 @@ export const DialogoDetallePublicacionPanel: React.FC<{
       onClick={(e) => e.target === ref.current && onCerrar()}
       className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
     >
-      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-surface">
         <span className="text-rd-13 font-semibold text-rd-ink">Publicación en RaDAR</span>
         <button
           type="button"

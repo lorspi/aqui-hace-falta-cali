@@ -36,11 +36,15 @@ export function textoCompromiso(partes: ParteCompromiso[], tipo: TipoPublicacion
 
 /** El aviso de que ya está hecho. En verbo y con RaDAR en primera persona del plural, no en
  *  pasiva impersonal («Compromiso enviado a…»): el manual lo pide en el §2 y el §8 lo muestra
- *  con el aviso de publicar. */
+ *  con el aviso de publicar. Una sola frase: «Listo, avisamos a X» era una segunda frase que
+ *  repetía lo que el diálogo acaba de decir (Alejandro, 24 de septiembre de 2026: en un aviso
+ *  de 3,6 segundos cada palabra tiene que ganarse el sitio). Quedan quién y qué, que es lo que
+ *  no está en ninguna otra parte de la pantalla. Los verbos son los del manual (§7):
+ *  «comprometerse» dentro de una necesidad, «solicitar» dentro de una oferta. */
 export function avisoCompromiso(org: string, tipo: TipoPublicacion, c: Compromiso): string {
   const que = textoCompromiso(c.partes, tipo);
-  if (tipo === 'necesidad') return `Listo, avisamos a ${org}. Te comprometiste con ${que}.`;
-  return `Listo, le solicitaste ${que} a ${org}.`;
+  if (tipo === 'necesidad') return `Listo, te comprometiste con ${que} para ${org}`;
+  return `Listo, le solicitaste ${que} a ${org}`;
 }
 
 /** Lo que vale de verdad lo escrito en el campo: nunca más de lo que falta, nunca cero ni

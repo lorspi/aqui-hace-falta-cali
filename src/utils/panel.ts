@@ -11,7 +11,7 @@ import { DIAS_PARA_ARCHIVAR } from '../mocks/panelMock';
 const CLAVE = 'rd-modulos';
 
 /** Los módulos abiertos: lo guardado al publicar, o lo que diga la URL para verlo sin
- *  publicar (`?modulos=pide,ofrece` · `?modulos=ninguno`). */
+ *  publicar (`?modulos=pide,ofrece`, `?modulos=ninguno`). */
 export function leerModulos(search = '', guardado: string | null = null): ModulosCuenta {
   const forzado = new URLSearchParams(search).get('modulos');
   if (forzado !== null) return { pide: forzado.includes('pide'), ofrece: forzado.includes('ofrece') };
@@ -144,7 +144,7 @@ export function bloquesResumen(m: ModulosCuenta, d: { oferta: OfertaPublicada; s
     b.push({
       id: 'pide',
       titulo: 'Lo que pediste',
-      enlace: { texto: 'Ver mis necesidades', al: '#necesidades' },
+      enlace: { texto: 'Ver', al: '#necesidades' },
       kpis: kpisDe({ pide: true, ofrece: false }, d),
       barraTitulo: 'Entregas hacia ti',
       barra: tramosPorEstado(d.recibidas),
@@ -154,7 +154,7 @@ export function bloquesResumen(m: ModulosCuenta, d: { oferta: OfertaPublicada; s
     b.push({
       id: 'ofrece',
       titulo: 'Lo que ofreces',
-      enlace: { texto: 'Ver el seguimiento', al: '#seguimiento' },
+      enlace: { texto: 'Ver', al: '#seguimiento' },
       kpis: kpisDe({ pide: false, ofrece: true }, d),
       barraTitulo: 'Solicitudes recibidas',
       barra: tramosPorEstado(d.sol),
@@ -171,16 +171,16 @@ export function pendientesDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol
   if (m.pide) {
     /* Lo que nos llegó y falta confirmar va primero: es lo único que bloquea. */
     recibidasPorConfirmar(d.recibidas).forEach((r) =>
-      p.push({ id: `rec-${r.id}`, grupo: 'decision', icono: 'paquete', titulo: `Confirma lo que te llegó de ${r.org}`, detalle: `${r.cant} ${r.u} de ${r.rec.toLowerCase()} · entregado ${r.cuando}`, accion: { texto: 'Confirmar recibido', nivel: 'primario', al: `confirmar:${r.id}` }, bloquea: true }),
+      p.push({ id: `rec-${r.id}`, grupo: 'decision', icono: 'paquete', titulo: `Confirma lo que te llegó de ${r.org}`, detalle: `${r.cant} ${r.u} de ${r.rec.toLowerCase()}, entregado ${r.cuando}`, accion: { texto: 'Confirmar', nivel: 'primario', al: `confirmar:${r.id}` }, bloquea: true }),
     );
   }
   if (m.ofrece) {
-    d.sol.filter((s) => s.estado === 'nueva').forEach((s) => p.push({ id: `nueva-${s.id}`, grupo: 'decision', icono: 'nueva', titulo: `${s.quien} pide ${s.cant} ${s.u} de ${s.rec.toLowerCase()}`, detalle: `${s.cuando}${s.dist ? ` · a ${s.dist}` : ''}`, accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar:${s.id}` }, secundaria: { texto: 'No podemos', al: `rechazar:${s.id}` } }));
-    d.sol.filter((s) => s.estado === 'aceptada' && !s.vol).forEach((s) => p.push({ id: `sin-${s.id}`, grupo: 'operacion', icono: 'equipo', titulo: `${s.quien} · ${s.cant} ${s.u} de ${s.rec.toLowerCase()} sin quien lo lleve`, detalle: 'Aceptada, sin asignar', accion: { texto: 'Asignar', nivel: 'primario', al: `asignar:${s.id}` } }));
-    d.sol.filter((s) => s.estado === 'camino').forEach((s) => p.push({ id: `cam-${s.id}`, grupo: 'operacion', icono: 'camino', titulo: `${s.quien} · ${s.cant} ${s.u} de ${s.rec.toLowerCase()} en camino`, detalle: s.cuando, accion: { texto: 'Ver el seguimiento', nivel: 'secundario', al: '#seguimiento' } }));
+    d.sol.filter((s) => s.estado === 'nueva').forEach((s) => p.push({ id: `nueva-${s.id}`, grupo: 'decision', icono: 'nueva', titulo: `${s.quien} pide ${s.cant} ${s.u} de ${s.rec.toLowerCase()}`, detalle: `${s.cuando}${s.dist ? `, a ${s.dist}` : ''}`, accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar:${s.id}` }, secundaria: { texto: 'Rechazar', al: `rechazar:${s.id}` } }));
+    d.sol.filter((s) => s.estado === 'aceptada' && !s.vol).forEach((s) => p.push({ id: `sin-${s.id}`, grupo: 'operacion', icono: 'equipo', titulo: `${s.quien}, ${s.cant} ${s.u} de ${s.rec.toLowerCase()} sin quien lo lleve`, detalle: 'Aceptada, sin asignar', accion: { texto: 'Asignar', nivel: 'primario', al: `asignar:${s.id}` } }));
+    d.sol.filter((s) => s.estado === 'camino').forEach((s) => p.push({ id: `cam-${s.id}`, grupo: 'operacion', icono: 'camino', titulo: `${s.quien}, ${s.cant} ${s.u} de ${s.rec.toLowerCase()} en camino`, detalle: s.cuando, accion: { texto: 'Ver', nivel: 'secundario', al: '#seguimiento' } }));
     porConfirmar(d.sol).forEach((s) => p.push({ id: `conf-${s.id}`, grupo: 'operacion', icono: 'tiempo', titulo: `${s.quien} no ha confirmado la ${s.rec.toLowerCase()}`, detalle: `Entregada ${s.cuando}`, accion: { texto: 'Certificar', nivel: 'primario', al: `certificar:${s.id}` }, secundaria: { texto: 'Recordar', al: `recordar:${s.id}` } }));
     const ali = d.oferta.recursos.find((r) => r.n === 'Alimentos');
-    if (ali && /sep/.test(ali.disp)) p.push({ id: 'vence', grupo: 'operacion', icono: 'aviso', titulo: `Los alimentos dejan de estar disponibles el 20 sep`, detalle: `Quedan ${quedan(d.sol, ali)} ${ali.unidad}`, accion: { texto: 'Ampliar la fecha', nivel: 'secundario', al: '#ofertas' } });
+    if (ali && /sep/.test(ali.disp)) p.push({ id: 'vence', grupo: 'operacion', icono: 'aviso', titulo: `Los alimentos dejan de estar disponibles el 20 sep`, detalle: `Quedan ${quedan(d.sol, ali)} ${ali.unidad}`, accion: { texto: 'Ampliar', nivel: 'secundario', al: '#ofertas' } });
   }
   return p;
 }
@@ -196,7 +196,7 @@ export function textoCierre(s: Pick<Solicitud, 'quien' | 'cierre'>): string {
   const c = s.cierre ?? {};
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${s.quien}`;
   if (c.recibe) return `Confirmada por ${s.quien}`;
-  if (c.entrega) return `Certificada por ti · ${s.quien} aún no confirma`;
+  if (c.entrega) return `Certificada por ti. ${s.quien} aún no confirma`;
   return 'Confirmada';
 }
 
@@ -299,14 +299,14 @@ export function textoCierreRecibida(r: Pick<EntregaRecibida, 'org' | 'cierre'> &
   if (r.estado === 'distribuida') return 'Distribuida en la comunidad';
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${r.org}`;
   if (c.recibe) return 'Confirmada por ti';
-  if (c.entrega) return `Certificada por ${r.org} · falta tu confirmación`;
+  if (c.entrega) return `Certificada por ${r.org}. Falta tu confirmación`;
   return 'Confirmada';
 }
 
 /** El acta en texto plano, para copiar y pegar (WhatsApp, un informe). */
 export function textoActa(a: Acta): string {
   const lineas = [
-    `Acta de entrega ${a.codigo} · RaDAR de ayuda`,
+    `Acta de entrega ${a.codigo}, RaDAR de ayuda`,
     `Fecha: ${a.fechaTexto}`,
     `Entregó: ${a.entrego}`,
     `Recibió: ${a.recibio}`,

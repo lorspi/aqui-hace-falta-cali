@@ -281,7 +281,7 @@ export interface Pendiente {
   titulo: string;
   detalle: string;
   accion: { texto: string; nivel: 'primario' | 'secundario' | 'terciario'; al: string };
-  /** Una segunda salida, a la izquierda de la principal («No podemos», «Recordar»). */
+  /** Una segunda salida, a la izquierda de la principal («Rechazar», «Recordar»). */
   secundaria?: { texto: string; al: string };
   /** Bloquea pedir más ayuda hasta resolverse (confirmar lo recibido). */
   bloquea?: boolean;

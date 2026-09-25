@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Activity, Bug, Flame, Info, Mountain, TriangleAlert, Waves, Wind } from 'lucide-react';
+import { Divisor } from '../../components/ui/Divisor';
 import { Field } from '../../components/ui/Field';
+import { ROTULO_GRUPO } from '../../components/ui/tipografia';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
 import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
@@ -67,7 +69,7 @@ const Pedir: React.FC = () => {
   const errores = useErrores(sub.id);
 
   useEffect(() => {
-    document.title = 'RaDAR · Pedir ayuda';
+    document.title = 'Pedir ayuda, RaDAR de ayuda';
   }, []);
 
   const metas = calcularMetas(e.sel, e.grupo, e.dias);
@@ -150,7 +152,7 @@ const Pedir: React.FC = () => {
           if (!items.length) return null;
           return (
             <section key={cat.nombre} className="mb-6">
-              <h2 className="font-rd mb-3 flex items-center gap-2 text-rd-13 font-semibold tracking-wide text-rd-ink-meta uppercase">{cat.nombre}</h2>
+              <h2 className={`${ROTULO_GRUPO} flex items-center gap-2`}>{cat.nombre}</h2>
               {items.map((it) => {
                 const campo = DETALLE[it].campos.find((c) => c.k === 'num');
                 const v = e.det[it]?.num;
@@ -206,8 +208,8 @@ const Pedir: React.FC = () => {
             <FilaMeta key={m.item} m={m} e={e} onMeta={(n) => set((p) => ({ metas: { ...p.metas, [m.item]: n } }))} onDetalle={(cambio) => detalle(m.item, cambio)} errores={errores} />
           ))}
         </ResumenPub>
-        <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? ` · ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
@@ -391,7 +393,11 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
     linea =
       manual != null && manual !== m.meta ? (
         <>
-          <MarcaEditada /> · calculamos {cifra(m.meta)} {m.unidad} · {m.formula}
+          <MarcaEditada />
+          <Divisor />
+          calculamos {cifra(m.meta)} {m.unidad}
+          <Divisor />
+          {m.formula}
         </>
       ) : (
         m.formula
@@ -400,7 +406,7 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
   const id = `meta-${m.item}`;
   const otros = D?.campos.filter((c) => c.k !== 'num') ?? [];
   return (
-    <MetaPub item={m.item} valor={v != null && v !== 0 ? cifra(v) : ''} unidad={unidad(v ?? 0, u)} onChange={(t) => { onChange(t); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} linea={[linea, dt].filter(Boolean).length ? <>{linea}{linea && dt ? ' · ' : ''}{dt}</> : undefined}>
+    <MetaPub item={m.item} valor={v != null && v !== 0 ? cifra(v) : ''} unidad={unidad(v ?? 0, u)} onChange={(t) => { onChange(t); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} linea={[linea, dt].filter(Boolean).length ? <>{linea}{linea && dt ? <Divisor /> : null}{dt}</> : undefined}>
       {otros.length > 0 && (
         <>
           <p className="mb-2 text-rd-12-5 text-rd-ink-2">

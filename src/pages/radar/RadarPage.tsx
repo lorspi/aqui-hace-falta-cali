@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
+import { Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
@@ -12,9 +12,6 @@ import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
-import { Anillo } from '../../components/ui/Recursos';
-import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
-import { Donde } from '../../components/ui/Donde';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
@@ -23,14 +20,14 @@ import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publ
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
-import { DialogoCoincidencias, ResumenCoincidencias } from '../../components/ui/Coincidencias';
+import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
 import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
 import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
+import { distanciaKm, distanciaTexto } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
 /**
@@ -112,7 +109,7 @@ const Radar: React.FC = () => {
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = 'RaDAR · Radar';
+    document.title = 'Radar, RaDAR de ayuda';
     const mq = window.matchMedia('(max-width: 1023px)');
     const alCambiar = () => setMovil(mq.matches);
     mq.addEventListener('change', alCambiar);
@@ -217,7 +214,7 @@ const Radar: React.FC = () => {
   };
   const enviarReporte = () => {
     setReporte(null);
-    avisar('Reporte enviado. Lo revisa el equipo de moderación.', { tipo: 'ok' });
+    avisar('Reporte enviado. Lo revisa moderación', { tipo: 'ok' });
   };
   /* Las coincidencias de una publicación se abren en su diálogo; desde ahí, «Ver en el mapa»
      resalta ese pin y lo encuadra, y la primaria abre el compromiso con esa organización. */
@@ -307,9 +304,9 @@ const Radar: React.FC = () => {
           {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
               de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
               la píldora flotante de abajo. */}
-          <div role="group" aria-label="Vista" className="inline-flex rounded-full border border-rd-line bg-rd-sunken p-1 max-lg:hidden">
-            <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-            <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+          <div role="group" aria-label="Vista" className="inline-flex items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
+            <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
+            <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
           </div>
           <span aria-hidden="true" className="h-6 w-px flex-none bg-rd-line max-lg:hidden" />
           {/* Decisión 70: qué ves y cómo lo ves │ Filtros y chips │ el buscador a la derecha (146: lupa bajo 1024). */}
@@ -349,40 +346,26 @@ const Radar: React.FC = () => {
             ) : (
               /* La lista es la misma tarjeta del mapa y de la hoja del pin, no otra maquetación
                  (Alejandro, 22 de septiembre de 2026; es también lo que dice el prototipo): a lo
-                 ancho en una cuadrícula de 2 · 3 columnas, con las acciones pegadas abajo. Sin
+                 ancho en una cuadrícula de 2 o 3 columnas, con las acciones pegadas abajo. Sin
                  texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena. */
-              <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
-                {/* Cabecera de columnas, solo desde 1280 (rótulo suelto: cada fila es una tarjeta) */}
-                <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8">
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Publicación y organización</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Recursos</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Acciones</span>
-                </div>
+              /* Una tarjeta por fila, la misma del mapa y de la hoja del pin, con scroll
+                 (Alejandro y el CEO, 24 de septiembre de 2026). Antes desde 1280 cambiaba a
+                 `FilaPublicacion`, una maquetación en columnas que ya no existe: metía el
+                 contenido de una tarjeta en tres columnas con 220 px fijos para cuatro
+                 acciones, y ahí era donde «Ver detalle» se partía en dos renglones.
+                 `max-w-2xl` son las ~6 columnas que pidió Alejandro: un poco más ancha que
+                 junto al mapa, sin estirarse a lo ancho de una pantalla de 1440. */
+              <div className="mx-auto flex w-full max-w-2xl flex-col items-stretch gap-3">
                 {visibles.map((p: Publicacion) => (
-                  <React.Fragment key={p.id}>
-                    {/* hasta 1279: la tarjeta */}
-                    <Tarjeta
-                      publicacion={p}
-                      distanciaKm={distancias.get(p.id)}
-                      coincidencias={coincidencias.get(p.id)}
-                      enProceso={enProceso.includes(p.id)}
-                      onVerEnMapa={verEnMapa}
-                      {...accionesTarjeta}
-                      className="xl:hidden"
-                    />
-                    {/* desde 1280: la misma información en columnas */}
-                    <FilaPublicacion
-                      publicacion={p}
-                      distanciaKm={distancias.get(p.id)}
-                      coincidencias={coincidencias.get(p.id)}
-                      enProceso={enProceso.includes(p.id)}
-                      onVerDetalle={setDetalleId}
-                      onVerEnMapa={verEnMapa}
-                      onCompartir={compartir}
-                      onReportar={(id) => setReporte(id)}
-                      onVerCoincidencias={(id) => setVerCoincidencias(id)}
-                    />
-                  </React.Fragment>
+                  <Tarjeta
+                    key={p.id}
+                    publicacion={p}
+                    distanciaKm={distancias.get(p.id)}
+                    coincidencias={coincidencias.get(p.id)}
+                    enProceso={enProceso.includes(p.id)}
+                    onVerEnMapa={verEnMapa}
+                    {...accionesTarjeta}
+                  />
                 ))}
               </div>
             )}
@@ -400,7 +383,7 @@ const Radar: React.FC = () => {
               resaltadas={resaltadas}
               className="relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1"
             />
-            {/* Lista: al lado del mapa (5 · 4 columnas) */}
+            {/* Lista: al lado del mapa (5 y 4 columnas) */}
             <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
               <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col gap-3">
@@ -439,7 +422,7 @@ const Radar: React.FC = () => {
           <div
             role="group"
             aria-label="Vista"
-            className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-sunken/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
+            className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
           >
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
@@ -487,20 +470,26 @@ const Radar: React.FC = () => {
 };
 
 /**
- * La zona de chips de la consulta (`rd-consulta__chips`): una sola fila que se desplaza, con
- * el borde derecho desvanecido. Bajo 1024, si hay chips fuera de la vista aparece el › (44),
- * que vive fuera del contenedor de scroll y desplaza hasta el final; al llegar, se oculta.
+ * Un lado del conmutador Mapa | Lista. Mismo patrón que `Segmented`: pista con marco y la
+ * opción activa en píldora llena de tinta (bg-rd-sel), con el icono heredando el blanco. El
+ * anillo de foco va en blanco sobre la activa: el rd-navy sobre tinta no se vería.
+ * `compacto` es el de la barra de consulta (desde 1024): repite la cuenta del `Segmented` para
+ * que la pista dé 40 al lado de Filtros y del buscador. Sin él es el de la píldora flotante de
+ * bajo 1024, que no comparte fila con nadie y se queda en 44 con el dedo: es como se cambia de
+ * vista en el teléfono y encogerlo ahí sería peor.
  */
-const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: string; icono: React.ReactNode }> = ({ actual, onClick, etiqueta, icono }) => (
+const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: string; icono: React.ReactNode; compacto?: boolean }> = ({ actual, onClick, etiqueta, icono, compacto = false }) => (
   <button
     type="button"
     aria-pressed={actual}
     aria-label={etiqueta}
     onClick={onClick}
-    className={`inline-flex h-rd-h-sm w-11 cursor-pointer items-center justify-center rounded-full transition-all duration-150 active:scale-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${
+    className={`inline-flex w-11 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 active:translate-y-px ${
+      compacto ? 'h-7.5 pointer-coarse:h-8.5' : 'h-9 pointer-coarse:h-rd-tactil'
+    } ${
       actual
-        ? 'bg-rd-surface text-rd-navy font-semibold shadow-xs ring-1 ring-rd-ink/8'
-        : 'text-rd-ink-2 hover:text-rd-ink'
+        ? 'bg-rd-sel font-semibold text-white focus-visible:outline-white'
+        : 'text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-rd-navy'
     }`}
   >
     {icono}
@@ -509,125 +498,6 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
 
 /* ---------- la fila de la vista lista de la Radar ---------- */
 
-/** Una publicación en la vista de lista **desde 1280**: una tarjeta horizontal independiente que
- *  reparte en columnas lo mismo que la tarjeta vertical de bajo 1280, igual que la fila del
- *  Directorio (Alejandro, 22 de septiembre de 2026). Lo que no cabe en una fila —las fotos y el
- *  detalle de cada recurso— lo abre «Ver detalle» en su diálogo. Bajo 1280 esta fila no existe:
- *  manda la tarjeta. */
-const FilaPublicacion: React.FC<{
-  publicacion: Publicacion;
-  distanciaKm?: number;
-  coincidencias?: CoincidenciaPublicacion[];
-  enProceso?: boolean;
-  onVerDetalle: (id: string) => void;
-  onVerEnMapa: (id: string) => void;
-  onCompartir: (id: string) => void;
-  onReportar: (id: string) => void;
-  onVerCoincidencias?: (id: string) => void;
-}> = ({
-  publicacion: p,
-  distanciaKm: dist,
-  coincidencias,
-  enProceso,
-  onVerDetalle,
-  onVerEnMapa,
-  onCompartir,
-  onReportar,
-  onVerCoincidencias,
-}) => {
-  const est = estadoPublicacion(p);
-  const menu = [
-    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
-    { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
-    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
-  ];
-
-  return (
-    <article
-      id={p.id}
-      className="hidden min-w-0 rounded-rd-xl border border-rd-line bg-rd-surface px-5 py-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8"
-    >
-      {/* 1. Publicación, tipo y ubicación */}
-      <div className="flex min-w-0 items-start gap-3.5">
-        <Avatar iniciales={iniciales(p.org)} tamano="md" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <EtiquetaTipo tipo={p.tipo} />
-            <EtiquetaEstado estado={est} />
-            {enProceso && (
-              <span className="rounded-rd-sm bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber">
-                En proceso
-              </span>
-            )}
-          </div>
-          <div className="flex min-w-0 items-center gap-1.5">
-            <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
-              {tituloPublicacion(p)}
-            </h2>
-            {p.verificada && (
-              <BadgeCheck
-                role="img"
-                aria-label="Verificada"
-                className="h-4 w-4 shrink-0 text-rd-navy"
-              />
-            )}
-          </div>
-          {p.org && p.org !== actorPublicacion(p) && (
-            <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
-          )}
-          <Donde
-            lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`}
-            distancia={dist !== undefined ? distanciaTexto(dist) : undefined}
-            className="mt-0.5"
-          />
-          {p.descripcion && (
-            <p className="m-0 mt-1 text-rd-12 text-rd-ink-2 line-clamp-2 leading-relaxed">
-              {p.descripcion}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Recursos ofrecidos o solicitados con sus anillos */}
-      <div className="flex min-w-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          {p.recursos.map((r) => {
-            const completo = restante(r) === 0;
-            return (
-              <span key={r.item} className="flex items-center gap-2.5">
-                <Anillo recurso={r} />
-                <span className="flex min-w-0 flex-col leading-tight">
-                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
-                  <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>
-                    {estadoRecurso(r, p.tipo)}
-                  </span>
-                </span>
-              </span>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
-       *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
-      {/* 3. Acciones: el CTA de matches va agrupado directamente arriba del trío de acciones
-       *  (Ver detalle, el mapa como icono y ⋮) formando un solo bloque visual alineado a la
-       *  derecha y centrado verticalmente en la fila. */}
-      <div className="flex min-w-0 flex-col items-end justify-center gap-2">
-        <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
-        <div className="flex items-center gap-1">
-          <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVerDetalle(p.id)}>
-            Ver detalle
-          </Button>
-          <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
-            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
-          </Button>
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
-        </div>
-      </div>
-    </article>
-  );
-};
 
 /**
  * Diálogo que muestra la tarjeta completa de una publicación al hacer clic en «Ver detalle»

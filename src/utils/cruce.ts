@@ -112,7 +112,7 @@ export function resolverAlcance(pub: Publicacion, otro: Publicacion, km: number,
 export function etiquetaAlcance(alcance: AlcanceCoincidencia, km: number): string {
   if (alcance === 'remoto') return 'Asistencia virtual';
   if (alcance === 'local') return km < 1 ? 'a menos de 1 km' : `a ${Math.round(km * 10) / 10} km`;
-  if (alcance === 'regional') return `Regional · a ${Math.round(km)} km`;
+  if (alcance === 'regional') return `Regional, a ${Math.round(km)} km`;
   return `Envío nacional (${Math.round(km)} km)`;
 }
 

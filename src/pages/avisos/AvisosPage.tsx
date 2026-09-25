@@ -16,7 +16,7 @@ import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 /**
  * Los Avisos (mockup/*): la página de `avisos.html` del prototipo. La misma lista de la
  * campana (`ListaAvisos`, agrupada por día), aquí completa y con el detalle: Todos · Sin leer,
- * «Marcar todos como leídos» y la acción que cada aviso pide. Es la pestaña Avisos de la
+ * «Marcar leídos» y la acción que cada aviso pide. Es la pestaña Avisos de la
  * barra bajo 1024; desde 1024 la campana de la cabecera lleva aquí con «Ver todos».
  */
 type Filtro = 'todos' | 'nuevos';
@@ -38,7 +38,7 @@ const Avisos: React.FC = () => {
   const [cajon, setCajon] = useState(false);
 
   useEffect(() => {
-    document.title = 'RaDAR · Avisos';
+    document.title = 'Avisos, RaDAR de ayuda';
   }, []);
 
   const sinLeer = avisos.filter((a) => !a.leido).length;
@@ -46,7 +46,7 @@ const Avisos: React.FC = () => {
 
   const leerTodos = () => {
     setAvisos((l) => l.map((a) => ({ ...a, leido: true })));
-    avisar('Todos los avisos quedaron leídos', { tipo: 'ok' });
+    avisar('Todos leídos', { tipo: 'ok' });
   };
   const accionDeAviso = (a: Aviso) => {
     setAvisos((l) => l.map((x) => (x.id === a.id ? { ...x, leido: true } : x)));
@@ -74,7 +74,7 @@ const Avisos: React.FC = () => {
           </span>
         </header>
 
-        {/* ---- consulta: Todos · Sin leer, y marcar todos ---- */}
+        {/* ---- consulta: Todos y Sin leer, y marcar todos ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
           <Segmented<Filtro>
             etiquetaGrupo="Qué avisos ver"
@@ -86,11 +86,11 @@ const Avisos: React.FC = () => {
             ]}
           />
           <Button nivel="terciario" tamano="md" className="ml-auto" onClick={leerTodos} disabled={sinLeer === 0}>
-            Marcar todos como leídos
+            Marcar leídos
           </Button>
         </div>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-rd-fondo px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
           <section className="mx-auto max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-1.5 sm:py-2 sm:px-2">
             {lista.length === 0 ? <Vacio icono={<Bell className="h-6.5 w-6.5" />} titulo={filtro === 'nuevos' ? 'Nada sin leer' : 'Nada nuevo'} texto="Cuando pase algo con lo tuyo, aparece aquí." /> : <ListaAvisos avisos={lista} onAccion={accionDeAviso} />}
           </section>

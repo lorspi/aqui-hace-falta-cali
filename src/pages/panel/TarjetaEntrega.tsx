@@ -125,7 +125,7 @@ export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({
         </span>
         {lleva && (
           <span className="flex min-w-0 items-center gap-1.5 text-rd-12 text-rd-ink-2">
-            <Avatar iniciales={iniciales(lleva.split(' · ')[0])} tamano="xs" />
+            <Avatar iniciales={iniciales(lleva.split(', ')[0])} tamano="xs" />
             <span className="truncate">{lleva}</span>
           </span>
         )}
@@ -133,10 +133,11 @@ export const TarjetaEntrega: React.FC<TarjetaEntregaProps> = ({
       {detalle && <span className="mt-2 text-rd-12-5 text-rd-ink-2">{detalle}</span>}
       {cierre}
       {fotos}
+      {/* Tarjeta: acciones a la izquierda por jerarquía, ⋮ al extremo derecho. */}
       {(acciones || menu) && (
         <div className="mt-2.5 flex items-center gap-1.5 border-t border-rd-line-soft pt-2">
           {acciones}
-          {menu && <span className="ml-auto">{menu}</span>}
+          {menu && <span className="ml-auto flex">{menu}</span>}
         </div>
       )}
     </article>
@@ -161,7 +162,7 @@ export interface AccionesSolicitud {
 
 export function quienLleva(s: Solicitud, eq: MiembroEquipo[] = EQUIPO): string | null {
   const v = s.vol ? eq.find((x) => x.id === s.vol) : null;
-  return v ? `${v.n} · ${v.veh}` : null;
+  return v ? `${v.n}, ${v.veh}` : null;
 }
 
 /** Los botones del paso: el siguiente paso es el único primario, a lo sumo un secundario. */
@@ -171,11 +172,15 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
     case 'nueva':
       return (
         <>
-          <Button nivel="primario" tamano="sm" onClick={() => a.onAceptar(s.id)}>
+          <Button nivel="primario" tamano="md" onClick={() => a.onAceptar(s.id)}>
             Aceptar
           </Button>
-          <Button nivel="secundario" tamano="sm" onClick={() => a.onRechazar(s.id)}>
-            No podemos
+          {/* «Rechazar» y no «No podemos» (Alejandro, 24 de septiembre de 2026). El manual
+              de estilo protegía esa frase como una de sus dos excepciones al infinitivo, por
+              hablar en primera persona; él la retiró para que no queden excepciones. Lo mismo
+              del otro lado del tablero, donde decía «No gracias». El manual hay que corregirlo. */}
+          <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => a.onRechazar(s.id)}>
+            Rechazar
           </Button>
         </>
       );
@@ -183,41 +188,41 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
       return (
         <>
           {!v && (
-            <Button nivel="primario" tamano="sm" onClick={() => a.onAsignar(s)}>
+            <Button nivel="primario" tamano="md" onClick={() => a.onAsignar(s)}>
               Asignar
             </Button>
           )}
           <Button
             nivel={v ? 'primario' : 'secundario'}
-            tamano="sm"
+            tamano="md"
             disabled={!v}
             title={v ? undefined : 'Asigna primero a alguien'}
             onClick={() => (a.onEnCamino ? a.onEnCamino(s) : a.onMover(s.id, 'camino'))}
           >
-            Marcar en camino
+            Despachar
           </Button>
         </>
       );
     case 'camino':
       return (
-        <Button nivel="primario" tamano="sm" onClick={() => a.onMover(s.id, 'entregada')}>
-          Marcar entregada
+        <Button nivel="primario" tamano="md" onClick={() => a.onMover(s.id, 'entregada')}>
+          Entregar
         </Button>
       );
     case 'entregada':
       return (
         <>
-          <Button nivel="primario" tamano="sm" onClick={() => a.onCertificar(s)}>
-            Certificar entrega
+          <Button nivel="primario" tamano="md" onClick={() => a.onCertificar(s)}>
+            Certificar
           </Button>
-          <Button nivel="secundario" tamano="sm" onClick={() => a.onRecordar(s.id)}>
+          <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => a.onRecordar(s.id)}>
             Recordar
           </Button>
         </>
       );
     case 'confirmada':
       return (
-        <Button nivel="secundario" tamano="sm" onClick={() => a.onArchivar(s.id)}>
+        <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => a.onArchivar(s.id)}>
           Archivar
         </Button>
       );
@@ -241,7 +246,7 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
 
   if (a.onVerPublicacion) {
     items.push({
-      texto: 'Ver publicación completa',
+      texto: 'Ver',
       icono: <Eye className="h-4 w-4" />,
       onElegir: () => a.onVerPublicacion!(s),
     });
@@ -277,14 +282,14 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
   if (s.estado === 'confirmada') {
     if (!s.cierre?.recibe) {
       items.push({
-        texto: 'Recordar confirmación a la entidad',
+        texto: 'Recordar',
         icono: <Clock className="h-4 w-4" />,
         onElegir: () => a.onRecordar(s.id),
       });
     }
     if (!s.cierre?.entrega) {
       items.push({
-        texto: 'Adjuntar soporte / certificación',
+        texto: 'Adjuntar',
         icono: <Check className="h-4 w-4" />,
         onElegir: () => a.onCertificar(s),
       });
@@ -300,7 +305,7 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
       });
     }
     items.push({
-      texto: 'Cancelar el compromiso',
+      texto: 'Cancelar',
       icono: <X aria-hidden="true" className="h-4.5 w-4.5" />,
       tono: 'peligro',
       onElegir: () => a.onCancelar(s),
@@ -311,10 +316,11 @@ export function menuDe(s: Solicitud, a: AccionesSolicitud, flotante = false): Re
 
   return (
     <MenuAcciones
-      tamano="sm"
+      tamano="md"
       flotante={flotante}
       etiqueta={`Opciones sobre la entrega a ${s.quien}`}
       items={items}
+      className="shadow-2xs"
     />
   );
 }
@@ -331,7 +337,7 @@ export function menuDeRecibida(
 
   if (onVerPublicacion) {
     items.push({
-      texto: 'Ver publicación completa',
+      texto: 'Ver',
       icono: <Eye className="h-4 w-4" />,
       onElegir: () => onVerPublicacion(r),
     });
@@ -358,7 +364,7 @@ export function menuDeRecibida(
 
   if (r.estado === 'aceptada' && onCancelar) {
     items.push({
-      texto: 'Cancelar compromiso de ayuda',
+      texto: 'Cancelar',
       icono: <X aria-hidden="true" className="h-4.5 w-4.5" />,
       tono: 'peligro',
       onElegir: () => onCancelar(r),
@@ -369,10 +375,11 @@ export function menuDeRecibida(
 
   return (
     <MenuAcciones
-      tamano="sm"
+      tamano="md"
       flotante={flotante}
       etiqueta={`Contacto con ${r.org}`}
       items={items}
+      className="shadow-2xs"
     />
   );
 }
@@ -380,7 +387,7 @@ export function menuDeRecibida(
 /** El cierre de una entrega confirmada o archivada: quién confirmó, y las fotos como galería. */
 export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => void): { cierre: React.ReactNode; fotos: React.ReactNode } {
   const f = fotosDeEntrega(s.id);
-  const fotosNodo = cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(s, i)} className="mt-2" /> : null;
+  const fotosNodo = cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="md" onAbrir={(i) => onVerFotos(s, i)} className="mt-2" /> : null;
   if (s.estado !== 'confirmada' && s.estado !== 'archivada') return { cierre: null, fotos: fotosNodo };
   return {
     cierre: (
@@ -441,13 +448,13 @@ export const TarjetaRecibida: React.FC<{
       return (
         <>
           {onAceptar && (
-            <Button nivel="primario" tamano="sm" onClick={() => onAceptar(r.id)}>
-              Aceptar ayuda
+            <Button nivel="primario" tamano="md" onClick={() => onAceptar(r.id)}>
+              Aceptar
             </Button>
           )}
           {onRechazar && (
-            <Button nivel="secundario" tamano="sm" onClick={() => onRechazar(r.id)}>
-              No gracias
+            <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onRechazar(r.id)}>
+              Rechazar
             </Button>
           )}
         </>
@@ -455,8 +462,8 @@ export const TarjetaRecibida: React.FC<{
     }
     if (r.estado === 'entregada') {
       return (
-        <Button nivel="primario" tamano="sm" onClick={() => onConfirmar(r.id)}>
-          Confirmar recibido
+        <Button nivel="primario" tamano="md" onClick={() => onConfirmar(r.id)}>
+          Confirmar
         </Button>
       );
     }
@@ -464,8 +471,8 @@ export const TarjetaRecibida: React.FC<{
       return (
         <>
           {onDistribuir && (
-            <Button nivel="primario" tamano="sm" onClick={() => onDistribuir(r)}>
-              Registrar distribución
+            <Button nivel="primario" tamano="md" onClick={() => onDistribuir(r)}>
+              Registrar
             </Button>
           )}
         </>
@@ -475,7 +482,7 @@ export const TarjetaRecibida: React.FC<{
       return (
         <>
           {onArchivar && (
-            <Button nivel="secundario" tamano="sm" onClick={() => onArchivar(r.id)}>
+            <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onArchivar(r.id)}>
               Archivar
             </Button>
           )}
@@ -567,7 +574,7 @@ export const TarjetaRecibida: React.FC<{
       detalle={r.detalle}
       estado={badgeEstado}
       cierre={cierre}
-      fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="sm" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
+      fotos={cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="md" onAbrir={(i) => onVerFotos(r, i)} className="mt-2" /> : null}
       acciones={acciones}
       menu={menuDeRecibida(r, menuFlotante, onVerPublicacion, onCancelar)}
       atenuada={r.estado === 'archivada'}

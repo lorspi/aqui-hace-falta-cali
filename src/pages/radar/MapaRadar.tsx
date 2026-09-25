@@ -3,9 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Supercluster, { type PointFeature } from 'supercluster';
-import { Check, Hand, HeartHandshake } from 'lucide-react';
+import { BadgeCheck, Check, Hand, HeartHandshake, MapPin } from 'lucide-react';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
-import { resumen, tituloPublicacion } from '../../utils/publicaciones';
+import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, recursosPublicacion, resumen, tituloPublicacion } from '../../utils/publicaciones';
+import { EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 
 /**
  * El mapa de la Radar con los pines del prototipo (`mapa.js`): el núcleo dice el tipo (coral
@@ -14,7 +15,9 @@ import { resumen, tituloPublicacion } from '../../utils/publicaciones';
  * Cada pin es `role="img"` con el nombre completo. Tocar un pin selecciona su tarjeta, y al
  * revés; el seleccionado lleva un halo suave de su color (11 de septiembre). Al alejarse los
  * pines se agrupan (Supercluster, el mismo índice que usa `MapView`): un anillo partido por
- * color con el conteo; al pasar, cuántos de cada tipo; al tocarlo, acerca.
+ * color con el conteo, y al tocarlo acerca. El globo al pasar es solo de los pines sueltos
+ * (Alejandro, 24 de septiembre de 2026): un grupo no tiene una tarjeta que resumir, y el
+ * conteo ya se lee en el anillo. Lo que el grupo esconde sigue en su nombre accesible.
  *
  * Los marcadores persisten entre selecciones: cambiar el seleccionado o los resaltados solo
  * alterna clases en los pines que ya están, así el estado transiciona en vez de parpadear.
@@ -79,6 +82,45 @@ function pinHTML(p: Publicacion): string {
   );
 }
 
+/**
+ * El globo que se abre al pasar por encima de un pin: la tarjeta resumida a lo que decide si
+ * vale la pena abrirla. Qué es (necesidad u oferta) y cómo va, qué recurso, quién lo pide o lo
+ * da y si está verificado, y dónde queda con la distancia desde donde está quien mira. Lo
+ * demás —descripción, fotos, el detalle recurso por recurso y las acciones— se queda en la
+ * tarjeta y en el diálogo: un globo que hay que leer no sirve para barrer un mapa.
+ * Reutiliza `EtiquetaTipo` y `EtiquetaEstado` tal cual, así el globo no se desalinea de la
+ * tarjeta cuando alguna de las dos cambie.
+ * Solo se cuelga donde hay hover (ver `pintar`): en el teléfono el pin abre la hoja, que ya
+ * trae la tarjeta entera.
+ */
+function tipHTML(p: Publicacion, km: number | null): string {
+  const zona = p.zona || p.localidad || '';
+  const dist = distanciaTexto(km);
+  return renderToStaticMarkup(
+    <div className="font-rd flex w-55 flex-col gap-2 p-0.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <EtiquetaTipo tipo={p.tipo} />
+        <EtiquetaEstado estado={estadoPublicacion(p)} />
+      </div>
+      <div>
+        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recursosPublicacion(p)}</p>
+        <p className="m-0 mt-1 flex items-center gap-1 text-rd-12 font-medium text-rd-ink-2">
+          <span className="truncate">{actorPublicacion(p)}</span>
+          {p.verificada && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
+        </p>
+      </div>
+      {(zona || dist) && (
+        <p className="m-0 flex items-center gap-1 text-rd-11-5 text-rd-ink-meta">
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{zona}</span>
+          {zona && dist && <span aria-hidden="true" className="h-0.5 w-0.5 shrink-0 rounded-full bg-rd-ink-3" />}
+          {dist && <span className="shrink-0">{dist}</span>}
+        </p>
+      )}
+    </div>,
+  );
+}
+
 /** Cuántas de cada tipo hay en un grupo, dicho como frase: «3 necesidades, 1 oferta». */
 function textoGrupo(n: number, o: number): string {
   return [n ? `${n} ${n === 1 ? 'necesidad' : 'necesidades'}` : '', o ? `${o} ${o === 1 ? 'oferta' : 'ofertas'}` : ''].filter(Boolean).join(', ');
@@ -100,6 +142,12 @@ function grupoHTML(n: number, o: number): string {
 
 function esMovil(): boolean {
   return window.matchMedia('(max-width: 1023px)').matches;
+}
+
+/** Si el puntero puede posarse. Con dedo no hay «pasar por encima»: el toque abre la hoja del
+ *  pin, y un globo colgado ahí se abriría encima de ella al tocar. */
+function hayHover(): boolean {
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
 
 export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, encuadrarTodo, className = '' }) => {
@@ -158,13 +206,13 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     grupos.current = [];
     const b = m.getBounds();
     const zoom = Math.round(m.getZoom());
+    const conHover = hayHover();
     indiceRef.current.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], zoom).forEach((f) => {
       const [lng, lat] = f.geometry.coordinates;
       if ('cluster' in f.properties && f.properties.cluster) {
         const { n, o } = f.properties;
         const idGrupo = f.properties.cluster_id;
         const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
-        grupo.bindTooltip(textoGrupo(n, o), { direction: 'top', offset: [0, -22], className: 'rd-tip-mapa' });
         grupo.on('click', () => m.flyTo([lat, lng], Math.min(indiceRef.current.getClusterExpansionZoom(idGrupo), 18), { duration: 0.4 }));
         grupo.addTo(c);
         grupos.current.push({ marker: grupo, ids: indiceRef.current.getLeaves(idGrupo, Infinity).map((h) => h.properties.p.id) });
@@ -172,6 +220,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       }
       const p = (f.properties as { p: Publicacion }).p;
       const marker = L.marker([lat, lng], { icon: L.divIcon({ html: pinHTML(p), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }), keyboard: true, title: nombrePunto(p) });
+      /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
+         resto y para los lectores de pantalla, que leen el `aria-label` del pin. */
+      if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p)), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
       marker.on('click', () => alSeleccionar.current(p.id));
       marker.addTo(c);
       pines.current.set(p.id, marker);

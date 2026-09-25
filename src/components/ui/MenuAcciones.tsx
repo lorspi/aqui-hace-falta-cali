@@ -33,7 +33,11 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
   etiqueta = 'Más acciones',
   tamano = 'md',
   flotante = false,
-  nivel = 'terciario',
+  /* `secundario` y no `terciario`: el ⋮ vive al lado de botones de segunda jerarquía («Ver»,
+     «Rechazar») y tiene que verse igual que ellos, con su marco. En `terciario` el borde es
+     transparente y el botón quedaba flotando, solo con la sombra (Alejandro, 25 de septiembre
+     de 2026). */
+  nivel = 'secundario',
   className = '',
 }) => {
   const [abierto, setAbierto] = useState(false);
@@ -109,7 +113,10 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
   );
 
   return (
-    <span ref={raiz} className="relative">
+    /* `inline-flex` y no un span suelto: siendo inline, el botón se apoyaba en la línea base y
+       el interlineado lo bajaba unos píxeles respecto a los botones de al lado (Alejandro, 25
+       de septiembre de 2026). */
+    <span ref={raiz} className="relative inline-flex">
       <Button
         ref={dots}
         nivel={nivel}

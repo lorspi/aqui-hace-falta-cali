@@ -120,6 +120,20 @@
         100% 50%;
     }
   }
+  /* La enhorabuena al publicar: entra subiendo un poco mientras la tarjeta encoge al alto del
+     contenido (`MarcoFlujo` anima el alto). Corta y sin rebote: acompaña al encogimiento, no
+     compite con la explosión. */
+  --animate-rd-enhorabuena: rd-enhorabuena 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes rd-enhorabuena {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
   /* La explosión de la primera publicación: sube, gira y se desvanece. Cada pedazo pone su
      desvío, su altura y su giro (`Explosion.tsx`). */
   --animate-rd-explosion: rd-explosion 1.8s cubic-bezier(0.1, 0.62, 0.28, 1) both;
@@ -147,6 +161,19 @@
     }
     to {
       transform: translateX(120%);
+    }
+  }
+  /* El destello de la pastilla destacada (solo la pantalla de éxito al publicar): el mismo
+     barrido, pero esperando fuera de cuadro más de la mitad del ciclo. Un brillo continuo
+     cansa; uno que pasa cada tres segundos y pico se nota sin pedir nada. */
+  --animate-rd-destello: rd-destello 3.6s ease-out 0.5s infinite;
+  @keyframes rd-destello {
+    0%,
+    55% {
+      transform: translateX(-140%);
+    }
+    100% {
+      transform: translateX(140%);
     }
   }
   @keyframes rd-barrido {
@@ -528,20 +555,21 @@ header {
 .rd-mapa .rd-grupo:hover {
   transform: scale(1.06);
 }
-/* La etiqueta al pasar por un grupo: en tinta, en la tipografía de Producto. */
-.rd-mapa .rd-tip-mapa {
-  font-family: var(--font-rd);
-  font-size: var(--text-rd-12-5);
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-rd-surface);
-  background: var(--color-rd-ink);
-  border: 0;
-  border-radius: var(--radius-rd-sm);
+/* El globo del pin, el único que queda en el mapa: es la tarjeta resumida, así que va como una
+   tarjeta (superficie, marco y sombra). No recibe el puntero: si lo recibiera, aparecer bajo el
+   cursor dispararía el mouseout del pin y el globo parpadearía. */
+.rd-mapa .rd-tip-pin {
+  padding: 8px 10px;
+  white-space: normal;
+  color: var(--color-rd-ink);
+  background: var(--color-rd-surface);
+  border: 1px solid var(--color-rd-line);
+  border-radius: var(--radius-rd-lg);
   box-shadow: var(--shadow-rd-2);
+  pointer-events: none;
 }
-.rd-mapa .rd-tip-mapa::before {
-  border-top-color: var(--color-rd-ink);
+.rd-mapa .rd-tip-pin::before {
+  border-top-color: var(--color-rd-line);
 }
 
 /* Los acordeones de Producto (`details`) dibujan su propia flecha: el marcador nativo no se

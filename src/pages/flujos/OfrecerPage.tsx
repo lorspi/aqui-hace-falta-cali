@@ -109,7 +109,7 @@ const Ofrecer: React.FC = () => {
   const errores = useErrores(sub.id);
 
   useEffect(() => {
-    document.title = 'RaDAR · Ofrecer ayuda';
+    document.title = 'Ofrecer ayuda, RaDAR de ayuda';
   }, []);
 
   const toggle = (it: string) =>
@@ -140,7 +140,7 @@ const Ofrecer: React.FC = () => {
     pantalla = (
       <>
         <Pregunta titulo="¿Qué puedes ofrecer?" sub="Lo que registraste va primero, con su cantidad. Marca solo lo que tengas disponible hoy." />
-        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3" />}
+        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? `, ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3" />}
         {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo="Todavía no tienen recursos registrados" texto="Marca aquí lo que tengan hoy. Lo que publiques queda registrado para la próxima." className="mb-3" />}
         <ListaRecursos
           q={e.q}
@@ -235,13 +235,13 @@ const Ofrecer: React.FC = () => {
             const dt = camposTexto(camposOferta(it), d);
             const conTiempo = camposOferta(it).some((c) => c.k === 'tiempo');
             const disp = d.disp === 'Hasta una fecha' ? `Hasta el ${fechaCorta(String(d.fecha ?? ''))}` : String(d.disp ?? (conTiempo ? '' : 'Hasta agotar'));
-            const linea = [dt, disp].filter(Boolean).join(' · ');
+            const linea = [dt, disp].filter(Boolean).join(', ');
             return <MetaPub key={it} item={it} valor={e.cant[it] ? cifra(e.cant[it]) : ''} unidad={unidadOferta(it)} onChange={(t) => cantidad(it, numero(t) || 0)} linea={linea || undefined} />;
           })}
         </ResumenPub>
         <FilaRevisar clave="Entrega" valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
         {e.entrega !== 'remoto' && <FilaRevisar clave="Dónde" valor={e.dir} onClick={() => f.irA('donde')} />}
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );

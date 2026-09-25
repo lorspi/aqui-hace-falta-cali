@@ -3,7 +3,8 @@ import { BadgeCheck, Flag, Map as MapIcon, Share2 } from 'lucide-react';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { ResumenCoincidencias } from './Coincidencias';
 import type { Publicacion } from '../../types/publicacion';
-import { distanciaTexto, estadoPublicacion, iniciales, tituloPublicacion } from '../../utils/publicaciones';
+import { actorPublicacion, distanciaTexto, estadoPublicacion, iniciales } from '../../utils/publicaciones';
+import { TituloPublicacion } from './TituloPublicacion';
 import { Button } from './Button';
 import { MenuAcciones } from './MenuAcciones';
 import { TiraFotos, VisorFotos } from './VisorFotos';
@@ -32,8 +33,7 @@ export interface TarjetaProps {
   onReportar?: (id: string) => void;
   /** La persona ya se comprometió o solicitó en esta sesión: pasa a «En proceso». */
   enProceso?: boolean;
-  /** Para que quien la use la esconda en un ancho (la lista la oculta desde 1280, donde manda
-   *  la fila con columnas). */
+  /** Para que quien la use la esconda en un ancho. */
   className?: string;
 }
 
@@ -64,8 +64,11 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       </div>
 
       <div className="mb-3 max-sm:mb-2">
+        {/* El actor solo va en el título cuando no es la organización que se lee justo debajo
+            (un punto territorial, una familia): si es la misma, repetirla era decir dos veces
+            lo mismo a dos líneas de distancia. */}
         <h3 className="font-rd m-0 text-rd-15 font-semibold leading-snug text-rd-ink">
-          {tituloPublicacion(p)}
+          <TituloPublicacion publicacion={p} actor={actorPublicacion(p) !== p.org} />
         </h3>
         {p.org && (
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -108,7 +111,10 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         >
           {esOferta ? 'Solicitar' : 'Ayudar'}
         </Button>
-        {/* El botón de mapa es consistente con Directorio y FilaPublicacion: secundario con sombra sutil */}
+        {/* Pie de tarjeta: las acciones a la izquierda, de mayor a menor jerarquía, y el ⋮
+            al extremo derecho (Alejandro, 24 de septiembre de 2026). Pegarlos es el patrón de
+            la fila de tabla, no el de la tarjeta. El mapa va como en el Directorio:
+            secundario con sombra sutil. */}
         {!enHoja && (
           <Button
             nivel="secundario"
@@ -124,15 +130,17 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         )}
-        <span className="ml-auto flex gap-1">
+        {/* El `ml-auto` va aquí y no en `className`: `MenuAcciones` se lo pasa al botón de
+            dentro, y quien tiene que empujarse en el flex es el contenedor. */}
+        <span className="ml-auto flex">
           <MenuAcciones
+            className="shadow-2xs"
             items={[
               { texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir?.(p.id) },
               { texto: 'Reportar', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) },
             ]}
             tamano="md"
             nivel="secundario"
-            className="shadow-2xs"
             flotante
           />
         </span>

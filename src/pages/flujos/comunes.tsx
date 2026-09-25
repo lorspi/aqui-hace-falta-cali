@@ -1,8 +1,9 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Check, ChevronDown, ChevronLeft, CircleAlert, House, Info, Map as MapIcon, Monitor, Package, Radar, Search, Share2, X } from 'lucide-react';
 import { FilaSugerencias, ListaCoincidencias } from '../../components/ui/Coincidencias';
+import { CampoBuscarEnBloque } from '../../components/ui/Consulta';
 import { Explosion } from '../../components/ui/Explosion';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso } from '../../utils/compromiso';
@@ -108,6 +109,43 @@ export interface MarcoFlujoProps {
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
 export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, children }) => {
   const cuerpo = useRef<HTMLDivElement>(null);
+  const tarjeta = useRef<HTMLElement>(null);
+  /* El alto que tenía la tarjeta en el último paso del formulario, para animar desde ahí. */
+  const altoFormulario = useRef<number | null>(null);
+
+  /* El alto de partida se mide al cambiar de paso, no solo al montar: si la ventana cambió de
+     tamaño por el camino, sigue siendo el que se ve. Va declarado antes del que anima, que es
+     el orden en que React los corre. */
+  useLayoutEffect(() => {
+    if (!publicado && tarjeta.current) altoFormulario.current = tarjeta.current.getBoundingClientRect().height;
+  }, [sub.id, publicado]);
+
+  /* Publicar encoge la tarjeta de la altura de la ventana a la del contenido (Alejandro, 24 de
+     septiembre de 2026: «queda sobrando mucho espacio en blanco»). Sin animar, el salto se
+     siente como si la ventana se hubiera roto; se anima el alto entre las dos medidas y el
+     navegador la deja en `auto` al terminar, sin quedarse con un alto fijo. Solo desde 1024,
+     que es donde la tarjeta es una ventana: bajo eso el flujo ocupa la pantalla entera y no
+     hay nada que encoger. */
+  useLayoutEffect(() => {
+    const el = tarjeta.current;
+    if (!el || !publicado) return;
+    const desde = altoFormulario.current;
+    altoFormulario.current = null;
+    if (desde == null) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const hasta = el.getBoundingClientRect().height;
+    /* Si apenas cambia, animar solo haría parpadear. */
+    if (Math.abs(hasta - desde) < 8) return;
+    el.animate(
+      [
+        { height: `${desde}px` },
+        { height: `${hasta}px` },
+      ],
+      { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+    );
+  }, [publicado]);
+
   useEffect(() => {
     cuerpo.current?.scrollTo({ top: 0 });
     const t = cuerpo.current?.querySelector<HTMLElement>('h1');
@@ -137,7 +175,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
      gris»). La tarjeta ocupa el alto de la ventana menos el margen, estable entre pasos: el
      cuerpo centra o desplaza por dentro y el pie con Volver y Continuar queda a la vista. */
   return (
-    <div className="font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:items-stretch lg:justify-center lg:bg-transparent lg:py-6">
+    <div className={`font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:justify-center lg:bg-transparent lg:py-6 ${publicado ? 'lg:items-center' : 'lg:items-stretch'}`}>
       {escritorio && (
         <div aria-hidden="true" inert className="fixed inset-0 -z-1 overflow-hidden">
           <RadarPage />
@@ -145,7 +183,10 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
           <div className="absolute inset-0 z-2000 bg-rd-ink/50" />
         </div>
       )}
-      <section aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
+      {/* Mientras se llena, la tarjeta ocupa el alto de la ventana: así el pie con Volver y
+          Continuar no baila entre pasos. Publicada, `lg:items-center` del padre la suelta y
+          `lg:h-auto` la deja del alto de la enhorabuena. */}
+      <section ref={tarjeta} aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
         <button type="button" aria-label="Cerrar" onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
@@ -388,16 +429,12 @@ export const ListaRecursos: React.FC<{
   const hayAlgo = grupos.some((g) => g.items.filter(coincide).length);
   return (
     <>
-      <label className="mb-3 flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft">
-        <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        <span className="sr-only">Buscar un recurso</span>
-        <input type="search" value={q} onChange={(e) => onBuscar(e.target.value)} placeholder="Buscar un recurso" className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-meta" />
-      </label>
+      <CampoBuscarEnBloque valor={q} onChange={onBuscar} placeholder="Buscar un recurso" etiqueta="Buscar un recurso" className="mb-3" />
       {busca && !hayAlgo && (
         <div className="flex flex-col items-center gap-1 px-4 py-6 text-center text-rd-ink-2">
           <Search aria-hidden="true" className="mb-1 h-6 w-6 text-rd-ink-3" />
           <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">No encontramos «{q.trim()}»</h2>
-          <p className="m-0 text-rd-13">{vacioTexto}</p>
+          <p className="m-0 text-rd-13-5">{vacioTexto}</p>
         </div>
       )}
       {grupos.map((g) => {
@@ -593,7 +630,7 @@ export const FilaRevisar: React.FC<{ clave: string; valor: string; accion?: stri
 /** El bloque «Se solicita» / «Se ofrece» de «Revisar» (`rd-resumen-pub`). */
 export const ResumenPub: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
   <div className="mb-5 rounded-rd-md border border-rd-line bg-rd-surface">
-    <div className="font-rd border-b border-rd-line bg-rd-sunken px-3 py-3 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase">{titulo}</div>
+    <div className="font-rd border-b border-rd-line bg-rd-sunken px-3 py-3 text-rd-13 font-semibold text-rd-ink">{titulo}</div>
     {children}
   </div>
 );
@@ -669,9 +706,11 @@ export interface ExitoFlujoProps {
 
 /**
  * La pantalla de éxito, en dos vistas dentro de la misma ventana (Alejandro, 22 de septiembre
- * de 2026). **Resumen:** el visto, el título, la tarjeta de sugerencias, tres acciones en
- * icono sobre lo publicado, «¿Ahora qué sigue?» como línea de tiempo horizontal y, al final, el
- * botón de publicar otra, centrado. Sin pie. **Sugerencias:** al tocar la tarjeta, la ventana
+ * de 2026). **Resumen**, en este orden (Alejandro, 24 de septiembre de 2026): el visto a 24 de
+ * la ×, el título, la pastilla de compatibles, «¿Ahora qué sigue?» con su línea de tiempo, el botón
+ * de publicar otra centrado y, al final, las tres acciones en icono con lo que quedó abierto en
+ * el panel. Primero lo que pasó y lo que viene; las salidas, al final. Sin pie.
+ * **Sugerencias:** al tocar la tarjeta, la ventana
  * cambia a la lista y lo anterior desaparece; arriba a la izquierda queda el volver y a la
  * derecha la × del marco.
  */
@@ -701,7 +740,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
     else listo();
   };
 
-  const lista = (
+  const listaSugerencias = (
     <ListaCoincidencias
       publicacion={publicacion}
       coincidencias={coincidencias}
@@ -750,14 +789,17 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
           </h1>
           <p className="mx-auto mt-3 mb-8 max-w-120 text-rd-14 leading-normal text-rd-ink-2">{t.sugerencias.bajada}</p>
         </div>
-        {lista}
+        {listaSugerencias}
         {dialogo}
       </div>
     );
   }
 
+  /* `pt-19`: el alto de la × más su margen (12 + 40 arriba de 1024, 8 + 44 abajo: 52 en las
+     dos) más los 24 que pidió Alejandro el 24 de septiembre de 2026. Si la × cambia de tamaño
+     o de sitio, esta medida se rehace. */
   return (
-    <div className="relative mx-auto w-full max-w-140 py-6 text-center">
+    <div className="relative mx-auto w-full max-w-140 pt-19 pb-6 text-center animate-rd-enhorabuena motion-reduce:animate-none">
       <Explosion tipo={tipo} />
       <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-rd-green-soft text-rd-green">
         <Check className="h-7.5 w-7.5" />
@@ -766,52 +808,38 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
         {t.titulo}
       </h1>
 
-      {/* La tarjeta de sugerencias lleva a la lista, dentro de la misma ventana. */}
+      {/* El botón de compatibles lleva a la lista, dentro de la misma ventana. El `div` que lo
+          centra hace falta porque el botón es `flex`, y eso lo vuelve de bloque: suelto se
+          estiraría al ancho entero igual. */}
       {buscando ? (
         <p role="status" className="mt-6 flex items-center justify-center gap-3 text-rd-13 text-rd-ink-2">
           <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rd-line bg-rd-surface">
             <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
             <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
           </span>
-          Buscando matches…
+          Buscando compatibles…
         </p>
       ) : coincidencias.length > 0 ? (
-        <FilaSugerencias n={coincidencias.length} total={(coincidencias as any).total ?? coincidencias.length} variante={fuerte ? 'relleno' : 'suave'} brillo={fuerte} onVer={() => setVista('sugerencias')} className="mt-6" />
+        <div className="mt-6 flex justify-center">
+          {/* `destacada` vive solo aquí (Alejandro, 24 de septiembre de 2026): botón secundario
+              del ancho de su texto, con el degradado de marca en el marco y un destello que lo
+              recorre por dentro cada tres segundos. Es la única puerta a la lista y tenía que
+              llamar la atención sin volver a ser la barra de ancho completo. Va igual con
+              sugerencia fuerte o no: lo fuerte se sigue oyendo en el ping. */}
+          <FilaSugerencias n={coincidencias.length} total={(coincidencias as any).total ?? coincidencias.length} variante="destacada" onVer={() => setVista('sugerencias')} />
+        </div>
       ) : null}
 
-      {/* Tres acciones sobre lo que acabas de publicar, en icono. Nivel 2 (223): cambian de
-          pantalla o sacan un enlace, no comprometen a nadie, pero con contorno se leen como
-          botones y no como adorno. */}
-      <div className="mt-5 flex items-center justify-center gap-2">
-        {cerrarAccion && (
-          <AccionExito etiqueta="Ver en el mapa" onClick={cerrarAccion}>
-            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
-          </AccionExito>
-        )}
-        <AccionExito etiqueta="Compartir" onClick={compartir}>
-          <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
-        </AccionExito>
-        {onPanel && (
-          <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
-            <House aria-hidden="true" className="h-4.5 w-4.5" />
-          </AccionExito>
-        )}
-      </div>
-
-      {abre && abre.length > 0 && (
-        <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
-          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.
-        </p>
-      )}
       {extra}
 
       {/* Qué sigue: la línea de tiempo, horizontal desde 480 y en columna con el dedo. Separada
           por aire, no por una línea (Alejandro, 22 de septiembre de 2026). */}
-      <div className="mt-12">
-        {/* Del mismo tamaño que el título de arriba (Alejandro, 22 de septiembre de 2026): son
-            los dos tiempos de la pantalla —lo que pasó y lo que viene—, no un título y su
-            letra chica. Sigue siendo `h2`: el tamaño no es el nivel. */}
-        <h2 className="font-rd m-0 mb-5 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink sm:text-rd-28">¿Ahora qué sigue?</h2>
+      <div className="mt-10">
+        {/* Más pequeña que el título (Alejandro, 24 de septiembre de 2026: «Título H1, pregunta
+            H3»): el título dice lo que pasó y manda; esto abre lo que viene. Se queda en `h2`
+            aunque mida como un h3, porque después de un `h1` saltar a `h3` deja un nivel vacío
+            y el lector de pantalla anuncia una sección que no existe. El tamaño no es el nivel. */}
+        <h2 className="font-rd m-0 mb-5 text-rd-18 leading-tight font-semibold tracking-rd-titulo text-rd-ink">¿Ahora qué sigue?</h2>
         {/* En columna la lista se centra como bloque (`w-fit mx-auto`): si no, el título va
             centrado y los pasos pegados a la izquierda, y la mirada cambia de eje a media
             pantalla (Alejandro, 22 de septiembre de 2026). */}
@@ -830,18 +858,41 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
         <p className="m-0 mt-4 text-rd-12-5 text-rd-ink-meta">{EXITO.canales}</p>
       </div>
 
-      <div className="mt-10 flex flex-wrap justify-center gap-3">
-        {onPanel && (
-          <Button nivel="secundario" tamano="lg" onClick={onPanel}>
-            Ver en panel
-          </Button>
-        )}
-        {onOtra && (
+      {/* Un solo botón y centrado (Alejandro, 24 de septiembre de 2026): «Ver en panel» se fue
+          porque repetía la casita de abajo, y dos botones a la par se disputaban la mirada. */}
+      {onOtra && (
+        <div className="mt-8 flex justify-center">
           <Button nivel="primario" tamano="lg" onClick={onOtra}>
             {t.otra}
           </Button>
+        </div>
+      )}
+
+      {/* Tres acciones sobre lo que acabas de publicar, en icono, y lo que quedó abierto en el
+          panel. Van al final, bajo el botón: son salidas, no el paso que sigue. Nivel 2 (223):
+          cambian de pantalla o sacan un enlace, no comprometen a nadie, pero con contorno se
+          leen como botones y no como adorno. */}
+      <div className="mt-8 flex items-center justify-center gap-2">
+        {cerrarAccion && (
+          <AccionExito etiqueta="Ver en el mapa" onClick={cerrarAccion}>
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
+        )}
+        <AccionExito etiqueta="Compartir" onClick={compartir}>
+          <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
+        </AccionExito>
+        {onPanel && (
+          <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
+            <House aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
         )}
       </div>
+
+      {abre && abre.length > 0 && (
+        <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
+          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{lista(abre)}</b>.
+        </p>
+      )}
       {dialogo}
     </div>
   );

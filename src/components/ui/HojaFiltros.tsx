@@ -1,5 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { CampoBuscarEnBloque } from './Consulta';
+import { Hoja } from './Hoja';
+import { ROTULO_GRUPO } from './tipografia';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { DISTANCIAS, ESTADOS, ORDENES, conDistancia, conOrden, cuantosAplicados, filtrosVacios, type Filtros } from '../../utils/filtros';
@@ -31,25 +34,11 @@ export interface HojaFiltrosProps {
   ubicacion: Ubicacion;
 }
 
-const TITULO = 'font-rd mb-3 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase';
+const TITULO = ROTULO_GRUPO;
 
 export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, onCambiar, onCerrar, publicaciones, resultados, ubicacion }) => {
   const [pestana, setPestana] = useState<'filtrar' | 'ordenar'>('filtrar');
   const [buscaRecurso, setBuscaRecurso] = useState('');
-  const hoja = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!abierta) return;
-    const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar();
-    document.addEventListener('keydown', alTeclear);
-    return () => document.removeEventListener('keydown', alTeclear);
-  }, [abierta, onCerrar]);
-  /* El foco va a la × solo al abrir. Aparte del efecto de arriba: `onCerrar` cambia en cada
-     render de la página y, si el foco dependiera de él, saltaría a la × con cada filtro tocado
-     (y cerraría el selector de ciudad, que se cierra al perder el foco). */
-  useEffect(() => {
-    if (abierta) hoja.current?.querySelector<HTMLElement>('button')?.focus();
-  }, [abierta]);
 
   if (!abierta) return null;
 
@@ -58,18 +47,12 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
   const q = buscaRecurso.trim().toLowerCase();
 
   return (
-    <>
-      <button type="button" aria-label="Cerrar los filtros" onClick={onCerrar} className="fixed inset-0 z-900 cursor-default bg-rd-ink/32" />
-      <aside ref={hoja} role="dialog" aria-modal="true" aria-labelledby="hoja-filtros-t" className="font-rd fixed top-0 right-0 bottom-0 z-901 flex w-full max-w-110 flex-col bg-rd-surface shadow-rd-2">
-        <div className="flex items-center gap-2 border-b border-rd-line px-4 py-3">
-          <h2 id="hoja-filtros-t" className="m-0 flex-1 text-rd-16 font-semibold tracking-tight text-rd-ink">
-            Filtrar y ordenar
-          </h2>
-          <Button nivel="terciario" tamano="sm" aria-label="Cerrar" soloIcono onClick={onCerrar}>
-            <X aria-hidden="true" className="h-4.5 w-4.5" />
-          </Button>
-        </div>
-
+    <Hoja
+      abierta={abierta}
+      titulo="Filtrar y ordenar"
+      idTitulo="hoja-filtros-t"
+      onCerrar={onCerrar}
+      pestanas={
         <div role="tablist" aria-label="Filtrar u ordenar" className="flex border-b border-rd-line px-4">
           {(['filtrar', 'ordenar'] as const).map((t) => (
             <button
@@ -84,8 +67,19 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
             </button>
           ))}
         </div>
-
-        <div className="sin-barra min-h-0 flex-1 overflow-y-auto px-4">
+      }
+      pie={
+        <>
+          <Button nivel="terciario" tamano="md" onClick={() => onCambiar(filtrosVacios())} disabled={cuantosAplicados(f) === 0}>
+            Quitar todos
+          </Button>
+          <Button nivel="primario" tamano="md" onClick={onCerrar}>
+            Ver {resultados} {resultados === 1 ? 'resultado' : 'resultados'}
+          </Button>
+        </>
+      }
+    >
+      <>
           {pestana === 'filtrar' ? (
             <>
               <section className="border-b border-rd-line-soft py-4">
@@ -95,11 +89,7 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
 
               <section className="border-b border-rd-line-soft py-4">
                 <h3 className={TITULO}>Qué recurso</h3>
-                <label className="mb-3 flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft">
-                  <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
-                  <span className="sr-only">Buscar un recurso</span>
-                  <input type="search" value={buscaRecurso} onChange={(e) => setBuscaRecurso(e.target.value)} placeholder="Buscar un recurso" className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
-                </label>
+                <CampoBuscarEnBloque valor={buscaRecurso} onChange={setBuscaRecurso} placeholder="Buscar un recurso" etiqueta="Buscar un recurso" className="mb-3" />
                 {TAXONOMIA.map((cat, i) => {
                   const items = cat.items.filter((it) => !q || it.toLowerCase().includes(q));
                   if (!items.length) return null;
@@ -164,17 +154,7 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
               )}
             </section>
           )}
-        </div>
-
-        <div className="flex items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3">
-          <Button nivel="terciario" tamano="md" onClick={() => onCambiar(filtrosVacios())} disabled={cuantosAplicados(f) === 0}>
-            Quitar todos
-          </Button>
-          <Button nivel="primario" tamano="md" onClick={onCerrar}>
-            Ver {resultados} {resultados === 1 ? 'resultado' : 'resultados'}
-          </Button>
-        </div>
-      </aside>
-    </>
+      </>
+    </Hoja>
   );
 };

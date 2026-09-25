@@ -68,7 +68,9 @@ const ico = {
 const PILDORA: Pick<FieldProps, 'forma' | 'etiquetaOculta' | 'verComoTexto'> = { forma: 'pildora', etiquetaOculta: true, verComoTexto: true };
 
 /* El h1 del flujo de registro: 28 (24 bajo 640), semibold, tinta. */
-const CLASE_H1 = 'font-rd text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28';
+/* rd-22, el mismo h1 de todas las pantallas y de los flujos de pedir y ofrecer. El rd-24 se
+   reserva para la enhorabuena que cierra un flujo. */
+const CLASE_H1 = 'font-rd text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28';
 const CLASE_ENLACE = 'font-semibold text-rd-ink underline underline-offset-3';
 
 function leerRapida(): boolean {
@@ -467,7 +469,10 @@ export const RegistroPage: React.FC = () => {
     <>
       {portada}
       {conmutador}
-      <h2 className="font-rd mb-3 text-rd-15 font-semibold text-rd-ink">{T.perfil.pregunta}</h2>
+      {/* «¿Quién eres?» manda un grupo de opciones, no una tarjeta: va al rd-16 de las
+          secciones, no al rd-15 de los bloques. No sube al rd-22 de `Pregunta` porque el h1 de
+          esta pantalla ya lo tiene la portada, justo encima (Alejandro, 25 de septiembre de 2026). */}
+      <h2 className="font-rd mb-3 text-rd-16 font-semibold text-rd-ink">{T.perfil.pregunta}</h2>
       <div ref={cuerpoRef} role="radiogroup" aria-label={T.perfil.pregunta} className="grid gap-2">
         {PERFILES.map((p) => (
           <OptionCard

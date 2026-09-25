@@ -50,8 +50,8 @@ export function listoOfrecer(e: EstadoOfrecer, sub: SubPaso): boolean {
 }
 
 export function textoEntrega(e: EstadoOfrecer): string {
-  if (e.entrega === 'llevamos') return `Lo llevamos · ${e.radio} · envío ${e.envio.toLowerCase()}`;
-  if (e.entrega === 'remoto') return `Remoto · ${e.canales.join(', ')}${e.horario ? ` · ${e.horario}` : ''}`;
+  if (e.entrega === 'llevamos') return `Lo llevamos, ${e.radio}, envío ${e.envio.toLowerCase()}`;
+  if (e.entrega === 'remoto') return `Remoto, ${e.canales.join(', ')}${e.horario ? `, ${e.horario}` : ''}`;
   return 'En sitio';
 }
 

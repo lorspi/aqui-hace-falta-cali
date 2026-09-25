@@ -17,8 +17,8 @@ export const YO: Persona = {
 };
 
 export const SESIONES: Sesion[] = [
-  { id: 1, dispositivo: 'Este computador · Chrome · Bogotá', cuando: 'ahora', actual: true },
-  { id: 2, dispositivo: 'Celular · Android · Bogotá', cuando: 'hace 3 horas', actual: false },
+  { id: 1, dispositivo: 'Este computador, Chrome, Bogotá', cuando: 'ahora', actual: true },
+  { id: 2, dispositivo: 'Celular, Android, Bogotá', cuando: 'hace 3 horas', actual: false },
 ];
 
 export const CANALES: CanalAviso[] = [

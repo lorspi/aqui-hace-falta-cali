@@ -36,8 +36,16 @@ describe('lo comprometido, dicho en una línea', () => {
 describe('el aviso del resultado', () => {
   const c = { partes: [agua] };
   it('habla en verbo y confirma lo acordado sin fechas innecesarias', () => {
-    expect(avisoCompromiso('Cruz Roja', 'necesidad', c)).toBe('Listo, avisamos a Cruz Roja. Te comprometiste con 450 L de agua potable.');
-    expect(avisoCompromiso('Cruz Roja', 'oferta', c)).toBe('Listo, le solicitaste 450 L de agua potable a Cruz Roja.');
+    expect(avisoCompromiso('Cruz Roja', 'necesidad', c)).toBe('Listo, te comprometiste con 450 L de agua potable para Cruz Roja');
+    expect(avisoCompromiso('Cruz Roja', 'oferta', c)).toBe('Listo, le solicitaste 450 L de agua potable a Cruz Roja');
+  });
+
+  /* Un aviso dura 3,6 segundos: si no se alcanza a leer, no sirve (Alejandro, 24 de septiembre
+     de 2026). El manual pide frases de hasta veinte palabras; en un aviso, la mitad. */
+  it('cabe en una frase corta', () => {
+    const a = avisoCompromiso('Cruz Roja', 'necesidad', c);
+    expect(a.split(' ').length).toBeLessThanOrEqual(12);
+    expect(a.split('. ').length).toBe(1);
   });
   it('no usa punto medio ni pasiva impersonal', () => {
     const a = avisoCompromiso('Cruz Roja', 'necesidad', c);

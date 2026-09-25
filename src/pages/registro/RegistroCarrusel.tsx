@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Divisor } from '../../components/ui/Divisor';
 import { renderToStaticMarkup } from 'react-dom/server';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -212,7 +213,12 @@ export const RegistroCarrusel: React.FC = () => {
           </span>
           <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-rd-13 font-semibold text-rd-ink shadow-2xl">
             <Check aria-hidden="true" className="h-4 w-4 text-rd-green" />
-            {LAMINA_CIERRE}
+            {LAMINA_CIERRE.map((parte, i) => (
+              <React.Fragment key={parte}>
+                {i > 0 && <Divisor />}
+                {parte}
+              </React.Fragment>
+            ))}
           </span>
         </div>
       </div>

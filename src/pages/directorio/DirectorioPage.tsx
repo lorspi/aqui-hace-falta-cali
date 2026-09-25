@@ -5,6 +5,7 @@ import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
+import { ROTULO_GRUPO } from '../../components/ui/tipografia';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
@@ -52,7 +53,8 @@ const PESTANAS: { id: ClaseEntidad; nombre: string }[] = [
   { id: 'comunidad', nombre: 'Comunidades' },
 ];
 /** El rótulo de una sección, uno solo en toda la maqueta (el mismo de la hoja de filtros). */
-const ROTULO = 'font-rd mb-3 flex items-center text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase';
+/* Rótulo de grupo de campos, el mismo en toda la herramienta. */
+const ROTULO = `${ROTULO_GRUPO} flex items-center`;
 
 const MOTIVOS_ENTIDAD = [
   { valor: 'falsa', texto: 'No existe o es falsa' },
@@ -87,7 +89,7 @@ const Directorio: React.FC = () => {
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
 
   useEffect(() => {
-    document.title = 'RaDAR · Directorio';
+    document.title = 'Directorio, RaDAR de ayuda';
   }, []);
 
   /* La URL dice lo que se ve, para poder compartirlo. */
@@ -111,13 +113,13 @@ const Directorio: React.FC = () => {
   const compartir = (e: Entidad) => {
     const url = `${window.location.origin}${RUTAS.directorio}${e.clase === 'comunidad' ? '?vista=comunidades' : ''}#${e.id}`;
     const listo = () => avisar('Enlace copiado', { tipo: 'ok' });
-    if (navigator.share) navigator.share({ title: `${e.nombre} · RaDAR de ayuda`, url }).then(listo).catch(() => {});
+    if (navigator.share) navigator.share({ title: `${e.nombre}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
     else listo();
   };
   const enviarReporte = () => {
     setReporte(null);
-    avisar('Reporte enviado. Lo revisa el equipo de moderación.', { tipo: 'ok' });
+    avisar('Reporte enviado. Lo revisa moderación', { tipo: 'ok' });
   };
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
@@ -230,10 +232,10 @@ const Directorio: React.FC = () => {
                 {/* Cabecera de columnas, solo en la tabla: rótulo suelto, sin caja, porque cada
                     fila es una tarjeta aparte (Alejandro, 22 de septiembre de 2026). */}
                 <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_220px] xl:items-center xl:gap-6">
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">{clase === 'comunidad' ? 'Comunidad y zona' : 'Organización y zona'}</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Actividad y recursos</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Contacto</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Acciones</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">{clase === 'comunidad' ? 'Comunidad y zona' : 'Organización y zona'}</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">Actividad y recursos</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">Contacto</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">Acciones</span>
                 </div>
                 {lista.map((e) => (
                   <FilaEntidad key={e.id} entidad={e} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
@@ -262,6 +264,9 @@ const Directorio: React.FC = () => {
  * tabla** con sus cuatro columnas. Los datos y las acciones son los mismos; solo cambia cómo se
  * reparten. Sin etiquetas de tipo arriba: una entidad no se necesita ni se ofrece; su tipo va
  * como texto bajo el nombre. «Ver detalle» solo muestra: terciario `md` (223, nivel 3).
+ * Las acciones, según el contenedor (Alejandro, 24 de septiembre de 2026): en la **fila de
+ * tabla** las tres van pegadas, porque son un grupo; en la **tarjeta** las de acción quedan a
+ * la izquierda, de mayor a menor jerarquía, y el ⋮ se va al extremo derecho.
  */
 const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, onVerDetalle, onCompartir, onReportar }) => {
   const com = e.clase === 'comunidad';
@@ -284,7 +289,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
       <Avatar iniciales={iniciales(e.nombre)} tamano="md" />
       <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-center gap-1.5">
-          <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold text-rd-ink">{e.nombre}</h2>
+          <h2 className="font-rd m-0 min-w-0 truncate text-rd-15 font-semibold text-rd-ink">{e.nombre}</h2>
           {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4 w-4 shrink-0 text-rd-navy" />}
         </div>
         <span className="text-rd-12 text-rd-ink-2">{e.tipo}</span>
@@ -322,7 +327,10 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
       <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={verEnMapa}>
         <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
       </Button>
-      <span className="ml-auto flex gap-1">
+      {/* Bajo 1280 es tarjeta y el ⋮ se va al extremo; desde 1280 es fila de tabla y va
+          pegado al grupo. El empuje va en el contenedor: `MenuAcciones` pasa su `className`
+          al botón de dentro. */}
+      <span className="flex max-xl:ml-auto">
         <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
       </span>
     </>
@@ -336,7 +344,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
         <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mb-3.5 max-sm:mb-2.5" />
         <CajaDatos titulo="En RaDAR" filas={datos} className="mb-3.5 max-sm:mb-2.5" />
         <div className="mb-3.5 max-sm:mb-2.5">{contacto}</div>
-        <div className="mt-auto flex min-w-0 items-center gap-2 border-t border-rd-line-soft pt-3 max-sm:pt-2.5">{acciones}</div>
+        <div className="mt-auto flex min-w-0 items-center gap-1 border-t border-rd-line-soft pt-3 max-sm:pt-2.5">{acciones}</div>
       </article>
 
       {/* ---- desde 1280: fila de tabla, las cuatro columnas de su cabecera ---- */}
@@ -356,7 +364,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
           ))}
         </div>
         {contacto}
-        <div className="flex min-w-0 items-center gap-2">{acciones}</div>
+        <div className="flex min-w-0 items-center justify-end gap-1">{acciones}</div>
       </div>
     </>
   );
@@ -414,13 +422,13 @@ const DialogoDetalleEntidad: React.FC<{
               el perfil (Alejandro, 22 de septiembre de 2026). El perfil es el primer bloque del
               contenido, debajo de su línea. */}
           <div className="flex flex-none items-center gap-2 border-b border-rd-line px-5 py-3">
-            <h2 id="detalle-entidad-titulo" className="font-rd m-0 flex-1 text-rd-13-5 font-semibold tracking-wider text-rd-ink-meta uppercase">
+            <h2 id="detalle-entidad-titulo" className="font-rd m-0 flex-1 text-rd-12-5 font-semibold text-rd-ink-meta">
               {com ? 'Comunidad' : 'Organización'}
             </h2>
             <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => verEnMapa()}>
               <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
             </Button>
-            <MenuAcciones items={menuEntidad} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" flotante />
+            <MenuAcciones items={menuEntidad} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
             <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
               <X aria-hidden="true" className="h-5 w-5" />
             </Button>

@@ -34,20 +34,20 @@ export interface FotosEntrega {
 export const FOTOS_ENTREGA: Record<number, FotosEntrega> = {
   1: {
     entrega: [
-      { url: `${RUTA}brigadistas-camion.jpg`, alt: 'El carrotanque llegando al albergue', quien: 'Andrés Peña · Bomberos Voluntarios Usme', cuando: '12 sep, 9:35 a. m.' },
-      { url: `${RUTA}voluntarios-accion.jpg`, alt: 'Descarga del agua en los tanques del albergue', quien: 'Andrés Peña · Bomberos Voluntarios Usme', cuando: '12 sep, 9:40 a. m.' },
+      { url: `${RUTA}brigadistas-camion.jpg`, alt: 'El carrotanque llegando al albergue', quien: 'Andrés Peña, Bomberos Voluntarios Usme', cuando: '12 sep, 9:35 a. m.' },
+      { url: `${RUTA}voluntarios-accion.jpg`, alt: 'Descarga del agua en los tanques del albergue', quien: 'Andrés Peña, Bomberos Voluntarios Usme', cuando: '12 sep, 9:40 a. m.' },
     ],
-    recibe: [{ url: `${RUTA}baldes-escombros.jpg`, alt: 'Tanques llenos en la cocina del albergue', quien: 'Esperanza Gómez · Albergue Bosa', cuando: '12 sep, 10:05 a. m.' }],
+    recibe: [{ url: `${RUTA}baldes-escombros.jpg`, alt: 'Tanques llenos en la cocina del albergue', quien: 'Esperanza Gómez, Albergue Bosa', cuando: '12 sep, 10:05 a. m.' }],
   },
   2: {
     entrega: [
-      { url: `${RUTA}brigadistas-camion.jpg`, alt: 'Carrotanque cargado en ruta al comedor', quien: 'Andrés Peña · Bomberos Voluntarios Usme', cuando: 'Hoy, 5:45 p. m.' },
+      { url: `${RUTA}brigadistas-camion.jpg`, alt: 'Carrotanque cargado en ruta al comedor', quien: 'Andrés Peña, Bomberos Voluntarios Usme', cuando: 'Hoy, 5:45 p. m.' },
     ],
     recibe: [],
   },
-  3: { entrega: [], recibe: [{ url: `${RUTA}voluntarios-accion.jpg`, alt: 'Los kits de alimentos en la despensa del comedor', quien: 'Luz Marina Silva · Comedor Villa Gloria', cuando: '13 sep, 11:20 a. m.' }] },
+  3: { entrega: [], recibe: [{ url: `${RUTA}voluntarios-accion.jpg`, alt: 'Los kits de alimentos en la despensa del comedor', quien: 'Luz Marina Silva, Comedor Villa Gloria', cuando: '13 sep, 11:20 a. m.' }] },
   8: {
-    entrega: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Entrega del agua en la vereda', quien: 'Mateo Rojas · Bomberos Voluntarios Usme', cuando: '2 ago, 3:50 p. m.' }],
+    entrega: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Entrega del agua en la vereda', quien: 'Mateo Rojas, Bomberos Voluntarios Usme', cuando: '2 ago, 3:50 p. m.' }],
     recibe: [
       { url: `${RUTA}colapso-rescate.jpg`, alt: 'Los bidones en el salón comunal', quien: 'JAC Vereda El Destino', cuando: '2 ago, 4:00 p. m.' },
       { url: `${RUTA}baldes-escombros.jpg`, alt: 'Reparto a las familias de la vereda', quien: 'JAC Vereda El Destino', cuando: '2 ago, 4:20 p. m.' },
@@ -59,7 +59,7 @@ export const FOTOS_ENTREGA: Record<number, FotosEntrega> = {
 export const FOTOS_RECIBIDA: Record<number, FotosEntrega> = {
   102: {
     entrega: [{ url: `${RUTA}voluntarios-accion.jpg`, alt: 'Cajas de respiradores en el vehículo de la alcaldía', quien: 'Alcaldía local de Usme', cuando: '11 sep, 9:50 a. m.' }],
-    recibe: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Los respiradores ya en la estación', quien: 'Carlos Peña · Bomberos Voluntarios Usme', cuando: '11 sep, 10:00 a. m.' }],
+    recibe: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Los respiradores ya en la estación', quien: 'Carlos Peña, Bomberos Voluntarios Usme', cuando: '11 sep, 10:00 a. m.' }],
   },
 };
 
