@@ -18,6 +18,7 @@ export interface Compromiso {
    *  recurso marcado: `partes.length` es lo que antes se enviaba suelto como `recursos`. */
   partes: ParteCompromiso[];
   cuando?: string;
+  recursos?: number;
 }
 
 /** Lo comprometido, dicho en una línea para el aviso: «450 L de agua potable y 20 kits de

@@ -128,8 +128,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       contactWhatsapp: estado.tel,
       contactEmail: user?.email,
       organizationName: org?.org_name || profile?.cargo || 'Organización Oferente',
-      deliveryMode: estado.modoEntrega,
-      deliveryRadius: estado.radioEntrega,
+      deliveryMode: estado.entrega,
+      deliveryRadius: estado.radio,
       userId: user?.id,
     });
   }, []);

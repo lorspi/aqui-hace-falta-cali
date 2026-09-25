@@ -11,13 +11,15 @@ import { DIAS_PARA_ARCHIVAR } from '../mocks/panelMock';
 const CLAVE = 'rd-modulos';
 
 /** Los módulos abiertos: lo guardado al publicar, o lo que diga la URL para verlo sin
- *  publicar (`?modulos=pide,ofrece` · `?modulos=ninguno`). */
+ *  publicar (`?modulos=pide,ofrece`, `?modulos=ninguno`). */
 export function leerModulos(search = '', guardado: string | null = null): ModulosCuenta {
   const forzado = new URLSearchParams(search).get('modulos');
   if (forzado !== null) return { pide: forzado.includes('pide'), ofrece: forzado.includes('ofrece') };
   try {
     const g = guardado ? (JSON.parse(guardado) as Partial<ModulosCuenta>) : null;
-    return { pide: !!g?.pide, ofrece: !!g?.ofrece };
+    const tienePide = !!g?.pide || (typeof window !== 'undefined' && !!localStorage.getItem('rd-necesidad-creada-gestion'));
+    const tieneOfrece = !!g?.ofrece || (typeof window !== 'undefined' && !!localStorage.getItem('rd-oferta-creada-gestion'));
+    return { pide: tienePide, ofrece: tieneOfrece };
   } catch {
     return { pide: false, ofrece: false };
   }
@@ -71,7 +73,7 @@ export function cantidadPorEstado(sol: Solicitud[], rec: string, estados: Solici
 /** Lo que queda de un recurso ofrecido: el total menos todo lo comprometido, en camino,
  *  entregado o confirmado. */
 export function quedan(sol: Solicitud[], r: RecursoOfrecido): number {
-  return Math.max(0, r.total - cantidadPorEstado(sol, r.n, ['aceptada', 'camino', 'entregada', 'confirmada', 'archivada']));
+  return Math.max(0, r.total - cantidadPorEstado(sol, r.n, ['aceptada', 'camino', 'entregada', 'confirmada', 'distribuida', 'archivada']));
 }
 
 export function nuevas(sol: Solicitud[]): number {
@@ -112,7 +114,7 @@ export function kpisDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol: Soli
     const camino = cuenta(d.recibidas, 'camino');
     const porConf = recibidasPorConfirmar(d.recibidas).length;
     /* Cada cuadrito es un tramo de la barra, con la misma cifra: las archivadas van aparte. */
-    const conf = cuenta(d.recibidas, 'confirmada');
+    const conf = cuenta(d.recibidas, 'confirmada') + cuenta(d.recibidas, 'distribuida');
     k.push({ k: 'Comprometidas', v: comp, d: comp === 1 ? 'entrega que alguien va a traer' : 'entregas que alguien va a traer', estado: 'aceptada' });
     k.push({ k: 'En camino', v: camino, d: 'hacia ti', estado: 'camino' });
     k.push({ k: 'Por confirmar', v: porConf, d: 'te llegaron, falta tu confirmación', estado: 'entregada' });
@@ -127,7 +129,7 @@ export function kpisDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol: Soli
   return k;
 }
 
-const TEXTO_TRAMO: Record<EstadoSolicitud, string> = { nueva: 'Nuevas', aceptada: 'Comprometidas', camino: 'En camino', entregada: 'Por confirmar', confirmada: 'Confirmadas', archivada: 'Archivadas' };
+const TEXTO_TRAMO: Record<EstadoSolicitud, string> = { nueva: 'Nuevas', aceptada: 'Comprometidas', camino: 'En camino', entregada: 'Por confirmar', confirmada: 'Confirmadas', distribuida: 'Distribuidas', archivada: 'Archivadas' };
 
 /** Cuántas entregas hay en cada estado, en el orden del ciclo, sin los estados vacíos. */
 export function tramosPorEstado(lista: { estado: EstadoSolicitud }[]): TramoBarra[] {
@@ -142,7 +144,7 @@ export function bloquesResumen(m: ModulosCuenta, d: { oferta: OfertaPublicada; s
     b.push({
       id: 'pide',
       titulo: 'Lo que pediste',
-      enlace: { texto: 'Ver mis necesidades', al: '#necesidades' },
+      enlace: { texto: 'Ver', al: '#necesidades' },
       kpis: kpisDe({ pide: true, ofrece: false }, d),
       barraTitulo: 'Entregas hacia ti',
       barra: tramosPorEstado(d.recibidas),
@@ -152,7 +154,7 @@ export function bloquesResumen(m: ModulosCuenta, d: { oferta: OfertaPublicada; s
     b.push({
       id: 'ofrece',
       titulo: 'Lo que ofreces',
-      enlace: { texto: 'Ver el seguimiento', al: '#seguimiento' },
+      enlace: { texto: 'Ver', al: '#seguimiento' },
       kpis: kpisDe({ pide: false, ofrece: true }, d),
       barraTitulo: 'Solicitudes recibidas',
       barra: tramosPorEstado(d.sol),
@@ -169,16 +171,16 @@ export function pendientesDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol
   if (m.pide) {
     /* Lo que nos llegó y falta confirmar va primero: es lo único que bloquea. */
     recibidasPorConfirmar(d.recibidas).forEach((r) =>
-      p.push({ id: `rec-${r.id}`, grupo: 'decision', icono: 'paquete', titulo: `Confirma lo que te llegó de ${r.org}`, detalle: `${r.cant} ${r.u} de ${r.rec.toLowerCase()} · entregado ${r.cuando}`, accion: { texto: 'Confirmar recibido', nivel: 'primario', al: `confirmar:${r.id}` }, bloquea: true }),
+      p.push({ id: `rec-${r.id}`, grupo: 'decision', icono: 'paquete', titulo: `Confirma lo que te llegó de ${r.org}`, detalle: `${r.cant} ${r.u} de ${r.rec.toLowerCase()}, entregado ${r.cuando}`, accion: { texto: 'Confirmar', nivel: 'primario', al: `confirmar:${r.id}` }, bloquea: true }),
     );
   }
   if (m.ofrece) {
-    d.sol.filter((s) => s.estado === 'nueva').forEach((s) => p.push({ id: `nueva-${s.id}`, grupo: 'decision', icono: 'nueva', titulo: `${s.quien} pide ${s.cant} ${s.u} de ${s.rec.toLowerCase()}`, detalle: `${s.cuando}${s.dist ? ` · a ${s.dist}` : ''}`, accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar:${s.id}` }, secundaria: { texto: 'No podemos', al: `rechazar:${s.id}` } }));
-    d.sol.filter((s) => s.estado === 'aceptada' && !s.vol).forEach((s) => p.push({ id: `sin-${s.id}`, grupo: 'operacion', icono: 'equipo', titulo: `${s.quien} · ${s.cant} ${s.u} de ${s.rec.toLowerCase()} sin quien lo lleve`, detalle: 'Aceptada, sin asignar', accion: { texto: 'Asignar', nivel: 'primario', al: `asignar:${s.id}` } }));
-    d.sol.filter((s) => s.estado === 'camino').forEach((s) => p.push({ id: `cam-${s.id}`, grupo: 'operacion', icono: 'camino', titulo: `${s.quien} · ${s.cant} ${s.u} de ${s.rec.toLowerCase()} en camino`, detalle: s.cuando, accion: { texto: 'Ver el seguimiento', nivel: 'secundario', al: '#seguimiento' } }));
+    d.sol.filter((s) => s.estado === 'nueva').forEach((s) => p.push({ id: `nueva-${s.id}`, grupo: 'decision', icono: 'nueva', titulo: `${s.quien} pide ${s.cant} ${s.u} de ${s.rec.toLowerCase()}`, detalle: `${s.cuando}${s.dist ? `, a ${s.dist}` : ''}`, accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar:${s.id}` }, secundaria: { texto: 'Rechazar', al: `rechazar:${s.id}` } }));
+    d.sol.filter((s) => s.estado === 'aceptada' && !s.vol).forEach((s) => p.push({ id: `sin-${s.id}`, grupo: 'operacion', icono: 'equipo', titulo: `${s.quien}, ${s.cant} ${s.u} de ${s.rec.toLowerCase()} sin quien lo lleve`, detalle: 'Aceptada, sin asignar', accion: { texto: 'Asignar', nivel: 'primario', al: `asignar:${s.id}` } }));
+    d.sol.filter((s) => s.estado === 'camino').forEach((s) => p.push({ id: `cam-${s.id}`, grupo: 'operacion', icono: 'camino', titulo: `${s.quien}, ${s.cant} ${s.u} de ${s.rec.toLowerCase()} en camino`, detalle: s.cuando, accion: { texto: 'Ver', nivel: 'secundario', al: '#seguimiento' } }));
     porConfirmar(d.sol).forEach((s) => p.push({ id: `conf-${s.id}`, grupo: 'operacion', icono: 'tiempo', titulo: `${s.quien} no ha confirmado la ${s.rec.toLowerCase()}`, detalle: `Entregada ${s.cuando}`, accion: { texto: 'Certificar', nivel: 'primario', al: `certificar:${s.id}` }, secundaria: { texto: 'Recordar', al: `recordar:${s.id}` } }));
     const ali = d.oferta.recursos.find((r) => r.n === 'Alimentos');
-    if (ali && /sep/.test(ali.disp)) p.push({ id: 'vence', grupo: 'operacion', icono: 'aviso', titulo: `Los alimentos dejan de estar disponibles el 20 sep`, detalle: `Quedan ${quedan(d.sol, ali)} ${ali.unidad}`, accion: { texto: 'Ampliar la fecha', nivel: 'secundario', al: '#ofertas' } });
+    if (ali && /sep/.test(ali.disp)) p.push({ id: 'vence', grupo: 'operacion', icono: 'aviso', titulo: `Los alimentos dejan de estar disponibles el 20 sep`, detalle: `Quedan ${quedan(d.sol, ali)} ${ali.unidad}`, accion: { texto: 'Ampliar', nivel: 'secundario', al: '#ofertas' } });
   }
   return p;
 }
@@ -194,7 +196,7 @@ export function textoCierre(s: Pick<Solicitud, 'quien' | 'cierre'>): string {
   const c = s.cierre ?? {};
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${s.quien}`;
   if (c.recibe) return `Confirmada por ${s.quien}`;
-  if (c.entrega) return `Certificada por ti · ${s.quien} aún no confirma`;
+  if (c.entrega) return `Certificada por ti. ${s.quien} aún no confirma`;
   return 'Confirmada';
 }
 
@@ -234,14 +236,54 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
       .filter((s) => (s.estado === 'confirmada' || s.estado === 'archivada') && s.cerradaEl)
       .forEach((s) => {
         const v = d.lleva(s);
-        lista.push({ lado: 'ofrece', fecha: s.cerradaEl!, fechaTexto: fechaCorta(s.cerradaEl!), entrego: d.org, recibio: s.quien, rec: s.rec, cant: s.cant, u: s.u, lleva: v ?? undefined, cierre: s.cierre ?? {}, confirmacion: textoCierre(s), historia: s.cierre?.historia, origen: { tipo: 'solicitud', id: s.id } });
+        const nc = s.notasCamino || s.cierre?.notasCamino;
+        const ne = s.notasEntrega || s.cierre?.notasEntrega;
+        const nr = s.cierre?.notasRecibe;
+        lista.push({
+          lado: 'ofrece',
+          fecha: s.cerradaEl!,
+          fechaTexto: fechaCorta(s.cerradaEl!),
+          entrego: d.org,
+          recibio: s.quien,
+          rec: s.rec,
+          cant: s.cant,
+          u: s.u,
+          lleva: v ?? undefined,
+          cierre: s.cierre ?? {},
+          confirmacion: textoCierre(s),
+          historia: s.cierre?.historia,
+          notasCamino: nc,
+          notasEntrega: ne,
+          notasRecibe: nr,
+          origen: { tipo: 'solicitud', id: s.id },
+        });
       });
   }
   if (m.pide) {
     d.recibidas
-      .filter((r) => (r.estado === 'confirmada' || r.estado === 'archivada') && r.cerradaEl)
+      .filter((r) => (r.estado === 'confirmada' || r.estado === 'distribuida' || r.estado === 'archivada') && r.cerradaEl)
       .forEach((r) => {
-        lista.push({ lado: 'pide', fecha: r.cerradaEl!, fechaTexto: fechaCorta(r.cerradaEl!), entrego: r.org, recibio: d.org, rec: r.rec, cant: r.cant, u: r.u, lleva: r.vol ?? undefined, cierre: r.cierre ?? {}, confirmacion: textoCierreRecibida(r), historia: r.cierre?.historia, origen: { tipo: 'recibida', id: r.id } });
+        const nc = r.notasCamino || r.cierre?.notasCamino;
+        const ne = r.cierre?.notasEntrega;
+        const nr = r.notasRecibe || r.cierre?.notasRecibe;
+        lista.push({
+          lado: 'pide',
+          fecha: r.cerradaEl!,
+          fechaTexto: fechaCorta(r.cerradaEl!),
+          entrego: r.org,
+          recibio: d.org,
+          rec: r.rec,
+          cant: r.cant,
+          u: r.u,
+          lleva: r.vol ?? undefined,
+          cierre: r.cierre ?? {},
+          confirmacion: textoCierreRecibida(r),
+          historia: r.cierre?.historia,
+          notasCamino: nc,
+          notasEntrega: ne,
+          notasRecibe: nr,
+          origen: { tipo: 'recibida', id: r.id },
+        });
       });
   }
   const ordenadas = [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -252,24 +294,29 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
 }
 
 /** El cierre visto desde quien recibe: quién confirmó. */
-export function textoCierreRecibida(r: Pick<EntregaRecibida, 'org' | 'cierre'>): string {
+export function textoCierreRecibida(r: Pick<EntregaRecibida, 'org' | 'cierre'> & { estado?: EstadoSolicitud }): string {
   const c = r.cierre ?? {};
+  if (r.estado === 'distribuida') return 'Distribuida en la comunidad';
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${r.org}`;
   if (c.recibe) return 'Confirmada por ti';
-  if (c.entrega) return `Certificada por ${r.org} · falta tu confirmación`;
+  if (c.entrega) return `Certificada por ${r.org}. Falta tu confirmación`;
   return 'Confirmada';
 }
 
 /** El acta en texto plano, para copiar y pegar (WhatsApp, un informe). */
 export function textoActa(a: Acta): string {
   const lineas = [
-    `Acta de entrega ${a.codigo} · RaDAR de ayuda`,
+    `Acta de entrega ${a.codigo}, RaDAR de ayuda`,
     `Fecha: ${a.fechaTexto}`,
     `Entregó: ${a.entrego}`,
     `Recibió: ${a.recibio}`,
     `Qué: ${a.cant} ${a.u} de ${a.rec.toLowerCase()}`,
     a.lleva ? `La llevó: ${a.lleva}` : '',
     `Cierre: ${a.confirmacion}`,
+    a.notasCamino ? `Detalles de despacho / en camino: ${a.notasCamino}` : '',
+    a.notasEntrega ? `Observaciones de entrega: ${a.notasEntrega}` : '',
+    a.notasRecibe ? `Observaciones de recepción: ${a.notasRecibe}` : '',
+    a.cierre?.personasBeneficiadas ? `Personas beneficiadas: ${a.cierre.personasBeneficiadas}` : '',
     a.historia ? `Lo que permitió: ${a.historia}` : '',
   ];
   return lineas.filter(Boolean).join('\n');

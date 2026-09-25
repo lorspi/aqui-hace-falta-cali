@@ -176,10 +176,6 @@ export default function App() {
     content = <SimulatedRegisterPage />;
   } else if (specialRoute?.type === 'registro-v2') {
     content = <RegistroPage />;
-  } else if (specialRoute?.type === 'pedir-v2') {
-    content = <PedirPage />;
-  } else if (specialRoute?.type === 'ofrecer-v2') {
-    content = <OfrecerPage />;
   } else if (specialRoute?.type === 'radar-v2') {
     content = <RadarPage />;
   } else if (specialRoute?.type === 'cifras') {
@@ -977,8 +973,10 @@ function MainApp() {
   };
 
   // Create Offer Success Callback
-  const handleOfferCreated = async (createdOffer: Offer) => {
+  const handleOfferCreated = async (createdOffer?: Offer) => {
     if (refetchOffers) await refetchOffers();
+
+    if (!createdOffer) return;
 
     const targetCity = createdOffer.cityId;
     if (targetCity && targetCity !== selectedCityId) {
