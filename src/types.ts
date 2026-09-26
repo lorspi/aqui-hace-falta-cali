@@ -193,6 +193,8 @@ export interface Offer {
   userId?: string;
   deliveryMode?: string;
   deliveryRadius?: string;
+  coverageRadius?: string;
+  evidenceUrl?: string;
 }
 
 export interface FilterState {

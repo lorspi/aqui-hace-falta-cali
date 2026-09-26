@@ -1120,83 +1120,26 @@ function MainApp() {
   }, [mobileView]);
 
   return (
-    <div className={`bg-brand-surface flex flex-col text-brand-text antialiased ${
-      mobileView === 'MAP'
-        ? 'h-dvh max-h-dvh overflow-hidden'
-        : 'min-h-dvh'
-    } md:h-screen md:max-h-screen md:overflow-hidden`}>
-      {/* Platform Header */}
-      <Header
-        onOpenCreateModal={() => setIsCreateModalOpen(true)}
-        onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-        onOpenAdminModal={() => { window.location.href = '/panel'; }}
-        onOpenProfileModal={() => setIsProfileModalOpen(true)}
-        onOpenRegisterModal={() => { window.location.href = '/registro-v2?modo=registro'; }}
-        onOpenLoginModal={() => { window.location.href = '/registro-v2?modo=login'; }}
-        onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
-        onScrollToMap={() => {
-          setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
-          setMobileView("MAP");
-          window.scrollTo({ top: 0, behavior: 'instant' });
-        }}
-        lastUpdated={lastUpdated}
-        isOffline={isOffline}
-        activeCount={activeCount}
-        criticalCount={criticalCount}
-        isLoggedIn={isModeratorLoggedIn || !!authUser}
-        isModerator={isModeratorLoggedIn || userProfile?.role === 'moderador' || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN'}
-        isModeratorApproved={isModeratorLoggedIn || userProfile?.role === 'ADMIN' || (sessionUser as any)?.role === 'ADMIN' || userProfile?.moderation_status === 'APPROVED'}
-        userName={authUser?.name || (sessionUser as any)?.name}
-        onLogout={async () => {
-          try {
-            await supabase.auth.signOut();
-          } catch (e) {
-            console.error("Error al cerrar sesión en Supabase:", e);
-          }
-          localStorage.removeItem('ahf_admin_token');
-          localStorage.removeItem('ahf_admin_user');
-          localStorage.removeItem('ahf_auth_user');
-          setAuthUser(null);
-          window.location.href = '/';
-        }}
-      />
-      {/* Spacer for fixed header */}
-      <div className="h-14 md:h-16 shrink-0" />
-
-      {/* Filter Bar */}
-      <FilterBar
-        filters={filters}
-        onFilterChange={(updated) =>
-          setFilters((prev) => ({ ...prev, ...updated }))
-        }
-        onClearFilters={() =>
-          setFilters({
-            search: "",
-            categories: [],
-            priority: "ALL",
-            placeType: "ALL",
-            status: "ALL",
-            verificationStatus: "ALL",
-            distanceKm: null,
-            userLat: null,
-            userLng: null,
-            sortBy: "RECENT",
-            viewMode: "ALL",
-          })
-        }
-        onRequestLocation={handleRequestLocation}
-        isLoadingLocation={isLoadingLocation}
-        totalResults={filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "NEEDS" ? displayedNeeds.length : displayedNeeds.length + displayedOffers.length}
-        selectedCityName={selectedCityId === ALL_COLOMBIA_ID ? 'la zona' : getCityDisplayName(selectedCityId)}
-        needsCount={totalNeedsCount}
-        offersCount={totalOffersCount}
-        selectedCityId={selectedCityId}
-        onCityChange={handleCityChange}
-        needCounts={combinedCounts}
-        mobileView={mobileView}
-        needs={needs}
-        offers={offers}
-      />
+    <div className="h-dvh max-h-dvh w-full overflow-hidden bg-rd-surface">
+      <div className="flex-1 h-full w-full min-h-0 overflow-hidden">
+        <RadarPage
+          onOpenCreateNeedModal={() => setIsChatbotModalOpen(true)}
+          onOpenCreateOfferModal={() => setShowCreateOffer(true)}
+          onOpenLoginModal={() => setIsLoginModalOpen(true)}
+          onLogout={async () => {
+            try {
+              await supabase.auth.signOut();
+            } catch (e) {
+              console.error("Error al cerrar sesión en Supabase:", e);
+            }
+            localStorage.removeItem('ahf_admin_token');
+            localStorage.removeItem('ahf_admin_user');
+            localStorage.removeItem('ahf_auth_user');
+            setAuthUser(null);
+          }}
+          authUser={authUser}
+        />
+      </div>
 
 
       {/* Main Content Layout — Split panel on desktop, toggle on mobile */}
@@ -1225,62 +1168,7 @@ function MainApp() {
             targetFocusCoords={targetFocusCoords}
           />
 
-          {/* Priority Legend — bottom-left over map */}
-          <div className="absolute bottom-3 left-3 z-20">
-            {/* Minimized button */}
-            {!isLegendExpanded && (
-              <button
-                onClick={() => setIsLegendExpanded(true)}
-                className="flex items-center gap-1.5 bg-white/95 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-slate-300 shadow-md text-xs font-bold text-slate-800 hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span>{t('mapLegendTitle')}</span>
-                <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-0.5" />
-              </button>
-            )}
 
-            {/* Expanded Legend box (collapsible on desktop & mobile) */}
-            {isLegendExpanded && (
-              <div className="bg-white/95 backdrop-blur-xs p-2.5 rounded-xl border border-slate-300 shadow-md text-xs space-y-1 block animate-in fade-in duration-150">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                    {t('mapLegendTitle')}
-                  </div>
-                  <button
-                    onClick={() => setIsLegendExpanded(false)}
-                    className="p-0.5 text-slate-400 hover:text-slate-700 rounded-md transition-colors cursor-pointer"
-                    title="Minimizar leyenda"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-red inline-block" />
-                  <span className="text-slate-700">{t('mapLegendCritical')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendHigh')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-brand-yellow inline-block" />
-                  <span className="text-slate-700">{t('mapLegendMedium')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendLow')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendAcopio')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
-                  <span className="text-slate-700">{t('mapLegendOffer')}</span>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* LIST PANEL — 40% width on desktop (or full width when expanded), full width toggle on mobile */}
@@ -1657,11 +1545,7 @@ function MainApp() {
         <Footer />
       </div>
 
-      {/* Botón Flotante (FAB) para Pedir Ayuda Rápida con Chatbot (Web y Móvil) */}
-      <FloatingCreateNeedFAB
-        onClick={() => setIsChatbotModalOpen(true)}
-        isLegendExpanded={isLegendExpanded}
-      />
+      {/* Chatbot Modal */}
       <ChatbotTicketModal
         isOpen={isChatbotModalOpen}
         onClose={() => setIsChatbotModalOpen(false)}

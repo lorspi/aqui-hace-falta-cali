@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogOut, MapPin, Menu, Plus, Users, X } from 'lucide-react';
+import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, Users, X } from 'lucide-react';
 import { Avatar, Contador } from './Etiqueta';
 import { Divisor } from './Divisor';
 
@@ -27,11 +27,14 @@ export interface ShellProps {
   seccion: Seccion;
   panelNombre: string;
   cuenta: Cuenta;
+  authUser?: any;
   pendientes?: number;
   avisosNuevos?: number;
   rutas: Record<Seccion | 'inicio' | 'salir', string>;
   onPedir?: () => void;
   onOfrecer?: () => void;
+  onOpenLoginModal?: () => void;
+  onLogout?: () => void;
   /** El ☰ de la cabecera móvil se conecta aquí. */
   cajonAbierto?: boolean;
   onCerrarCajon?: () => void;
@@ -41,10 +44,11 @@ export interface ShellProps {
 const ITEM = 'font-rd flex h-9.5 shrink-0 items-center gap-3 rounded-rd-lg px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink-2 no-underline hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy';
 const ITEM_ACTUAL = 'bg-rd-navy-soft font-semibold text-rd-navy hover:bg-rd-navy-soft hover:text-rd-navy';
 
-export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, cajonAbierto = false, onCerrarCajon, children }) => {
+export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
   const [plegado, setPlegado] = useState(false);
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
+  const estaLogueado = Boolean(authUser);
 
   /* El panel del «+» se cierra con Escape o tocando fuera. */
   useEffect(() => {
@@ -69,11 +73,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
   }, [cajonAbierto, onCerrarCajon]);
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
-    /* Radar primero: es la portada; luego el panel (con el nombre de la entidad) y el
-       Directorio (Alejandro, 16 de septiembre de 2026). */
+    /* Para esta versión solo se muestra Radar; Mi organización y Directorio están ocultos */
     { id: 'radar', nombre: 'Radar', href: rutas.radar, icono: <MapPin className="h-5 w-5" /> },
-    { id: 'panel', nombre: panelNombre, href: rutas.panel, icono: <House className="h-5 w-5" />, n: pendientes },
-    { id: 'directorio', nombre: 'Directorio', href: rutas.directorio, icono: <Users className="h-5 w-5" /> },
   ];
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
@@ -122,24 +123,48 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
             <li key={s.id}>{enlace(s)}</li>
           ))}
         </ul>
+
+        {/* ---- cuenta o login/registro en parte inferior ---- */}
         <div className="mt-auto flex shrink-0 flex-col gap-1 border-t border-rd-line pt-2">
-          <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${plegado ? 'justify-center p-1' : ''}`}>
-            <Avatar iniciales={cuenta.iniciales} tamano="md" />
-            {!plegado && (
-              <span className="flex min-w-0 flex-col">
-                <b className="truncate text-rd-13 font-semibold">{cuenta.entidad}</b>
-                <span className="truncate text-rd-11-5 text-rd-ink-meta">
-                  {cuenta.persona}
-                  <Divisor />
-                  {cuenta.rol}
+          {estaLogueado ? (
+            <>
+              <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${plegado ? 'justify-center p-1' : ''}`}>
+                <Avatar iniciales={cuenta.iniciales} tamano="md" />
+                {!plegado && (
+                  <span className="flex min-w-0 flex-col">
+                    <b className="truncate text-rd-13 font-semibold">{cuenta.entidad}</b>
+                    <span className="truncate text-rd-11-5 text-rd-ink-meta">
+                      {cuenta.persona}
+                      <Divisor />
+                      {cuenta.rol}
+                    </span>
+                  </span>
+                )}
+              </a>
+              <button
+                type="button"
+                onClick={onLogout || (() => { window.location.href = rutas.salir; })}
+                className={`${ITEM} h-9 text-rd-13 text-rd-ink-meta ${plegado ? 'justify-center px-0' : ''} cursor-pointer w-full text-left`}
+              >
+                <LogOut aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
+                <span className={plegado ? 'sr-only' : ''}>Cerrar sesión</span>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLoginModal || (() => { window.location.href = '/registro-v2?modo=registro'; })}
+              className={`flex items-center gap-2.5 rounded-rd-lg px-3 py-2.5 text-rd-navy font-semibold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer ${plegado ? 'justify-center px-0' : ''}`}
+              title="Iniciar sesión / Registro"
+            >
+              <LogIn aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-navy" />
+              {!plegado && (
+                <span className="truncate text-rd-13 font-bold">
+                  Iniciar sesión / Registro
                 </span>
-              </span>
-            )}
-          </a>
-          <a href={rutas.salir} className={`${ITEM} h-9 text-rd-13 text-rd-ink-meta ${plegado ? 'justify-center px-0' : ''}`}>
-            <LogOut aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
-            <span className={plegado ? 'sr-only' : ''}>Cerrar sesión</span>
-          </a>
+              )}
+            </button>
+          )}
         </div>
       </nav>
 
@@ -154,7 +179,6 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
         className="fixed right-4 bottom-2 left-4 z-800 box-border flex h-14 items-center rounded-full border border-rd-line bg-rd-surface px-2 shadow-rd-2 lg:hidden"
       >
         <TabItem href={rutas.radar} actual={seccion === 'radar'} nombre="Radar" icono={<MapPin className="h-6 w-6" />} />
-        <TabItem href={rutas.directorio} actual={seccion === 'directorio'} nombre="Directorio" icono={<Users className="h-6 w-6" />} />
         <div ref={masRef} className="relative flex w-11 shrink-0 justify-center">
           <button
             type="button"
@@ -174,7 +198,6 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
           )}
         </div>
         <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre="Avisos" icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`Avisos, ${avisosNuevos} nuevos`} />
-        <TabItem href={rutas.panel} actual={seccion === 'panel'} nombre={panelNombre} icono={<House className="h-6 w-6" />} n={pendientes} etiqueta={`${panelNombre}, ${pendientes} pendientes`} />
       </nav>
 
       {/* ---- cajón lateral (solo < 1024) ---- */}
@@ -202,31 +225,51 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, pend
                 </a>
               </li>
             </ul>
-            {/* La cuenta abajo, encima del divisor y de Cerrar sesión, sin fondo (Alejandro,
-                16 de septiembre de 2026). */}
-            <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className="mt-auto flex items-start gap-3 px-4 py-3 text-rd-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy sm:px-6">
-              <Avatar iniciales={cuenta.iniciales} tamano="lg" />
-              <span className="flex min-w-0 flex-col">
-                <b className="truncate text-rd-14 font-semibold">{cuenta.entidad}</b>
-                <span className="truncate text-rd-12 text-rd-ink-meta">
-                  {cuenta.persona}
-                  <Divisor />
-                  {cuenta.rol}
-                </span>
-              </span>
-            </a>
-            <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6">
-              <a href={rutas.salir} className={`${ITEM} h-12 text-rd-15 text-rd-ink-meta`}>
-                <LogOut aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
-                <span>Cerrar sesión</span>
-              </a>
-            </div>
+
+            {/* La cuenta o login abajo en cajón móvil */}
+            {estaLogueado ? (
+              <>
+                <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className="mt-auto flex items-start gap-3 px-4 py-3 text-rd-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy sm:px-6">
+                  <Avatar iniciales={cuenta.iniciales} tamano="lg" />
+                  <span className="flex min-w-0 flex-col">
+                    <b className="truncate text-rd-14 font-semibold">{cuenta.entidad}</b>
+                    <span className="truncate text-rd-12 text-rd-ink-meta">
+                      {cuenta.persona}
+                      <Divisor />
+                      {cuenta.rol}
+                    </span>
+                  </span>
+                </a>
+                <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={onLogout || (() => { window.location.href = rutas.salir; })}
+                    className={`${ITEM} h-12 text-rd-15 text-rd-ink-meta w-full text-left cursor-pointer`}
+                  >
+                    <LogOut aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-auto border-t border-rd-line px-4 pt-4 pb-6 sm:px-6">
+                <button
+                  type="button"
+                  onClick={() => { onCerrarCajon?.(); (onOpenLoginModal || (() => { window.location.href = '/registro-v2?modo=registro'; }))(); }}
+                  className="flex w-full items-center justify-center gap-2.5 rounded-rd-lg px-4 py-3 text-rd-navy font-bold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer text-rd-15"
+                >
+                  <LogIn aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-navy" />
+                  <span>Iniciar sesión / Registro</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 };
+
 
 const TabItem: React.FC<{ href: string; actual: boolean; nombre: string; icono: React.ReactNode; n?: number; etiqueta?: string }> = ({ href, actual, nombre, icono, n = 0, etiqueta }) => (
   <a

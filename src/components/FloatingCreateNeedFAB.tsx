@@ -5,18 +5,21 @@ import { useTranslation } from '../i18n/LanguageContext';
 interface FloatingCreateNeedFABProps {
   onClick: () => void;
   isLegendExpanded?: boolean;
+  position?: 'fixed' | 'in-map';
 }
 
-export const FloatingCreateNeedFAB: React.FC<FloatingCreateNeedFABProps> = ({ onClick, isLegendExpanded = false }) => {
+export const FloatingCreateNeedFAB: React.FC<FloatingCreateNeedFABProps> = ({ onClick, isLegendExpanded = false, position = 'in-map' }) => {
   const { t } = useTranslation();
+
+  const positionClasses = position === 'in-map'
+    ? 'absolute left-4 bottom-6 z-[1000]'
+    : `fixed right-4 bottom-24 md:right-auto md:left-3 z-40 ${isLegendExpanded ? 'md:bottom-72' : 'md:bottom-28'}`;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`fixed right-4 bottom-24 md:right-auto md:left-3 z-40 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-900 text-white font-extrabold text-xs md:text-sm py-3 px-4 md:py-3 md:px-4 rounded-full shadow-2xl shadow-blue-700/40 border border-white/30 flex items-center gap-2.5 transition-all duration-300 active:scale-95 animate-in slide-in-from-bottom-5 cursor-pointer group ${
-        isLegendExpanded ? 'md:bottom-72' : 'md:bottom-28'
-      }`}
+      className={`${positionClasses} bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-900 text-white font-extrabold text-xs md:text-sm py-3 px-4 md:py-3 md:px-4 rounded-full shadow-2xl shadow-blue-700/40 border border-white/30 flex items-center gap-2.5 transition-all duration-300 active:scale-95 animate-in slide-in-from-bottom-5 cursor-pointer group pointer-events-auto`}
       id="btn-floating-chatbot-fab"
     >
       <div className="relative flex items-center justify-center">
@@ -38,3 +41,4 @@ export const FloatingCreateNeedFAB: React.FC<FloatingCreateNeedFABProps> = ({ on
     </button>
   );
 };
+

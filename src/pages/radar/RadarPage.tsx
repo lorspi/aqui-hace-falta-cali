@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Funnel, Hand, HeartHandshake, Info, List, Map as MapIcon, Search, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
@@ -29,6 +29,8 @@ import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { distanciaKm, distanciaTexto } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
+import { FloatingCreateNeedFAB } from '../../components/FloatingCreateNeedFAB';
+
 
 /**
  * La Radar (mockup/*): la portada con sesión del prototipo (`plantilla.html`). Cabecera con
@@ -68,13 +70,30 @@ function irA(ruta: string): void {
   window.location.href = ruta;
 }
 
-export const RadarPage: React.FC = () => (
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
+import { needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
+
+export interface RadarProps {
+  onOpenCreateNeedModal?: () => void;
+  onOpenCreateOfferModal?: () => void;
+  onOpenLoginModal?: () => void;
+  onLogout?: () => void;
+  authUser?: any;
+}
+
+export const RadarPage: React.FC<RadarProps> = (props) => (
   <AvisosProvider>
-    <Radar />
+    <Radar {...props} />
   </AvisosProvider>
 );
 
-const Radar: React.FC = () => {
+const Radar: React.FC<RadarProps> = ({
+  onOpenCreateNeedModal,
+  onOpenCreateOfferModal,
+  onOpenLoginModal,
+  onLogout,
+  authUser,
+}) => {
   const avisar = useAviso();
   /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
      (`utils/enlace.ts`). Sin parámetros, los valores por defecto de siempre. */
@@ -105,7 +124,43 @@ const Radar: React.FC = () => {
   const [reporte, setReporte] = useState<string | null>(null);
   const [enProceso, setEnProceso] = useState<string[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
-  const [todasLasPubs] = useState<Publicacion[]>(obtenerPublicaciones);
+  const [dbPubs, setDbPubs] = useState<Publicacion[]>([]);
+  const [cargandoDb, setCargandoDb] = useState(true);
+  const [panelDerechoMinimizado, setPanelDerechoMinimizado] = useState(false);
+  const [leyendaExpandida, setLeyendaExpandida] = useState(false);
+
+
+
+  const fetchPublicacionesSupabase = useCallback(async () => {
+    setCargandoDb(true);
+    try {
+      const [{ data: needsData }, { data: offersData }] = await Promise.all([
+        supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED').order('created_at', { ascending: false }),
+        supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED').order('created_at', { ascending: false }),
+      ]);
+
+      const needsMapped = (needsData || []).map(dbNeedToNeed).map(needToPublicacion);
+      const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
+      const combinadas = [...needsMapped, ...offersMapped];
+
+      if (combinadas.length > 0) {
+        setDbPubs(combinadas);
+      } else {
+        setDbPubs(obtenerPublicaciones());
+      }
+    } catch (err) {
+      console.error('❌ Error cargando publicaciones desde Supabase:', err);
+      setDbPubs(obtenerPublicaciones());
+    } finally {
+      setCargandoDb(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPublicacionesSupabase();
+  }, [fetchPublicacionesSupabase]);
+
+  const todasLasPubs = useMemo(() => (dbPubs.length > 0 ? dbPubs : obtenerPublicaciones()), [dbPubs]);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -258,18 +313,46 @@ const Radar: React.FC = () => {
   /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
   const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
+  const cuentaUsuario = authUser
+    ? {
+        entidad: authUser.organization || authUser.name || 'Mi Organización',
+        persona: authUser.name || authUser.email?.split('@')[0] || 'Usuario',
+        rol: authUser.role || 'Miembro',
+        iniciales: (authUser.name || authUser.email || 'US')
+          .split(' ')
+          .map((s: string) => s[0])
+          .join('')
+          .substring(0, 2)
+          .toUpperCase(),
+      }
+    : CUENTA;
+
   return (
-    <Shell seccion="radar" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
+    <Shell
+      seccion="radar"
+      panelNombre={nombrePanel()}
+      cuenta={cuentaUsuario}
+      authUser={authUser}
+      onOpenLoginModal={onOpenLoginModal}
+      onLogout={onLogout}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      avisosNuevos={sinLeer}
+      rutas={RUTAS_SHELL}
+      onPedir={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}
+      onOfrecer={() => (onOpenCreateOfferModal ? onOpenCreateOfferModal() : irA(RUTAS.ofrecer))}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
       <div className="flex h-full min-h-0 flex-col max-lg:h-dvh">
         {/* ---- cabecera ---- */}
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Radar</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
-              <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
+              <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}>
                 Pedir ayuda
               </Button>
-              <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
+              <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => (onOpenCreateOfferModal ? onOpenCreateOfferModal() : irA(RUTAS.ofrecer))}>
                 Ofrecer ayuda
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
@@ -372,49 +455,139 @@ const Radar: React.FC = () => {
           </main>
         ) : (
           <div className="grid min-h-0 flex-1 grid-cols-12 max-lg:flex max-lg:flex-col">
-            <MapaRadar
-              publicaciones={visibles}
-              ubicacion={UBICACION}
-              seleccionada={seleccionada}
-              onSeleccionar={seleccionarDesdeMapa}
-              encuadrar={encuadrar}
-              encuadrarTodo={encuadrarCiudad}
-              tapadoAbajo={tapadoAbajo}
-              resaltadas={resaltadas}
-              className="relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1"
-            />
-            {/* Lista: al lado del mapa (5 y 4 columnas) */}
-            <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
-              <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                <div className="flex flex-col gap-3">
-                  {visibles.length === 0 ? (
-                    <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
-                      <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
-                        <Funnel className="h-6.5 w-6.5" />
+            <div className={`relative isolate z-0 min-h-0 transition-all duration-300 max-lg:min-h-0 max-lg:flex-1 ${panelDerechoMinimizado ? 'col-span-12' : 'col-span-7 xl:col-span-8'}`}>
+              <MapaRadar
+                publicaciones={visibles}
+                ubicacion={UBICACION}
+                seleccionada={seleccionada}
+                onSeleccionar={seleccionarDesdeMapa}
+                encuadrar={encuadrar}
+                encuadrarTodo={encuadrarCiudad}
+                tapadoAbajo={tapadoAbajo}
+                resaltadas={resaltadas}
+                className="h-full w-full"
+              />
+
+              {/* Botón flotante del chatbot en la parte izquierda del mapa */}
+              <FloatingCreateNeedFAB
+                onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}
+                position="in-map"
+              />
+
+              {/* Leyenda del mapa en la parte inferior central DENTRO del mapa */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] font-rd flex flex-col items-center">
+                {leyendaExpandida ? (
+                  <div className="w-56 rounded-rd-xl border border-rd-line bg-rd-surface/95 p-3 shadow-rd-2 backdrop-blur-md animate-in fade-in duration-150 text-rd-ink">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-rd-line">
+                      <span className="text-rd-11 font-bold tracking-wider uppercase text-rd-ink-meta">
+                        Leyenda del mapa
                       </span>
-                      <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{vacio.titulo}</h3>
-                      <p className="m-0 max-w-90 text-rd-13-5 leading-normal">{vacio.texto}</p>
-                      <Button nivel="secundario" tamano="md" className="mt-3" onClick={aflojar}>
-                        {vacio.accion}
-                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setLeyendaExpandida(false)}
+                        className="p-1 text-rd-ink-3 hover:text-rd-ink rounded-rd-sm transition-colors cursor-pointer"
+                        title="Minimizar leyenda"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
                     </div>
-                  ) : (
-                    visibles.map((p: Publicacion) => (
-                      <Tarjeta
-                        key={p.id}
-                        publicacion={p}
-                        distanciaKm={distancias.get(p.id)}
-                        coincidencias={coincidencias.get(p.id)}
-                        enProceso={enProceso.includes(p.id)}
-                        onVerEnMapa={verEnMapa}
-                        {...accionesTarjeta}
-                      />
-                    ))
-                  )}
+                    <div className="space-y-1.5 text-rd-12 font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-rd-coral shrink-0" />
+                        <span>Crítica</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+                        <span>Alta</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-yellow-400 shrink-0" />
+                        <span>Media</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-rd-green shrink-0" />
+                        <span>Baja</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-purple-600 shrink-0" />
+                        <span>Centro de acopio</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-rd-navy shrink-0" />
+                        <span>Oferta de ayuda</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLeyendaExpandida(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-rd-line bg-rd-surface/95 px-3.5 py-1.5 text-rd-12-5 font-semibold text-rd-ink shadow-rd-2 ring-1 ring-rd-ink/10 backdrop-blur-md transition-all hover:bg-rd-surface hover:text-rd-navy active:scale-95 cursor-pointer"
+                  >
+                    <Info className="h-4 w-4 text-rd-navy shrink-0" />
+                    <span>Leyenda del mapa</span>
+                    <ChevronUp className="h-4 w-4 text-rd-ink-3 shrink-0" />
+                  </button>
+                )}
+              </div>
+
+              {/* Botón para minimizar/desplegar el panel derecho hacia la derecha */}
+              <button
+                type="button"
+                onClick={() => setPanelDerechoMinimizado((p) => !p)}
+                aria-label={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel a la derecha'}
+                title={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel a la derecha'}
+                className="absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border border-rd-line bg-rd-surface/95 px-3 py-1.5 text-rd-12-5 font-semibold text-rd-ink shadow-rd-2 ring-1 ring-rd-ink/10 backdrop-blur-md transition-all hover:bg-rd-surface hover:text-rd-navy active:scale-95 cursor-pointer max-lg:hidden"
+              >
+                {panelDerechoMinimizado ? (
+                  <>
+                    <ChevronLeft className="h-4 w-4 text-rd-navy" />
+                    <span>Mostrar panel</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Minimizar mapa</span>
+                    <ChevronRight className="h-4 w-4 text-rd-ink-3" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Lista / Menú lateral derecho (collapsible) */}
+            {!panelDerechoMinimizado && (
+              <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
+                <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                  <div className="flex flex-col gap-3">
+                    {visibles.length === 0 ? (
+                      <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
+                        <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
+                          <Funnel className="h-6.5 w-6.5" />
+                        </span>
+                        <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{vacio.titulo}</h3>
+                        <p className="m-0 max-w-90 text-rd-13-5 leading-normal">{vacio.texto}</p>
+                        <Button nivel="secundario" tamano="md" className="mt-3" onClick={aflojar}>
+                          {vacio.accion}
+                        </Button>
+                      </div>
+                    ) : (
+                      visibles.map((p: Publicacion) => (
+                        <Tarjeta
+                          key={p.id}
+                          publicacion={p}
+                          distanciaKm={distancias.get(p.id)}
+                          coincidencias={coincidencias.get(p.id)}
+                          enProceso={enProceso.includes(p.id)}
+                          onVerEnMapa={verEnMapa}
+                          {...accionesTarjeta}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
+
         )}
 
         {/* ---- Mapa | Lista (solo < 1024) ---- */}
