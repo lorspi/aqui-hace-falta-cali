@@ -1123,7 +1123,7 @@ function MainApp() {
     <div className="h-dvh max-h-dvh w-full overflow-hidden bg-rd-surface">
       <div className="flex-1 h-full w-full min-h-0 overflow-hidden">
         <RadarPage
-          onOpenCreateNeedModal={() => setIsChatbotModalOpen(true)}
+          onOpenCreateNeedModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
           onOpenLoginModal={() => setIsLoginModalOpen(true)}
           onLogout={async () => {

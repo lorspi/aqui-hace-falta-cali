@@ -158,6 +158,20 @@ const Radar: React.FC<RadarProps> = ({
 
   useEffect(() => {
     fetchPublicacionesSupabase();
+
+    const handleFocus = () => fetchPublicacionesSupabase();
+    window.addEventListener('focus', handleFocus);
+
+    const channel = supabase
+      .channel('publicaciones-radar-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'needs' }, fetchPublicacionesSupabase)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'offers' }, fetchPublicacionesSupabase)
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
   }, [fetchPublicacionesSupabase]);
 
   const todasLasPubs = useMemo(() => (dbPubs.length > 0 ? dbPubs : obtenerPublicaciones()), [dbPubs]);
