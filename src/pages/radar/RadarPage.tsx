@@ -79,8 +79,10 @@ export interface RadarProps {
   onOpenCreateNeedModal?: () => void;
   onOpenCreateOfferModal?: () => void;
   onOpenLoginModal?: () => void;
+  onOpenProfileModal?: () => void;
   onLogout?: () => void;
   authUser?: any;
+  isModeratorOrAdmin?: boolean;
 }
 
 export const RadarPage: React.FC<RadarProps> = (props) => (
@@ -93,8 +95,10 @@ const Radar: React.FC<RadarProps> = ({
   onOpenCreateNeedModal,
   onOpenCreateOfferModal,
   onOpenLoginModal,
+  onOpenProfileModal,
   onLogout,
   authUser,
+  isModeratorOrAdmin,
 }) => {
   const avisar = useAviso();
   /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
@@ -334,12 +338,34 @@ const Radar: React.FC<RadarProps> = ({
   /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
   const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
-  const cuentaUsuario = authUser
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser) return authUser;
+    if (typeof window !== 'undefined') {
+      const adminLocal = localStorage.getItem('ahf_admin_user');
+      if (adminLocal) {
+        try { return JSON.parse(adminLocal); } catch {}
+      }
+      const authLocal = localStorage.getItem('ahf_auth_user');
+      if (authLocal) {
+        try { return JSON.parse(authLocal); } catch {}
+      }
+    }
+    return null;
+  }, [authUser]);
+
+  const esModOAdmin = useMemo(() => {
+    if (isModeratorOrAdmin) return true;
+    if (!usuarioEfectivo) return false;
+    const role = (usuarioEfectivo.role || '').toString().trim().toUpperCase();
+    return role === 'ADMIN' || role === 'MODERATOR' || role === 'MODERADOR' || role === 'ADMINISTRADOR';
+  }, [isModeratorOrAdmin, usuarioEfectivo]);
+
+  const cuentaUsuario = usuarioEfectivo
     ? {
-        entidad: authUser.organization || authUser.name || 'Mi Organización',
-        persona: authUser.name || authUser.email?.split('@')[0] || 'Usuario',
-        rol: authUser.role || 'Miembro',
-        iniciales: (authUser.name || authUser.email || 'US')
+        entidad: usuarioEfectivo.organization || usuarioEfectivo.name || 'Mi Organización',
+        persona: usuarioEfectivo.name || usuarioEfectivo.email?.split('@')[0] || 'Usuario',
+        rol: usuarioEfectivo.role || 'Miembro',
+        iniciales: (usuarioEfectivo.name || usuarioEfectivo.email || 'US')
           .split(' ')
           .map((s: string) => s[0])
           .join('')
@@ -353,8 +379,10 @@ const Radar: React.FC<RadarProps> = ({
       seccion="radar"
       panelNombre={nombrePanel()}
       cuenta={cuentaUsuario}
-      authUser={authUser}
+      authUser={usuarioEfectivo}
+      isModeratorOrAdmin={esModOAdmin}
       onOpenLoginModal={onOpenLoginModal}
+      onOpenProfileModal={onOpenProfileModal}
       onLogout={onLogout}
       pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
       avisosNuevos={sinLeer}
