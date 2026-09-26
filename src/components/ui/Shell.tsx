@@ -28,12 +28,14 @@ export interface ShellProps {
   panelNombre: string;
   cuenta: Cuenta;
   authUser?: any;
+  isModeratorOrAdmin?: boolean;
   pendientes?: number;
   avisosNuevos?: number;
   rutas: Record<Seccion | 'inicio' | 'salir', string>;
   onPedir?: () => void;
   onOfrecer?: () => void;
   onOpenLoginModal?: () => void;
+  onOpenProfileModal?: () => void;
   onLogout?: () => void;
   /** El ☰ de la cabecera móvil se conecta aquí. */
   cajonAbierto?: boolean;
@@ -44,7 +46,7 @@ export interface ShellProps {
 const ITEM = 'font-rd flex h-9.5 shrink-0 items-center gap-3 rounded-rd-lg px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink-2 no-underline hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy';
 const ITEM_ACTUAL = 'bg-rd-navy-soft font-semibold text-rd-navy hover:bg-rd-navy-soft hover:text-rd-navy';
 
-export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
+export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, isModeratorOrAdmin = false, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onOpenProfileModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
   const [plegado, setPlegado] = useState(false);
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
@@ -73,8 +75,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [cajonAbierto, onCerrarCajon]);
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
-    /* Para esta versión solo se muestra Radar; Mi organización y Directorio están ocultos */
     { id: 'radar', nombre: 'Radar', href: rutas.radar, icono: <MapPin className="h-5 w-5" /> },
+    ...(isModeratorOrAdmin
+      ? [{ id: 'panel' as Seccion, nombre: 'Panel', href: '/panel', icono: <House className="h-5 w-5" />, n: pendientes }]
+      : []),
   ];
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
@@ -128,7 +132,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         <div className="mt-auto flex shrink-0 flex-col gap-1 border-t border-rd-line pt-2">
           {estaLogueado ? (
             <>
-              <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${plegado ? 'justify-center p-1' : ''}`}>
+              <button
+                type="button"
+                onClick={onOpenProfileModal || (() => { window.location.href = rutas.perfil; })}
+                aria-current={seccion === 'perfil' ? 'page' : undefined}
+                className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink text-left no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy cursor-pointer w-full ${plegado ? 'justify-center p-1' : ''}`}
+                title="Ver perfil de usuario"
+              >
                 <Avatar iniciales={cuenta.iniciales} tamano="md" />
                 {!plegado && (
                   <span className="flex min-w-0 flex-col">
@@ -140,7 +150,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                     </span>
                   </span>
                 )}
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={onLogout || (() => { window.location.href = rutas.salir; })}
@@ -229,7 +239,12 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             {/* La cuenta o login abajo en cajón móvil */}
             {estaLogueado ? (
               <>
-                <a href={rutas.perfil} aria-current={seccion === 'perfil' ? 'page' : undefined} className="mt-auto flex items-start gap-3 px-4 py-3 text-rd-ink no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy sm:px-6">
+                <button
+                  type="button"
+                  onClick={() => { onCerrarCajon?.(); (onOpenProfileModal || (() => { window.location.href = rutas.perfil; }))(); }}
+                  aria-current={seccion === 'perfil' ? 'page' : undefined}
+                  className="mt-auto flex items-start gap-3 px-4 py-3 text-rd-ink text-left no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy sm:px-6 cursor-pointer w-full"
+                >
                   <Avatar iniciales={cuenta.iniciales} tamano="lg" />
                   <span className="flex min-w-0 flex-col">
                     <b className="truncate text-rd-14 font-semibold">{cuenta.entidad}</b>
@@ -239,7 +254,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                       {cuenta.rol}
                     </span>
                   </span>
-                </a>
+                </button>
                 <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6">
                   <button
                     type="button"

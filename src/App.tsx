@@ -1126,6 +1126,7 @@ function MainApp() {
           onOpenCreateNeedModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
           onOpenLoginModal={() => setIsLoginModalOpen(true)}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
           onLogout={async () => {
             try {
               await supabase.auth.signOut();
@@ -1137,7 +1138,8 @@ function MainApp() {
             localStorage.removeItem('ahf_auth_user');
             setAuthUser(null);
           }}
-          authUser={authUser}
+          authUser={authUser || sessionUser}
+          isModeratorOrAdmin={isModeratorLoggedIn || isAdminUser}
         />
       </div>
 
