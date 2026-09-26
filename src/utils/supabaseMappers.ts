@@ -1,5 +1,6 @@
-import type { Need, Offer } from '../types';
+import type { Need, Offer, HelpCategory } from '../types';
 import type { Publicacion, Recurso } from '../types/publicacion';
+import { CATEGORY_LABELS } from './formatters';
 
 /**
  * Convierte un Need (de Supabase) al tipo unificado Publicacion (v2 RaDAR)
@@ -8,13 +9,26 @@ export function needToPublicacion(need: Need): Publicacion {
   const recursos: Recurso[] = (need.resources || []).map((r) => {
     const total = r.requestedQuantity ?? 1;
     const hecho = r.fulfilledQuantity ?? 0;
+    const catLabel = r.type && CATEGORY_LABELS[r.type as HelpCategory]?.label;
     return {
-      item: r.description || r.type || 'Ayuda',
+      item: catLabel || r.description || r.type || 'Ayuda',
       unidad: r.unit || 'unidades',
       total,
       tramos: hecho > 0 ? [{ t: 'hecho', cant: hecho, quien: 'Confirmado', cuando: 'Recientemente' }] : [],
     };
   });
+
+  if (recursos.length === 0 && Array.isArray(need.categories) && need.categories.length > 0) {
+    need.categories.forEach((cat) => {
+      const label = CATEGORY_LABELS[cat as HelpCategory]?.label || cat;
+      recursos.push({
+        item: label,
+        unidad: 'unidades',
+        total: 1,
+        tramos: [],
+      });
+    });
+  }
 
   const pub: Publicacion = {
     id: need.id,
@@ -49,8 +63,9 @@ export function offerToPublicacion(offer: Offer): Publicacion {
   const recursos: Recurso[] = (offer.resources || []).map((r) => {
     const total = r.quantity ?? 1;
     const hecho = r.fulfilledQuantity ?? 0;
+    const catLabel = r.type && CATEGORY_LABELS[r.type as HelpCategory]?.label;
     return {
-      item: r.description || r.type || 'Aporte',
+      item: catLabel || r.description || r.type || 'Aporte',
       unidad: r.unit || 'unidades',
       total,
       tramos: hecho > 0 ? [{ t: 'hecho', cant: hecho, quien: 'Entregado', cuando: 'Recientemente' }] : [],
@@ -60,6 +75,22 @@ export function offerToPublicacion(offer: Offer): Publicacion {
       ],
     };
   });
+
+  if (recursos.length === 0 && Array.isArray(offer.categories) && offer.categories.length > 0) {
+    offer.categories.forEach((cat) => {
+      const label = CATEGORY_LABELS[cat as HelpCategory]?.label || cat;
+      recursos.push({
+        item: label,
+        unidad: 'unidades',
+        total: 1,
+        tramos: [],
+        ficha: [
+          ['Disponibilidad', offer.offerStatus === 'AVAILABLE' ? 'Disponible hoy' : 'Hasta agotar'],
+          ['Cómo se entrega', offer.deliveryMode || 'A convenir'],
+        ],
+      });
+    });
+  }
 
   const pub: Publicacion = {
     id: offer.id,
@@ -88,3 +119,4 @@ export function offerToPublicacion(offer: Offer): Publicacion {
 
   return pub;
 }
+

@@ -10,7 +10,9 @@
  * nada, y el que escribe omite todo lo que esté en su valor por defecto, para que un enlace
  * sin filtros sea una URL limpia.
  */
+import type { ConsultaDirectorio, OrdenDirectorio } from '../types/directorio';
 import type { TipoPublicacion } from '../types/publicacion';
+import { consultaVacia } from './directorio';
 import { DISTANCIAS, ORDENES, filtrosVacios, type Filtros, type Orden } from './filtros';
 import type { EstadoPublicacion } from './publicaciones';
 
@@ -78,7 +80,37 @@ export function radarDeParams(p: URLSearchParams): ConsultaRadar {
   };
 }
 
+/* ---------- el Directorio ---------- */
 
+export interface ConsultaDirectorioUrl {
+  consulta: ConsultaDirectorio;
+  clase: 'organizacion' | 'comunidad';
+}
+
+export function paramsDeDirectorio({ consulta: q, clase }: ConsultaDirectorioUrl): URLSearchParams {
+  const p = new URLSearchParams();
+  if (clase === 'comunidad') p.set('vista', 'comunidades');
+  poner(p, 'ciudad', q.ciudades);
+  poner(p, 'recurso', q.recursos);
+  poner(p, 'verificadas', q.verificadas);
+  if (q.orden !== 'cercania') poner(p, 'orden', q.orden);
+  poner(p, 'buscar', q.texto.trim());
+  return p;
+}
+
+export function directorioDeParams(p: URLSearchParams): ConsultaDirectorioUrl {
+  return {
+    clase: p.get('vista') === 'comunidades' ? 'comunidad' : 'organizacion',
+    consulta: {
+      ...consultaVacia(),
+      ciudades: lista(p.get('ciudad')),
+      recursos: lista(p.get('recurso')),
+      verificadas: p.get('verificadas') === '1',
+      orden: (p.get('orden') === 'cifra' ? 'cifra' : 'cercania') as OrdenDirectorio,
+      texto: p.get('buscar')?.trim() ?? '',
+    },
+  };
+}
 
 /** Deja la URL diciendo lo que se ve, sin ensuciar el historial: el botón «atrás» sigue
  *  saliendo de la sección en vez de deshacer filtro por filtro. `extra` conserva los

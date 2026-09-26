@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Activity, Bug, Compass, Flame, Info, Loader2, Mountain, TriangleAlert, Waves, Wind } from 'lucide-react';
+import { Divisor } from '../../components/ui/Divisor';
 import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
 import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
-import { PUERTAS } from '../../mocks/panelMock';
+import { NECESIDAD, PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
@@ -13,6 +14,10 @@ import { aDeclarar, caminoPedir, listoPedir } from '../../utils/pedir';
 import { cifra, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
+import { iconoDe } from '../../components/ui/Recursos';
+import type { RecursoPedido } from '../../types/panel';
+import type { DatosPublicacionGestion } from '../panel/dialogos';
+import { publicacionSaleVerificada } from '../../utils/cuenta';
 import { useFlujo } from './useFlujo';
 
 import { createNeedWithItems } from '../../lib/supabaseService';
@@ -68,12 +73,13 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
       return { item: m.item, unidad, total, tramos: [] };
     })
     .filter((r) => r.total > 0);
-  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: publicacionSaleVerificada(), lat: e.lat, lng: e.lng, zona: '', recursos };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
 export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
   const [createdNeed, setCreatedNeed] = useState<Need | undefined>(undefined);
+  const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
 
   const guardarEnSupabase = useCallback(async (estado: EstadoPedir) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -148,6 +154,78 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     const inserted = await createNeedWithItems(needPayload, itemsPayload);
     if (inserted) {
       setCreatedNeed(inserted);
+    }
+
+    const idPub = inserted?.id || `necesidad-${Date.now()}`;
+    const pubFinal: Publicacion = {
+      ...pub,
+      id: idPub,
+      propia: true,
+      org: org?.org_name || profile?.full_name || CUENTA_PEDIR.organizacion || 'Mi Organización',
+      verificada: publicacionSaleVerificada(),
+    };
+    setPublicacionPublicada(pubFinal);
+
+    const recursosPanel: RecursoPedido[] = pubFinal.recursos.map((r) => ({
+      n: r.item,
+      icono: iconoDe(r.item),
+      unidad: r.unidad,
+      total: r.total,
+      para: estado.evento ? `Atención de ${estado.evento.toLowerCase()}` : 'Atención comunitaria',
+      confirmada: 0,
+      camino: 0,
+      pausado: false,
+    }));
+
+    const gestionNecesidad: DatosPublicacionGestion = {
+      id: idPub,
+      tipo: 'necesidad',
+      titulo: pubFinal.titulo,
+      org: pubFinal.org,
+      verificada: pubFinal.verificada,
+      zona: estado.tipoLugar || 'Cali',
+      dir: estado.dir || CUENTA_PEDIR.direccion,
+      descripcion: `Atención de emergencia (${estado.evento || 'Comunidad'}). Recursos requeridos con urgencia.`,
+      personaContacto: estado.contacto || CUENTA_PEDIR.contacto,
+      telContacto: estado.tel || CUENTA_PEDIR.telefono,
+      comoEntrega: 'Recepción en punto de acopio / sede comunitaria',
+      horario: 'Atención 24 horas',
+      recursos: recursosPanel.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        para: r.para,
+        icono: r.icono,
+        pausado: false,
+        confirmada: 0,
+        camino: 0,
+      })),
+      pausadaGlobal: false,
+    };
+
+    try {
+      const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+      const creadas: Publicacion[] = creadasRaw ? JSON.parse(creadasRaw) : [];
+      creadas.unshift(pubFinal);
+      localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(creadas));
+
+      localStorage.setItem('rd-necesidad-publicacion', JSON.stringify(pubFinal));
+      localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(gestionNecesidad));
+
+      const previosRaw = localStorage.getItem('rd-necesidad-creada-recursos');
+      const baseRecursos: RecursoPedido[] = previosRaw ? JSON.parse(previosRaw) : NECESIDAD.recursos;
+      const fusionados = [...baseRecursos];
+      recursosPanel.forEach((nuevo) => {
+        const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());
+        if (idx !== -1) {
+          fusionados[idx] = { ...fusionados[idx], total: fusionados[idx].total + nuevo.total };
+        } else {
+          fusionados.unshift(nuevo);
+        }
+      });
+      localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(fusionados));
+    } catch (err) {
+      console.error('Error sincronizando necesidad con panel:', err);
     }
   }, [initialCityId, onRequireAuth]);
 
@@ -271,9 +349,28 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   const irMapa = useCallback(() => irA(RUTAS.radar), []);
 
+  const alCerrar = () => {
+    if (e.publicado) {
+      if (onClose) onClose();
+      else irMapa();
+      return;
+    }
+    f.cerrar();
+  };
+
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="pedir" extra={<Coincidencias publicacion={publicacionDe(e, metas)} />} abre={PUERTAS.pedir.abre} onPanel={() => irA(RUTAS.miOrganizacion)} onVerMapa={irMapa} onOtra={f.reiniciar} />;
+    pantalla = (
+      <ExitoFlujo
+        tipo="pedir"
+        publicacion={publicacionPublicada || publicacionDe(e, metas)}
+        abre={PUERTAS.pedir.abre}
+        onVerMapa={irMapa}
+        onPanel={() => irA(`${RUTAS.miOrganizacion}#necesidades`)}
+        onOtra={f.reiniciar}
+        onCerrar={alCerrar}
+      />
+    );
   } else if (sub.id === 'evento') {
     pantalla = (
       <>
@@ -416,8 +513,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             <FilaMeta key={m.item} m={m} e={e} onMeta={(n) => set((p) => ({ metas: { ...p.metas, [m.item]: n } }))} onDetalle={(cambio) => detalle(m.item, cambio)} errores={errores} />
           ))}
         </ResumenPub>
-        <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? ` · ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
@@ -441,7 +538,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   return (
     <>
-      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />
@@ -522,7 +619,11 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
     linea =
       manual != null && manual !== m.meta ? (
         <>
-          <MarcaEditada /> · calculamos {cifra(m.meta)} {m.unidad} · {m.formula}
+          <MarcaEditada />
+          <Divisor />
+          calculamos {cifra(m.meta)} {m.unidad}
+          <Divisor />
+          {m.formula}
         </>
       ) : (
         m.formula
@@ -531,7 +632,7 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
   const id = `meta-${m.item}`;
   const otros = D?.campos.filter((c) => c.k !== 'num') ?? [];
   return (
-    <MetaPub item={m.item} valor={v != null && v !== 0 ? cifra(v) : ''} unidad={unidad(v ?? 0, u)} onChange={(t) => { onChange(t); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} linea={[linea, dt].filter(Boolean).length ? <>{linea}{linea && dt ? ' · ' : ''}{dt}</> : undefined}>
+    <MetaPub item={m.item} valor={v != null && v !== 0 ? cifra(v) : ''} unidad={unidad(v ?? 0, u)} onChange={(t) => { onChange(t); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} linea={[linea, dt].filter(Boolean).length ? <>{linea}{linea && dt ? <Divisor /> : null}{dt}</> : undefined}>
       {otros.length > 0 && (
         <>
           <p className="mb-2 text-rd-12-5 text-rd-ink-2">

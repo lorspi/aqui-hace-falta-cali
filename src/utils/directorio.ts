@@ -1,0 +1,167 @@
+/**
+ * La lógica del Directorio (pura, sin React): qué publica cada entidad, su estado, y la
+ * consulta (filtros, orden, chips). Lo que una entidad ofrece o pide sale de sus
+ * publicaciones, nunca de un dato aparte: el directorio y la Radar cuentan lo mismo.
+ */
+import type { ClaseEntidad, ConsultaDirectorio, Entidad, EstadoComunidad } from '../types/directorio';
+import type { Publicacion, Ubicacion } from '../types/publicacion';
+import { enCiudades, nombreCiudades, nombreCorto } from './lugares';
+import { cifra as miles, distanciaKm, estadoPublicacion } from './publicaciones';
+
+export function consultaVacia(): ConsultaDirectorio {
+  return { texto: '', ciudades: [], recursos: [], verificadas: false, orden: 'cercania' };
+}
+
+/** Las publicaciones de una entidad, por su nombre. */
+export function publicacionesDe(e: Entidad, pubs: Publicacion[]): Publicacion[] {
+  return pubs.filter((p) => p.org === e.nombre);
+}
+
+export function ofertasDe(e: Entidad, pubs: Publicacion[]): Publicacion[] {
+  return publicacionesDe(e, pubs).filter((p) => p.tipo === 'oferta');
+}
+
+export function necesidadesDe(e: Entidad, pubs: Publicacion[]): Publicacion[] {
+  return publicacionesDe(e, pubs).filter((p) => p.tipo === 'necesidad');
+}
+
+/** Los nombres de recurso que una entidad ofrece o pide (para filtrar y buscar). */
+export function recursosDe(e: Entidad, pubs: Publicacion[]): string[] {
+  return sinDuplicados(publicacionesDe(e, pubs).flatMap((p) => p.recursos.map((r) => r.item)));
+}
+
+/** El resumen en números de lo que publica: cuántos recursos ofrece y cuántos pide. El
+ *  Directorio es de consulta (Alejandro, 16 de septiembre de 2026): no muestra el detalle ni
+ *  deja actuar; para eso está la Radar, filtrada por la organización. */
+export function resumenPublica(e: Entidad, pubs: Publicacion[]): { ofrece: number; pide: number } {
+  return {
+    ofrece: ofertasDe(e, pubs).reduce((t, p) => t + p.recursos.length, 0),
+    pide: necesidadesDe(e, pubs).reduce((t, p) => t + p.recursos.length, 0),
+  };
+}
+
+/** Cuántas solicitudes tiene abiertas una comunidad: un recurso pedido es una solicitud. */
+export function solicitudesDe(e: Entidad, pubs: Publicacion[]): number {
+  return necesidadesDe(e, pubs).reduce((t, p) => t + p.recursos.length, 0);
+}
+
+/** La cifra que compara en la lista: entregas confirmadas (organización) o solicitudes (comunidad). */
+export function cifraDe(e: Entidad, pubs: Publicacion[]): { n: number; que: string } {
+  if (e.clase === 'comunidad') {
+    const n = solicitudesDe(e, pubs);
+    return { n, que: n === 1 ? 'solicitud' : 'solicitudes' };
+  }
+  return { n: e.entregas, que: e.entregas === 1 ? 'entrega confirmada' : 'entregas confirmadas' };
+}
+
+/** Las cifras de una entidad, en el orden en que se leen: lo que publica, su cifra de
+ *  comparación y a cuánta gente cubre. Se derivan aquí una sola vez para que la tarjeta, la
+ *  fila de tabla y el detalle digan exactamente lo mismo. */
+export function cifrasDe(e: Entidad, pubs: Publicacion[]): [string, string][] {
+  const publica = resumenPublica(e, pubs);
+  const cifraE = cifraDe(e, pubs);
+  const recursos = (n: number) => `${n} ${n === 1 ? 'recurso' : 'recursos'}`;
+  const filas: [string, string][] = [];
+  if (publica.ofrece) filas.push(['Ofrece', recursos(publica.ofrece)]);
+  if (publica.pide) filas.push(['Pide', recursos(publica.pide)]);
+  if (e.clase !== 'comunidad') filas.push([cifraE.que[0].toUpperCase() + cifraE.que.slice(1), miles(cifraE.n)]);
+  if (e.personas) filas.push(['Personas afectadas', miles(e.personas)]);
+  if (e.familias) filas.push(['Familias', miles(e.familias)]);
+  return filas;
+}
+
+/** El estado de una comunidad sale del avance de lo que pidió: nada movido es «Sin iniciar»,
+ *  algo entregado o en camino es «En proceso», todo cubierto es «Completado». */
+export function estadoComunidad(e: Entidad, pubs: Publicacion[]): EstadoComunidad {
+  const nec = necesidadesDe(e, pubs);
+  if (nec.length === 0) return 'inicial';
+  if (nec.every((p) => estadoPublicacion(p) === 'cubierta')) return 'completo';
+  if (nec.some((p) => estadoPublicacion(p) !== 'inicial')) return 'proceso';
+  return 'inicial';
+}
+
+export const TEXTO_ESTADO: Record<EstadoComunidad, string> = { inicial: 'Sin iniciar', proceso: 'En proceso', completo: 'Completado' };
+
+/** Las entidades de una vista: la propia no sale (uno no se solicita a sí mismo). */
+export function entidadesDe(clase: ClaseEntidad, entidades: Entidad[], propia: string): Entidad[] {
+  return entidades.filter((e) => e.clase === clase && e.nombre !== propia);
+}
+
+export function recursosDeVista(entidades: Entidad[], pubs: Publicacion[]): string[] {
+  return sinDuplicados(entidades.flatMap((e) => recursosDe(e, pubs))).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/** Cada sección de la hoja acota; entre valores de una misma sección, cualquiera vale. */
+export function pasa(e: Entidad, pubs: Publicacion[], q: ConsultaDirectorio): boolean {
+  if (!enCiudades(e, q.ciudades)) return false;
+  const recs = recursosDe(e, pubs);
+  if (q.recursos.length && !q.recursos.some((r) => recs.includes(r))) return false;
+  if (q.verificadas && !e.verificada) return false;
+  const texto = q.texto.trim().toLowerCase();
+  if (texto) {
+    const pajar = [e.nombre, e.tipo, e.zona, e.lider ?? '', ...recs].join(' ').toLowerCase();
+    if (!pajar.includes(texto)) return false;
+  }
+  return true;
+}
+
+export function filtrar(entidades: Entidad[], pubs: Publicacion[], q: ConsultaDirectorio, ubicacion: Ubicacion): Entidad[] {
+  const km = (e: Entidad) => distanciaKm(ubicacion, e);
+  return entidades
+    .filter((e) => pasa(e, pubs, q))
+    .sort((a, b) => {
+      if (q.orden === 'cifra') {
+        const d = cifraDe(b, pubs).n - cifraDe(a, pubs).n;
+        if (d !== 0) return d;
+      }
+      return km(a) - km(b);
+    });
+}
+
+export function cuantosAplicados(q: ConsultaDirectorio): number {
+  return q.ciudades.length + q.recursos.length + (q.verificadas ? 1 : 0) + (q.texto.trim() ? 1 : 0);
+}
+
+export interface ChipDirectorio {
+  clave: string;
+  texto: string;
+  quitar: (q: ConsultaDirectorio) => ConsultaDirectorio;
+}
+
+/** Los filtros aplicados, en el orden en que se ven como chips (el orden no es chip). */
+export function chipsDe(q: ConsultaDirectorio): ChipDirectorio[] {
+  const chips: ChipDirectorio[] = [];
+  q.ciudades.forEach((z) => chips.push({ clave: `ciudad:${z}`, texto: nombreCorto(z), quitar: (c) => ({ ...c, ciudades: c.ciudades.filter((x) => x !== z) }) }));
+  q.recursos.forEach((r) => chips.push({ clave: `recurso:${r}`, texto: r, quitar: (c) => ({ ...c, recursos: c.recursos.filter((x) => x !== r) }) }));
+  if (q.verificadas) chips.push({ clave: 'verificadas', texto: 'Solo verificadas', quitar: (c) => ({ ...c, verificadas: false }) });
+  if (q.texto.trim()) chips.push({ clave: 'texto', texto: `“${q.texto.trim()}”`, quitar: (c) => ({ ...c, texto: '' }) });
+  return chips;
+}
+
+export interface VacioDirectorio {
+  titulo: string;
+  texto: string;
+  accion: string;
+  aflojar: (q: ConsultaDirectorio) => ConsultaDirectorio;
+}
+
+/** Qué decir cuando no queda nada: nombra el filtro que más acota y ofrece soltar ese (igual
+ *  que en la Radar, `utils/filtros.ts`). */
+export function vacioDe(q: ConsultaDirectorio, clase: ClaseEntidad): VacioDirectorio {
+  const quienes = clase === 'comunidad' ? 'comunidades' : 'organizaciones';
+  const texto = q.texto.trim();
+  if (texto) return { titulo: `Nada para «${texto}»`, texto: 'Prueba con otra palabra, o quita la búsqueda y filtra por recurso.', accion: 'Quitar la búsqueda', aflojar: (c) => ({ ...c, texto: '' }) };
+  if (q.ciudades.length) return { titulo: `Ninguna en ${nombreCiudades(q.ciudades)}`, texto: `Todavía no hay ${quienes} aquí con estos filtros.`, accion: 'Ver todas las ciudades', aflojar: (c) => ({ ...c, ciudades: [] }) };
+  return { titulo: `Ninguna ${clase === 'comunidad' ? 'comunidad' : 'organización'} con estos filtros`, texto: 'Prueba con menos filtros o busca otro recurso.', accion: 'Quitar los filtros', aflojar: (c) => ({ ...consultaVacia(), orden: c.orden }) };
+}
+
+/** Qué dice el conteo de la lista, para la región viva y la cabecera. */
+export function conteoTexto(n: number, clase: ClaseEntidad): string {
+  if (n === 0) return 'Nada con estos filtros';
+  if (clase === 'comunidad') return `${n} ${n === 1 ? 'comunidad' : 'comunidades'}`;
+  return `${n} ${n === 1 ? 'organización' : 'organizaciones'}`;
+}
+
+function sinDuplicados<T>(lista: T[]): T[] {
+  return lista.filter((x, i) => lista.indexOf(x) === i);
+}

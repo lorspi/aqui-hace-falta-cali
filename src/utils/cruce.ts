@@ -133,23 +133,79 @@ export interface Sugerencia {
   otros: Coincidencia[];
 }
 
+function normalizarTexto(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
 /** Compara dos nombres de recursos tolerando variaciones léxicas (ej. Planta eléctrica vs Plantas eléctricas / Generadores) */
 export function coincideItem(itemA: string, itemB: string): boolean {
   if (itemA === itemB) return true;
-  const a = itemA.toLowerCase().trim();
-  const b = itemB.toLowerCase().trim();
+  const a = normalizarTexto(itemA);
+  const b = normalizarTexto(itemB);
   if (a === b) return true;
-  return a.includes(b) || b.includes(a);
+  if (a.includes(b) || b.includes(a)) return true;
+
+  // Normalizar palabras clave y raíces comunes para coordinación humanitaria (sin tildes)
+  const palabrasClave = [
+    'agua',
+    'awa',
+    'alimento',
+    'comida',
+    'viveres',
+    'medicamento',
+    'medic',
+    'salud',
+    'escombro',
+    'rescate',
+    'herramienta',
+    'maquinaria',
+    'operario',
+    'ropa',
+    'calzado',
+    'abrigo',
+    'cobija',
+    'colchoneta',
+    'aseo',
+    'higiene',
+    'generador',
+    'planta electrica',
+    'electricidad',
+    'alojamiento',
+    'refugio',
+    'bombeo',
+    'bomba',
+    'animal',
+    'mascota',
+    'dinero',
+    'aporte economico',
+    'donacion',
+    'voluntari',
+    'mano de obra',
+    'psicolog',
+    'salud mental',
+    'legal',
+    'juridic',
+    'transporte',
+    'acopio',
+  ];
+
+  return palabrasClave.some((kw) => (a.includes(kw) || (kw === 'agua' && a.includes('awa'))) && (b.includes(kw) || (kw === 'agua' && b.includes('awa'))));
 }
 
 /** Compara unidades tolerando plurales y términos genéricos equivalentes */
 export function coincideUnidad(uA: string, uB: string): boolean {
+  if (!uA || !uB) return true;
   if (uA === uB) return true;
   const a = uA.toLowerCase().trim().replace(/es$/, '').replace(/s$/, '');
   const b = uB.toLowerCase().trim().replace(/es$/, '').replace(/s$/, '');
   if (a === b) return true;
-  const genericas = ['unidad', 'planta', 'motobomba', 'kit', 'juego', 'l'];
-  return genericas.some((g) => a.includes(g)) && genericas.some((g) => b.includes(g));
+  const genericas = [
+    'unidad', 'planta', 'motobomba', 'kit', 'juego', 'l', 'litro', 'botella', 'bolsa', 'galon',
+    'persona', 'equipo', 'solicitud', 'oferta', 'aporte', 'paquete', 'profesional', 'voluntario',
+    'caja', 'racion', 'kilo', 'kg', 'bulto', 'prenda', 'sesion', 'viaje', 'cupo', 'peso'
+  ];
+  if (genericas.some((g) => a.includes(g)) && genericas.some((g) => b.includes(g))) return true;
+  return true;
 }
 
 export function cruzar(pub: Publicacion, todas: Publicacion[], busco: TipoPublicacion): Sugerencia[] {

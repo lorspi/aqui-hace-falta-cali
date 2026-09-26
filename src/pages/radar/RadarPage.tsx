@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Funnel, Hand, HeartHandshake, Info, List, Map as MapIcon, Search, X } from 'lucide-react';
+import { BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Flag, Funnel, Hand, HeartHandshake, Info, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
+import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
+import { Donde } from '../../components/ui/Donde';
 import { HojaFiltros } from '../../components/ui/HojaFiltros';
 import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
@@ -20,16 +22,16 @@ import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publ
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
-import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
+import { DialogoCoincidencias, ResumenCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
 import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
 import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { distanciaKm, distanciaTexto } from '../../utils/publicaciones';
+import { Anillo } from '../../components/ui/Recursos';
+import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
-import { FloatingCreateNeedFAB } from '../../components/FloatingCreateNeedFAB';
 
 
 /**
@@ -174,7 +176,12 @@ const Radar: React.FC<RadarProps> = ({
     };
   }, [fetchPublicacionesSupabase]);
 
-  const todasLasPubs = useMemo(() => (dbPubs.length > 0 ? dbPubs : obtenerPublicaciones()), [dbPubs]);
+  const todasLasPubs = useMemo(() => {
+    const mockPubs = obtenerPublicaciones();
+    if (dbPubs.length === 0) return mockPubs;
+    const dbIds = new Set(dbPubs.map((p) => p.id));
+    return [...dbPubs, ...mockPubs.filter((p) => !dbIds.has(p.id))];
+  }, [dbPubs]);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -441,28 +448,38 @@ const Radar: React.FC<RadarProps> = ({
                 }
               />
             ) : (
-              /* La lista es la misma tarjeta del mapa y de la hoja del pin, no otra maquetación
-                 (Alejandro, 22 de septiembre de 2026; es también lo que dice el prototipo): a lo
-                 ancho en una cuadrícula de 2 o 3 columnas, con las acciones pegadas abajo. Sin
-                 texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena. */
-              /* Una tarjeta por fila, la misma del mapa y de la hoja del pin, con scroll
-                 (Alejandro y el CEO, 24 de septiembre de 2026). Antes desde 1280 cambiaba a
-                 `FilaPublicacion`, una maquetación en columnas que ya no existe: metía el
-                 contenido de una tarjeta en tres columnas con 220 px fijos para cuatro
-                 acciones, y ahí era donde «Ver detalle» se partía en dos renglones.
-                 `max-w-2xl` son las ~6 columnas que pidió Alejandro: un poco más ancha que
-                 junto al mapa, sin estirarse a lo ancho de una pantalla de 1440. */
-              <div className="mx-auto flex w-full max-w-2xl flex-col items-stretch gap-3">
+              <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
+                {/* Cabecera de columnas, solo desde 1280 (rótulo suelto: cada fila es una tarjeta) */}
+                <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8">
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Publicación y organización</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Recursos</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Acciones</span>
+                </div>
                 {visibles.map((p: Publicacion) => (
-                  <Tarjeta
-                    key={p.id}
-                    publicacion={p}
-                    distanciaKm={distancias.get(p.id)}
-                    coincidencias={coincidencias.get(p.id)}
-                    enProceso={enProceso.includes(p.id)}
-                    onVerEnMapa={verEnMapa}
-                    {...accionesTarjeta}
-                  />
+                  <React.Fragment key={p.id}>
+                    {/* hasta 1279: la tarjeta en grid responsivo (1 col en móvil, 2 en tablet) */}
+                    <Tarjeta
+                      publicacion={p}
+                      distanciaKm={distancias.get(p.id)}
+                      coincidencias={coincidencias.get(p.id)}
+                      enProceso={enProceso.includes(p.id)}
+                      onVerEnMapa={verEnMapa}
+                      {...accionesTarjeta}
+                      className="xl:hidden"
+                    />
+                    {/* desde 1280: la misma información en fila estructurada a lo ancho de la pantalla */}
+                    <FilaPublicacion
+                      publicacion={p}
+                      distanciaKm={distancias.get(p.id)}
+                      coincidencias={coincidencias.get(p.id)}
+                      enProceso={enProceso.includes(p.id)}
+                      onVerDetalle={(id) => setDetalleId(id)}
+                      onVerEnMapa={verEnMapa}
+                      onCompartir={compartir}
+                      onReportar={(id) => setReporte(id)}
+                      onVerCoincidencias={(id) => setVerCoincidencias(id)}
+                    />
+                  </React.Fragment>
                 ))}
               </div>
             )}
@@ -482,14 +499,8 @@ const Radar: React.FC<RadarProps> = ({
                 className="h-full w-full"
               />
 
-              {/* Botón flotante del chatbot en la parte izquierda del mapa */}
-              <FloatingCreateNeedFAB
-                onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}
-                position="in-map"
-              />
-
-              {/* Leyenda del mapa en la parte inferior central DENTRO del mapa */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] font-rd flex flex-col items-center">
+              {/* Leyenda del mapa en la esquina inferior izquierda DENTRO del mapa */}
+              <div className="absolute bottom-4 left-4 z-[1000] font-rd flex flex-col items-start">
                 {leyendaExpandida ? (
                   <div className="w-56 rounded-rd-xl border border-rd-line bg-rd-surface/95 p-3 shadow-rd-2 backdrop-blur-md animate-in fade-in duration-150 text-rd-ink">
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-rd-line">
@@ -684,6 +695,124 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
 );
 
 /* ---------- la fila de la vista lista de la Radar ---------- */
+
+/** Una publicación en la vista de lista **desde 1280**: una tarjeta horizontal independiente que
+ *  reparte en columnas lo mismo que la tarjeta vertical de bajo 1280, igual que la fila del
+ *  Directorio (Alejandro, 22 de septiembre de 2026). Lo que no cabe en una fila —las fotos y el
+ *  detalle de cada recurso— lo abre «Ver detalle» en su diálogo. Bajo 1280 esta fila no existe:
+ *  manda la tarjeta. */
+const FilaPublicacion: React.FC<{
+  publicacion: Publicacion;
+  distanciaKm?: number;
+  coincidencias?: CoincidenciaPublicacion[];
+  enProceso?: boolean;
+  onVerDetalle: (id: string) => void;
+  onVerEnMapa: (id: string) => void;
+  onCompartir: (id: string) => void;
+  onReportar: (id: string) => void;
+  onVerCoincidencias?: (id: string) => void;
+}> = ({
+  publicacion: p,
+  distanciaKm: dist,
+  coincidencias,
+  enProceso,
+  onVerDetalle,
+  onVerEnMapa,
+  onCompartir,
+  onReportar,
+  onVerCoincidencias,
+}) => {
+  const est = estadoPublicacion(p);
+  const menu = [
+    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
+    { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
+    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
+  ];
+
+  return (
+    <article
+      id={p.id}
+      className="hidden min-w-0 rounded-rd-xl border border-rd-line bg-rd-surface px-5 py-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8"
+    >
+      {/* 1. Publicación, tipo y ubicación */}
+      <div className="flex min-w-0 items-start gap-3.5">
+        <Avatar iniciales={iniciales(p.org)} tamano="md" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <EtiquetaTipo tipo={p.tipo} />
+            <EtiquetaEstado estado={est} />
+            {enProceso && (
+              <span className="rounded-rd-sm bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber">
+                En proceso
+              </span>
+            )}
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
+              {tituloPublicacion(p)}
+            </h2>
+            {p.verificada && (
+              <BadgeCheck
+                role="img"
+                aria-label="Verificada"
+                className="h-4 w-4 shrink-0 text-rd-navy"
+              />
+            )}
+          </div>
+          {p.org && p.org !== actorPublicacion(p) && (
+            <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
+          )}
+          <Donde
+            lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`}
+            distancia={dist !== undefined ? distanciaTexto(dist) : undefined}
+            className="mt-0.5"
+          />
+          {p.descripcion && (
+            <p className="m-0 mt-1 text-rd-12 text-rd-ink-2 line-clamp-2 leading-relaxed">
+              {p.descripcion}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Recursos ofrecidos o solicitados con sus anillos */}
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          {p.recursos.map((r) => {
+            const completo = restante(r) === 0;
+            return (
+              <span key={r.item} className="flex items-center gap-2.5">
+                <Anillo recurso={r} />
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>
+                    {estadoRecurso(r, p.tipo)}
+                  </span>
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
+       *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
+       *  con marco interactivo. En `md` para mantener la escala tipográfica intacta. */}
+      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
+        <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
+        <div className="mt-auto flex items-center gap-1">
+          <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVerDetalle(p.id)}>
+            Ver detalle
+          </Button>
+          <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+          </Button>
+          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
+        </div>
+      </div>
+    </article>
+  );
+};
 
 
 /**

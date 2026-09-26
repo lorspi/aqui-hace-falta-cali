@@ -179,9 +179,19 @@ export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => voi
  *  uno su propio campo, los dos enfocando en navy contra la decisión del 24 de septiembre, con
  *  la lupa a 14 en uno y a 16 en el otro (Alejandro, 25 de septiembre de 2026). */
 export const CampoBuscarEnBloque: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; etiqueta: string; className?: string }> = ({ valor, onChange, placeholder, etiqueta, className = '' }) => (
-  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
-    <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+  <label className={`flex h-11 sm:h-12 w-full shrink-0 items-center gap-2.5 rounded-full border border-rd-line bg-rd-surface px-4 text-rd-ink-3 transition-colors focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
+    <Search aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-rd-ink-3" />
     <span className="sr-only">{etiqueta}</span>
-    <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+    <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-14 sm:text-rd-14-5 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+    {valor && (
+      <button
+        type="button"
+        onClick={() => onChange('')}
+        aria-label="Borrar búsqueda"
+        className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 hover:bg-rd-line hover:text-rd-ink transition-colors"
+      >
+        <X aria-hidden="true" className="h-3 w-3" />
+      </button>
+    )}
   </label>
 );

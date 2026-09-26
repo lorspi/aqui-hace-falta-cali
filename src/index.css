@@ -72,6 +72,11 @@
   --text-rd-24: 24px;
   --text-rd-28: 28px;
   --text-rd-32: 32px;
+  /* Un escalón por debajo de `sm`, para la línea de tiempo del congrats: desde 480 caben los
+     tres pasos en fila y debajo van en columna. Nace como token para no escribir `min-[480px]:`,
+     que el estándar del equipo prohíbe (`ESTANDAR_TECNICO_Y_MOCKS.md`, sin corchetes). */
+  --breakpoint-xs: 480px;
+
   --tracking-rd-cuerpo: -0.005em;
   --tracking-rd-btn: -0.006em;
   --tracking-rd-titulo: -0.03em;
@@ -94,6 +99,88 @@
   --shadow-rd-2: 0 8px 24px rgb(23 27 43 / 0.16);
   /* La sombra del pin sobre la tesela (`.rd-pin svg` del prototipo) */
   --drop-shadow-rd-pin: 0 1px 2px rgb(0 0 0 / 0.28);
+
+  /* Las sugerencias del cruce (Alejandro, 21 de septiembre de 2026): un brillo que recorre la
+     fila una sola vez al aparecer, y el barrido del radar de la marca (76) al publicar con una
+     sugerencia fuerte. `motion-reduce:animate-none` los apaga, como todo movimiento del DS. */
+  --animate-rd-brillo: rd-brillo 1.4s ease-out 0.2s 1 both;
+  --animate-rd-barrido: rd-barrido 0.6s linear 2;
+  /* La fila en la tarjeta: el degradado (contorno y relleno) va y vuelve sin parar, despacio
+     (Alejandro, 22 de septiembre de 2026). `alternate` evita el salto que daría reiniciar el
+     recorrido, y 6 s por tramo lo dejan en el borde de lo que se nota sin molestar. */
+  --animate-rd-borde: rd-borde 6s ease-in-out infinite alternate;
+  @keyframes rd-borde {
+    from {
+      background-position:
+        0% 50%,
+        0% 50%;
+    }
+    to {
+      background-position:
+        100% 50%,
+        100% 50%;
+    }
+  }
+  /* La enhorabuena al publicar (Alejandro, 22 de septiembre de 2026): una subida de 8 px que se
+     asienta con el resorte suave de la casa (22). `motion-reduce:animate-none` la apaga. */
+  --animate-rd-enhorabuena: rd-enhorabuena 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes rd-enhorabuena {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  /* El papelillo del confeti (solo la pantalla de éxito al publicar): sube rotando y cae
+     despacio con un bamboleo lateral. La trayectoria la parametrizan las variables que pone el
+     componente (`--rd-x`, `--rd-giro`, `--rd-alto`). */
+  --animate-rd-confeti: rd-confeti 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  @keyframes rd-confeti {
+    0% {
+      transform: translate3d(0, 0, 0) scale(0) rotate(0deg);
+      opacity: 1;
+    }
+    15% {
+      transform: translate3d(calc(var(--rd-x, 0) * 0.3), calc(-1 * var(--rd-alto, 50vh) * 0.7), 0) scale(1.2) rotate(calc(var(--rd-giro, 180deg) * 0.4));
+      opacity: 1;
+    }
+    100% {
+      transform: translate3d(var(--rd-x, 0), calc(-1 * var(--rd-alto, 50vh)), 0) scale(1) rotate(var(--rd-giro, 180deg));
+      opacity: 0;
+    }
+  }
+  @keyframes rd-brillo {
+    from {
+      transform: translateX(-120%);
+    }
+    to {
+      transform: translateX(120%);
+    }
+  }
+  /* El destello de la pastilla destacada (solo la pantalla de éxito al publicar): el mismo
+     barrido, pero esperando fuera de cuadro más de la mitad del ciclo. Un brillo continuo
+     cansa; uno que pasa cada tres segundos y pico se nota sin pedir nada. */
+  --animate-rd-destello: rd-destello 3.6s ease-out 0.5s infinite;
+  @keyframes rd-destello {
+    0%,
+    55% {
+      transform: translateX(-140%);
+    }
+    100% {
+      transform: translateX(140%);
+    }
+  }
+  @keyframes rd-barrido {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 /* ======================================================================
@@ -351,6 +438,60 @@ header {
 }
 @utility ranura-rd-hoja {
   flex: 0 0 calc(100% - 10 * var(--spacing));
+}
+/* Nada inerte enseña su barra: no se puede desplazar, así que la barra solo estorba. Es la
+   Radar que queda de fondo mientras se publica (`MarcoFlujo`), que se veía con su barra al
+   lado de la ventana del flujo (Alejandro, 22 de septiembre de 2026). */
+[inert],
+[inert] * {
+  scrollbar-width: none;
+}
+[inert]::-webkit-scrollbar,
+[inert] *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+@utility zona-rd-desvanece {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--rd-borde-arriba, 0px),
+    #000 calc(100% - var(--rd-borde-abajo, 0px)),
+    transparent 100%
+  );
+}
+
+@utility sin-barra {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* La fila de sugerencias en la tarjeta (Opción 1: Borde fino animado coral → navy con fondo
+   limpio de superficie): el degradado coral → navy pleno en el contorno (border-box) y fondo de
+   superficie limpio por dentro (padding-box), con texto oscuro legible en rd-ink. Al pasar el cursor,
+   el interior cambia suavemente a rd-sunken. Van coral → navy → coral al doble de ancho y
+   `animate-rd-borde` los desplaza suavemente. */
+@utility borde-rd-sugerencia {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-rd-surface), var(--color-rd-surface)) padding-box,
+    linear-gradient(90deg in srgb, var(--color-rd-coral), var(--color-rd-navy), var(--color-rd-coral)) border-box;
+  background-size:
+    200% 100%,
+    200% 100%;
+  background-position:
+    0% 50%,
+    0% 50%;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+  &:hover {
+    background:
+      linear-gradient(var(--color-rd-sunken), var(--color-rd-sunken)) padding-box,
+      linear-gradient(90deg in srgb, var(--color-rd-coral), var(--color-rd-navy), var(--color-rd-coral)) border-box;
+  }
 }
 /* Una columna del tablero de seguimiento en móvil: casi todo el ancho, con 40 px de asomo de
    la siguiente para que se entienda que se desplaza (como Trello). Desde 640 mide 280. */

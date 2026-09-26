@@ -1,14 +1,18 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, Info, Monitor, Package, Search, X, Zap } from 'lucide-react';
-import { ListaCoincidencias } from '../../components/ui/Coincidencias';
+import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, House, Info, Map as MapIcon, Monitor, Package, Radar, Search, Share2, X, Zap } from 'lucide-react';
+import { FilaSugerencias, ListaCoincidencias } from '../../components/ui/Coincidencias';
+import { CampoBuscarEnBloque } from '../../components/ui/Consulta';
+import { Explosion } from '../../components/ui/Explosion';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
+import { avisoCompromiso } from '../../utils/compromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
-import { PUBLICACIONES } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
+import { pingSugerencia } from '../../utils/sonido';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { IconoRecursoDe, categoriaDe, iconoDe } from '../../components/ui/Recursos';
@@ -20,6 +24,12 @@ import { nombrePanel } from '../../utils/cuenta';
 import { numero } from '../../utils/equivalencias';
 import { RadarPage } from '../radar/RadarPage';
 import { cifra } from '../../utils/publicaciones';
+
+/** «Mis necesidades y Seguimiento»; con tres o más, comas y la última con «y». */
+function lista(partes: string[]): string {
+  if (partes.length <= 1) return partes[0] ?? '';
+  return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
+}
 
 /** Lo que la persona teclea manda mientras teclea; el valor de afuera (ya con el formato del
  *  manual) se impone al salir del campo o cuando cambia por otro camino (un sugerido). */
@@ -102,6 +112,43 @@ export interface MarcoFlujoProps {
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
 export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, guardando = false, errorPublicar, children }) => {
   const cuerpo = useRef<HTMLDivElement>(null);
+  const tarjeta = useRef<HTMLElement>(null);
+  /* El alto que tenía la tarjeta en el último paso del formulario, para animar desde ahí. */
+  const altoFormulario = useRef<number | null>(null);
+
+  /* El alto de partida se mide al cambiar de paso, no solo al montar: si la ventana cambió de
+     tamaño por el camino, sigue siendo el que se ve. Va declarado antes del que anima, que es
+     el orden en que React los corre. */
+  useLayoutEffect(() => {
+    if (!publicado && tarjeta.current) altoFormulario.current = tarjeta.current.getBoundingClientRect().height;
+  }, [sub.id, publicado]);
+
+  /* Publicar encoge la tarjeta de la altura de la ventana a la del contenido (Alejandro, 24 de
+     septiembre de 2026: «queda sobrando mucho espacio en blanco»). Sin animar, el salto se
+     siente como si la ventana se hubiera roto; se anima el alto entre las dos medidas y el
+     navegador la deja en `auto` al terminar, sin quedarse con un alto fijo. Solo desde 1024,
+     que es donde la tarjeta es una ventana: bajo eso el flujo ocupa la pantalla entera y no
+     hay nada que encoger. */
+  useLayoutEffect(() => {
+    const el = tarjeta.current;
+    if (!el || !publicado) return;
+    const desde = altoFormulario.current;
+    altoFormulario.current = null;
+    if (desde == null) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const hasta = el.getBoundingClientRect().height;
+    /* Si apenas cambia, animar solo haría parpadear. */
+    if (Math.abs(hasta - desde) < 8) return;
+    el.animate(
+      [
+        { height: `${desde}px` },
+        { height: `${hasta}px` },
+      ],
+      { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+    );
+  }, [publicado]);
+
   useEffect(() => {
     cuerpo.current?.scrollTo({ top: 0 });
     const t = cuerpo.current?.querySelector<HTMLElement>('h1');
@@ -126,8 +173,12 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
     return () => mq.removeEventListener('change', alCambiar);
   }, []);
 
+  const wrapperCls = isModal
+    ? `fixed inset-0 z-50 flex items-center justify-center bg-rd-ink/60 backdrop-blur-xs p-0 lg:p-6 font-rd text-rd-ink overflow-y-auto ${publicado ? 'lg:items-center' : 'lg:items-stretch'}`
+    : `font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:justify-center lg:bg-transparent lg:py-6 ${publicado ? 'lg:items-center' : 'lg:items-stretch'}`;
+
   return (
-    <div className={isModal ? "fixed inset-0 z-50 flex items-center justify-center bg-rd-ink/60 backdrop-blur-xs p-0 lg:p-6 font-rd text-rd-ink overflow-y-auto" : "font-rd min-h-dvh bg-rd-fondo text-rd-ink lg:flex lg:h-dvh lg:items-stretch lg:justify-center lg:bg-transparent lg:py-6"}>
+    <div className={wrapperCls}>
       {escritorio && !isModal && (
         <div aria-hidden="true" inert className="fixed inset-0 -z-1 overflow-hidden">
           <RadarPage />
@@ -135,15 +186,13 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
           <div className="absolute inset-0 z-2000 bg-rd-ink/50" />
         </div>
       )}
-      <section aria-label={nombre} className="relative flex h-dvh w-full flex-col bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
+      <section ref={tarjeta} aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
         <button type="button" aria-label="Cerrar" onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
-        {/* La pantalla de éxito: `justify-center-safe` centra lo corto y, si el contenido es más
-            alto que la caja, empieza arriba (con `justify-center` a secas el desborde se
-            repartía y el título quedaba recortado sin poder llegar a él). */}
+        {/* La pantalla de éxito empieza siempre arriba anclada */}
         {publicado ? (
-          <div ref={cuerpo} className="flex min-h-0 flex-1 flex-col justify-center-safe overflow-y-auto px-4 py-6 sm:px-6">
+          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto px-4 sm:px-6">
             {children}
           </div>
         ) : (
@@ -151,7 +200,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
             <div className="flex-none px-4 pt-5 pr-14 sm:px-6 sm:pr-16">
               <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((t, j) => ({ nombre: t.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
-            <div ref={cuerpo} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
+            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
               {errorPublicar && (
                 <div className="mb-4 flex items-center gap-2 rounded-rd-md border border-red-300 bg-red-50 p-3 text-rd-13 text-red-800">
                   <CircleAlert className="h-5 w-5 shrink-0 text-red-600" />
@@ -185,11 +234,11 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
 
 /** Encabezado de una pantalla del flujo: la pregunta y, si hace falta, una línea debajo. */
 export const Pregunta: React.FC<{ titulo: string; sub?: React.ReactNode }> = ({ titulo, sub }) => (
-  <>
+  <div className="shrink-0">
     <h1 className="font-rd mb-1 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink focus:outline-none">{titulo}</h1>
     {sub && <p className="mb-5 text-rd-14 text-rd-ink-2">{sub}</p>}
     {!sub && <div className="mb-4" />}
-  </>
+  </div>
 );
 
 /** «(opcional)» dentro de una etiqueta. */
@@ -339,7 +388,7 @@ export const CampoNumero: React.FC<{
 
 /** Un acordeón (`rd-cat`): summary con nombre, conteo y flecha. */
 export const Acordeon: React.FC<{ titulo: React.ReactNode; n?: number; abierto: boolean; onToggle: (abierto: boolean) => void; sugerido?: boolean; icono?: React.ReactNode; children: React.ReactNode }> = ({ titulo, n = 0, abierto, onToggle, sugerido = false, icono, children }) => (
-  <details open={abierto} onToggle={(e) => onToggle((e.currentTarget as HTMLDetailsElement).open)} className={`mb-2 rounded-rd-lg border ${sugerido ? 'mb-4 border-rd-ink-3 bg-rd-sunken' : 'border-rd-line bg-rd-surface'}`}>
+  <details open={abierto} onToggle={(e) => onToggle((e.currentTarget as HTMLDetailsElement).open)} className={`mb-2 shrink-0 rounded-rd-lg border ${sugerido ? 'mb-4 border-rd-ink-3 bg-rd-sunken' : 'border-rd-line bg-rd-surface'}`}>
     <summary className="font-rd flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-rd-14 font-semibold text-rd-ink focus-visible:rounded-rd-lg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy">
       {icono && (
         <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-surface text-rd-ink-2">
@@ -387,16 +436,12 @@ export const ListaRecursos: React.FC<{
   const hayAlgo = grupos.some((g) => g.items.filter(coincide).length);
   return (
     <>
-      <label className="mb-3 flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft">
-        <Search aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-        <span className="sr-only">Buscar un recurso</span>
-        <input type="search" value={q} onChange={(e) => onBuscar(e.target.value)} placeholder="Buscar un recurso" className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-meta" />
-      </label>
+      <CampoBuscarEnBloque valor={q} onChange={onBuscar} placeholder="Buscar un recurso" etiqueta="Buscar un recurso" className="mb-4 shrink-0" />
       {busca && !hayAlgo && (
         <div className="flex flex-col items-center gap-1 px-4 py-6 text-center text-rd-ink-2">
           <Search aria-hidden="true" className="mb-1 h-6 w-6 text-rd-ink-3" />
           <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">No encontramos «{q.trim()}»</h2>
-          <p className="m-0 text-rd-13">{vacioTexto}</p>
+          <p className="m-0 text-rd-13-5">{vacioTexto}</p>
         </div>
       )}
       {grupos.map((g) => {
@@ -621,7 +666,7 @@ export const FilaRevisar: React.FC<{ clave: string; valor: string; accion?: stri
 /** El bloque «Se solicita» / «Se ofrece» de «Revisar» (`rd-resumen-pub`). */
 export const ResumenPub: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
   <div className="mb-5 rounded-rd-md border border-rd-line bg-rd-surface">
-    <div className="font-rd border-b border-rd-line bg-rd-sunken px-3 py-3 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase">{titulo}</div>
+    <div className="font-rd border-b border-rd-line bg-rd-sunken px-3 py-3 text-rd-13 font-semibold text-rd-ink">{titulo}</div>
     {children}
   </div>
 );
@@ -655,53 +700,220 @@ export const MarcaEditada: React.FC = () => (
   </span>
 );
 
-/** La pantalla de éxito del flujo, con «Qué pasa ahora». */
-export const ExitoFlujo: React.FC<{ tipo: 'pedir' | 'ofrecer'; extra?: React.ReactNode; abre?: string[]; onPanel?: () => void; onVerMapa: () => void; onOtra: () => void }> = ({ tipo, extra, abre, onPanel, onVerMapa, onOtra }) => {
+/**
+ * Una acción de solo icono con su nombre en un globo. Un
+ * icono solo no dice qué hace: en escritorio el nombre aparece al pasar por encima o al llegar
+ * con el teclado. Globo arriba con 8 px de aire, tinta sólida, texto blanco de 12 en medium, radio
+ * pequeño y la flechita abajo.
+ */
+const AccionExito: React.FC<{ etiqueta: string; onClick: () => void; children: React.ReactNode }> = ({ etiqueta, onClick, children }) => (
+  <span className="relative inline-flex">
+    <Button nivel="secundario" tamano="md" soloIcono aria-label={etiqueta} onClick={onClick} className="peer">
+      {children}
+    </Button>
+    <span
+      aria-hidden="true"
+      className="pointer-events-none invisible absolute bottom-full left-1/2 z-2 mb-2 w-max max-w-50 -translate-x-1/2 rounded-rd-sm bg-rd-ink px-2.5 py-2 text-left text-rd-12 leading-snug font-medium text-rd-surface opacity-0 shadow-rd-2 transition-opacity duration-100 after:absolute after:-bottom-1 after:left-1/2 after:h-2.5 after:w-2.5 after:-translate-x-1/2 after:rotate-45 after:bg-rd-ink peer-hover:visible peer-hover:opacity-100 peer-focus-visible:visible peer-focus-visible:opacity-100 pointer-coarse:hidden"
+    >
+      {etiqueta}
+    </span>
+  </span>
+);
+
+export interface ExitoFlujoProps {
+  tipo: 'pedir' | 'ofrecer';
+  /** Lo que se acaba de publicar: de aquí salen las sugerencias y las tres acciones. */
+  publicacion?: Publicacion;
+  onVerMapa?: () => void;
+  onPanel?: () => void;
+  onOtra?: () => void;
+  onCerrar?: () => void;
+  abre?: string[];
+  extra?: React.ReactNode;
+}
+
+/**
+ * La pantalla de éxito, en dos vistas dentro de la misma ventana:
+ * 1. Resumen: Visto, título, radar buscando compatibles, pastilla destacada,
+ *    línea de tiempo "¿Ahora qué sigue?", botón de publicar otra y acciones rápidas en icono.
+ * 2. Sugerencias: Al pulsar la pastilla, conmuta fluidamente a la lista completa de matches
+ *    con retorno atrás y diálogo de compromiso directo.
+ */
+export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVerMapa, onPanel, onOtra, onCerrar, abre, extra }) => {
   const t = EXITO[tipo];
+  const avisar = useAviso();
+  const cerrarAccion = onCerrar || onVerMapa;
+  const [vista, setVista] = useState<'resumen' | 'sugerencias'>('resumen');
+  const [buscando, setBuscando] = useState(true);
+  const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
+  const [hechas, setHechas] = useState<string[]>([]);
+
+  const pubSegura: Publicacion = useMemo(() => {
+    if (publicacion) return publicacion;
+    return {
+      id: `${tipo}-${Date.now()}`,
+      tipo: tipo === 'pedir' ? 'necesidad' : 'oferta',
+      titulo: '',
+      org: '',
+      verificada: false,
+      lat: 3.4516,
+      lng: -76.5320,
+      zona: 'Cali',
+      recursos: [],
+    };
+  }, [publicacion, tipo]);
+
+  const coincidencias = useMemo(() => coincidenciasDe(pubSegura, obtenerPublicaciones()), [pubSegura]);
+  const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBuscando(false);
+      if (fuerte) pingSugerencia();
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [fuerte]);
+
+  const compartir = () => {
+    const url = `${window.location.origin}${RUTAS.radar}?punto=${encodeURIComponent(pubSegura.id)}`;
+    const listo = () => avisar('Enlace copiado', { tipo: 'ok' });
+    if (navigator.share) navigator.share({ title: `${pubSegura.titulo || 'Publicación'}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
+    else listo();
+  };
+
+  const listaSugerencias = (
+    <ListaCoincidencias
+      publicacion={pubSegura}
+      coincidencias={coincidencias}
+      hechas={hechas}
+      onPrimaria={(id) => setCompromiso(obtenerPublicaciones().find((p) => p.id === id) ?? null)}
+      onVerEnMapa={(id) => {
+        window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`;
+      }}
+    />
+  );
+
+  const dialogo = (
+    <DialogoCompromiso
+      publicacion={compromiso}
+      onCerrar={() => setCompromiso(null)}
+      onEnviar={(p, c) => {
+        setCompromiso(null);
+        setHechas((h) => [...h, p.id]);
+        avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+      }}
+    />
+  );
+
+  if (vista === 'sugerencias') {
+    return (
+      <div className="mx-auto w-full max-w-140 py-6">
+        {/* Botón de volver */}
+        <button
+          type="button"
+          onClick={() => setVista('resumen')}
+          className="absolute top-2 left-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:left-3 lg:h-10 lg:w-10"
+        >
+          <ChevronLeft aria-hidden="true" className="h-5 w-5" />
+          <span className="sr-only">Volver</span>
+        </button>
+        <div className="text-center">
+          <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rd-coral to-rd-navy text-white">
+            <Radar className="h-7.5 w-7.5" />
+          </span>
+          <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
+            {t.sugerencias.titulo}
+          </h1>
+          <p className="mx-auto mt-3 mb-8 max-w-120 text-rd-14 leading-normal text-rd-ink-2">{t.sugerencias.bajada}</p>
+        </div>
+        {listaSugerencias}
+        {dialogo}
+      </div>
+    );
+  }
+
   return (
-    <div className="py-6 text-center">
+    <div className="relative mx-auto w-full max-w-140 pt-16 pb-6 text-center animate-rd-enhorabuena motion-reduce:animate-none">
+      <Explosion tipo={tipo} />
       <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-rd-green-soft text-rd-green">
         <Check className="h-7.5 w-7.5" />
       </span>
-      <h1 tabIndex={-1} className="font-rd mb-2 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
+      <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
         {t.titulo}
       </h1>
-      <p className="mb-5 text-rd-14 text-rd-ink-2">{t.sub}</p>
-      <div className="mx-auto mt-5 max-w-110 rounded-rd-lg border border-rd-line bg-rd-fondo p-4 text-left">
-        <h2 className="font-rd mb-3 text-rd-13 font-semibold tracking-wide text-rd-ink-meta uppercase">Qué pasa ahora</h2>
-        {t.pasos.map((p, i) => (
-          <div key={p.titulo} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-            {p.hecho ? <Check aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-green" /> : <CircleDashed aria-hidden="true" className="mt-0.5 h-4.5 w-4.5 shrink-0 text-rd-ink-3" />}
-            <span className="text-rd-12-5 leading-relaxed text-rd-ink-2">
-              <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.titulo}</b>
-              {p.texto}
-            </span>
-          </div>
-        ))}
-        <p className="mt-3 border-t border-rd-line-soft pt-3 text-rd-12-5 text-rd-ink-2">{EXITO.canales}</p>
-      </div>
+
+      {/* Botón de compatibles con animación de barrido de radar */}
+      {buscando ? (
+        <p role="status" className="mt-6 flex items-center justify-center gap-3 text-rd-13 text-rd-ink-2">
+          <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rd-line bg-rd-surface">
+            <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
+            <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
+          </span>
+          Buscando compatibles…
+        </p>
+      ) : coincidencias.length > 0 ? (
+        <div className="mt-6 flex justify-center">
+          <FilaSugerencias n={coincidencias.length} total={(coincidencias as any).total ?? coincidencias.length} variante="destacada" onVer={() => setVista('sugerencias')} />
+        </div>
+      ) : null}
+
       {extra}
+
+      {/* Línea de tiempo "¿Ahora qué sigue?" */}
+      <div className="mt-10">
+        <h2 className="font-rd m-0 mb-5 text-rd-18 leading-tight font-semibold tracking-rd-titulo text-rd-ink">¿Ahora qué sigue?</h2>
+        <ol className="m-0 flex list-none flex-col gap-3 p-0 max-xs:mx-auto max-xs:w-fit max-xs:text-left xs:flex-row">
+          {t.pasos.map((p, i) => (
+            <li key={p.titulo} className="relative flex flex-1 items-center gap-2.5 xs:flex-col xs:gap-2 xs:text-center">
+              {i > 0 && <span aria-hidden="true" className="absolute max-xs:-top-3.5 max-xs:left-2 max-xs:h-3.5 max-xs:w-px xs:top-2 xs:right-1/2 xs:-left-1/2 xs:ml-3.5 xs:h-px bg-rd-line" />}
+              <span aria-hidden="true" className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${p.hecho ? 'bg-rd-green text-white' : 'border border-dashed border-rd-ink-3 bg-rd-surface'}`}>
+                {p.hecho && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              <span className={`text-rd-12-5 leading-snug ${p.hecho ? 'font-semibold text-rd-ink' : 'text-rd-ink-2'}`}>{p.titulo}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="m-0 mt-4 text-rd-12-5 text-rd-ink-meta">{EXITO.canales}</p>
+      </div>
+
+      {onOtra && (
+        <div className="mt-8 flex justify-center">
+          <Button nivel="primario" tamano="lg" onClick={onOtra}>
+            {t.otra}
+          </Button>
+        </div>
+      )}
+
+      {/* Tres acciones con tooltip en globo */}
+      <div className="mt-8 flex items-center justify-center gap-2">
+        {cerrarAccion && (
+          <AccionExito etiqueta="Ver en el mapa" onClick={cerrarAccion}>
+            <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
+        )}
+        <AccionExito etiqueta="Compartir" onClick={compartir}>
+          <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
+        </AccionExito>
+        {onPanel && (
+          <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
+            <House aria-hidden="true" className="h-4.5 w-4.5" />
+          </AccionExito>
+        )}
+      </div>
+
       {abre && abre.length > 0 && (
         <p className="mx-auto mt-4 max-w-110 text-rd-13 text-rd-ink-2">
-          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{abre.join(' · ')}</b>.{' '}
-          {onPanel && (
-            <button type="button" onClick={onPanel} className="font-rd cursor-pointer font-semibold text-rd-navy underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
-              Ir a {nombrePanel()}
-            </button>
-          )}
+          En tu panel ya está abierto <b className="font-semibold text-rd-ink">{lista(abre)}</b>.
         </p>
       )}
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Button nivel="primario" tamano="md" onClick={onVerMapa}>
-          Ver en el mapa
-        </Button>
-        <Button nivel="secundario" tamano="md" onClick={onOtra}>
-          {t.otra}
-        </Button>
-      </div>
+      {dialogo}
     </div>
   );
 };
+
+/** Desde este puntaje una sugerencia es «fuerte» y merece el barrido y el ping al publicar */
+export const SUGERENCIA_FUERTE = 90;
 
 /**
  * Las coincidencias al publicar: la experiencia «Radar Match» de la app real

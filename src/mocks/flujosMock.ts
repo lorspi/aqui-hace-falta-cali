@@ -163,6 +163,10 @@ export const EXITO = {
       { titulo: 'Llega y tú confirmas', texto: 'Con tu confirmación queda resuelta.', hecho: false },
     ],
     otra: 'Publicar otra necesidad',
+    sugerencias: {
+      titulo: 'Pueden ayudarte',
+      bajada: 'Publicaciones cerca que tienen lo que pediste. Solicita lo que te sirva y te avisamos apenas respondan.',
+    },
   },
   ofrecer: {
     titulo: 'Listo, tu oferta ya está en el mapa',
@@ -173,6 +177,10 @@ export const EXITO = {
       { titulo: 'Entregas y te confirman', texto: 'Cuando quien recibe confirma, la entrega cuenta como resuelta.', hecho: false },
     ],
     otra: 'Publicar otra oferta',
+    sugerencias: {
+      titulo: 'Pueden solicitarte',
+      bajada: 'Publicaciones cerca que piden lo que ofreces. Comprométete con la que puedas cubrir y te avisamos apenas respondan.',
+    },
   },
   canales: 'Te avisamos en RaDAR, por WhatsApp y por correo.',
 };

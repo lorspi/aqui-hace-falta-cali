@@ -5,9 +5,12 @@ import { InlineNotice } from '../../components/ui/InlineNotice';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { CANALES, CUENTA_OFRECER, DISPONIBLE, ENVIOS, MODOS_ENTREGA, RADIOS, REGISTRADO, TIPOS_ORG_OFERTA, estadoInicialOfrecer } from '../../mocks/flujosMock';
-import { PUERTAS } from '../../mocks/panelMock';
+import { OFERTA, PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle } from '../../types/flujo';
+import type { RecursoOfrecido } from '../../types/panel';
+import type { DatosPublicacionGestion } from '../panel/dialogos';
+import { publicacionSaleVerificada } from '../../utils/cuenta';
 import { camposOferta, camposTexto, numero, unidadOferta } from '../../utils/equivalencias';
 import { caminoOfrecer, fechaCorta, listoOfrecer, textoEntrega } from '../../utils/ofrecer';
 import { cifra, tituloPublicacion } from '../../utils/publicaciones';
@@ -97,13 +100,28 @@ export const OfrecerPage: React.FC<OfrecerProps> = (props) => (
 /** La oferta tal como se publicaría: es lo que se cruza contra lo que hay cerca. */
 function publicacionDe(e: EstadoOfrecer): Publicacion {
   const recursos = e.sel.filter((it) => e.cant[it] > 0).map((it) => ({ item: it, unidad: unidadOferta(it), total: e.cant[it], tramos: [] }));
-  const base: Publicacion = { id: 'nueva', tipo: 'oferta', titulo: '', org: CUENTA_OFRECER.organizacion, verificada: true, lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = {
+    id: 'oferta-creada',
+    tipo: 'oferta',
+    titulo: '',
+    org: CUENTA_OFRECER.organizacion,
+    verificada: publicacionSaleVerificada(),
+    lat: e.lat,
+    lng: e.lng,
+    zona: e.dir || 'Cali',
+    recursos,
+    propia: true,
+    modoEntrega: e.entrega,
+    radio: e.radio,
+    comoEntrega: textoEntrega(e),
+  };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
 export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
   const [createdOffer, setCreatedOffer] = useState<Offer | undefined>(undefined);
   const [nombreOrg, setNombreOrg] = useState<string>('');
+  const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
 
   const guardarEnSupabase = useCallback(async (estado: EstadoOfrecer) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -173,7 +191,87 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     if (inserted) {
       setCreatedOffer(inserted);
     }
-  }, [initialCityId, onRequireAuth]);
+
+    const idPub = inserted?.id || `oferta-${Date.now()}`;
+    const pubFinal: Publicacion = {
+      ...pub,
+      id: idPub,
+      propia: true,
+      org: org?.org_name || nombreOrg || profile?.full_name || CUENTA_OFRECER.organizacion || 'Mi Organización',
+      verificada: publicacionSaleVerificada(),
+    };
+    setPublicacionPublicada(pubFinal);
+
+    const recursosPanel: RecursoOfrecido[] = estado.sel
+      .filter((it) => estado.cant[it] > 0)
+      .map((it) => {
+        const d = estado.det[it] ?? {};
+        const dt = camposTexto(camposOferta(it), d);
+        const conTiempo = camposOferta(it).some((c) => c.k === 'tiempo');
+        const disp = d.disp === 'Hasta una fecha' ? `Hasta el ${fechaCorta(String(d.fecha ?? ''))}` : String(d.disp ?? (conTiempo ? 'Inmediata' : 'Hasta agotar'));
+        return {
+          n: it,
+          icono: iconoDe(it),
+          unidad: unidadOferta(it),
+          total: estado.cant[it],
+          disp,
+          pres: dt || 'Disponible para entrega',
+          pausado: false,
+        };
+      });
+
+    const gestionOferta: DatosPublicacionGestion = {
+      id: idPub,
+      tipo: 'oferta',
+      titulo: pubFinal.titulo,
+      org: pubFinal.org,
+      verificada: pubFinal.verificada,
+      zona: estado.dir || 'Cali',
+      dir: estado.dir || CUENTA_OFRECER.direccion,
+      descripcion: estado.condiciones || 'Recursos disponibles para apoyo comunitario.',
+      personaContacto: estado.contacto || CUENTA_OFRECER.contacto,
+      telContacto: estado.tel || CUENTA_OFRECER.telefono,
+      comoEntrega: textoEntrega(estado),
+      horario: estado.horario || 'Lunes a domingo 8:00 a 18:00',
+      recursos: recursosPanel.map((r) => ({
+        item: r.n,
+        total: r.total,
+        unidad: r.unidad,
+        disp: r.disp,
+        pres: r.pres,
+        icono: r.icono,
+        pausado: false,
+        confirmada: 0,
+        camino: 0,
+      })),
+      pausadaGlobal: false,
+    };
+
+    try {
+      const creadasRaw = localStorage.getItem('rd-publicaciones-creadas');
+      const creadas: Publicacion[] = creadasRaw ? JSON.parse(creadasRaw) : [];
+      creadas.unshift(pubFinal);
+      localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(creadas));
+
+      localStorage.setItem('rd-oferta-publicacion', JSON.stringify(pubFinal));
+      localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(gestionOferta));
+
+      const previosRaw = localStorage.getItem('rd-oferta-creada-recursos');
+      const baseRecursos: RecursoOfrecido[] = previosRaw ? JSON.parse(previosRaw) : OFERTA.recursos;
+      const fusionados = [...baseRecursos];
+      recursosPanel.forEach((nuevo) => {
+        const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());
+        if (idx !== -1) {
+          fusionados[idx] = { ...fusionados[idx], total: fusionados[idx].total + nuevo.total };
+        } else {
+          fusionados.unshift(nuevo);
+        }
+      });
+      localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(fusionados));
+    } catch (err) {
+      console.error('Error sincronizando oferta con panel:', err);
+    }
+  }, [initialCityId, onRequireAuth, nombreOrg]);
 
   const f = useFlujo<EstadoOfrecer>('ofrecer', 'ofrece', () => conParametros(estadoInicialOfrecer()), caminoOfrecer, listoOfrecer, guardarEnSupabase, onClose);
   const { e, set, sub } = f;
@@ -293,17 +391,36 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   const cantidad = (it: string, n: number) => set((p) => ({ cant: { ...p.cant, [it]: n } }));
   const irMapa = useCallback(() => irA(RUTAS.radar), []);
 
+  const alCerrar = () => {
+    if (e.publicado) {
+      if (onClose) onClose();
+      else irMapa();
+      return;
+    }
+    f.cerrar();
+  };
+
   const registrados = Object.keys(CUENTA_OFRECER.inventario ?? {});
 
   let pantalla: React.ReactNode = null;
   if (e.publicado) {
-    pantalla = <ExitoFlujo tipo="ofrecer" extra={<Coincidencias publicacion={publicacionDe(e)} />} abre={PUERTAS.ofrecer.abre} onPanel={() => irA(RUTAS.miOrganizacion)} onVerMapa={irMapa} onOtra={f.reiniciar} />;
+    pantalla = (
+      <ExitoFlujo
+        tipo="ofrecer"
+        publicacion={publicacionPublicada || publicacionDe(e)}
+        abre={PUERTAS.ofrecer.abre}
+        onVerMapa={irMapa}
+        onPanel={() => irA(`${RUTAS.miOrganizacion}#ofertas`)}
+        onOtra={f.reiniciar}
+        onCerrar={alCerrar}
+      />
+    );
   } else if (sub.id === 'recursos') {
     pantalla = (
       <>
         <Pregunta titulo="¿Qué puedes ofrecer?" sub="Lo que registraste va primero, con su cantidad. Marca solo lo que tengas disponible hoy." />
-        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3" />}
-        {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo="Todavía no tienen recursos registrados" texto="Marca aquí lo que tengan hoy. Lo que publiques queda registrado para la próxima." className="mb-3" />}
+        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3 shrink-0" />}
+        {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo="Todavía no tienen recursos registrados" texto="Marca aquí lo que tengan hoy. Lo que publiques queda registrado para la próxima." className="mb-3 shrink-0" />}
         <ListaRecursos
           q={e.q}
           onBuscar={(q) => set({ q })}
@@ -429,13 +546,13 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             const dt = camposTexto(camposOferta(it), d);
             const conTiempo = camposOferta(it).some((c) => c.k === 'tiempo');
             const disp = d.disp === 'Hasta una fecha' ? `Hasta el ${fechaCorta(String(d.fecha ?? ''))}` : String(d.disp ?? (conTiempo ? '' : 'Hasta agotar'));
-            const linea = [dt, disp].filter(Boolean).join(' · ');
+            const linea = [dt, disp].filter(Boolean).join(', ');
             return <MetaPub key={it} item={it} valor={e.cant[it] ? cifra(e.cant[it]) : ''} unidad={unidadOferta(it)} onChange={(t) => cantidad(it, numero(t) || 0)} linea={linea || undefined} />;
           })}
         </ResumenPub>
         <FilaRevisar clave="Entrega" valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
         {e.entrega !== 'remoto' && <FilaRevisar clave="Dónde" valor={e.dir} onClick={() => f.irA('donde')} />}
-        <FilaRevisar clave="Contacto" valor={`${e.contacto} · ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
@@ -459,7 +576,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
   return (
     <>
-      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={f.cerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />

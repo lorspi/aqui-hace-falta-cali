@@ -58,6 +58,10 @@ const RegistroPage = lazy(() => import("./pages/registro/RegistroPage").then(m =
 const PedirPage = lazy(() => import("./pages/flujos/PedirPage").then(m => ({ default: m.PedirPage })));
 const OfrecerPage = lazy(() => import("./pages/flujos/OfrecerPage").then(m => ({ default: m.OfrecerPage })));
 const RadarPage = lazy(() => import("./pages/radar/RadarPage").then(m => ({ default: m.RadarPage })));
+const PanelPage = lazy(() => import("./pages/panel/PanelPage").then(m => ({ default: m.PanelPage })));
+const DirectorioPage = lazy(() => import("./pages/directorio/DirectorioPage").then(m => ({ default: m.DirectorioPage })));
+const AvisosPage = lazy(() => import("./pages/avisos/AvisosPage").then(m => ({ default: m.AvisosPage })));
+const PerfilPage = lazy(() => import("./pages/perfil/PerfilPage").then(m => ({ default: m.PerfilPage })));
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
@@ -123,15 +127,13 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const params = new URLSearchParams(search);
 
   // If path or query param triggers map + modal, return null so MainApp (the map) renders
   if (
-    path === 'pedir-v2' ||
-    path === 'ofrecer-v2' ||
     path === 'mapa' ||
     ((path === '' || path === 'landing') && (params.has('accion') || params.has('pedir') || params.has('ofrecer')))
   ) {
@@ -146,6 +148,12 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
   if (path === 'radar-v2' || path === 'radar') return { type: 'radar-v2' };
+  if (path === 'pedir-v2') return { type: 'pedir-v2' };
+  if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
+  if (path === 'panel-v2') return { type: 'panel-v2' };
+  if (path === 'directorio-v2') return { type: 'directorio-v2' };
+  if (path === 'avisos-v2') return { type: 'avisos-v2' };
+  if (path === 'perfil-v2') return { type: 'perfil-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -178,6 +186,18 @@ export default function App() {
     content = <RegistroPage />;
   } else if (specialRoute?.type === 'radar-v2') {
     content = <RadarPage />;
+  } else if (specialRoute?.type === 'pedir-v2') {
+    content = <PedirPage />;
+  } else if (specialRoute?.type === 'ofrecer-v2') {
+    content = <OfrecerPage />;
+  } else if (specialRoute?.type === 'panel-v2') {
+    content = <PanelPage />;
+  } else if (specialRoute?.type === 'directorio-v2') {
+    content = <DirectorioPage />;
+  } else if (specialRoute?.type === 'avisos-v2') {
+    content = <AvisosPage />;
+  } else if (specialRoute?.type === 'perfil-v2') {
+    content = <PerfilPage />;
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {
