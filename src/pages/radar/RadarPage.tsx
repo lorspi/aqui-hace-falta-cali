@@ -1,28 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search } from 'lucide-react';
+import { Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
-import { DialogoCompromiso, type Compromiso } from '../../components/ui/DialogoCompromiso';
+import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
+import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
 import { HojaFiltros } from '../../components/ui/HojaFiltros';
 import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { MenuAcciones } from '../../components/ui/MenuAcciones';
+import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { PUBLICACIONES, UBICACION } from '../../mocks/publicacionesMock';
+import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
-import { coincidenciasDe } from '../../utils/cruce';
+import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { DialogoCoincidencias } from '../../components/ui/Coincidencias';
-import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, type Filtros } from '../../utils/filtros';
+import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
+import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
+import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { distanciaKm } from '../../utils/publicaciones';
+import { distanciaKm, distanciaTexto } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 
 /**
@@ -54,14 +59,10 @@ function enlaceDe(id: string): string {
 /** El `?punto=<id>` de la URL, solo si existe. */
 function puntoPedido(): string | null {
   const id = new URLSearchParams(window.location.search).get('punto');
-  return id && PUBLICACIONES.some((p) => p.id === id) ? id : null;
+  const todas = obtenerPublicaciones();
+  return id && todas.some((p) => p.id === id) ? id : null;
 }
 
-/** `?buscar=<texto>`: la Radar abre con ese texto en el buscador (el Directorio manda aquí con
- *  el nombre de la organización, para ver todo lo suyo en el mapa). */
-function busquedaPedida(): string {
-  return new URLSearchParams(window.location.search).get('buscar')?.trim() ?? '';
-}
 
 function irA(ruta: string): void {
   window.location.href = ruta;
@@ -75,49 +76,77 @@ export const RadarPage: React.FC = () => (
 
 const Radar: React.FC = () => {
   const avisar = useAviso();
-  const [tipo, setTipo] = useState<Tipo>('todo');
-  /* El chip inicial es la zona de la persona, «Tu zona · Usme» (plan T2, 2.4): un filtro común
-     que se quita como cualquiera. Si la URL trae un `?punto=` que existe, el enlace manda y no
-     se preselecciona. */
-  const [filtros, setFiltros] = useState<Filtros>(() => (puntoPedido() || busquedaPedida() ? filtrosVacios() : { ...filtrosVacios(), lugares: [UBICACION.zona] }));
+  /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
+     (`utils/enlace.ts`). Sin parámetros, los valores por defecto de siempre. */
+  const inicial = useMemo(() => radarDeParams(paramsActuales()), []);
+  const [tipo, setTipo] = useState<Tipo>(inicial.tipo);
+  /* El chip inicial es la ciudad de la persona, «Bogotá» (plan T2, 2.4, ahora a nivel de
+     ciudad como en producción): un filtro común que se quita como cualquiera. Solo se
+     preselecciona si nadie dijo nada: con un enlace (filtros, `?punto=` o `?buscar=`) manda
+     el enlace. */
+  const [filtros, setFiltros] = useState<Filtros>(() => {
+    const propia = ciudadDeUbicacion(UBICACION);
+    const pidieron = paramsActuales().toString() !== '';
+    return pidieron || !propia ? inicial.filtros : { ...inicial.filtros, ciudades: [propia] };
+  });
   const [hojaFiltros, setHojaFiltros] = useState(false);
-  const [busqueda, setBusqueda] = useState(busquedaPedida);
-  const [buscando, setBuscando] = useState(() => busquedaPedida() !== '');
+  const [busqueda, setBusqueda] = useState(inicial.busqueda);
+  const [buscando, setBuscando] = useState(() => inicial.busqueda !== '');
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [encuadrar, setEncuadrarEstado] = useState<{ id: string; n: number } | null>(null);
   const setEncuadrar = (id: string) => setEncuadrarEstado((e) => ({ id, n: (e?.n ?? 0) + 1 }));
   const [resaltadas, setResaltadas] = useState<{ ids: string[]; n: number } | null>(null);
   const [hojaPin, setHojaPin] = useState<{ id: string; expandida: boolean; cerrando?: boolean } | null>(null);
   const cierreHoja = useRef<number | undefined>(undefined);
-  const [vista, setVista] = useState<Vista>('mapa');
+  const [vista, setVista] = useState<Vista>(inicial.vista);
   const [cajon, setCajon] = useState(false);
   const [movil, setMovil] = useState(esMovil);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [reporte, setReporte] = useState<string | null>(null);
   const [enProceso, setEnProceso] = useState<string[]>([]);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [todasLasPubs] = useState<Publicacion[]>(obtenerPublicaciones);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = 'RaDAR · Radar';
+    document.title = 'Radar, RaDAR de ayuda';
     const mq = window.matchMedia('(max-width: 1023px)');
     const alCambiar = () => setMovil(mq.matches);
     mq.addEventListener('change', alCambiar);
     return () => mq.removeEventListener('change', alCambiar);
   }, []);
 
+  /* La URL dice lo que se ve, para poder compartirlo. `punto` se conserva: es el enlace a una
+     publicación, que no es parte de la consulta. */
+  useEffect(() => {
+    escribirUrl(paramsDeRadar({ filtros, tipo, busqueda, vista }), { punto: paramsActuales().get('punto') });
+  }, [filtros, tipo, busqueda, vista]);
+
   /* Los tres conteos cuentan, por tipo, lo que pasa todos los demás filtros. */
   const conteo = useMemo(() => {
-    const resto = PUBLICACIONES.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
+    const resto = todasLasPubs.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
     return { todo: resto.length, necesidad: resto.filter((p) => p.tipo === 'necesidad').length, oferta: resto.filter((p) => p.tipo === 'oferta').length };
-  }, [filtros, busqueda]);
+  }, [filtros, busqueda, todasLasPubs]);
 
-  const visibles = useMemo(() => ordenar(PUBLICACIONES.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda]);
+  const visibles = useMemo(() => ordenar(todasLasPubs.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda, todasLasPubs]);
 
-  const distancias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, distanciaKm(UBICACION, p)])), []);
-  const coincidencias = useMemo(() => new Map(PUBLICACIONES.map((p) => [p.id, coincidenciasDe(p, PUBLICACIONES)])), []);
+  const distancias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, distanciaKm(UBICACION, p)])), [todasLasPubs]);
+  const coincidencias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, coincidenciasDe(p, todasLasPubs)])), [todasLasPubs]);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
-  const chips = chipsDe(filtros, UBICACION.zona);
+  /* El detalle que abre «Ver detalle» de la fila de 1280: la misma tarjeta, en un diálogo. */
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const publicacionDetalle = detalleId ? todasLasPubs.find((p) => p.id === detalleId) : undefined;
+  const chips = chipsDe(filtros);
+  /* Al cambiar de ciudades, el mapa encuadra lo que queda visible (como producción, que vuela a
+     la ciudad elegida). */
+  const [encuadrarCiudad, setEncuadrarCiudad] = useState<{ n: number } | null>(null);
+  const llaveCiudades = filtros.ciudades.join(',');
+  const ciudadesAnteriores = useRef(llaveCiudades);
+  useEffect(() => {
+    if (ciudadesAnteriores.current === llaveCiudades) return;
+    ciudadesAnteriores.current = llaveCiudades;
+    setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
+  }, [llaveCiudades]);
   const aplicados = cuantosAplicados(filtros);
 
   /* Seleccionar desde el mapa trae la tarjeta a la vista (y, en móvil, abre la hoja
@@ -152,6 +181,12 @@ const Radar: React.FC = () => {
     setFiltros(filtrosVacios());
     setBusqueda('');
   };
+  /* El vacío nombra el filtro que más acota y ofrece soltar ese, no «quita todo». */
+  const vacio = vacioDe(filtros, busqueda);
+  const aflojar = () => {
+    if (vacio.accion === 'Quitar la búsqueda') setBusqueda('');
+    setFiltros(vacio.aflojar);
+  };
 
   /* `?punto=<id>`: la publicación compartida abre encuadrada; bajo 1024, con su hoja. */
   useEffect(() => {
@@ -164,12 +199,11 @@ const Radar: React.FC = () => {
   }, []);
 
   /* --- lo que pasa al tocar una tarjeta (`acciones.js`) --- */
-  const abrirCompromiso = (id: string) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null);
+  const abrirCompromiso = (id: string) => setCompromiso(todasLasPubs.find((p) => p.id === id) ?? null);
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
-    const n = `${c.recursos} ${c.recursos === 1 ? 'recurso' : 'recursos'}`;
-    avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n} · ${c.cuando.toLowerCase()}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
+    avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
   };
   const compartir = (id: string) => {
     const url = enlaceDe(id);
@@ -180,7 +214,7 @@ const Radar: React.FC = () => {
   };
   const enviarReporte = () => {
     setReporte(null);
-    avisar('Reporte enviado. Lo revisa el equipo de moderación.', { tipo: 'ok' });
+    avisar('Reporte enviado. Lo revisa moderación', { tipo: 'ok' });
   };
   /* Las coincidencias de una publicación se abren en su diálogo; desde ahí, «Ver en el mapa»
      resalta ese pin y lo encuadra, y la primaria abre el compromiso con esa organización. */
@@ -200,19 +234,29 @@ const Radar: React.FC = () => {
     else irA(a.accion.al);
   };
 
-  const estado = `${visibles.length} ${visibles.length === 1 ? 'publicación' : 'publicaciones'}`;
-  const publicacionHoja = hojaPin ? PUBLICACIONES.find((p) => p.id === hojaPin.id) : undefined;
   /* Del carrusel de la hoja: la nueva publicación queda seleccionada, señalada en el mapa y
      la hoja conserva su altura. */
   const irDesdeHoja = (id: string) => {
     setSeleccionada(id);
     setHojaPin((h) => ({ id, expandida: h?.expandida ?? false }));
-    setEncuadrar(id);
   };
-  /* La hoja abre a media pantalla: eso tapa el mapa desde abajo. */
-  const tapadoAbajo = hojaPin && typeof window !== 'undefined' ? Math.round(window.innerHeight / 2) : 0;
+
+  const conteoTexto = (n: number, t: Tipo) => {
+    if (t === 'necesidad') return `${n} ${n === 1 ? 'necesidad' : 'necesidades'}`;
+    if (t === 'oferta') return `${n} ${n === 1 ? 'oferta' : 'ofertas'}`;
+    return `${n} ${n === 1 ? 'publicación' : 'publicaciones'}`;
+  };
+  const estado = conteoTexto(visibles.length, tipo);
+  const accionesTarjeta = {
+    onPrimaria: abrirCompromiso,
+    onCompartir: compartir,
+    onReportar: (id: string) => setReporte(id),
+    onVerCoincidencias: (id: string) => setVerCoincidencias(id),
+  };
   const sinLeer = avisos.filter((a) => !a.leido).length;
-  const accionesTarjeta = { onPrimaria: abrirCompromiso, onVerCoincidencias: setVerCoincidencias, onCompartir: compartir, onReportar: setReporte };
+  const publicacionHoja = hojaPin ? todasLasPubs.find((p) => p.id === hojaPin.id) : undefined;
+  /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
+  const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
   return (
     <Shell seccion="radar" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
@@ -222,12 +266,6 @@ const Radar: React.FC = () => {
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Radar</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
-              {/* Desde 1024 el conmutador vive en la cabecera: Mapa (con la lista al lado) o Lista a lo ancho. */}
-              <div role="group" aria-label="Vista" className="inline-flex rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75">
-                <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-                <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
-              </div>
-              <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
                 Pedir ayuda
               </Button>
@@ -263,7 +301,15 @@ const Radar: React.FC = () => {
               { id: 'oferta', etiqueta: 'Ofertas', n: conteo.oferta, pip: 'oferta' },
             ]}
           />
+          {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
+              de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
+              la píldora flotante de abajo. */}
+          <div role="group" aria-label="Vista" className="inline-flex items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
+            <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
+            <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+          </div>
           <span aria-hidden="true" className="h-6 w-px flex-none bg-rd-line max-lg:hidden" />
+          {/* Decisión 70: qué ves y cómo lo ves │ Filtros y chips │ el buscador a la derecha (146: lupa bajo 1024). */}
           <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
           <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
             {estado}
@@ -280,48 +326,104 @@ const Radar: React.FC = () => {
         </div>
 
         {/* ---- mapa + lista ---- */}
-        <div className="grid min-h-0 flex-1 grid-cols-12 max-lg:flex max-lg:flex-col">
-          <MapaRadar
-            publicaciones={visibles}
-            ubicacion={UBICACION}
-            seleccionada={seleccionada}
-            onSeleccionar={seleccionarDesdeMapa}
-            encuadrar={encuadrar}
-            tapadoAbajo={tapadoAbajo}
-            resaltadas={resaltadas}
-            className={`relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1 ${vista === 'lista' ? 'hidden' : ''}`}
-          />
-          {/* Lista: al lado del mapa (5 · 4 columnas) o, con el conmutador en «Lista», a lo ancho
-              y en cuadrícula de tarjetas (2 columnas desde 1024, 3 desde 1280). */}
-          <div className={`flex min-h-0 flex-col max-lg:flex-1 ${vista === 'lista' ? 'col-span-12' : 'col-span-5 border-l border-rd-line xl:col-span-4 max-lg:border-l-0 max-lg:hidden'}`}>
-            <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            {/* «Lista» a lo ancho: las mismas tarjetas, en cuadrícula (2 columnas desde 1024, 3
-                desde 1280), todas de la altura de su fila y con las acciones pegadas abajo. */}
-            <div className={vista === 'lista' && !movil ? 'grid grid-cols-2 items-stretch gap-4 xl:grid-cols-3 xl:gap-6' : 'flex flex-col gap-3'}>
-              {visibles.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
-                  <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
-                    <Funnel className="h-6.5 w-6.5" />
-                  </span>
-                  <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Nada con estos filtros</h3>
-                  <p className="m-0 max-w-90 text-rd-13-5 leading-normal">Prueba con menos filtros o una distancia mayor.</p>
-                  <Button nivel="secundario" tamano="md" className="mt-3" onClick={limpiar}>
-                    Quitar los filtros
+        {vista === 'lista' ? (
+          <main
+            role="region"
+            aria-label="Lista de publicaciones"
+            className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+          >
+            {visibles.length === 0 ? (
+              <Vacio
+                icono={<Funnel className="h-6.5 w-6.5" />}
+                titulo={vacio.titulo}
+                texto={vacio.texto}
+                accion={
+                  <Button nivel="secundario" tamano="md" onClick={aflojar}>
+                    {vacio.accion}
                   </Button>
+                }
+              />
+            ) : (
+              /* La lista es la misma tarjeta del mapa y de la hoja del pin, no otra maquetación
+                 (Alejandro, 22 de septiembre de 2026; es también lo que dice el prototipo): a lo
+                 ancho en una cuadrícula de 2 o 3 columnas, con las acciones pegadas abajo. Sin
+                 texto de conteo ni de orden: el segmentado ya cuenta y Filtros ya ordena. */
+              /* Una tarjeta por fila, la misma del mapa y de la hoja del pin, con scroll
+                 (Alejandro y el CEO, 24 de septiembre de 2026). Antes desde 1280 cambiaba a
+                 `FilaPublicacion`, una maquetación en columnas que ya no existe: metía el
+                 contenido de una tarjeta en tres columnas con 220 px fijos para cuatro
+                 acciones, y ahí era donde «Ver detalle» se partía en dos renglones.
+                 `max-w-2xl` son las ~6 columnas que pidió Alejandro: un poco más ancha que
+                 junto al mapa, sin estirarse a lo ancho de una pantalla de 1440. */
+              <div className="mx-auto flex w-full max-w-2xl flex-col items-stretch gap-3">
+                {visibles.map((p: Publicacion) => (
+                  <Tarjeta
+                    key={p.id}
+                    publicacion={p}
+                    distanciaKm={distancias.get(p.id)}
+                    coincidencias={coincidencias.get(p.id)}
+                    enProceso={enProceso.includes(p.id)}
+                    onVerEnMapa={verEnMapa}
+                    {...accionesTarjeta}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-12 max-lg:flex max-lg:flex-col">
+            <MapaRadar
+              publicaciones={visibles}
+              ubicacion={UBICACION}
+              seleccionada={seleccionada}
+              onSeleccionar={seleccionarDesdeMapa}
+              encuadrar={encuadrar}
+              encuadrarTodo={encuadrarCiudad}
+              tapadoAbajo={tapadoAbajo}
+              resaltadas={resaltadas}
+              className="relative isolate z-0 col-span-7 min-h-0 xl:col-span-8 max-lg:min-h-0 max-lg:flex-1"
+            />
+            {/* Lista: al lado del mapa (5 y 4 columnas) */}
+            <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
+              <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col gap-3">
+                  {visibles.length === 0 ? (
+                    <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
+                      <span aria-hidden="true" className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-3">
+                        <Funnel className="h-6.5 w-6.5" />
+                      </span>
+                      <h3 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{vacio.titulo}</h3>
+                      <p className="m-0 max-w-90 text-rd-13-5 leading-normal">{vacio.texto}</p>
+                      <Button nivel="secundario" tamano="md" className="mt-3" onClick={aflojar}>
+                        {vacio.accion}
+                      </Button>
+                    </div>
+                  ) : (
+                    visibles.map((p: Publicacion) => (
+                      <Tarjeta
+                        key={p.id}
+                        publicacion={p}
+                        distanciaKm={distancias.get(p.id)}
+                        coincidencias={coincidencias.get(p.id)}
+                        enProceso={enProceso.includes(p.id)}
+                        onVerEnMapa={verEnMapa}
+                        {...accionesTarjeta}
+                      />
+                    ))
+                  )}
                 </div>
-              ) : (
-                visibles.map((p: Publicacion) => (
-                  <Tarjeta key={p.id} publicacion={p} distanciaKm={distancias.get(p.id)} coincidencias={coincidencias.get(p.id)} seleccionada={p.id === seleccionada} enProceso={enProceso.includes(p.id)} onSeleccionar={setSeleccionada} onVerEnMapa={verEnMapa} {...accionesTarjeta} />
-                ))
-              )}
-            </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ---- Mapa | Lista (solo < 1024) ---- */}
         {(!hojaPin || hojaPin.cerrando) && (
-          <div role="group" aria-label="Vista" className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 rounded-rd-lg border border-rd-line bg-rd-sunken p-0.75 shadow-rd-2 lg:hidden">
+          <div
+            role="group"
+            aria-label="Vista"
+            className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
+          >
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
           </div>
@@ -331,31 +433,149 @@ const Radar: React.FC = () => {
           <HojaPin publicacion={publicacionHoja} vecinas={visibles} distancias={distancias} coincidencias={coincidencias} enProceso={enProceso.includes(publicacionHoja.id)} expandida={hojaPin.expandida} cerrando={hojaPin.cerrando} onExpandir={(e) => setHojaPin({ id: hojaPin.id, expandida: e })} onCerrar={cerrarHojaPin} onIr={irDesdeHoja} {...accionesTarjeta} />
         )}
 
-        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={PUBLICACIONES} resultados={visibles.length} zonaPropia={UBICACION.zona} />
+        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={todasLasPubs} resultados={visibles.length} ubicacion={UBICACION} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
         {(() => {
-          const pub = verCoincidencias ? PUBLICACIONES.find((p) => p.id === verCoincidencias) : undefined;
+          const pub = verCoincidencias ? todasLasPubs.find((p) => p.id === verCoincidencias) : undefined;
           return pub ? <DialogoCoincidencias abierto publicacion={pub} coincidencias={coincidencias.get(pub.id) ?? []} hechas={enProceso} onCerrar={() => setVerCoincidencias(null)} onPrimaria={(id) => { setVerCoincidencias(null); abrirCompromiso(id); }} onVerEnMapa={verEnMapaDesdeCoincidencias} /> : null;
         })()}
         <DialogoReporte abierto={reporte !== null} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
+        <DialogoDetallePublicacion
+          publicacion={publicacionDetalle}
+          distanciaKm={publicacionDetalle ? distancias.get(publicacionDetalle.id) : undefined}
+          coincidencias={publicacionDetalle ? coincidencias.get(publicacionDetalle.id) : undefined}
+          enProceso={publicacionDetalle ? enProceso.includes(publicacionDetalle.id) : false}
+          onCerrar={() => setDetalleId(null)}
+          onPrimaria={(id) => {
+            setDetalleId(null);
+            abrirCompromiso(id);
+          }}
+          onVerEnMapa={(id) => {
+            setDetalleId(null);
+            verEnMapa(id);
+          }}
+          onVerCoincidencias={(id) => {
+            setDetalleId(null);
+            setVerCoincidencias(id);
+          }}
+          onCompartir={compartir}
+          onReportar={(id) => {
+            setDetalleId(null);
+            setReporte(id);
+          }}
+        />
       </div>
     </Shell>
   );
 };
 
 /**
- * La zona de chips de la consulta (`rd-consulta__chips`): una sola fila que se desplaza, con
- * el borde derecho desvanecido. Bajo 1024, si hay chips fuera de la vista aparece el › (44),
- * que vive fuera del contenedor de scroll y desplaza hasta el final; al llegar, se oculta.
+ * Un lado del conmutador Mapa | Lista. Mismo patrón que `Segmented`: pista con marco y la
+ * opción activa en píldora llena de tinta (bg-rd-sel), con el icono heredando el blanco. El
+ * anillo de foco va en blanco sobre la activa: el rd-navy sobre tinta no se vería.
+ * `compacto` es el de la barra de consulta (desde 1024): repite la cuenta del `Segmented` para
+ * que la pista dé 40 al lado de Filtros y del buscador. Sin él es el de la píldora flotante de
+ * bajo 1024, que no comparte fila con nadie y se queda en 44 con el dedo: es como se cambia de
+ * vista en el teléfono y encogerlo ahí sería peor.
  */
-const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: string; icono: React.ReactNode }> = ({ actual, onClick, etiqueta, icono }) => (
+const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: string; icono: React.ReactNode; compacto?: boolean }> = ({ actual, onClick, etiqueta, icono, compacto = false }) => (
   <button
     type="button"
     aria-pressed={actual}
     aria-label={etiqueta}
     onClick={onClick}
-    className={`inline-flex h-rd-h-sm w-11 cursor-pointer items-center justify-center rounded-rd-md focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${actual ? 'bg-rd-surface text-rd-ink shadow-xs' : 'text-rd-ink-2'}`}
+    className={`inline-flex w-11 cursor-pointer items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 active:translate-y-px ${
+      compacto ? 'h-7.5 pointer-coarse:h-8.5' : 'h-9 pointer-coarse:h-rd-tactil'
+    } ${
+      actual
+        ? 'bg-rd-sel font-semibold text-white focus-visible:outline-white'
+        : 'text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-rd-navy'
+    }`}
   >
     {icono}
   </button>
 );
+
+/* ---------- la fila de la vista lista de la Radar ---------- */
+
+
+/**
+ * Diálogo que muestra la tarjeta completa de una publicación al hacer clic en «Ver detalle»
+ * desde la vista de lista del Radar.
+ */
+const DialogoDetallePublicacion: React.FC<{
+  publicacion?: Publicacion;
+  distanciaKm?: number;
+  coincidencias?: CoincidenciaPublicacion[];
+  enProceso?: boolean;
+  onCerrar: () => void;
+  onPrimaria: (id: string) => void;
+  onVerEnMapa: (id: string) => void;
+  onVerCoincidencias: (id: string) => void;
+  onCompartir: (id: string) => void;
+  onReportar: (id: string) => void;
+}> = ({
+  publicacion: p,
+  distanciaKm,
+  coincidencias,
+  enProceso,
+  onCerrar,
+  onPrimaria,
+  onVerEnMapa,
+  onVerCoincidencias,
+  onCompartir,
+  onReportar,
+}) => {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (p && !d.open) d.showModal();
+    else if (!p && d.open) d.close();
+  }, [p]);
+
+  if (!p) return null;
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={onCerrar}
+      onClick={(e) => e.target === ref.current && onCerrar()}
+      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+    >
+      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+        <span className="text-rd-13 font-semibold text-rd-ink">Detalle de la publicación</span>
+        {/* La × del modal del prototipo: `--md --ghost --icono` (28 px no llega a los 44 del dedo, 223 C4). */}
+        <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar detalle" onClick={onCerrar}>
+          <X aria-hidden="true" className="h-5 w-5" />
+        </Button>
+      </div>
+      <div className="p-4 sm:p-5 bg-rd-fondo/40">
+        <Tarjeta
+          publicacion={p}
+          distanciaKm={distanciaKm}
+          coincidencias={coincidencias}
+          enProceso={enProceso}
+          onPrimaria={(id) => {
+            onCerrar();
+            onPrimaria(id);
+          }}
+          onVerEnMapa={(id) => {
+            onCerrar();
+            onVerEnMapa(id);
+          }}
+          onVerCoincidencias={(id) => {
+            onCerrar();
+            onVerCoincidencias(id);
+          }}
+          onCompartir={onCompartir}
+          onReportar={(id) => {
+            onCerrar();
+            onReportar(id);
+          }}
+        />
+      </div>
+    </dialog>
+  );
+};

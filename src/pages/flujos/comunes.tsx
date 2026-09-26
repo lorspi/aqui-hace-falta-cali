@@ -744,8 +744,10 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
         onEnviar={(p, c) => {
           setCompromiso(null);
           setHechas((h) => [...h, p.id]);
-          const n = `${c.recursos} ${c.recursos === 1 ? 'recurso' : 'recursos'}`;
-          avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n} · ${c.cuando.toLowerCase()}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
+          const cant = c.partes ? c.partes.length : (c.recursos ?? 1);
+          const n = `${cant} ${cant === 1 ? 'recurso' : 'recursos'}`;
+          const cuandoTxt = c.cuando ? ` · ${c.cuando.toLowerCase()}` : '';
+          avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n}${cuandoTxt}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
         }}
       />
     </section>

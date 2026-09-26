@@ -3,6 +3,7 @@ import { BadgeCheck, Bell, Check, Clock, Hand, HeartHandshake, RefreshCw, Triang
 import { DIAS } from '../../mocks/avisosMock';
 import type { Aviso, TipoAviso } from '../../types/aviso';
 import { Button } from './Button';
+import { ROTULO_GRUPO } from './tipografia';
 import { Contador } from './Etiqueta';
 import { Segmented } from './Segmented';
 
@@ -37,7 +38,7 @@ export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false
   /* Bajo 640 la acción baja a su propia línea también en la fila completa: al lado del texto
      no cabía y el título quedaba en una columna estrecha. */
   return (
-    <article className={`relative flex items-start gap-3 rounded-rd-lg py-3 pr-3 pl-4 hover:bg-rd-fondo ${a.leido ? '' : 'bg-rd-navy-soft hover:bg-rd-navy-line/60'} ${compacta ? 'flex-wrap' : 'max-sm:flex-wrap'}`}>
+    <article className={`relative flex items-start gap-3 rounded-rd-lg py-3 pr-3 pl-4 mb-1 last:mb-0 hover:bg-rd-fondo ${a.leido ? '' : 'bg-rd-navy-soft hover:bg-rd-navy-line/60'} ${compacta ? 'flex-wrap' : 'max-sm:flex-wrap'}`}>
       <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ic.clase}`}>
         <Icono className="h-4.5 w-4.5" />
       </span>
@@ -47,13 +48,13 @@ export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false
         <time className="mt-0.5 text-rd-11-5 text-rd-ink-meta">{a.cuando}</time>
       </div>
       {a.accion && (
-        <div className={`flex shrink-0 items-center self-center ${compacta ? 'mt-2 w-full justify-end pl-12' : 'max-sm:mt-2 max-sm:w-full max-sm:justify-end max-sm:pl-12'}`}>
+        <div className={`flex shrink-0 items-center self-center ${compacta ? 'mt-2 w-full justify-end pl-12' : 'max-sm:mt-2 max-sm:w-full max-sm:justify-start max-sm:pl-12'}`}>
           <Button nivel={a.accion.nivel} tamano="md" onClick={() => onAccion?.(a)}>
             {a.accion.texto}
           </Button>
         </div>
       )}
-      {!a.leido && <span role="img" aria-label="Sin leer" className="absolute top-1/2 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
+      {!a.leido && <span role="img" aria-label="Sin leer" className="absolute top-7.5 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
     </article>
   );
 };
@@ -74,7 +75,8 @@ export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAcci
         if (!del.length) return null;
         return (
           <React.Fragment key={d.id}>
-            <h3 className="font-rd mx-3 mt-3 mb-1 text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase first:mt-0">{d.nombre}</h3>
+            {/* Sin `uppercase`: ningún rótulo de la herramienta va en altas (decisión 242). */}
+            <h3 className={`${ROTULO_GRUPO} mx-3 mt-3 mb-1 first:mt-0`}>{d.nombre}</h3>
             {del.map((a) => (
               <FilaAviso key={a.id} aviso={a} compacta={compacta} onAccion={onAccion} />
             ))}
@@ -87,7 +89,7 @@ export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAcci
 
 /**
  * La campana con su panel (≥ 1024): conteo de los sin leer, Todos · Sin leer, la lista
- * compacta, «Marcar todos como leídos» y «Ver todos». Se cierra con Escape (el foco vuelve
+ * compacta, «Marcar leídos» y «Ver todos». Se cierra con Escape (el foco vuelve
  * a la campana) o tocando fuera (el foco se queda donde la persona tocó).
  */
 export interface CampanaAvisosProps {
@@ -142,7 +144,7 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
       {abierto && (
         <div role="dialog" aria-label="Avisos" className="absolute top-full right-0 z-900 mt-2 w-100 overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface text-left shadow-rd-2">
           <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-            <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">Avisos</h2>
+            <h2 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink">Avisos</h2>
             <Segmented<'todos' | 'nuevos'>
               etiquetaGrupo="Qué avisos ver"
               valor={filtro}
@@ -153,12 +155,12 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
               ]}
             />
           </div>
-          <div className="max-h-130 overflow-y-auto px-2 pb-2">
+          <div className="sin-barra max-h-130 overflow-y-auto px-2 pb-2">
             <ListaAvisos avisos={lista} compacta onAccion={onAccion} />
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-rd-line px-3 py-2">
             <Button nivel="terciario" tamano="sm" onClick={onLeerTodos} disabled={sinLeer === 0}>
-              Marcar todos como leídos
+              Marcar leídos
             </Button>
             <a href={rutaAvisos} className="font-rd inline-flex h-rd-h-sm items-center rounded-rd-sm px-2.75 text-rd-12-5 font-semibold text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
               Ver todos

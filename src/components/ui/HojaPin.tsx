@@ -17,7 +17,7 @@ import { Tarjeta, type TarjetaProps } from './Tarjeta';
  * puntos, pasan a la siguiente y **el mapa vuela a ese pin**. Las vecinas son solo para
  * asomar: `aria-hidden` e `inert`.
  */
-export interface HojaPinProps extends Omit<TarjetaProps, 'seleccionada' | 'onSeleccionar' | 'onVerEnMapa' | 'publicacion' | 'distanciaKm' | 'coincidencias'> {
+export interface HojaPinProps extends Omit<TarjetaProps, 'onVerEnMapa' | 'publicacion' | 'distanciaKm' | 'coincidencias'> {
   publicacion: Publicacion;
   /** Las publicaciones visibles, en el orden de la lista: por ellas recorre el carrusel. */
   vecinas: Publicacion[];

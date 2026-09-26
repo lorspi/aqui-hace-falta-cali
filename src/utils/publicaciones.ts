@@ -148,20 +148,23 @@ export function actorPublicacion(p: Publicacion): string {
  * - "Cobijas y 2 más · Familia en Bosa"
  * - "Ropa y calzado · Donante en Chapinero"
  */
-export function tituloPublicacion(p: Publicacion): string {
+/** El bloque de recursos del título, solo: «Agua potable», «Agua potable y Alimentos»,
+ *  «Alimentos y 4 más». Aparte del título porque el globo del mapa pone los recursos y el
+ *  actor en líneas distintas, y ahí el título entero no sirve. */
+export function recursosPublicacion(p: Publicacion): string {
   const recursos = p.recursos || [];
-  let bloqueRecurso = '';
+  if (recursos.length === 0) return p.tipo === 'oferta' ? 'Ayuda disponible' : 'Ayuda requerida';
+  if (recursos.length === 1) return recursos[0].item;
+  if (recursos.length === 2) return `${recursos[0].item} y ${recursos[1].item}`;
+  return `${recursos[0].item} y ${recursos.length - 1} más`;
+}
 
-  if (recursos.length === 0) {
-    bloqueRecurso = p.tipo === 'oferta' ? 'Ayuda disponible' : 'Ayuda requerida';
-  } else if (recursos.length === 1) {
-    bloqueRecurso = recursos[0].item;
-  } else if (recursos.length === 2) {
-    bloqueRecurso = `${recursos[0].item} y ${recursos[1].item}`;
-  } else {
-    bloqueRecurso = `${recursos[0].item} y ${recursos.length - 1} más`;
-  }
-
-  const actor = actorPublicacion(p);
-  return `${bloqueRecurso} · ${actor}`;
+/**
+ * El título como **texto plano**: para el nombre accesible del pin, la etiqueta del ⋮, el campo
+ * `titulo` del dato y el asunto al compartir. Une con «, de» y no con punto medio, que Alejandro
+ * prohibió en toda la herramienta (16 de septiembre de 2026); ahí no cabe un divisor, que es
+ * lo que se usa donde el título se pinta (`TituloPublicacion`).
+ */
+export function tituloPublicacion(p: Publicacion): string {
+  return `${recursosPublicacion(p)}, de ${actorPublicacion(p)}`;
 }

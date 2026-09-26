@@ -104,8 +104,8 @@ export const RUTAS = {
   inicio: '/',
   mapa: '/radar-v2',
   radar: '/radar-v2',
-  pedir: '/?accion=pedir',
-  ofrecer: '/?accion=ofrecer',
+  pedir: '/pedir-v2',
+  ofrecer: '/ofrecer-v2',
   organizaciones: '/mapa-ayudas-necesidades',
   directorio: '/directorio-v2',
   avisos: '/avisos-v2',
@@ -133,21 +133,12 @@ export const RUTAS_SHELL = {
 const CONTACTO_VACIO: ContactoPublico = { tel: '', mismoWa: true, wa: '', correo: '' };
 
 export function estadoInicial(rapida: boolean): EstadoRegistro {
-  let modoInicial: ModoRegistro = rapida ? 'registro' : 'login';
-  if (typeof window !== 'undefined') {
-    const search = window.location.search;
-    if (/[?&]modo=registro/.test(search)) {
-      modoInicial = 'registro';
-    } else if (/[?&]modo=login/.test(search)) {
-      modoInicial = 'login';
-    }
-  }
   return {
-    modo: modoInicial,
+    modo: rapida ? 'registro' : 'login',
     perfil: rapida ? 'rapida' : '',
     indice: 0,
     org: { nombre: '', tipo: '', nit: '', web: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
-    com: { nombre: '', tipo: '', departamento: '', referencia: '', contacto: { ...CONTACTO_VACIO } },
+    com: { nombre: '', tipo: '', departamento: '', referencia: '', contacto: { ...CONTACTO_VACIO }, documentoAdjunto: false },
     per: { nombre: '', cargo: '', tipoDocumento: '', cedula: '', tel: '', mismoWa: true, wa: '', correo: '', captchaToken: '', terminos: false },
     ind: {
       nombre: '',
@@ -191,7 +182,7 @@ export const LAMINAS: LaminaCarrusel[] = [
  *  ya llegó (`hecho`) y lo que va en camino (`camino`), en porcentaje. */
 export const LAMINA_CARTA = {
   organizacion: 'Fundación Colombia Unida',
-  direccion: 'Cra. 80 #57-40 sur, Bosa · a 9,1 km de tu ubicación',
+  direccion: 'Cra. 80 #57-40 sur, Bosa, a 9,1 km de tu ubicación',
   filas: [
     { recurso: 'Agua potable', falta: 'faltan 450 L', hecho: 20, camino: 30 },
     { recurso: 'Ropa y cobijas', falta: 'faltan 200 unidades', hecho: 0, camino: 0 },
@@ -200,7 +191,8 @@ export const LAMINA_CARTA = {
 };
 
 /** El chip de la tercera lámina. */
-export const LAMINA_CIERRE = 'Entregado · Albergue Bosa · 180 L · 12 sep, 9:40 a. m.';
+/* En partes: el divisor las separa al pintarlas, que el punto medio está prohibido. */
+export const LAMINA_CIERRE = ['Entregado', 'Albergue Bosa', '180 L', '12 sep, 9:40 a. m.'];
 
 /** El mapa decorativo de la primera lámina: centro y seis pines del prototipo (Bogotá).
  *  `tipo` decide el color: necesidad (rojo), oferta (azul), entregado (verde). */

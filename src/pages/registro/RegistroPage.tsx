@@ -258,7 +258,7 @@ export const RegistroPage: React.FC = () => {
 
       if (e.perfil === 'organizacion') {
         email = e.org.contacto.correo.trim();
-        password = pass.current.org_p || '';
+        password = pass.current.cp || '';
         metadata = {
           full_name: e.org.nombre.trim(),
           phone: e.org.contacto.tel,
@@ -271,7 +271,7 @@ export const RegistroPage: React.FC = () => {
         };
       } else if (e.perfil === 'liderazgo') {
         email = e.com.contacto.correo.trim();
-        password = pass.current.com_p || '';
+        password = pass.current.cp || '';
         metadata = {
           full_name: e.com.nombre.trim(),
           phone: e.com.contacto.tel,
@@ -285,9 +285,9 @@ export const RegistroPage: React.FC = () => {
           accept_terms: true,
         };
       } else {
-        const isInd = e.perfil === 'persona' && Boolean(e.ind.correo);
+        const isInd = (e.perfil === 'individual' || (e.perfil as string) === 'persona') && Boolean(e.ind.correo);
         email = (isInd ? e.ind.correo : e.per.correo).trim();
-        password = (isInd ? pass.current.ind_p : pass.current.per_p) || '';
+        password = (isInd ? pass.current.ip : pass.current.cp) || '';
         const fullName = isInd
           ? `${e.ind.nombre} ${e.ind.apellido}`.trim()
           : e.per.nombre.trim();

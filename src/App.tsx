@@ -133,7 +133,6 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
     path === 'pedir-v2' ||
     path === 'ofrecer-v2' ||
     path === 'mapa' ||
-    path === 'radar' ||
     ((path === '' || path === 'landing') && (params.has('accion') || params.has('pedir') || params.has('ofrecer')))
   ) {
     return null;
@@ -146,7 +145,7 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
-  if (path === 'radar-v2') return { type: 'radar-v2' };
+  if (path === 'radar-v2' || path === 'radar') return { type: 'radar-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -177,10 +176,6 @@ export default function App() {
     content = <SimulatedRegisterPage />;
   } else if (specialRoute?.type === 'registro-v2') {
     content = <RegistroPage />;
-  } else if (specialRoute?.type === 'pedir-v2') {
-    content = <PedirPage />;
-  } else if (specialRoute?.type === 'ofrecer-v2') {
-    content = <OfrecerPage />;
   } else if (specialRoute?.type === 'radar-v2') {
     content = <RadarPage />;
   } else if (specialRoute?.type === 'cifras') {
