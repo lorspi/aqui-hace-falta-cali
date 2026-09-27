@@ -93,63 +93,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       });
 
       if (error) {
-        const cleanEmail = email.trim().toLowerCase();
-        const isDevOrDemo =
-          window.location.hostname === 'localhost' ||
-          window.location.hostname === '127.0.0.1' ||
-          window.location.hostname.includes('web.app') ||
-          window.location.hostname.includes('firebaseapp.com') ||
-          cleanEmail.includes('moderador') ||
-          cleanEmail.includes('admin') ||
-          cleanEmail.includes('prueba') ||
-          cleanEmail.includes('demo') ||
-          cleanEmail.includes('bomberos') ||
-          cleanEmail.includes('comunidad') ||
-          cleanEmail.includes('organizacion') ||
-          cleanEmail.includes('organización') ||
-          cleanEmail.endsWith('@gmail.com') ||
-          cleanEmail.endsWith('@test.com') ||
-          cleanEmail.endsWith('@demo.com');
-
-        if (isDevOrDemo && password.length >= 4) {
-          const role = cleanEmail.includes('admin')
-            ? 'admin'
-            : cleanEmail.includes('moderador')
-            ? 'moderador'
-            : 'organizacion';
-
-          const name = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').toUpperCase();
-
-          const userObj = {
-            id: 'demo-user-' + cleanEmail.replace(/[^a-z0-9]/g, '-'),
-            name,
-            email: email.trim(),
-            role,
-            profile_type: role === 'admin' || role === 'moderador' ? 'persona' : 'organizacion',
-            user_metadata: {
-              full_name: name,
-              role,
-              profile_type: role === 'admin' || role === 'moderador' ? 'persona' : 'organizacion',
-              org_name: cleanEmail.includes('moderador') ? 'Moderación RaDAR' : 'Organización de Prueba'
-            }
-          };
-
-          localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
-          if (role === 'admin' || role === 'moderador') {
-            localStorage.setItem('ahf_admin_user', JSON.stringify(userObj));
-            localStorage.setItem('ahf_admin_token', 'dev_token_' + Date.now());
-          }
-
-          setSuccessMessage(t('authLoginSuccess') || '¡Inicio de sesión exitoso!');
-
-          setTimeout(() => {
-            if (onSuccess) onSuccess(userObj);
-            if (onClose) onClose();
-            window.location.reload();
-          }, 600);
-          return;
-        }
-
         if (error.message.includes('Invalid login credentials')) {
           throw new Error(t('authLoginErrorInvalid'));
         }
