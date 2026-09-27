@@ -127,14 +127,17 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
-  const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+  const rawPath = currentPathName ?? (typeof window !== 'undefined' ? window.location.pathname : '');
+  const path = rawPath.replace(/^\//, '').replace(/\/$/, '');
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const params = new URLSearchParams(search);
 
   // If path or query param triggers map + modal, return null so MainApp (the map) renders
   if (
     path === 'mapa' ||
+    path === 'mapa-ayudas-necesidades' ||
+    path === 'radar' ||
     ((path === '' || path === 'landing') && (params.has('accion') || params.has('pedir') || params.has('ofrecer')))
   ) {
     return null;
@@ -143,17 +146,17 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
   if (path === '' || path === 'landing') return { type: 'landing' };
   if (path === 'guia' || path === 'home') return { type: 'guia' };
   if (path === 'moderador') return { type: 'moderador' };
-  if (path === 'panel') return { type: 'panel' };
+  if (path === 'panel-admin' || path === 'admin-panel') return { type: 'panel' };
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
-  if (path === 'radar-v2' || path === 'radar') return { type: 'radar-v2' };
+  if (path === 'radar-v2') return { type: 'radar-v2' };
   if (path === 'pedir-v2') return { type: 'pedir-v2' };
   if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
-  if (path === 'panel-v2') return { type: 'panel-v2' };
-  if (path === 'directorio-v2') return { type: 'directorio-v2' };
-  if (path === 'avisos-v2') return { type: 'avisos-v2' };
-  if (path === 'perfil-v2') return { type: 'perfil-v2' };
+  if (path === 'panel-v2' || path === 'panel-organizacion' || path === 'panel') return { type: 'panel-v2' };
+  if (path === 'directorio-v2' || path === 'directorio') return { type: 'directorio-v2' };
+  if (path === 'avisos-v2' || path === 'avisos') return { type: 'avisos-v2' };
+  if (path === 'perfil-v2' || path === 'perfil') return { type: 'perfil-v2' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -165,7 +168,19 @@ function getSpecialRoute(): { type: 'landing' } | { type: 'guia' } | { type: 'mo
 }
 
 export default function App() {
-  const specialRoute = getSpecialRoute();
+  const [currentPath, setCurrentPath] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : '/'));
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
+  const specialRoute = getSpecialRoute(currentPath);
 
   let content = <MainApp />;
   if (specialRoute?.type === 'landing') {

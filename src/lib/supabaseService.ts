@@ -1028,6 +1028,42 @@ export async function fetchUserProfile(userId: string) {
   return null;
 }
 
+/**
+ * Actualiza los datos del perfil de usuario en public.profiles
+ */
+export async function updateUserProfile(userId: string, updates: {
+  fullName?: string;
+  phone?: string;
+  cargo?: string;
+  city?: string;
+  country?: string;
+}): Promise<any> {
+  const rowUpdates: any = {
+    updated_at: new Date().toISOString()
+  };
+  if (updates.fullName !== undefined) rowUpdates.full_name = updates.fullName;
+  if (updates.phone !== undefined) {
+    rowUpdates.phone = updates.phone;
+    rowUpdates.whatsapp = updates.phone;
+  }
+  if (updates.cargo !== undefined) rowUpdates.cargo = updates.cargo;
+  if (updates.city !== undefined) rowUpdates.city = updates.city;
+  if (updates.country !== undefined) rowUpdates.country = updates.country;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(rowUpdates)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+  return data;
+}
+
 export async function upsertUserProfile(profileData: {
   id: string;
   email?: string;
@@ -1593,4 +1629,150 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
 
   return createdOffer;
 }
+
+/**
+ * Obtiene la organización asociada a un usuario
+ */
+export async function fetchOrganizationByUserId(userId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching organization:', error);
+    return null;
+  }
+  return data;
+}
+
+/**
+ * Obtiene los integrantes del equipo de una organización
+ */
+export async function fetchOrganizationMembers(orgId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select(`
+      *,
+      profiles (
+        id,
+        full_name,
+        email,
+        phone,
+        cargo,
+        role
+      )
+    `)
+    .eq('organization_id', orgId);
+
+  if (error) {
+    console.error('Error fetching org members:', error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Obtiene las entregas y compromisos de una organización (provider o requester)
+ */
+export async function fetchOrgCommitments(orgId?: string, userId?: string): Promise<any[]> {
+  let query = supabase.from('commitments').select('*');
+
+  if (orgId && userId) {
+    query = query.or(`provider_organization_id.eq.${orgId},provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
+  } else if (orgId) {
+    query = query.eq('provider_organization_id', orgId);
+  } else if (userId) {
+    query = query.or(`provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching commitments:', error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Crea un compromiso / postulación de ayuda
+ */
+export async function createCommitment(payload: {
+  needId?: string;
+  offerId?: string;
+  requesterUserId?: string;
+  providerUserId?: string;
+  providerOrgId?: string;
+  originType?: string;
+  resourceName: string;
+  quantity: number;
+  unit: string;
+  assignedVolunteerName?: string;
+  assignedVolunteerPhone?: string;
+  status?: string;
+}): Promise<any> {
+  const row = {
+    need_id: payload.needId || null,
+    offer_id: payload.offerId || null,
+    requester_user_id: payload.requesterUserId || null,
+    provider_user_id: payload.providerUserId || null,
+    provider_organization_id: payload.providerOrgId || null,
+    origin_type: payload.originType || (payload.needId ? 'DIRECT_NEED_RESPONSE' : 'DIRECT_OFFER_REQUEST'),
+    resource_name: payload.resourceName,
+    quantity: payload.quantity,
+    unit: payload.unit,
+    status: payload.status || 'nueva',
+    assigned_volunteer_name: payload.assignedVolunteerName || null,
+    assigned_volunteer_phone: payload.assignedVolunteerPhone || null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase.from('commitments').insert(row).select().single();
+  if (error) {
+    console.error('Error creating commitment:', error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Actualiza el estado y datos de un compromiso (ej. camino, entregada, confirmada)
+ */
+export async function updateCommitmentStatus(params: {
+  commitmentId: string;
+  status: string;
+  confirmationStory?: string;
+  deliveryPhotos?: string[];
+  receptionPhotos?: string[];
+  assignedVolunteerName?: string;
+  assignedVolunteerPhone?: string;
+}): Promise<any> {
+  const updates: any = {
+    status: params.status,
+    updated_at: new Date().toISOString()
+  };
+
+  if (params.confirmationStory !== undefined) updates.confirmation_story = params.confirmationStory;
+  if (params.deliveryPhotos !== undefined) updates.delivery_photos = params.deliveryPhotos;
+  if (params.receptionPhotos !== undefined) updates.reception_photos = params.receptionPhotos;
+  if (params.assignedVolunteerName !== undefined) updates.assigned_volunteer_name = params.assignedVolunteerName;
+  if (params.assignedVolunteerPhone !== undefined) updates.assigned_volunteer_phone = params.assignedVolunteerPhone;
+
+  const { data, error } = await supabase
+    .from('commitments')
+    .update(updates)
+    .eq('id', params.commitmentId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating commitment status:', error);
+    throw error;
+  }
+  return data;
+}
+
 

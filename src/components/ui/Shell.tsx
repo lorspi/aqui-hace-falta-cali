@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, Users, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, ShieldCheck, Users, X } from 'lucide-react';
 import { Avatar, Contador } from './Etiqueta';
 import { Divisor } from './Divisor';
+import { supabase } from '../../lib/supabaseClient';
 
 /**
  * El cascarón de la app con sesión (`rd-shell` del prototipo), con utilidades sobre los
@@ -14,7 +15,7 @@ import { Divisor } from './Divisor';
  * El nombre del panel lo pone la entidad («Mi organización» / «Mi comunidad»); lo que hay
  * dentro lo decide el objetivo.
  */
-export type Seccion = 'panel' | 'radar' | 'directorio' | 'avisos' | 'perfil';
+export type Seccion = 'panel' | 'panel-admin' | 'radar' | 'directorio' | 'avisos' | 'perfil';
 
 export interface Cuenta {
   entidad: string;
@@ -50,7 +51,72 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   const [plegado, setPlegado] = useState(false);
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
-  const estaLogueado = Boolean(authUser);
+
+  const [sessionUser, setSessionUser] = useState<any>(authUser || null);
+
+  useEffect(() => {
+    if (authUser) {
+      setSessionUser(authUser);
+      return;
+    }
+    const checkUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          setSessionUser(data.user);
+          return;
+        }
+      } catch {}
+      const saved = localStorage.getItem('ahf_auth_user') || localStorage.getItem('ahf_admin_user');
+      if (saved) {
+        try {
+          setSessionUser(JSON.parse(saved));
+        } catch {}
+      }
+    };
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setSessionUser(session.user);
+      } else if (!authUser) {
+        setSessionUser(null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, [authUser]);
+
+  const activeUser = authUser || sessionUser;
+  const estaLogueado = Boolean(activeUser);
+
+  const cuentaFinal = useMemo(() => {
+    if (!activeUser) return cuenta;
+    const name = activeUser.name || activeUser.user_metadata?.full_name || activeUser.email || cuenta.entidad;
+    const inicialesStr = name.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || cuenta.iniciales;
+    return {
+      entidad: name,
+      persona: activeUser.email || cuenta.persona,
+      rol: activeUser.user_metadata?.role || cuenta.rol,
+      iniciales: inicialesStr
+    };
+  }, [activeUser, cuenta]);
+
+  const handleLogoutAction = async () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    localStorage.removeItem('ahf_auth_user');
+    localStorage.removeItem('ahf_admin_user');
+    localStorage.removeItem('ahf_admin_token');
+    window.location.href = '/';
+  };
 
   /* El panel del «+» se cierra con Escape o tocando fuera. */
   useEffect(() => {
@@ -74,11 +140,20 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     return () => document.removeEventListener('keydown', alTeclear);
   }, [cajonAbierto, onCerrarCajon]);
 
+  const handleClickNav = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href || href === '#' || href.startsWith('http://') || href.startsWith('https://')) return;
+    e.preventDefault();
+    if (window.location.pathname !== href) {
+      window.history.pushState({}, '', href);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
-    { id: 'radar', nombre: 'Radar', href: rutas.radar, icono: <MapPin className="h-5 w-5" /> },
-    ...(isModeratorOrAdmin
-      ? [{ id: 'panel' as Seccion, nombre: 'Panel', href: '/panel', icono: <House className="h-5 w-5" />, n: pendientes }]
-      : []),
+    { id: 'radar', nombre: 'Radar', href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
+    { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
+    { id: 'panel', nombre: 'Panel organización', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes },
+    { id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> },
   ];
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
@@ -87,6 +162,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       <a
         key={s.id}
         href={s.href}
+        onClick={(e) => {
+          if (grande) onCerrarCajon?.();
+          handleClickNav(e, s.href);
+        }}
         aria-current={actual ? 'page' : undefined}
         className={`${ITEM} ${actual ? ITEM_ACTUAL : ''} ${grande ? 'h-13 rounded-rd-md text-rd-16' : ''} ${plegado && !grande ? 'relative justify-center px-0' : ''}`}
       >
@@ -106,21 +185,26 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         aria-label="Secciones"
         className={`flex h-full shrink-0 flex-col rounded-rd-md border border-rd-line bg-rd-surface py-4 transition-all duration-200 max-lg:hidden ${plegado ? 'w-16 px-2' : 'w-58 px-3'}`}
       >
-        <div className={`flex shrink-0 flex-col gap-2 ${plegado ? 'items-center' : ''}`}>
+        <div className={`flex shrink-0 items-center mb-2 ${plegado ? 'justify-center' : 'justify-between px-1'}`}>
+          {!plegado && (
+            <a
+              href={rutas.inicio}
+              onClick={(e) => handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades')}
+              aria-label="RaDAR de ayuda, inicio"
+              className="flex items-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy"
+            >
+              <img src="/logo-radar.svg" alt="Radar de Ayuda" className="block h-8 w-auto min-w-0" />
+            </a>
+          )}
           <button
             type="button"
             onClick={() => setPlegado((p) => !p)}
             aria-label={plegado ? 'Desplegar el menú' : 'Plegar el menú'}
             aria-expanded={!plegado}
-            className={`inline-flex h-7.5 w-7.5 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-3 hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${plegado ? 'self-center' : 'self-end'}`}
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-3 hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
           >
             <ChevronLeft aria-hidden="true" className={`h-4.5 w-4.5 transition-transform duration-200 ${plegado ? 'rotate-180' : ''}`} />
           </button>
-          {!plegado && (
-            <a href={rutas.inicio} aria-label="RaDAR de ayuda, inicio" className="flex w-full items-center px-1 focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy">
-              <img src="/logo-radar.svg" alt="" className="block h-9.5 w-auto" />
-            </a>
-          )}
         </div>
         <ul className="mt-3 flex min-h-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto">
           {secciones.map((s) => (
@@ -134,26 +218,32 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             <>
               <button
                 type="button"
-                onClick={onOpenProfileModal || (() => { window.location.href = rutas.perfil; })}
+                onClick={(e) => {
+                  if (onOpenProfileModal) {
+                    onOpenProfileModal();
+                  } else {
+                    handleClickNav(e as any, rutas.perfil || '/perfil-v2');
+                  }
+                }}
                 aria-current={seccion === 'perfil' ? 'page' : undefined}
                 className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink text-left no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy cursor-pointer w-full ${plegado ? 'justify-center p-1' : ''}`}
                 title="Ver perfil de usuario"
               >
-                <Avatar iniciales={cuenta.iniciales} tamano="md" />
+                <Avatar iniciales={cuentaFinal.iniciales} tamano="md" />
                 {!plegado && (
                   <span className="flex min-w-0 flex-col">
-                    <b className="truncate text-rd-13 font-semibold">{cuenta.entidad}</b>
+                    <b className="truncate text-rd-13 font-semibold">{cuentaFinal.entidad}</b>
                     <span className="truncate text-rd-11-5 text-rd-ink-meta">
-                      {cuenta.persona}
+                      {cuentaFinal.persona}
                       <Divisor />
-                      {cuenta.rol}
+                      {cuentaFinal.rol}
                     </span>
                   </span>
                 )}
               </button>
               <button
                 type="button"
-                onClick={onLogout || (() => { window.location.href = rutas.salir; })}
+                onClick={handleLogoutAction}
                 className={`${ITEM} h-9 text-rd-13 text-rd-ink-meta ${plegado ? 'justify-center px-0' : ''} cursor-pointer w-full text-left`}
               >
                 <LogOut aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
@@ -189,6 +279,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         className="fixed right-4 bottom-2 left-4 z-800 box-border flex h-14 items-center rounded-full border border-rd-line bg-rd-surface px-2 shadow-rd-2 lg:hidden"
       >
         <TabItem href={rutas.radar} actual={seccion === 'radar'} nombre="Radar" icono={<MapPin className="h-6 w-6" />} />
+        <TabItem href={rutas.directorio} actual={seccion === 'directorio'} nombre="Directorio" icono={<Users className="h-6 w-6" />} />
         <div ref={masRef} className="relative flex w-11 shrink-0 justify-center">
           <button
             type="button"
@@ -241,24 +332,31 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
               <>
                 <button
                   type="button"
-                  onClick={() => { onCerrarCajon?.(); (onOpenProfileModal || (() => { window.location.href = rutas.perfil; }))(); }}
+                  onClick={(e) => {
+                    onCerrarCajon?.();
+                    if (onOpenProfileModal) {
+                      onOpenProfileModal();
+                    } else {
+                      handleClickNav(e as any, rutas.perfil || '/perfil-v2');
+                    }
+                  }}
                   aria-current={seccion === 'perfil' ? 'page' : undefined}
                   className="mt-auto flex items-start gap-3 px-4 py-3 text-rd-ink text-left no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy sm:px-6 cursor-pointer w-full"
                 >
-                  <Avatar iniciales={cuenta.iniciales} tamano="lg" />
+                  <Avatar iniciales={cuentaFinal.iniciales} tamano="lg" />
                   <span className="flex min-w-0 flex-col">
-                    <b className="truncate text-rd-14 font-semibold">{cuenta.entidad}</b>
+                    <b className="truncate text-rd-14 font-semibold">{cuentaFinal.entidad}</b>
                     <span className="truncate text-rd-12 text-rd-ink-meta">
-                      {cuenta.persona}
+                      {cuentaFinal.persona}
                       <Divisor />
-                      {cuenta.rol}
+                      {cuentaFinal.rol}
                     </span>
                   </span>
                 </button>
                 <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6">
                   <button
                     type="button"
-                    onClick={onLogout || (() => { window.location.href = rutas.salir; })}
+                    onClick={handleLogoutAction}
                     className={`${ITEM} h-12 text-rd-15 text-rd-ink-meta w-full text-left cursor-pointer`}
                   >
                     <LogOut aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
@@ -289,6 +387,15 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 const TabItem: React.FC<{ href: string; actual: boolean; nombre: string; icono: React.ReactNode; n?: number; etiqueta?: string }> = ({ href, actual, nombre, icono, n = 0, etiqueta }) => (
   <a
     href={href}
+    onClick={(e) => {
+      if (href && !href.startsWith('http://') && !href.startsWith('https://')) {
+        e.preventDefault();
+        if (window.location.pathname !== href) {
+          window.history.pushState({}, '', href);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
+      }
+    }}
     aria-current={actual ? 'page' : undefined}
     aria-label={etiqueta}
     className={`group relative flex min-h-11 flex-1 items-center justify-center no-underline focus-visible:outline-none ${actual ? 'text-rd-navy' : 'text-rd-ink-2'}`}

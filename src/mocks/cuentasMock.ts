@@ -102,8 +102,8 @@ export const DEPTOS = [
  *  entrar y «Ir al mapa» caen ahí, no en el mapa real. */
 export const RUTAS = {
   inicio: '/',
-  mapa: '/radar-v2',
-  radar: '/radar-v2',
+  mapa: '/mapa-ayudas-necesidades',
+  radar: '/mapa-ayudas-necesidades',
   pedir: '/pedir-v2',
   ofrecer: '/ofrecer-v2',
   organizaciones: '/mapa-ayudas-necesidades',
@@ -111,6 +111,7 @@ export const RUTAS = {
   avisos: '/avisos-v2',
   perfil: '/perfil-v2',
   miOrganizacion: '/panel-v2',
+  panelAdmin: '/panel-admin',
   comoFunciona: '/guia',
   terminos: '/terminos',
   privacidad: '/privacidad',
@@ -123,6 +124,7 @@ export const CUENTA_SESION = { entidad: 'Bomberos Voluntarios Usme', persona: 'C
 export const RUTAS_SHELL = {
   inicio: RUTAS.inicio,
   panel: RUTAS.miOrganizacion,
+  'panel-admin': RUTAS.panelAdmin,
   radar: RUTAS.radar,
   directorio: RUTAS.directorio,
   avisos: RUTAS.avisos,

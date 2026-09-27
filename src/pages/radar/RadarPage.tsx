@@ -20,7 +20,7 @@ import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
-import type { Publicacion, TipoPublicacion } from '../../types/publicacion';
+import type { Publicacion, TipoPublicacion, Ubicacion } from '../../types/publicacion';
 import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce';
 import { DialogoCoincidencias, ResumenCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
@@ -32,6 +32,7 @@ import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
+import { FloatingCreateNeedFAB } from '../../components/FloatingCreateNeedFAB';
 
 
 /**
@@ -105,15 +106,30 @@ const Radar: React.FC<RadarProps> = ({
      (`utils/enlace.ts`). Sin parámetros, los valores por defecto de siempre. */
   const inicial = useMemo(() => radarDeParams(paramsActuales()), []);
   const [tipo, setTipo] = useState<Tipo>(inicial.tipo);
-  /* El chip inicial es la ciudad de la persona, «Bogotá» (plan T2, 2.4, ahora a nivel de
-     ciudad como en producción): un filtro común que se quita como cualquiera. Solo se
-     preselecciona si nadie dijo nada: con un enlace (filtros, `?punto=` o `?buscar=`) manda
-     el enlace. */
-  const [filtros, setFiltros] = useState<Filtros>(() => {
-    const propia = ciudadDeUbicacion(UBICACION);
-    const pidieron = paramsActuales().toString() !== '';
-    return pidieron || !propia ? inicial.filtros : { ...inicial.filtros, ciudades: [propia] };
-  });
+  /* Por defecto mostramos todas las ciudades para encuadrar todo Colombia al iniciar */
+  const [filtros, setFiltros] = useState<Filtros>(() => inicial.filtros);
+  const [ubicacionActual, setUbicacionActual] = useState<Ubicacion>(UBICACION);
+
+  /* Detectar la ubicación real del usuario si da permisos en el navegador */
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUbicacionActual({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            zona: 'Tu ubicación',
+            simulada: false,
+          });
+        },
+        () => {
+          // Si deniega o falla, conserva la ubicación por defecto
+        },
+        { timeout: 8000 }
+      );
+    }
+  }, []);
+
   const [hojaFiltros, setHojaFiltros] = useState(false);
   const [busqueda, setBusqueda] = useState(inicial.busqueda);
   const [buscando, setBuscando] = useState(() => inicial.busqueda !== '');
@@ -204,13 +220,13 @@ const Radar: React.FC<RadarProps> = ({
 
   /* Los tres conteos cuentan, por tipo, lo que pasa todos los demás filtros. */
   const conteo = useMemo(() => {
-    const resto = todasLasPubs.filter((p) => pasaResto(p, filtros, UBICACION, busqueda));
+    const resto = todasLasPubs.filter((p) => pasaResto(p, filtros, ubicacionActual, busqueda));
     return { todo: resto.length, necesidad: resto.filter((p) => p.tipo === 'necesidad').length, oferta: resto.filter((p) => p.tipo === 'oferta').length };
-  }, [filtros, busqueda, todasLasPubs]);
+  }, [filtros, busqueda, todasLasPubs, ubicacionActual]);
 
-  const visibles = useMemo(() => ordenar(todasLasPubs.filter((p) => pasa(p, tipo, filtros, UBICACION, busqueda)), filtros.orden, UBICACION), [tipo, filtros, busqueda, todasLasPubs]);
+  const visibles = useMemo(() => ordenar(todasLasPubs.filter((p) => pasa(p, tipo, filtros, ubicacionActual, busqueda)), filtros.orden, ubicacionActual), [tipo, filtros, busqueda, todasLasPubs, ubicacionActual]);
 
-  const distancias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, distanciaKm(UBICACION, p)])), [todasLasPubs]);
+  const distancias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, distanciaKm(ubicacionActual, p)])), [todasLasPubs, ubicacionActual]);
   const coincidencias = useMemo(() => new Map(todasLasPubs.map((p) => [p.id, coincidenciasDe(p, todasLasPubs)])), [todasLasPubs]);
   const [verCoincidencias, setVerCoincidencias] = useState<string | null>(null);
   /* El detalle que abre «Ver detalle» de la fila de 1280: la misma tarjeta, en un diálogo. */
@@ -421,12 +437,12 @@ const Radar: React.FC<RadarProps> = ({
         </header>
 
         {/* ---- consulta ---- */}
-        <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
+        <div className="flex flex-none items-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto border-b border-rd-line bg-rd-surface px-4 py-2 sm:px-6 lg:px-8">
           <Segmented<Tipo>
             etiquetaGrupo="Qué quieres ver"
             valor={tipo}
             onChange={setTipo}
-            className="max-lg:w-full max-lg:overflow-x-auto"
+            className="shrink-0"
             opciones={[
               { id: 'todo', etiqueta: 'Todo', n: conteo.todo },
               { id: 'necesidad', etiqueta: 'Necesidades', n: conteo.necesidad, pip: 'necesidad' },
@@ -436,11 +452,11 @@ const Radar: React.FC<RadarProps> = ({
           {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
               de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
               la píldora flotante de abajo. */}
-          <div role="group" aria-label="Vista" className="inline-flex items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
+          <div role="group" aria-label="Vista" className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
             <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
           </div>
-          <span aria-hidden="true" className="h-6 w-px flex-none bg-rd-line max-lg:hidden" />
+          <span aria-hidden="true" className="h-6 w-px shrink-0 flex-none bg-rd-line max-lg:hidden" />
           {/* Decisión 70: qué ves y cómo lo ves │ Filtros y chips │ el buscador a la derecha (146: lupa bajo 1024). */}
           <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
           <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
@@ -454,7 +470,7 @@ const Radar: React.FC<RadarProps> = ({
               <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
             </ZonaChips>
           )}
-          <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} />
+          <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
         </div>
 
         {/* ---- mapa + lista ---- */}
@@ -517,7 +533,7 @@ const Radar: React.FC<RadarProps> = ({
             <div className={`relative isolate z-0 min-h-0 transition-all duration-300 max-lg:min-h-0 max-lg:flex-1 ${panelDerechoMinimizado ? 'col-span-12' : 'col-span-7 xl:col-span-8'}`}>
               <MapaRadar
                 publicaciones={visibles}
-                ubicacion={UBICACION}
+                ubicacion={ubicacionActual}
                 seleccionada={seleccionada}
                 onSeleccionar={seleccionarDesdeMapa}
                 encuadrar={encuadrar}
@@ -525,6 +541,12 @@ const Radar: React.FC<RadarProps> = ({
                 tapadoAbajo={tapadoAbajo}
                 resaltadas={resaltadas}
                 className="h-full w-full"
+              />
+
+              {/* Botón flotante del chatbot en la parte izquierda del mapa */}
+              <FloatingCreateNeedFAB
+                onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}
+                position="in-map"
               />
 
               {/* Leyenda del mapa en la esquina inferior izquierda DENTRO del mapa */}
@@ -609,7 +631,7 @@ const Radar: React.FC<RadarProps> = ({
             {/* Lista / Menú lateral derecho (collapsible) */}
             {!panelDerechoMinimizado && (
               <div className="col-span-5 flex min-h-0 flex-col border-l border-rd-line xl:col-span-4 max-lg:hidden">
-                <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div ref={listaRef} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
                   <div className="flex flex-col gap-3">
                     {visibles.length === 0 ? (
                       <div className="col-span-full flex flex-col items-center gap-2 px-4 py-8 text-center text-rd-ink-2">
@@ -659,7 +681,7 @@ const Radar: React.FC<RadarProps> = ({
           <HojaPin publicacion={publicacionHoja} vecinas={visibles} distancias={distancias} coincidencias={coincidencias} enProceso={enProceso.includes(publicacionHoja.id)} expandida={hojaPin.expandida} cerrando={hojaPin.cerrando} onExpandir={(e) => setHojaPin({ id: hojaPin.id, expandida: e })} onCerrar={cerrarHojaPin} onIr={irDesdeHoja} {...accionesTarjeta} />
         )}
 
-        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={todasLasPubs} resultados={visibles.length} ubicacion={UBICACION} />
+        <HojaFiltros abierta={hojaFiltros} filtros={filtros} onCambiar={setFiltros} onCerrar={() => setHojaFiltros(false)} publicaciones={todasLasPubs} resultados={visibles.length} ubicacion={ubicacionActual} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
         {(() => {
           const pub = verCoincidencias ? todasLasPubs.find((p) => p.id === verCoincidencias) : undefined;

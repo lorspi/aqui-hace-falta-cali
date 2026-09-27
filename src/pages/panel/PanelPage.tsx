@@ -26,7 +26,7 @@ import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMo
 import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
-import type { Acta, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
+import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
@@ -37,6 +37,8 @@ import { Barra } from '../../components/ui/Barra';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
+import { supabase } from '../../lib/supabaseClient';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -363,6 +365,58 @@ const Panel: React.FC = () => {
   useEffect(() => {
     document.title = `${nombrePanel()}, RaDAR de ayuda`;
   }, []);
+
+  const [orgData, setOrgData] = useState<DatosOrg>(ORG);
+
+  useEffect(() => {
+    async function loadRealData() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          const dbOrg = await fetchOrganizationByUserId(authData.user.id);
+          if (dbOrg) {
+            setOrgData({
+              nombre: dbOrg.org_name,
+              tipo: dbOrg.organization_type || 'Organización',
+              nit: dbOrg.document_number || 'NIT no especificado',
+              dir: dbOrg.address || 'Dirección no especificada',
+              contacto: {
+                tel: dbOrg.contact_phone || authData.user.email || '',
+                wa: Boolean(dbOrg.contact_whatsapp),
+                correo: dbOrg.contact_email || authData.user.email || ''
+              },
+              enlace: dbOrg.contact_phone || 'Contacto principal',
+              directorio: true,
+              directorioDesde: dbOrg.created_at ? new Date(dbOrg.created_at).toLocaleDateString('es-CO') : '',
+              web: dbOrg.website_or_social || '',
+              verificacion: dbOrg.is_verified ? 'verificada' : 'revision',
+              canalesRevisados: true
+            });
+
+            const dbCommitments = await fetchOrgCommitments(dbOrg.id, authData.user.id);
+            if (dbCommitments && dbCommitments.length > 0) {
+              const mappedSol: Solicitud[] = dbCommitments.map((c: any, index: number) => ({
+                id: index + 1000,
+                dbId: c.id,
+                quien: c.resource_name || 'Solicitud de ayuda',
+                rec: c.resource_name,
+                cant: c.quantity,
+                u: c.unit,
+                estado: (c.status || 'nueva') as Solicitud['estado'],
+                cuando: c.created_at ? new Date(c.created_at).toLocaleString('es-CO') : 'Reciente',
+                vol: 1
+              }));
+              setSol(mappedSol);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Usando datos de demostración en PanelPage:', err);
+      }
+    }
+    loadRealData();
+  }, []);
+
   useEffect(() => {
     const alCambiar = () => setTab((window.location.hash || '#resumen').slice(1));
     window.addEventListener('hashchange', alCambiar);
@@ -383,8 +437,18 @@ const Panel: React.FC = () => {
   };
   const pendientes = pendientesCuenta(modulos, { sol, recibidas });
 
-  /* --- lo que se puede hacer desde aquí (sin backend: cambia el estado y avisa) --- */
-  const mover = (id: number, estado: Solicitud['estado']) => setSol((l) => l.map((s) => (s.id === id ? { ...s, estado } : s)));
+  /* --- lo que se puede hacer desde aquí (con backend Supabase y sincronización realtime) --- */
+  const mover = async (id: number, estado: Solicitud['estado']) => {
+    setSol((l) => l.map((s) => (s.id === id ? { ...s, estado } : s)));
+    const s = sol.find((x) => x.id === id);
+    if (s && (s as any).dbId) {
+      try {
+        await updateCommitmentStatus({ commitmentId: (s as any).dbId, status: estado });
+      } catch (err) {
+        console.warn('Error actualizando estado en Supabase:', err);
+      }
+    }
+  };
   const asignar = (id: number, vol: number | null) => setSol((l) => l.map((s) => (s.id === id ? { ...s, vol } : s)));
   const aceptar = (id: number) => {
     mover(id, 'aceptada');

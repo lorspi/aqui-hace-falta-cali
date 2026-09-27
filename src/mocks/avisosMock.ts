@@ -42,7 +42,7 @@ export const AVISOS: Aviso[] = [
     quien: 'Comedor Villa Gloria',
     titulo: '270 L de agua potable van en camino al Comedor Villa Gloria',
     detalle: 'Los lleva Mateo Rojas y salen hoy 6:00 p. m.',
-    accion: { texto: 'Ver en el mapa', nivel: 'terciario', al: '/radar-v2?punto=m4' },
+    accion: { texto: 'Ver en el mapa', nivel: 'terciario', al: '/mapa-ayudas-necesidades?punto=m4' },
   },
   {
     id: 4,

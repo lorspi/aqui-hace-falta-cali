@@ -166,7 +166,7 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
  *  algo aplicado, porque comparten fila y el navy desentonaba (Alejandro, 24 de septiembre de
  *  2026). El halo acompaña en tinta al 10 %, no en navy. */
 export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => (
-  <label className={`flex h-10 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-72 xl:w-90'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
+  <label className={`flex h-10 shrink-0 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-64 xl:w-80 min-w-[160px] flex-1 max-w-xs'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
     <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
     <span className="sr-only">Buscar</span>
     <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />

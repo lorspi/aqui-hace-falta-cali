@@ -1308,12 +1308,12 @@ export const DialogoDetallePublicacionPanel: React.FC<{
             if (onVerEnMapa) {
               onVerEnMapa(id);
             } else {
-              window.location.href = `/radar-v2?punto=${id}`;
+              window.location.href = `/mapa-ayudas-necesidades?punto=${id}`;
             }
           }}
           onCompartir={(id) => {
             if (navigator.clipboard) {
-              navigator.clipboard.writeText(`${window.location.origin}/radar-v2?punto=${id}`);
+              navigator.clipboard.writeText(`${window.location.origin}/mapa-ayudas-necesidades?punto=${id}`);
             }
           }}
         />

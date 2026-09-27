@@ -242,17 +242,22 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
   const encuadrarRef = useRef(encuadrar);
   encuadrarRef.current = encuadrar;
   const encuadrarVisibles = (m: L.Map) => {
-    if (encuadrado.current || encuadrarRef.current || !esMovil()) return;
+    if (encuadrado.current || encuadrarRef.current) return;
     const tam = m.getSize();
     if (tam.x === 0 || tam.y === 0) return;
+    if (pubsRef.current.length === 0) return;
     const limites = L.latLngBounds(pubsRef.current.map((p) => [p.lat, p.lng] as [number, number]));
-    encuadrado.current = true;
-    if (limites.isValid()) m.fitBounds(limites, { padding: [40, 40], maxZoom: 12, animate: false });
+    if (limites.isValid()) {
+      encuadrado.current = true;
+      m.fitBounds(limites.pad(0.15), { maxZoom: 13, animate: false });
+    }
   };
 
   useEffect(() => {
     if (!nodo.current) return;
-    const m = L.map(nodo.current, { zoomControl: true, attributionControl: true }).setView([ubicacion.lat, ubicacion.lng], 12);
+    // Centro geográfico por defecto en Colombia (Zoom 6 para ver el país si está vacio)
+    const centroInicial: [number, number] = ubicacion ? [ubicacion.lat, ubicacion.lng] : [4.5709, -74.2973];
+    const m = L.map(nodo.current, { zoomControl: true, attributionControl: true }).setView(centroInicial, 6);
     m.zoomControl.setPosition('bottomright');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     capa.current = L.layerGroup().addTo(m);
@@ -279,12 +284,16 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       m.remove();
       mapa.current = null;
     };
-    // El mapa se crea una vez; la ubicación simulada no cambia en la maqueta.
+    // El mapa se crea una vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Los pines siguen a las publicaciones filtradas; la selección y el resaltado solo marcan. */
+  /* Los pines siguen a las publicaciones filtradas; encuadra si no lo ha hecho aun. */
   useEffect(() => {
+    const m = mapa.current;
+    if (m && !encuadrado.current && publicaciones.length > 0) {
+      encuadrarVisibles(m);
+    }
     pintar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indice]);

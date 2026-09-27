@@ -3,6 +3,8 @@ import { X, HeartHandshake, MapPin, MessageSquare, Phone, ExternalLink, Calendar
 import { Need } from '../types';
 import { CATEGORY_LABELS, buildWhatsappLink, getCategoryLabel } from '../utils/formatters';
 import { useTranslation } from '../i18n/LanguageContext';
+import { supabase } from '../lib/supabaseClient';
+import { createCommitment } from '../lib/supabaseService';
 
 interface QuieroAyudarModalProps {
   need: Need | null;
@@ -88,6 +90,34 @@ export const QuieroAyudarModal: React.FC<QuieroAyudarModalProps> = ({ need, onCl
           <p className="text-xs text-slate-600 font-medium">{t('chooseChannel')}</p>
 
           <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const { data: authData } = await supabase.auth.getUser();
+                  const resource = need.resources[0];
+                  await createCommitment({
+                    needId: need.id,
+                    providerUserId: authData?.user?.id,
+                    resourceName: resource?.description || need.title,
+                    quantity: resource?.requestedQuantity || 1,
+                    unit: resource?.unit || 'unidad',
+                    status: 'aceptada',
+                    originType: 'DIRECT_NEED_RESPONSE'
+                  });
+                  alert('¡Compromiso registrado con éxito! Puedes gestionarlo en tu Panel de Organización.');
+                  onClose();
+                } catch (e) {
+                  console.error('Error registrando compromiso:', e);
+                  alert('Ocurrió un error registrando el compromiso.');
+                }
+              }}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-rd-navy px-4 py-3 text-sm font-bold text-white hover:bg-rd-navy/90 transition-all cursor-pointer shadow-md"
+            >
+              <HeartHandshake className="w-4 h-4" />
+              <span>Asumir esta ayuda en mi Panel</span>
+            </button>
+
             {need.contactWhatsapp && (
               <a
                 href={buildWhatsappLink(need.contactWhatsapp, need.title, need.categories, language)}

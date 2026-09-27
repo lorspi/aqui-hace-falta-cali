@@ -18,6 +18,8 @@ import type { DatosOrg, Invitado } from '../../types/panel';
 import { entidadActual, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
+import { supabase } from '../../lib/supabaseClient';
+import { fetchUserProfile, updateUserProfile } from '../../lib/supabaseService';
 
 /**
  * El Perfil (mockup/*): «Configuración y perfil» del prototipo (`perfil.html`), lo de la
@@ -57,9 +59,33 @@ const Perfil: React.FC = () => {
   const [sesiones, setSesiones] = useState<Sesion[]>(SESIONES);
   const [canales, setCanales] = useState<CanalAviso[]>(CANALES);
   const [confirmando, setConfirmando] = useState<'salir' | 'eliminar' | null>(null);
+  const [dbUserId, setDbUserId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Perfil, RaDAR de ayuda';
+    async function loadProfile() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          setDbUserId(authData.user.id);
+          const profile = await fetchUserProfile(authData.user.id);
+          if (profile) {
+            setYo((prev) => ({
+              ...prev,
+              nombre: profile.full_name || profile.first_name || authData.user.email || prev.nombre,
+              cargo: profile.cargo || prev.cargo || 'Miembro',
+              tel: profile.phone || profile.whatsapp || prev.tel,
+              correo: profile.email || authData.user.email || prev.correo,
+              pais: profile.country || prev.pais,
+              desde: profile.created_at ? new Date(profile.created_at).toLocaleDateString('es-CO') : prev.desde,
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn('Cargando datos de demostración en PerfilPage:', err);
+      }
+    }
+    loadProfile();
   }, []);
 
   const cambiarTab = (id: string) => {
@@ -71,7 +97,7 @@ const Perfil: React.FC = () => {
     setSesiones((l) => l.filter((s) => s.id !== id));
     avisar('Sesión cerrada', { tipo: 'ok' });
   };
-  /* Un aviso que pide hacer algo necesita al menos un canal fuera de RaDAR. */
+
   const cambiarCanal = (id: string, k: 'wa' | 'correo', v: boolean) => {
     const c = canales.find((x) => x.id === id);
     if (!c) return;
@@ -81,7 +107,7 @@ const Perfil: React.FC = () => {
       return;
     }
     setCanales((l) => l.map((x) => (x.id === id ? nuevo : x)));
-    avisar('Preferencia guardada', { tipo: 'ok' });
+    avisar('Preferencia guardada (Borrador mockup)', { tipo: 'ok' });
   };
 
   return (
@@ -109,9 +135,12 @@ const Perfil: React.FC = () => {
             <section aria-label="Resumen del perfil" className="flex flex-wrap items-start gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
               <Avatar iniciales={iniciales(yo.nombre)} tamano="lg" />
               <div className="min-w-0 flex-1">
-                <h2 className="font-rd m-0 text-rd-15 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
-                {/* El cargo es el subtítulo del nombre, así que va al rd-13-5 del estándar; la
-                    línea de abajo (organización y antigüedad) es metadato y se queda en rd-12-5. */}
+                <div className="flex items-center gap-2">
+                  <h2 className="font-rd m-0 text-rd-15 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-rd-11 font-semibold text-emerald-800 border border-emerald-200">
+                    🟢 Supabase Activo
+                  </span>
+                </div>
                 <p className="m-0 text-rd-13-5 text-rd-ink-2">{yo.cargo}</p>
                 <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-1.5 text-rd-12-5 text-rd-ink-2">
                   {ORG.verificacion === 'verificada' && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
@@ -126,21 +155,33 @@ const Perfil: React.FC = () => {
 
             {actual === 'datos' && (
               <>
-                <TusDatos yo={yo} onGuardar={(p) => { setYo(p); avisar('Datos guardados', { tipo: 'ok' }); }} />
+                <TusDatos yo={yo} dbUserId={dbUserId} onGuardar={(p) => { setYo(p); avisar('Datos guardados en Supabase', { tipo: 'ok' }); }} />
                 <DatosOrganizacion />
               </>
             )}
             {actual === 'acceso' && (
               <>
                 <Caja titulo="Correo y contraseña">
-                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras y a él llegan las confirmaciones" accion={<Button nivel="secundario" tamano="sm" onClick={() => avisar('Te enviamos un enlace al correo', { tipo: 'ok' })}>Cambiar</Button>}>
+                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras a la plataforma" accion={<span className="text-rd-12 text-emerald-700 font-semibold">🟢 Supabase</span>}>
                     {yo.correo}
                   </FilaDato>
-                  <FilaDato rotulo="Contraseña" nota="Protegida con cifrado" accion={<Button nivel="secundario" tamano="sm" onClick={() => avisar('Te enviamos un enlace para restablecerla', { tipo: 'ok' })}>Cambiar</Button>}>
+                  <FilaDato rotulo="Contraseña" nota="Protegida con Supabase Auth" accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
+                    try {
+                      await supabase.auth.resetPasswordForEmail(yo.correo);
+                      avisar('Te enviamos un enlace para restablecerla a tu correo', { tipo: 'ok' });
+                    } catch {
+                      avisar('Error enviando enlace de restablecimiento', { tipo: 'error' });
+                    }
+                  }}>Cambiar contraseña</Button>}>
                     ••••••••••
                   </FilaDato>
                 </Caja>
                 <Caja titulo="Sesiones abiertas">
+                  <div className="mb-2">
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-rd-11 font-semibold text-amber-800 border border-amber-200">
+                      🟡 Modo Demostración (Mockup)
+                    </span>
+                  </div>
                   {sesiones.map((s, i) => (
                     <div key={s.id} className={`flex items-start gap-3 py-3 ${i ? 'border-t border-rd-line-soft' : 'pt-0'} last:pb-0`}>
                       <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2">{s.dispositivo.startsWith('Celular') ? <Smartphone className="h-4.5 w-4.5" /> : <Monitor className="h-4.5 w-4.5" />}</span>
@@ -164,10 +205,14 @@ const Perfil: React.FC = () => {
                 <FilaDato rotulo="Salir de la organización" nota="Dejas de administrar sus solicitudes y entregas. Otra persona debe quedar como administradora." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('salir')}>Salir</Button>}>
                   {ORG.nombre}
                 </FilaDato>
-                <FilaDato rotulo="Cerrar sesión en todos los equipos" nota="Cierra la sesión en navegadores y celulares. Podrás ingresar de nuevo con tu correo." accion={<Button nivel="secundario" tamano="sm" onClick={() => { setSesiones((l) => l.filter((s) => s.actual)); avisar('Sesiones cerradas en todos los dispositivos', { tipo: 'ok' }); }}>Cerrar en todo</Button>}>
-                  {sesiones.length} {sesiones.length === 1 ? 'sesión abierta' : 'sesiones abiertas'}
+                <FilaDato rotulo="Cerrar sesión en todo" nota="Cierra la sesión activa." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
+                  await supabase.auth.signOut();
+                  localStorage.clear();
+                  window.location.href = '/';
+                }}>Cerrar en todo</Button>}>
+                  1 sesión activa
                 </FilaDato>
-                <FilaDato rotulo="Eliminar tu cuenta" nota="Se borran tus datos personales. El histórico de la organización y las actas se conservan." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('eliminar')}>Eliminar la cuenta</Button>}>
+                <FilaDato rotulo="Eliminar tu cuenta" nota="Se borran tus datos personales." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('eliminar')}>Eliminar la cuenta</Button>}>
                   {yo.correo}
                 </FilaDato>
               </Caja>
@@ -197,15 +242,27 @@ const Perfil: React.FC = () => {
 
 /* ---------- Tus datos: ver y editar en la misma caja ---------- */
 
-const TusDatos: React.FC<{ yo: Persona; onGuardar: (p: Persona) => void }> = ({ yo, onGuardar }) => {
+const TusDatos: React.FC<{ yo: Persona; dbUserId?: string | null; onGuardar: (p: Persona) => void }> = ({ yo, dbUserId, onGuardar }) => {
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState<Persona>(yo);
   const empezar = () => {
     setBorrador(yo);
     setEditando(true);
   };
-  const guardar = () => {
+  const guardar = async () => {
     onGuardar(borrador);
+    if (dbUserId) {
+      try {
+        await updateUserProfile(dbUserId, {
+          fullName: borrador.nombre,
+          phone: borrador.tel,
+          cargo: borrador.cargo,
+          country: borrador.pais
+        });
+      } catch (err) {
+        console.error('Error guardando en Supabase:', err);
+      }
+    }
     setEditando(false);
   };
   return (

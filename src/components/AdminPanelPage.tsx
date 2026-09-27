@@ -606,7 +606,16 @@ export const AdminPanelPage: React.FC = () => {
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <a href="/" className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
+            <a
+              href="/mapa-ayudas-necesidades"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/mapa-ayudas-necesidades');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              title="Volver al Mapa"
+            >
               <ArrowLeft className="w-4 h-4" />
             </a>
             <div className="flex items-center gap-2">

@@ -12,7 +12,7 @@ export const FloatingCreateNeedFAB: React.FC<FloatingCreateNeedFABProps> = ({ on
   const { t } = useTranslation();
 
   const positionClasses = position === 'in-map'
-    ? 'absolute left-4 bottom-6 z-[1000]'
+    ? 'absolute left-4 bottom-16 z-[1000]'
     : `fixed right-4 bottom-24 md:right-auto md:left-3 z-40 ${isLegendExpanded ? 'md:bottom-72' : 'md:bottom-28'}`;
 
   return (

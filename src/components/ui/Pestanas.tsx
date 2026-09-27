@@ -23,8 +23,8 @@ export const Pestanas: React.FC<{ etiqueta: string; pestanas: Pestana[]; actual:
     (e.currentTarget.parentElement?.children[k] as HTMLElement | undefined)?.focus();
   };
   return (
-    <div className={`relative h-11.5 w-full border-b border-rd-line ${className}`}>
-    <div role="tablist" aria-label={etiqueta} className="zona-rd-scroll absolute inset-0 flex flex-nowrap gap-5 overflow-x-auto overflow-y-hidden">
+    <div className={`relative h-11.5 w-full border-b border-rd-line bg-rd-surface ${className}`}>
+      <div role="tablist" aria-label={etiqueta} className="zona-rd-scroll absolute inset-0 flex flex-nowrap gap-5 overflow-x-auto overflow-y-hidden px-4 sm:px-6 lg:px-8">
       {pestanas.map((p, i) => {
         const sel = p.id === actual;
         return (

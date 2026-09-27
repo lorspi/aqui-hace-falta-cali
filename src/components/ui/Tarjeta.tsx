@@ -55,25 +55,25 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       className={`${
         enHoja
           ? 'relative flex min-h-full flex-col bg-rd-surface'
-          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 max-sm:p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
+          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-3.5 sm:p-3.5 max-sm:p-3 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
       } ${className}`}
     >
-      <div className="mb-3 max-sm:mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2.5 max-sm:mb-2 flex items-center justify-between gap-2">
         <EtiquetaTipo tipo={p.tipo} />
         <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
       </div>
 
-      <div className="mb-3 max-sm:mb-2">
+      <div className="mb-2.5 max-sm:mb-2">
         {/* El actor solo va en el título cuando no es la organización que se lee justo debajo
             (un punto territorial, una familia): si es la misma, repetirla era decir dos veces
             lo mismo a dos líneas de distancia. */}
-        <h3 className="font-rd m-0 text-rd-15 font-semibold leading-snug text-rd-ink">
+        <h3 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
           <TituloPublicacion publicacion={p} actor={actorPublicacion(p) !== p.org} />
         </h3>
         {p.org && (
-          <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="mt-1 flex items-center gap-1.5">
             <Avatar iniciales={iniciales(p.org)} tamano="xs" />
-            <span className="truncate text-rd-12 font-medium text-rd-ink-2">{p.org}</span>
+            <span className="truncate text-rd-11-5 font-medium text-rd-ink-2">{p.org}</span>
             {p.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
           </div>
         )}
@@ -82,9 +82,9 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       {/* El orden de la tarjeta (Alejandro, 22 de septiembre de 2026): etiquetas, quién, dónde,
           qué dice, fotos y recursos. Dónde va antes de la descripción: sitúa lo que se lee
           después. Sin rótulo de bloque (16 de septiembre): el pin ya dice que es un lugar. */}
-      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-3 max-sm:mb-2.5" />
+      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-2.5 max-sm:mb-2" />
 
-      {p.descripcion && <p className="mb-3 max-sm:mb-2.5 line-clamp-3 text-rd-14 leading-normal text-rd-ink">{p.descripcion}</p>}
+      {p.descripcion && <p className="mb-2.5 max-sm:mb-2 line-clamp-3 text-rd-13 leading-relaxed text-rd-ink-2">{p.descripcion}</p>}
 
       {p.fotos && p.fotos.length > 0 && (
         <>
