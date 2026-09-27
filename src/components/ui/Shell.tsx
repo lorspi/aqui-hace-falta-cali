@@ -149,12 +149,58 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     }
   };
 
+  const [hasOrg, setHasOrg] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!activeUser?.id) {
+      setHasOrg(false);
+      return;
+    }
+    async function checkOrg() {
+      try {
+        const { data } = await supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle();
+        if (data) {
+          setHasOrg(true);
+        }
+      } catch {}
+    }
+    checkOrg();
+  }, [activeUser?.id]);
+
+  const userRole = (activeUser?.user_metadata?.role || activeUser?.role || cuentaFinal?.rol || '').toLowerCase();
+  const profileType = (activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || activeUser?.profile_type || '').toLowerCase();
+
+  const esOrganizacion = estaLogueado && (
+    hasOrg ||
+    profileType === 'organizacion' ||
+    profileType === 'comunidad' ||
+    userRole === 'organizacion' ||
+    userRole === 'lider' ||
+    userRole === 'admin' ||
+    userRole === 'moderador' ||
+    Boolean(activeUser?.user_metadata?.org_name)
+  );
+
+  const esAdminOModerador = estaLogueado && (
+    isModeratorOrAdmin ||
+    userRole === 'admin' ||
+    userRole === 'moderador' ||
+    activeUser?.email?.includes('admin') ||
+    activeUser?.email?.includes('moderador')
+  );
+
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
     { id: 'radar', nombre: 'Radar', href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
     { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
-    { id: 'panel', nombre: 'Panel organización', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes },
-    { id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> },
   ];
+
+  if (esOrganizacion) {
+    secciones.push({ id: 'panel', nombre: 'Panel organización', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+  }
+
+  if (esAdminOModerador) {
+    secciones.push({ id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> });
+  }
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
     const actual = s.id === seccion;
