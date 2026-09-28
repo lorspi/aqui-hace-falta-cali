@@ -127,10 +127,7 @@ export function actorPublicacion(p: Publicacion): string {
   const zona = p.zona || p.localidad || '';
 
   if (p.perfil === 'individual') {
-    if (p.tipo === 'necesidad') {
-      return zona ? `Familia en ${zona}` : 'Familia afectada';
-    }
-    return zona ? `Donante en ${zona}` : 'Donante particular';
+    return 'Ciudadano';
   }
 
   return p.punto?.trim() || p.org?.trim() || p.titulo?.trim() || (p.tipo === 'necesidad' ? (zona ? `Comunidad en ${zona}` : 'Comunidad') : 'Organización');

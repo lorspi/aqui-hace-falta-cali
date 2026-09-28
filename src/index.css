@@ -399,12 +399,30 @@
 }
 
 /* Base: Hanken Grotesk para cuerpo de texto, Figtree se aplica con font-sans en títulos/interfaz */
-html, body {
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   overscroll-behavior-y: none;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
   font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Interfaz: botones, labels, badges, headers usan Figtree */

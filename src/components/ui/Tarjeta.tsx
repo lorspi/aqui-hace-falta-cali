@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BadgeCheck, ExternalLink, Flag, Map as MapIcon, Share2 } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Flag, Map as MapIcon, Maximize2, Share2 } from 'lucide-react';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { ResumenCoincidencias } from './Coincidencias';
 import type { Publicacion } from '../../types/publicacion';
@@ -28,22 +28,45 @@ export interface TarjetaProps {
   enHoja?: boolean;
   onVerEnMapa?: (id: string) => void;
   onPrimaria?: (id: string) => void;
+  /** Texto personalizado para el botón de acción principal */
+  textoPrimaria?: string;
   /** Abrir la lista de coincidencias de esta publicación. */
   onVerCoincidencias?: (id: string) => void;
   onCompartir?: (id: string) => void;
   onReportar?: (id: string) => void;
+  /** Callback para abrir la ficha o tarjeta completa en un modal */
+  onVerDetalle?: (id: string) => void;
+  /** Si es true, muestra la información completa sin truncar descripción ni recursos */
+  completa?: boolean;
   /** La persona ya se comprometió o solicitó en esta sesión: pasa a «En proceso». */
   enProceso?: boolean;
   /** Para que quien la use la esconda en un ancho. */
   className?: string;
 }
 
-export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, coincidencias = [], enHoja = false, enProceso = false, className = '', onVerEnMapa, onPrimaria, onVerCoincidencias, onCompartir, onReportar }) => {
+export const Tarjeta: React.FC<TarjetaProps> = ({
+  publicacion: p,
+  distanciaKm,
+  coincidencias = [],
+  enHoja = false,
+  enProceso = false,
+  completa = false,
+  textoPrimaria,
+  className = '',
+  onVerEnMapa,
+  onPrimaria,
+  onVerCoincidencias,
+  onCompartir,
+  onReportar,
+  onVerDetalle,
+}) => {
   const esOferta = p.tipo === 'oferta';
   const dist = distanciaTexto(distanciaKm);
   const estado = estadoPublicacion(p);
   /* La foto abierta en el visor (índice), o ninguna. */
   const [foto, setFoto] = useState<number | null>(null);
+  /* Expansión inline de texto cuando la descripción es larga */
+  const [expandirTexto, setExpandirTexto] = useState(false);
   /* Cubierta: ya no hay nada que pedir ni que dar; la primaria se queda, pero apagada, y el
      título dice por qué (`rdBloquearCompletadas` del prototipo). */
   const cubierta = estado === 'cubierta';
@@ -64,14 +87,19 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
       </div>
 
-      <div className="mb-2.5 max-sm:mb-2">
-        {/* El actor solo va en el título cuando no es la organización que se lee justo debajo
-            (un punto territorial, una familia): si es la misma, repetirla era decir dos veces
-            lo mismo a dos líneas de distancia. */}
-        <h3 className="font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink">
-          <TituloPublicacion publicacion={p} actor={actorPublicacion(p) !== p.org} />
+      <div className="mb-2 max-sm:mb-1.5">
+        {/* El título canónico institucional siempre une los recursos con el actor (organización o comunidad). */}
+        <h3
+          className={`font-rd m-0 text-rd-14 font-semibold leading-snug text-rd-ink ${
+            onVerDetalle && !completa ? 'cursor-pointer hover:text-rd-navy hover:underline transition-colors' : ''
+          }`}
+          onClick={() => {
+            if (onVerDetalle && !completa) onVerDetalle(p.id);
+          }}
+        >
+          <TituloPublicacion publicacion={p} actor />
         </h3>
-        {p.org && (
+        {p.org && p.perfil !== 'individual' && p.org !== actorPublicacion(p) && (
           <div className="mt-1 flex items-center gap-1.5">
             <Avatar iniciales={iniciales(p.org)} tamano="xs" />
             <span className="truncate text-rd-11-5 font-medium text-rd-ink-2">{p.org}</span>
@@ -83,19 +111,37 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
       {/* El orden de la tarjeta (Alejandro, 22 de septiembre de 2026): etiquetas, quién, dónde,
           qué dice, fotos y recursos. Dónde va antes de la descripción: sitúa lo que se lee
           después. Sin rótulo de bloque (16 de septiembre): el pin ya dice que es un lugar. */}
-      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-2.5 max-sm:mb-2" />
+      <Donde lugar={p.dir ?? `${p.zona}${p.localidad ? `, ${p.localidad}` : ''}`} distancia={dist ?? undefined} className="mb-2 max-sm:mb-1.5" />
 
-      {p.descripcion && <p className="mb-2.5 max-sm:mb-2 line-clamp-3 text-rd-13 leading-relaxed text-rd-ink-2">{p.descripcion}</p>}
+      {p.descripcion && (
+        <div className="mb-2.5 max-sm:mb-2">
+          <p className={`text-rd-13 leading-relaxed text-rd-ink-2 ${completa || expandirTexto ? '' : 'line-clamp-2'}`}>
+            {p.descripcion}
+          </p>
+          {!completa && p.descripcion.length > 90 && (
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setExpandirTexto((prev) => !prev);
+              }}
+              className="mt-0.5 inline-block text-rd-11-5 font-semibold text-rd-navy hover:underline cursor-pointer"
+            >
+              {expandirTexto ? 'Ver menos' : 'Ver más'}
+            </button>
+          )}
+        </div>
+      )}
 
       {p.fotos && p.fotos.length > 0 && (
         <>
-          <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-4 max-sm:mb-3" />
+          <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-3 max-sm:mb-2.5" />
           <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`Fotos de ${p.org}`} onCerrar={() => setFoto(null)} />
         </>
       )}
 
       {p.sourceUrl && (
-        <div className="mb-3 max-sm:mb-2.5 flex items-center justify-between gap-2 rounded-rd-md border border-rd-amber-line bg-rd-amber-soft/60 px-3 py-2 text-rd-12">
+        <div className="mb-2.5 max-sm:mb-2 flex items-center justify-between gap-2 rounded-rd-md border border-rd-amber-line bg-rd-amber-soft/60 px-3 py-1.5 text-rd-12">
           <span className="flex min-w-0 items-center gap-1.5 font-medium text-rd-amber-ink truncate">
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-rd-amber-ink" />
             <span className="truncate">Campaña / Enlace oficial</span>
@@ -113,33 +159,40 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
         </div>
       )}
 
-      <Recursos publicacion={p} className="mb-3.5 max-sm:mb-2.5" />
+      <Recursos publicacion={p} mostrarTodos={completa} className="mb-2.5 max-sm:mb-2" />
 
-      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} className="mb-3 max-sm:mb-2.5" />
+      <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta className="mb-2.5 max-sm:mb-2" />
 
-      <div className={`mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-3 max-sm:pt-2.5 ${enHoja ? 'sticky bottom-0 z-1 bg-rd-surface pb-4' : ''}`}>
+      <div className={`mt-auto flex items-center gap-2 border-t border-rd-line-soft pt-2.5 max-sm:pt-2 ${enHoja ? 'sticky bottom-0 z-1 bg-rd-surface pb-4' : ''}`}>
         <Button
           nivel="primario"
           tamano="md"
-          disabled={cubierta}
-          aria-disabled={cubierta || undefined}
-          title={cubierta ? (esOferta ? 'Esta oferta ya se entregó completa' : 'Esta necesidad ya está cubierta') : undefined}
+          disabled={cubierta || Boolean((p as any)._resuelta)}
+          aria-disabled={cubierta || Boolean((p as any)._resuelta) || undefined}
+          title={
+            (p as any)._resuelta
+              ? 'Esta publicación ya fue completada y certificada'
+              : cubierta
+              ? esOferta
+                ? 'Esta oferta ya se entregó completa'
+                : 'Esta necesidad ya está cubierta'
+              : undefined
+          }
           onClick={(ev) => {
             ev.stopPropagation();
             onPrimaria?.(p.id);
           }}
         >
-          {esOferta ? 'Solicitar' : 'Ayudar'}
+          {textoPrimaria ?? (esOferta ? 'Solicitar' : 'Ayudar')}
         </Button>
         {/* Pie de tarjeta: las acciones a la izquierda, de mayor a menor jerarquía, y el ⋮
-            al extremo derecho (Alejandro, 24 de septiembre de 2026). Pegarlos es el patrón de
-            la fila de tabla, no el de la tarjeta. El mapa va como en el Directorio:
-            secundario con sombra sutil. */}
+            al extremo derecho (Alejandro, 24 de septiembre de 2026). */}
         {!enHoja && (
           <Button
             nivel="secundario"
             tamano="md"
             aria-label="Ver en el mapa"
+            title="Ver en el mapa"
             soloIcono
             className="shadow-2xs"
             onClick={(ev) => {
@@ -150,14 +203,33 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         )}
+        {!completa && onVerDetalle && (
+          <Button
+            nivel="secundario"
+            tamano="md"
+            aria-label="Ver tarjeta completa"
+            title="Ver tarjeta completa"
+            soloIcono
+            className="shadow-2xs"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onVerDetalle(p.id);
+            }}
+          >
+            <Maximize2 aria-hidden="true" className="h-4.5 w-4.5" />
+          </Button>
+        )}
         {/* El `ml-auto` va aquí y no en `className`: `MenuAcciones` se lo pasa al botón de
             dentro, y quien tiene que empujarse en el flex es el contenedor. */}
         <span className="ml-auto flex">
           <MenuAcciones
             className="shadow-2xs"
             items={[
-              { texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir?.(p.id) },
-              { texto: 'Reportar', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) },
+              ...(!completa && onVerDetalle
+                ? [{ texto: 'Ver tarjeta completa', icono: <Maximize2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onVerDetalle(p.id) }]
+                : []),
+              ...(onCompartir ? [{ texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir?.(p.id) }] : []),
+              ...(!p.propia && onReportar ? [{ texto: 'Reportar', icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onReportar?.(p.id) }] : []),
             ]}
             tamano="md"
             nivel="secundario"

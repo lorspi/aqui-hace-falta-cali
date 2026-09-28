@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { ROTULO_GRUPO } from '../../components/ui/tipografia';
 import { Tarjeta } from '../../components/ui/Tarjeta';
 import { TituloPublicacion } from '../../components/ui/TituloPublicacion';
+import { EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { CampoFotos } from '../flujos/comunes';
 
 /**
@@ -784,7 +785,6 @@ export const DialogoGestionPublicacion: React.FC<{
   const ref = useRef<HTMLDialogElement>(null);
   const [modo, setModo] = useState<'vista' | 'editar'>(modoInicial);
 
-  const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [zona, setZona] = useState('');
   const [dir, setDir] = useState('');
@@ -810,7 +810,6 @@ export const DialogoGestionPublicacion: React.FC<{
 
   useEffect(() => {
     if (pubInicial) {
-      setTitulo(pubInicial.titulo);
       setDescripcion(pubInicial.descripcion);
       setZona(pubInicial.zona);
       setDir(pubInicial.dir);
@@ -896,7 +895,7 @@ export const DialogoGestionPublicacion: React.FC<{
     e.preventDefault();
     onGuardar({
       ...pubInicial,
-      titulo,
+      titulo: publicacionParaTarjeta?.titulo || pubInicial.titulo,
       descripcion,
       zona,
       dir,
@@ -1009,14 +1008,21 @@ export const DialogoGestionPublicacion: React.FC<{
                 <span className="text-rd-12 text-rd-ink-meta">Visible en el Radar</span>
               </div>
 
-              <Field
-                id="pub-titulo"
-                etiqueta="Título de la publicación"
-                valor={titulo}
-                onChange={setTitulo}
-                ayuda="Describe claramente qué se ofrece o qué hace falta"
-                requerido
-              />
+              {/* Título institucional auto-calculado */}
+              <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <EtiquetaTipo tipo={pubInicial.tipo} />
+                  <span className="text-rd-11 font-medium text-rd-ink-meta">
+                    Título automático en el radar:
+                  </span>
+                </div>
+                <p className="font-rd m-0 text-rd-13.5 font-semibold text-rd-ink truncate">
+                  {publicacionParaTarjeta ? publicacionParaTarjeta.titulo : pubInicial.titulo}
+                </p>
+                <span className="mt-1 block text-rd-11 text-rd-ink-meta">
+                  El título se actualiza solo a partir de tus recursos, organización y ubicación.
+                </span>
+              </div>
 
               <div>
                 <label className="mb-1 block text-rd-13 font-medium text-rd-ink">

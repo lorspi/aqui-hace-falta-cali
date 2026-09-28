@@ -280,7 +280,9 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
   const com = e.clase === 'comunidad';
   const km = distanciaKm(UBICACION, e);
   const datos = cifrasDe(e, PUBLICACIONES);
-  const verEnMapa = () => irA(`${RUTAS.radar}?buscar=${encodeURIComponent(e.nombre)}`);
+  const pubs = publicacionesDe(e, PUBLICACIONES);
+  const primerPunto = pubs[0]?.id;
+  const verEnMapa = () => irA(primerPunto ? `${RUTAS.radar}?punto=${encodeURIComponent(primerPunto)}&vista=mapa` : `${RUTAS.radar}?vista=mapa`);
   const menu = [
     ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
     { texto: 'Llamar', icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
@@ -407,7 +409,8 @@ const DialogoDetalleEntidad: React.FC<{
   const datos = cifrasDe(e, PUBLICACIONES);
 
   const verEnMapa = (puntoId?: string) => {
-    irA(puntoId ? `${RUTAS.radar}?punto=${puntoId}` : `${RUTAS.radar}?buscar=${encodeURIComponent(e.nombre)}`);
+    const id = puntoId || publicaciones[0]?.id;
+    irA(id ? `${RUTAS.radar}?punto=${encodeURIComponent(id)}&vista=mapa` : `${RUTAS.radar}?vista=mapa`);
   };
   const menuEntidad = [
     ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),

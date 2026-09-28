@@ -30,16 +30,19 @@ export function needToPublicacion(need: Need): Publicacion {
     });
   }
 
+  const esIndividual = need.requesterType === 'PERSONA' || (!need.organizationName && Boolean(need.contactName));
+
   const pub: Publicacion = {
     id: need.id,
     tipo: 'necesidad',
     titulo: need.title || 'Solicitud de ayuda',
-    org: need.organizationName || need.contactName || 'Comunidad',
+    org: need.organizationName || '',
+    perfil: esIndividual ? 'individual' : (need.organizationName ? 'organizacion' : 'liderazgo'),
     verificada: need.verificationStatus === 'VERIFIED',
     lat: need.latitude,
     lng: need.longitude,
     ciudad: need.cityId,
-    zona: need.neighborhood || need.address || 'Colombia',
+    zona: need.neighborhood || (need.cityId ? need.cityId.charAt(0).toUpperCase() + need.cityId.slice(1) : 'Cali'),
     dir: need.address,
     descripcion: need.description,
     recursos: recursos.length > 0 ? recursos : [{ item: 'Ayuda general', unidad: 'solicitud', total: 1, tramos: [] }],
@@ -47,7 +50,7 @@ export function needToPublicacion(need: Need): Publicacion {
       ? need.evidenceUrl.split(',').filter(Boolean).map((url: string, i: number) => ({
           url: url.trim(),
           alt: need.title || `Evidencia ${i + 1}`,
-          quien: need.organizationName || need.contactName || '',
+          quien: need.organizationName || '',
           cuando: 'Evidencia',
         }))
       : [],
@@ -93,16 +96,19 @@ export function offerToPublicacion(offer: Offer): Publicacion {
     });
   }
 
+  const esIndividual = !offer.organizationName && Boolean(offer.contactName);
+
   const pub: Publicacion = {
     id: offer.id,
     tipo: 'oferta',
     titulo: offer.title || 'Oferta de ayuda',
-    org: offer.organizationName || offer.contactName || 'Organización Oferente',
-    verificada: true,
+    org: offer.organizationName || '',
+    perfil: esIndividual ? 'individual' : 'organizacion',
+    verificada: Boolean(offer.organizationName),
     lat: offer.latitude,
     lng: offer.longitude,
     ciudad: offer.cityId,
-    zona: offer.neighborhood || offer.address || 'Colombia',
+    zona: offer.neighborhood || (offer.cityId ? offer.cityId.charAt(0).toUpperCase() + offer.cityId.slice(1) : 'Cali'),
     dir: offer.address,
     descripcion: offer.description,
     recursos: recursos.length > 0 ? recursos : [{ item: 'Aporte general', unidad: 'oferta', total: 1, tramos: [] }],
@@ -110,7 +116,7 @@ export function offerToPublicacion(offer: Offer): Publicacion {
       ? offer.evidenceUrl.split(',').filter(Boolean).map((url: string, i: number) => ({
           url: url.trim(),
           alt: offer.title || `Evidencia ${i + 1}`,
-          quien: offer.organizationName || offer.contactName || '',
+          quien: offer.organizationName || '',
           cuando: 'Evidencia',
         }))
       : [],

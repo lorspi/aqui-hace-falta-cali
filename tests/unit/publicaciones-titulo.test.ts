@@ -101,7 +101,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
     expect(tituloPublicacion(pub)).toBe('Atención médica y 2 más, de Cruz Roja seccional');
   });
 
-  it('protege la privacidad de una persona individual en necesidad con contexto geográfico', () => {
+  it('protege la privacidad de una persona individual en necesidad identificándola como Ciudadano', () => {
     const pub: Publicacion = {
       id: 'ind-n1',
       tipo: 'necesidad',
@@ -118,8 +118,8 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
         { item: 'Alimentos', unidad: 'kits', total: 2, tramos: [] },
       ],
     };
-    expect(actorPublicacion(pub)).toBe('Familia en Bosa');
-    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y 2 más, de Familia en Bosa');
+    expect(actorPublicacion(pub)).toBe('Ciudadano');
+    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y 2 más, de Ciudadano');
   });
 
   it('protege la privacidad de una persona individual en necesidad sin zona', () => {
@@ -138,11 +138,11 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
         { item: 'Alimentos', unidad: 'kits', total: 2, tramos: [] },
       ],
     };
-    expect(actorPublicacion(pub)).toBe('Familia afectada');
-    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y Alimentos, de Familia afectada');
+    expect(actorPublicacion(pub)).toBe('Ciudadano');
+    expect(tituloPublicacion(pub)).toBe('Cobijas y colchonetas y Alimentos, de Ciudadano');
   });
 
-  it('protege la privacidad de una persona individual en oferta con zona', () => {
+  it('protege la privacidad de una persona individual en oferta', () => {
     const pub: Publicacion = {
       id: 'ind-o1',
       tipo: 'oferta',
@@ -155,8 +155,8 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       zona: 'Chapinero',
       recursos: [{ item: 'Ropa y calzado', unidad: 'mudas', total: 30, tramos: [] }],
     };
-    expect(actorPublicacion(pub)).toBe('Donante en Chapinero');
-    expect(tituloPublicacion(pub)).toBe('Ropa y calzado, de Donante en Chapinero');
+    expect(actorPublicacion(pub)).toBe('Ciudadano');
+    expect(tituloPublicacion(pub)).toBe('Ropa y calzado, de Ciudadano');
   });
 
   it('protege la privacidad de una persona individual en oferta sin zona', () => {
@@ -172,7 +172,7 @@ describe('Reglas de generación de títulos institucionales de publicaciones', (
       zona: '',
       recursos: [{ item: 'Herramientas de mano', unidad: 'unidades', total: 10, tramos: [] }],
     };
-    expect(actorPublicacion(pub)).toBe('Donante particular');
-    expect(tituloPublicacion(pub)).toBe('Herramientas de mano, de Donante particular');
+    expect(actorPublicacion(pub)).toBe('Ciudadano');
+    expect(tituloPublicacion(pub)).toBe('Herramientas de mano, de Ciudadano');
   });
 });

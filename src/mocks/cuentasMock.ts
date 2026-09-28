@@ -111,6 +111,7 @@ export const RUTAS = {
   avisos: '/avisos-v2',
   perfil: '/perfil-v2',
   miOrganizacion: '/panel-v2',
+  actividad: '/mi-actividad',
   panelAdmin: '/panel-admin',
   comoFunciona: '/guia',
   terminos: '/terminos',
@@ -124,6 +125,7 @@ export const CUENTA_SESION = { entidad: 'Bomberos Voluntarios Usme', persona: 'C
 export const RUTAS_SHELL = {
   inicio: RUTAS.inicio,
   panel: RUTAS.miOrganizacion,
+  actividad: '/mi-actividad',
   'panel-admin': RUTAS.panelAdmin,
   radar: RUTAS.radar,
   directorio: RUTAS.directorio,

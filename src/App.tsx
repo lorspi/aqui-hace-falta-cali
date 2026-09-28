@@ -61,6 +61,7 @@ const PanelPage = lazy(() => import("./pages/panel/PanelPage").then(m => ({ defa
 const DirectorioPage = lazy(() => import("./pages/directorio/DirectorioPage").then(m => ({ default: m.DirectorioPage })));
 const AvisosPage = lazy(() => import("./pages/avisos/AvisosPage").then(m => ({ default: m.AvisosPage })));
 const PerfilPage = lazy(() => import("./pages/perfil/PerfilPage").then(m => ({ default: m.PerfilPage })));
+const MiActividadPage = lazy(() => import("./pages/actividad/MiActividadPage").then(m => ({ default: m.MiActividadPage })));
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
@@ -126,7 +127,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'actividad' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const rawPath = currentPathName ?? (typeof window !== 'undefined' ? window.location.pathname : '');
   const path = rawPath.replace(/^\//, '').replace(/\/$/, '');
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -156,6 +157,7 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
   if (path === 'directorio-v2' || path === 'directorio') return { type: 'directorio-v2' };
   if (path === 'avisos-v2' || path === 'avisos') return { type: 'avisos-v2' };
   if (path === 'perfil-v2' || path === 'perfil') return { type: 'perfil-v2' };
+  if (path === 'mi-actividad' || path === 'actividad') return { type: 'actividad' };
   if (path === 'cifras') return { type: 'cifras' };
 
   // Check for /.../:needId/post or /.../:needId/story
@@ -212,6 +214,8 @@ export default function App() {
     content = <AvisosPage />;
   } else if (specialRoute?.type === 'perfil-v2') {
     content = <PerfilPage />;
+  } else if (specialRoute?.type === 'actividad') {
+    content = <MiActividadPage />;
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {

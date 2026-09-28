@@ -14,6 +14,7 @@ import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { DialogoDetallePublicacion } from '../../components/ui/DialogoDetallePublicacion';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
@@ -62,9 +63,8 @@ function enlaceDe(id: string): string {
 
 /** El `?punto=<id>` de la URL, solo si existe. */
 function puntoPedido(): string | null {
-  const id = new URLSearchParams(window.location.search).get('punto');
-  const todas = obtenerPublicaciones();
-  return id && todas.some((p) => p.id === id) ? id : null;
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('punto');
 }
 
 
@@ -205,9 +205,28 @@ const Radar: React.FC<RadarProps> = ({
 
   const todasLasPubs = useMemo(() => {
     const mockPubs = obtenerPublicaciones();
-    if (dbPubs.length === 0) return mockPubs;
-    const dbIds = new Set(dbPubs.map((p) => p.id));
-    return [...dbPubs, ...mockPubs.filter((p) => !dbIds.has(p.id))];
+    const source = dbPubs.length > 0
+      ? [...dbPubs, ...mockPubs.filter((p) => !dbPubs.some((dp) => dp.id === p.id))]
+      : mockPubs;
+
+    // Deduplicación preventiva por id y por (título + coordenadas + tipo) para evitar pines repetidos
+    const seenIds = new Set<string>();
+    const seenCoords = new Set<string>();
+    const deduplicadas: Publicacion[] = [];
+
+    for (const p of source) {
+      if (seenIds.has(p.id)) continue;
+      seenIds.add(p.id);
+
+      const latStr = typeof p.lat === 'number' ? p.lat.toFixed(4) : '';
+      const lngStr = typeof p.lng === 'number' ? p.lng.toFixed(4) : '';
+      const coordKey = `${(p.titulo || '').trim().toLowerCase()}::${latStr}::${lngStr}::${p.tipo}`;
+      if (latStr && lngStr && seenCoords.has(coordKey)) continue;
+      if (latStr && lngStr) seenCoords.add(coordKey);
+
+      deduplicadas.push(p);
+    }
+    return deduplicadas;
   }, [dbPubs]);
   const listaRef = useRef<HTMLDivElement>(null);
 
@@ -268,6 +287,7 @@ const Radar: React.FC<RadarProps> = ({
     setSeleccionada(id);
     setEncuadrar(id);
     setVista('mapa');
+    setPanelDerechoMinimizado(false);
     if (esMovil()) setHojaPin({ id, expandida: false });
   };
   /* Cerrar desliza la hoja hacia abajo (300 ms) y solo entonces la desmonta. */
@@ -291,15 +311,43 @@ const Radar: React.FC<RadarProps> = ({
     setFiltros(vacio.aflojar);
   };
 
-  /* `?punto=<id>`: la publicación compartida abre encuadrada; bajo 1024, con su hoja. */
-  useEffect(() => {
-    const id = puntoPedido();
-    if (!id) return;
+  /* `?punto=<id>`: la publicación compartida o seleccionada desde Directorio abre encuadrada sin filtrar el resto */
+  const aplicarPuntoUrl = useCallback((id: string) => {
+    const pub = todasLasPubs.find((p) => p.id === id);
+    if (pub) {
+      if (tipo !== 'todo' && tipo !== pub.tipo) {
+        setTipo('todo');
+      }
+      if (filtros.ciudades.length > 0 && pub.ciudad && !filtros.ciudades.includes(pub.ciudad)) {
+        setFiltros((prev) => ({ ...prev, ciudades: [] }));
+      }
+    }
     setSeleccionada(id);
     setEncuadrar(id);
-    if (esMovil()) setHojaPin({ id, expandida: false });
-    else requestAnimationFrame(() => listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
-  }, []);
+    setVista('mapa');
+    setPanelDerechoMinimizado(false);
+    if (esMovil()) {
+      setHojaPin({ id, expandida: false });
+    } else {
+      requestAnimationFrame(() => listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+    }
+  }, [todasLasPubs, tipo, filtros.ciudades]);
+
+  useEffect(() => {
+    const id = puntoPedido();
+    if (id) {
+      aplicarPuntoUrl(id);
+    }
+
+    const onPopState = () => {
+      const nuevoId = puntoPedido();
+      if (nuevoId) {
+        aplicarPuntoUrl(nuevoId);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [aplicarPuntoUrl]);
 
   /* --- lo que pasa al tocar una tarjeta (`acciones.js`) --- */
   const abrirCompromiso = (id: string) => setCompromiso(todasLasPubs.find((p) => p.id === id) ?? null);
@@ -355,6 +403,7 @@ const Radar: React.FC<RadarProps> = ({
     onCompartir: compartir,
     onReportar: (id: string) => setReporte(id),
     onVerCoincidencias: (id: string) => setVerCoincidencias(id),
+    onVerDetalle: (id: string) => setDetalleId(id),
   };
   const sinLeer = avisos.filter((a) => !a.leido).length;
   const publicacionHoja = hojaPin ? todasLasPubs.find((p) => p.id === hojaPin.id) : undefined;
@@ -865,84 +914,3 @@ const FilaPublicacion: React.FC<{
   );
 };
 
-
-/**
- * Diálogo que muestra la tarjeta completa de una publicación al hacer clic en «Ver detalle»
- * desde la vista de lista del Radar.
- */
-const DialogoDetallePublicacion: React.FC<{
-  publicacion?: Publicacion;
-  distanciaKm?: number;
-  coincidencias?: CoincidenciaPublicacion[];
-  enProceso?: boolean;
-  onCerrar: () => void;
-  onPrimaria: (id: string) => void;
-  onVerEnMapa: (id: string) => void;
-  onVerCoincidencias: (id: string) => void;
-  onCompartir: (id: string) => void;
-  onReportar: (id: string) => void;
-}> = ({
-  publicacion: p,
-  distanciaKm,
-  coincidencias,
-  enProceso,
-  onCerrar,
-  onPrimaria,
-  onVerEnMapa,
-  onVerCoincidencias,
-  onCompartir,
-  onReportar,
-}) => {
-  const ref = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (p && !d.open) d.showModal();
-    else if (!p && d.open) d.close();
-  }, [p]);
-
-  if (!p) return null;
-
-  return (
-    <dialog
-      ref={ref}
-      onClose={onCerrar}
-      onClick={(e) => e.target === ref.current && onCerrar()}
-      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
-    >
-      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
-        <span className="text-rd-13 font-semibold text-rd-ink">Detalle de la publicación</span>
-        {/* La × del modal del prototipo: `--md --ghost --icono` (28 px no llega a los 44 del dedo, 223 C4). */}
-        <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar detalle" onClick={onCerrar}>
-          <X aria-hidden="true" className="h-5 w-5" />
-        </Button>
-      </div>
-      <div className="p-4 sm:p-5 bg-rd-fondo/40">
-        <Tarjeta
-          publicacion={p}
-          distanciaKm={distanciaKm}
-          coincidencias={coincidencias}
-          enProceso={enProceso}
-          onPrimaria={(id) => {
-            onCerrar();
-            onPrimaria(id);
-          }}
-          onVerEnMapa={(id) => {
-            onCerrar();
-            onVerEnMapa(id);
-          }}
-          onVerCoincidencias={(id) => {
-            onCerrar();
-            onVerCoincidencias(id);
-          }}
-          onCompartir={onCompartir}
-          onReportar={(id) => {
-            onCerrar();
-            onReportar(id);
-          }}
-        />
-      </div>
-    </dialog>
-  );
-};

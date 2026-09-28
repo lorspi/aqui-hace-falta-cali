@@ -165,7 +165,7 @@ function calcularDistribucionNiveles<T>(
   if (n <= 1) return items.map((item) => ({ item, radius: 0, angle: 0 }));
 
   if (n <= 6) {
-    const radius = n <= 2 ? 40 : n <= 3 ? 42 : n <= 4 ? 45 : n <= 5 ? 48 : 52;
+    const radius = n <= 2 ? 42 : n <= 3 ? 46 : n <= 4 ? 50 : n <= 5 ? 54 : 58;
     const angleStep = (2 * Math.PI) / n;
     return items.map((item, idx) => ({
       item,
@@ -180,17 +180,17 @@ function calcularDistribucionNiveles<T>(
     const innerCount = Math.min(4, Math.max(3, Math.floor(n / 2.5)));
     const outerCount = n - innerCount;
     niveles.push(
-      { radius: 44, count: innerCount, angleOffset: -Math.PI / 2 },
-      { radius: 92, count: outerCount, angleOffset: -Math.PI / 2 + Math.PI / outerCount }
+      { radius: 48, count: innerCount, angleOffset: -Math.PI / 2 },
+      { radius: 98, count: outerCount, angleOffset: -Math.PI / 2 + Math.PI / outerCount }
     );
   } else if (n <= 24) {
     const level1 = 4;
     const level2 = Math.min(8, Math.floor((n - 4) * 0.45));
     const level3 = n - level1 - level2;
     niveles.push(
-      { radius: 44, count: level1, angleOffset: -Math.PI / 2 },
-      { radius: 92, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
-      { radius: 140, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) }
+      { radius: 48, count: level1, angleOffset: -Math.PI / 2 },
+      { radius: 98, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
+      { radius: 148, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) }
     );
   } else {
     const level1 = 4;
@@ -198,10 +198,10 @@ function calcularDistribucionNiveles<T>(
     const level3 = 10;
     const level4 = n - level1 - level2 - level3;
     niveles.push(
-      { radius: 44, count: level1, angleOffset: -Math.PI / 2 },
-      { radius: 92, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
-      { radius: 140, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) },
-      { radius: 188, count: level4, angleOffset: -Math.PI / 2 + Math.PI / (3 * level4) }
+      { radius: 48, count: level1, angleOffset: -Math.PI / 2 },
+      { radius: 98, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
+      { radius: 148, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) },
+      { radius: 198, count: level4, angleOffset: -Math.PI / 2 + Math.PI / (3 * level4) }
     );
   }
 
@@ -245,9 +245,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
         geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
         properties: { p },
       }));
-    /* `extent` 256 = la tesela de Leaflet; radio 40 y maxZoom 15 para reducir capas y hacer la navegación fluida. */
+    /* `extent` 256 = la tesela de Leaflet; radio 48 y maxZoom 15 para reducir capas y hacer la navegación fluida. */
     return new Supercluster<{ p: Publicacion }, { n: number; o: number }>({
-      radius: 40,
+      radius: 48,
       extent: 256,
       maxZoom: 15,
       map: (props) => ({ n: props.p.tipo === 'necesidad' ? 1 : 0, o: props.p.tipo === 'oferta' ? 1 : 0 }),
@@ -296,7 +296,8 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
 
     if (todos.length < 2) return;
 
-    const nearbyDistance = 44; // Distancia de solapamiento en píxeles de pantalla (íconos son de 40px)
+    // Distancia de solapamiento en píxeles de pantalla (íconos son de 40px + halo; 50px garantiza que ningún pin se pise)
+    const nearbyDistance = 50;
     const puntosContenedor = todos.map((item) => m.latLngToContainerPoint(item.originalLatLng));
     const procesados = new Set<number>();
 
@@ -326,7 +327,6 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       if (grupoIndices.length <= 1) continue;
 
       // Centroide visual de la agrupación
-      const grupoItems = grupoIndices.map((idx) => todos[idx]);
       const grupoPts = grupoIndices.map((idx) => puntosContenedor[idx]);
       const centroPx = grupoPts.reduce(
         (acc, p) => L.point(acc.x + p.x / grupoPts.length, acc.y + p.y / grupoPts.length),
@@ -334,11 +334,26 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       );
       const centroLatLng = m.containerPointToLatLng(centroPx);
 
-      // Epicentro común: punto central discreto
+      // Ordenamos radialmente desde el centroide para que las líneas conectoras no se crucen
+      const itemsConAngulo = grupoIndices.map((idx) => {
+        const pt = puntosContenedor[idx];
+        const angle = Math.atan2(pt.y - centroPx.y, pt.x - centroPx.x);
+        return { item: todos[idx], angle };
+      });
+      itemsConAngulo.sort((a, b) => a.angle - b.angle);
+      const grupoItems = itemsConAngulo.map((i) => i.item);
+
+      // Color del epicentro y líneas según tipos presentes (necesidades, ofertas o mixtos)
+      const tipos = grupoItems.map((item) => (item.marker as any)._pubTipo);
+      const tieneNecesidad = tipos.includes('necesidad');
+      const tieneOferta = tipos.includes('oferta');
+      const colorTema = tieneNecesidad && tieneOferta ? '#64748B' : tieneNecesidad ? '#E0533C' : '#1B3A93';
+
+      // Epicentro común: punto central discreto con borde nítido
       L.circleMarker(centroLatLng, {
-        radius: 4,
-        fillColor: '#1B3A93',
-        fillOpacity: 0.9,
+        radius: 4.5,
+        fillColor: colorTema,
+        fillOpacity: 0.95,
         color: '#FFFFFF',
         weight: 1.5,
         interactive: false,
@@ -358,10 +373,10 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
 
         // Línea conectora discontinua
         L.polyline([centroLatLng, nuevoLatLng], {
-          color: '#475569',
+          color: colorTema,
           weight: 1.5,
           opacity: 0.75,
-          dashArray: '4 4',
+          dashArray: '3 3',
           interactive: false,
         }).addTo(cLineas);
       });
@@ -388,6 +403,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
         const idGrupo = f.properties.cluster_id;
         const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
         (grupo as any)._posOriginal = L.latLng(lat, lng);
+        (grupo as any)._pubTipo = n > 0 && o > 0 ? 'mixto' : n > 0 ? 'necesidad' : 'oferta';
 
         // Navegación ágil del cluster: encuadra directamente todos sus elementos en lugar de avanzar capa por capa
         grupo.on('click', () => {
@@ -424,6 +440,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       const p = (f.properties as { p: Publicacion }).p;
       const marker = L.marker([lat, lng], { icon: L.divIcon({ html: pinHTML(p), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }), keyboard: true, title: nombrePunto(p) });
       (marker as any)._posOriginal = L.latLng(lat, lng);
+      (marker as any)._pubTipo = p.tipo;
       /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
          resto y para los lectores de pantalla, que leen el `aria-label` del pin. */
       if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p)), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });

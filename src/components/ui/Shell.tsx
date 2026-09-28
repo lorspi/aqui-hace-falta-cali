@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, ChevronLeft, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, ShieldCheck, Users, X } from 'lucide-react';
+import { Bell, ChevronLeft, ClipboardList, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, ShieldCheck, Users, X } from 'lucide-react';
 import { Avatar, Contador } from './Etiqueta';
 import { Divisor } from './Divisor';
 import { supabase } from '../../lib/supabaseClient';
@@ -15,7 +15,7 @@ import { supabase } from '../../lib/supabaseClient';
  * El nombre del panel lo pone la entidad («Mi organización» / «Mi comunidad»); lo que hay
  * dentro lo decide el objetivo.
  */
-export type Seccion = 'panel' | 'panel-admin' | 'radar' | 'directorio' | 'avisos' | 'perfil';
+export type Seccion = 'panel' | 'panel-admin' | 'radar' | 'directorio' | 'avisos' | 'perfil' | 'actividad';
 
 export interface Cuenta {
   entidad: string;
@@ -217,8 +217,22 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
   ];
 
+  const esComunidad =
+    profileType === 'comunidad' ||
+    profileType === 'liderazgo' ||
+    profileType === 'lider' ||
+    userRole === 'lider' ||
+    userRole === 'liderazgo' ||
+    userRole === 'comunidad' ||
+    entidadStorage === 'liderazgo' ||
+    entidadStorage === 'comunidad';
+
+  const nombrePanelDinamico = esComunidad ? 'Mi comunidad' : (panelNombre && panelNombre !== 'Panel' ? panelNombre : 'Mi organización');
+
   if (esOrganizacion) {
-    secciones.push({ id: 'panel', nombre: 'Panel', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+  } else if (estaLogueado && !esAdminOModerador) {
+    secciones.push({ id: 'actividad', nombre: 'Mi actividad', href: rutas.actividad || '/mi-actividad', icono: <ClipboardList className="h-5 w-5" />, n: pendientes });
   }
 
   if (esAdminOModerador) {
@@ -248,7 +262,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   };
 
   return (
-    <div className={`rd-app font-rd flex min-h-dvh gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
+    <div className={`rd-app font-rd flex min-h-dvh w-full max-w-full overflow-x-hidden gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
       {/* ---- side nav (solo ≥ 1024) ---- */}
       <nav
         aria-label="Secciones"
@@ -341,7 +355,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       </nav>
 
       {/* ---- contenido ---- */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface max-lg:min-h-dvh max-lg:overflow-visible max-lg:rounded-none max-lg:border-0 max-lg:pb-16">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface max-lg:min-h-dvh max-lg:w-full max-lg:max-w-full max-lg:overflow-x-hidden max-lg:rounded-none max-lg:border-0 max-lg:pb-16">
         {children}
       </div>
 

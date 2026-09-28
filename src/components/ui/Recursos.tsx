@@ -83,13 +83,23 @@ export interface RecursosProps {
    *  (`rd-recursos--fijo`): en el Directorio, donde el rótulo «Ofrece» / «Pide» ya lo pone la
    *  fila y no hay resumen corto que plegar. */
   soloFilas?: boolean;
+  /** Si debe mostrar todos los recursos en la vista resumida sin compactar con "+N más". */
+  mostrarTodos?: boolean;
   className?: string;
 }
 
-export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abiertoInicial = false, soloFilas = false, className = 'mb-4' }) => {
+export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abiertoInicial = false, soloFilas = false, mostrarTodos = false, className = 'mb-4' }) => {
   const [abierto, setAbierto] = useState(abiertoInicial || soloFilas);
+  const [expandirResumen, setExpandirResumen] = useState(false);
   const id = useId();
   const esOferta = p.tipo === 'oferta';
+
+  const tieneMuchos = p.recursos.length > 2;
+  const recursosVisibles = mostrarTodos || expandirResumen || !tieneMuchos
+    ? p.recursos
+    : p.recursos.slice(0, 2);
+  const restantes = p.recursos.length - 2;
+
   return (
     <div className={`rounded-rd-lg border border-rd-line ${className}`}>
       {!soloFilas && (
@@ -109,19 +119,43 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
           que son ese mismo resumen con detalle (Alejandro, 22 de septiembre de 2026: antes se
           veían los dos, repitiendo cada recurso). */}
       {!soloFilas && !abierto && (
-      <div className="flex flex-wrap gap-3 p-3">
-        {p.recursos.map((r) => {
+      <div className="flex flex-wrap items-center gap-2.5 p-2.5 sm:p-3">
+        {recursosVisibles.map((r) => {
           const completo = restante(r) === 0;
           return (
-            <span key={r.item} className="flex min-w-37 flex-1 basis-37 items-start gap-2">
+            <span key={r.item} className="flex min-w-34 flex-1 basis-34 items-start gap-2">
               <Anillo recurso={r} />
               <span className="flex min-w-0 flex-col leading-snug">
-                <b className="truncate text-rd-12-5 font-semibold text-rd-ink">{r.item}</b>
-                <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>{estadoRecurso(r, p.tipo)}</span>
+                <b className="truncate text-rd-12 font-semibold text-rd-ink">{r.item}</b>
+                <span className={`text-rd-11 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>{estadoRecurso(r, p.tipo)}</span>
               </span>
             </span>
           );
         })}
+        {tieneMuchos && !expandirResumen && !mostrarTodos && (
+          <button
+            type="button"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              setExpandirResumen(true);
+            }}
+            className="inline-flex items-center gap-1 rounded-full border border-rd-line bg-rd-sunken px-2.5 py-1 text-rd-11 font-semibold text-rd-navy hover:bg-rd-fondo transition-colors cursor-pointer"
+          >
+            +{restantes} más
+          </button>
+        )}
+        {tieneMuchos && expandirResumen && !mostrarTodos && (
+          <button
+            type="button"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              setExpandirResumen(false);
+            }}
+            className="w-full text-center text-rd-11 font-medium text-rd-ink-meta hover:text-rd-navy hover:underline cursor-pointer pt-1"
+          >
+            Mostrar menos
+          </button>
+        )}
       </div>
       )}
 
