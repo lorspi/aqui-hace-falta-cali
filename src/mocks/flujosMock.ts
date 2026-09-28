@@ -71,7 +71,7 @@ export function estadoInicialPedir(): EstadoPedir {
     evento: EMERGENCIA.activa,
     sel: [],
     grupo: {},
-    dias: 3,
+    dias: 0,
     metas: {},
     det: {},
     dir: '',

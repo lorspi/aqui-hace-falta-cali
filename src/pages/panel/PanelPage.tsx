@@ -2174,17 +2174,17 @@ const Reportes: React.FC<{
                   <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVer(a)}>
                     Ver
                   </Button>
-                  <span className="ml-auto flex">
-                  <MenuAcciones
-                    tamano="md"
-                    flotante
-                    etiqueta={`Más acciones del acta ${a.codigo}`}
-                    items={[
-                      { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
-                    ]}
-                    className="shadow-2xs"
-                  />
-                  </span>
+                  <div className="ml-auto flex items-center">
+                    <MenuAcciones
+                      tamano="md"
+                      flotante
+                      etiqueta={`Más acciones del acta ${a.codigo}`}
+                      items={[
+                        { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                      ]}
+                      className="shadow-2xs"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -2238,21 +2238,19 @@ const Reportes: React.FC<{
                 etiqueta: 'Acciones',
                 acc: true,
                 celda: (a) => (
-                  <>
+                  <div className="flex items-center justify-end gap-1.5 max-xl:flex-1">
                     <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVer(a)}>
                       Ver
                     </Button>
-                    <span className="flex max-xl:ml-auto">
-                      <MenuAcciones
-                        tamano="md"
-                        etiqueta={`Más acciones del acta ${a.codigo}`}
-                        items={[
-                          { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
-                        ]}
-                        className="shadow-2xs"
-                      />
-                    </span>
-                  </>
+                    <MenuAcciones
+                      tamano="md"
+                      etiqueta={`Más acciones del acta ${a.codigo}`}
+                      items={[
+                        { texto: 'Descargar', icono: <Download className="h-4 w-4" />, onElegir: () => onDescargar(a) },
+                      ]}
+                      className="shadow-2xs"
+                    />
+                  </div>
                 ),
               },
             ]}
@@ -2776,38 +2774,79 @@ const MisOfertas: React.FC<{
   );
 };
 
-
 const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; clase: string; titulo: string; icono: React.ReactNode; soloConAlgo?: boolean }[] = [
-  { estado: 'nueva', nombre: 'Solicitudes', vacia: 'Sin solicitudes por responder', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral text-white">
+  {
+    estado: 'nueva',
+    nombre: 'Solicitudes',
+    vacia: 'Sin solicitudes por responder',
+    clase: 'border-rd-coral/40 bg-rd-coral-soft/10',
+    titulo: 'text-rd-coral-ink',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral-soft text-rd-coral-ink">
         <Megaphone className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { estado: 'aceptada', nombre: 'Comprometida', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+    ),
+  },
+  {
+    estado: 'aceptada',
+    nombre: 'Comprometida',
+    vacia: 'Sin entregas comprometidas',
+    clase: 'border-rd-line bg-rd-sunken/40',
+    titulo: 'text-rd-ink-2',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-sunken text-rd-ink-2">
         <CircleDashed className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { estado: 'camino', nombre: 'En camino', vacia: 'Nada en camino', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber text-rd-ink">
+    ),
+  },
+  {
+    estado: 'camino',
+    nombre: 'En camino',
+    vacia: 'Nada en camino',
+    clase: 'border-rd-amber-line bg-rd-amber-soft/20',
+    titulo: 'text-rd-amber-ink',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber-soft text-rd-amber-ink">
         <Clock className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { estado: 'entregada', nombre: 'Entregada', vacia: 'Sin entregas pendientes por certificar', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-navy text-white">
+    ),
+  },
+  {
+    estado: 'entregada',
+    nombre: 'Entregada',
+    vacia: 'Sin entregas pendientes por certificar',
+    clase: 'border-rd-navy-line bg-rd-navy-soft/20',
+    titulo: 'text-rd-navy',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-navy-soft text-rd-navy">
         <CircleDot className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { estado: 'confirmada', nombre: 'Completada', vacia: 'Sin entregas completadas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+    ),
+  },
+  {
+    estado: 'confirmada',
+    nombre: 'Completada',
+    vacia: 'Sin entregas completadas',
+    clase: 'border-rd-green-line bg-rd-green-soft/20',
+    titulo: 'text-rd-green',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green-soft text-rd-green">
         <Check className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { estado: 'archivada', nombre: 'Archivadas', vacia: `Nada archivado todavía. Las completadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`, clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+    ),
+  },
+  {
+    estado: 'archivada',
+    nombre: 'Archivadas',
+    vacia: `Nada archivado todavía. Las completadas pasan aquí a los ${DIAS_PARA_ARCHIVAR} días`,
+    clase: 'border-rd-line bg-rd-sunken/30',
+    titulo: 'text-rd-ink-meta',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-sunken text-rd-ink-meta">
         <Archive className="h-3.5 w-3.5" />
       </span>
-    ) },
+    ),
+  },
 ];
 
 const COLUMNAS_RECIBIDAS: {
@@ -2820,36 +2859,84 @@ const COLUMNAS_RECIBIDAS: {
   icono: React.ReactNode;
   soloConAlgo?: boolean;
 }[] = [
-  { id: 'ofertas', estados: ['nueva'], nombre: 'Ofertas', vacia: 'Sin ofertas por responder', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral text-white">
+  {
+    id: 'ofertas',
+    estados: ['nueva'],
+    nombre: 'Ofertas',
+    vacia: 'Sin ofertas por responder',
+    clase: 'border-rd-coral/40 bg-rd-coral-soft/10',
+    titulo: 'text-rd-coral-ink',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-coral-soft text-rd-coral-ink">
         <Megaphone className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { id: 'aceptada', estados: ['aceptada'], nombre: 'Comprometido', vacia: 'Sin entregas comprometidas', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+    ),
+  },
+  {
+    id: 'aceptada',
+    estados: ['aceptada'],
+    nombre: 'Comprometido',
+    vacia: 'Sin entregas comprometidas',
+    clase: 'border-rd-line bg-rd-sunken/40',
+    titulo: 'text-rd-ink-2',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-sunken text-rd-ink-2">
         <CircleDashed className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { id: 'camino', estados: ['camino', 'entregada'], nombre: 'En camino', vacia: 'Nada en camino hacia ti', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber text-rd-ink">
+    ),
+  },
+  {
+    id: 'camino',
+    estados: ['camino', 'entregada'],
+    nombre: 'En camino',
+    vacia: 'Nada en camino hacia ti',
+    clase: 'border-rd-amber-line bg-rd-amber-soft/20',
+    titulo: 'text-rd-amber-ink',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-amber-soft text-rd-amber-ink">
         <Truck className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { id: 'recibido', estados: ['confirmada'], nombre: 'Recibido', vacia: 'Nada recibido todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+    ),
+  },
+  {
+    id: 'recibido',
+    estados: ['confirmada'],
+    nombre: 'Recibido',
+    vacia: 'Nada recibido todavía',
+    clase: 'border-rd-green-line bg-rd-green-soft/20',
+    titulo: 'text-rd-green',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green-soft text-rd-green">
         <Package className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { id: 'distribuido', estados: ['distribuida'], nombre: 'Distribuido', vacia: 'Nada distribuido todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-green text-white">
+    ),
+  },
+  {
+    id: 'distribuido',
+    estados: ['distribuida'],
+    nombre: 'Distribuido',
+    vacia: 'Nada distribuido todavía',
+    clase: 'border-rd-navy-line bg-rd-navy-soft/20',
+    titulo: 'text-rd-navy',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-navy-soft text-rd-navy">
         <Users className="h-3.5 w-3.5" />
       </span>
-    ) },
-  { id: 'archivadas', estados: ['archivada'], nombre: 'Archivadas', vacia: 'Nada archivado todavía', clase: 'border-rd-line', titulo: 'text-rd-ink', icono: (
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-ink-3 text-white">
+    ),
+  },
+  {
+    id: 'archivadas',
+    estados: ['archivada'],
+    nombre: 'Archivadas',
+    vacia: 'Nada archivado todavía',
+    clase: 'border-rd-line bg-rd-sunken/30',
+    titulo: 'text-rd-ink-meta',
+    icono: (
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-rd-sm bg-rd-sunken text-rd-ink-meta">
         <Archive className="h-3.5 w-3.5" />
       </span>
-    ) },
+    ),
+  },
 ];
 
 const ORDEN_CICLO: Record<Solicitud['estado'], number> = { nueva: 0, aceptada: 1, camino: 2, entregada: 3, confirmada: 4, distribuida: 5, archivada: 6 };
@@ -2951,10 +3038,8 @@ const Seguimiento: React.FC<{
        tiene sus propias columnas, y meterlo en una caja era una caja dentro de otra. Las demás
        secciones sí conservan la suya. */
     <section className="col-span-full min-w-0">
-      {/* El conmutador va debajo del título y con aire a los dos lados (Alejandro, 25 de
-          septiembre de 2026): 20 entre el título y él, 24 entre él y el tablero. Apretados los
-          tres, no se distinguía dónde acaba la cabecera y dónde empieza el tablero. */}
-      <div className="mb-6 flex flex-col items-start gap-5">
+      {/* El conmutador va debajo del título y con aire a los dos lados: 20 entre el título y él, 24 entre él y el tablero. */}
+      <div className="mb-6 flex flex-col items-start gap-4">
         <h2 className="font-rd m-0 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
           Seguimiento
         </h2>
@@ -2966,12 +3051,12 @@ const Seguimiento: React.FC<{
             opciones={[
               {
                 id: 'entrego',
-                etiqueta: 'Entrego',
+                etiqueta: 'Ayuda que entrego',
                 n: sol.filter((s) => s.estado !== 'archivada').length,
               },
               {
                 id: 'recibo',
-                etiqueta: 'Recibo',
+                etiqueta: 'Ayuda que recibo',
                 n: recibidas.filter((r) => r.estado !== 'archivada').length,
               },
             ]}
@@ -2986,7 +3071,7 @@ const Seguimiento: React.FC<{
           tabIndex={0}
           className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8"
         >
-          {COLUMNAS.map((c, idx) => {
+          {COLUMNAS.map((c) => {
             const items = sol.filter((s) => s.estado === c.estado);
             const estaColapsada = !!colapsadasEntrego[c.estado];
             const recibe = c.estado !== 'nueva' && c.estado !== 'archivada';
@@ -3017,7 +3102,7 @@ const Seguimiento: React.FC<{
                     expandir();
                   }}
                   title={`Clic para expandir ${c.nombre}`}
-                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                  className={`flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30 ${c.clase}`}
                 >
                   <button
                     type="button"
@@ -3031,10 +3116,10 @@ const Seguimiento: React.FC<{
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <span aria-hidden="true">{c.icono}</span>
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums border border-rd-line-soft shadow-2xs">
                     {items.length}
                   </span>
-                  <span className="mt-2 text-rd-13 font-semibold text-rd-ink [writing-mode:vertical-rl] rotate-180">
+                  <span className={`mt-2 text-rd-12 font-semibold [writing-mode:vertical-rl] rotate-180 ${c.titulo}`}>
                     {c.nombre}
                   </span>
                 </div>
@@ -3066,15 +3151,15 @@ const Seguimiento: React.FC<{
                   }
                 }}
                 className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 transition-colors sm:flex-1 sm:min-w-80 ${
-                  sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : 'bg-rd-fondo'
+                  sobre === c.estado ? 'bg-rd-navy-soft ring-2 ring-rd-navy-line' : ''
                 } ${c.clase}`}
               >
                 <div
-                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13-5 font-semibold ${c.titulo}`}
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13 font-semibold ${c.titulo}`}
                 >
                   <span aria-hidden="true">{c.icono}</span>
-                  {c.nombre}
-                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                  <span>{c.nombre}</span>
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums border border-rd-line-soft shadow-2xs">
                     {items.length}
                   </span>
                   <button
@@ -3117,7 +3202,7 @@ const Seguimiento: React.FC<{
           tabIndex={0}
           className="zona-rd-scroll -mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-2 scroll-pl-4 sm:-mx-6 sm:px-6 sm:scroll-pl-6 lg:-mx-8 lg:px-8 lg:scroll-pl-8"
         >
-          {COLUMNAS_RECIBIDAS.map((c, idx) => {
+          {COLUMNAS_RECIBIDAS.map((c) => {
             const items = recibidas.filter((r) => c.estados.includes(r.estado));
             const estaColapsada = !!colapsadasRecibo[c.id];
 
@@ -3153,7 +3238,7 @@ const Seguimiento: React.FC<{
                     }
                   }}
                   title={`Clic para expandir ${c.nombre}`}
-                  className="flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border border-rd-line bg-rd-fondo py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30"
+                  className={`flex min-h-70 w-12 sm:basis-12 shrink-0 snap-start cursor-pointer flex-col items-center gap-3 rounded-rd-lg border py-3 px-1 transition-colors hover:bg-rd-line-soft hover:border-rd-ink/30 ${c.clase}`}
                 >
                   <button
                     type="button"
@@ -3167,10 +3252,10 @@ const Seguimiento: React.FC<{
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <span aria-hidden="true">{c.icono}</span>
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums border border-rd-line-soft shadow-2xs">
                     {items.length}
                   </span>
-                  <span className="mt-2 text-rd-13 font-semibold text-rd-ink [writing-mode:vertical-rl] rotate-180">
+                  <span className={`mt-2 text-rd-12 font-semibold [writing-mode:vertical-rl] rotate-180 ${c.titulo}`}>
                     {c.nombre}
                   </span>
                 </div>
@@ -3201,14 +3286,14 @@ const Seguimiento: React.FC<{
                     }
                   }
                 }}
-                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border bg-rd-fondo p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
+                className={`ranura-rd-tablero flex min-h-70 min-w-0 snap-start flex-col gap-2 rounded-rd-lg border p-2 sm:flex-1 sm:min-w-80 ${c.clase}`}
               >
                 <div
-                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13-5 font-semibold ${c.titulo}`}
+                  className={`flex items-center gap-2 px-2 pt-1.5 pb-2 text-rd-13 font-semibold ${c.titulo}`}
                 >
                   <span aria-hidden="true">{c.icono}</span>
-                  {c.nombre}
-                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums">
+                  <span>{c.nombre}</span>
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-surface px-1.5 text-rd-11 font-semibold text-rd-ink-2 tabular-nums border border-rd-line-soft shadow-2xs">
                     {items.length}
                   </span>
                   <button

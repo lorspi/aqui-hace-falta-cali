@@ -55,20 +55,17 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   const [sessionUser, setSessionUser] = useState<any>(authUser || null);
 
   useEffect(() => {
-    if (authUser) {
-      setSessionUser(authUser);
-      return;
-    }
+    let isMounted = true;
     const checkUser = async () => {
       try {
         const { data } = await supabase.auth.getUser();
-        if (data?.user) {
+        if (data?.user && isMounted) {
           setSessionUser(data.user);
           return;
         }
       } catch {}
       const saved = localStorage.getItem('ahf_auth_user') || localStorage.getItem('ahf_admin_user');
-      if (saved) {
+      if (saved && isMounted) {
         try {
           setSessionUser(JSON.parse(saved));
         } catch {}
@@ -77,19 +74,35 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
+      if (session?.user && isMounted) {
         setSessionUser(session.user);
-      } else if (!authUser) {
+      } else if (!authUser && isMounted) {
         setSessionUser(null);
       }
     });
 
     return () => {
+      isMounted = false;
       authListener?.subscription?.unsubscribe();
     };
   }, [authUser]);
 
-  const activeUser = authUser || sessionUser;
+  const activeUser = useMemo(() => {
+    if (!authUser && !sessionUser) return null;
+    return {
+      ...(sessionUser || {}),
+      ...(authUser || {}),
+      id: authUser?.id || sessionUser?.id,
+      user_metadata: {
+        ...(sessionUser?.user_metadata || {}),
+        ...(authUser?.user_metadata || {}),
+      },
+      role: authUser?.role || sessionUser?.user_metadata?.role || sessionUser?.role,
+      profile_type: authUser?.profile_type || sessionUser?.user_metadata?.profile_type || sessionUser?.user_metadata?.profileType || sessionUser?.profile_type,
+      org_name: authUser?.org_name || sessionUser?.user_metadata?.org_name || sessionUser?.org_name || sessionUser?.organization,
+    };
+  }, [authUser, sessionUser]);
+
   const estaLogueado = Boolean(activeUser);
 
   const cuentaFinal = useMemo(() => {
@@ -169,14 +182,26 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
   const userRole = (activeUser?.user_metadata?.role || activeUser?.role || cuentaFinal?.rol || '').toLowerCase();
   const profileType = (activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || activeUser?.profile_type || '').toLowerCase();
+  const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
   const esOrganizacion = estaLogueado && (
     hasOrg ||
     profileType === 'organizacion' ||
     profileType === 'comunidad' ||
+    profileType === 'liderazgo' ||
+    profileType === 'lider' ||
     userRole === 'organizacion' ||
     userRole === 'lider' ||
-    Boolean(activeUser?.user_metadata?.org_name)
+    userRole === 'liderazgo' ||
+    userRole === 'comunidad' ||
+    userRole === 'moderador' ||
+    userRole === 'entidad_profesional' ||
+    Boolean(activeUser?.user_metadata?.org_name) ||
+    Boolean(activeUser?.org_name) ||
+    Boolean(activeUser?.organization) ||
+    entidadStorage === 'organizacion' ||
+    entidadStorage === 'liderazgo' ||
+    entidadStorage === 'comunidad'
   );
 
   const esAdminOModerador = estaLogueado && (
@@ -193,7 +218,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   ];
 
   if (esOrganizacion) {
-    secciones.push({ id: 'panel', nombre: 'Panel organización', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+    secciones.push({ id: 'panel', nombre: 'Panel', href: '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
   }
 
   if (esAdminOModerador) {

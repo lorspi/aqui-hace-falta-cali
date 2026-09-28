@@ -77,12 +77,13 @@ export function calcularMetas(necesidades: string[], valores: Record<string, num
     let meta = unidadesBase * eq.cantidad;
     let formula = `${eq.racion}, para ${unidadesBase} ${unidad(unidadesBase, base.unidad)}`;
     if (eq.diario) {
-      const textoDias = ` · durante ${dias} ${dias === 1 ? 'día' : 'días'}`;
+      const duracion = dias > 0 ? dias : 1;
+      const textoDias = dias > 0 ? ` · durante ${dias} ${dias === 1 ? 'día' : 'días'}` : ' (diario)';
       if (eq.multiplicaDias === false) {
         /* Capacidad sostenida: la misma cuadrilla y la misma gente cada día. */
-        formula += textoDias + (dias === 1 ? '' : ' (la misma cantidad cada día)');
+        formula += textoDias + (dias === 1 || dias === 0 ? '' : ' (la misma cantidad cada día)');
       } else {
-        meta *= dias;
+        meta *= duracion;
         formula += textoDias;
       }
     }

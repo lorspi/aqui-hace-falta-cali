@@ -29,7 +29,7 @@ export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: stri
 
   return (
     <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-rd-11-5 font-semibold tabular-nums ${color} ${className}`}>
-      {n} %{compacto ? <span className="sr-only"> de compatibilidad</span> : ' de compatibilidad'}
+      {n} %{compacto ? <span className="sr-only"> de match</span> : ' de match'}
     </span>
   );
 };
@@ -56,7 +56,7 @@ export interface ListaCoincidenciasProps {
 
 export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicacion, coincidencias, hechas = [], onPrimaria, onVerEnMapa }) => {
   const pide = publicacion.tipo === 'necesidad';
-  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">Todavía no hay nada compatible. La publicación ya está en el mapa y te avisamos apenas aparezca algo.</p>;
+  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">Todavía no hay matches. La publicación ya está en el mapa y te avisamos apenas aparezca algo.</p>;
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {coincidencias.map((c) => {
@@ -108,16 +108,16 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
   }, [abierto]);
   const pide = lista.publicacion.tipo === 'necesidad';
   return (
-    <dialog ref={ref} onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()} aria-labelledby="rd-coincidencias-t" className="font-rd m-auto max-h-dvh w-full max-w-130 rounded-rd-xl bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto max-sm:max-w-full">
+    <dialog ref={ref} onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()} aria-labelledby="rd-coincidencias-t" className="font-rd m-auto max-h-dvh w-full max-w-170 rounded-rd-xl bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto max-sm:max-w-full">
       {abierto && (
         <div className="flex max-h-dvh flex-col" onClick={(e) => e.stopPropagation()}>
           <div className="flex flex-none items-start gap-3 border-b border-rd-line p-5 pb-4">
             <div className="min-w-0 flex-1">
               <h2 id="rd-coincidencias-t" className="font-rd m-0 flex items-center gap-2 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">
                 <Handshake aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
-                Compatibles {lista.recursoFoco ? `en ${lista.recursoFoco} para ` : 'para '}{lista.publicacion.org}
+                Matches {lista.recursoFoco ? `en ${lista.recursoFoco} para ` : 'para '}{lista.publicacion.org}
               </h2>
-              <p className="mt-1 mb-0 text-rd-14 text-rd-ink-2">{pide ? 'Ofertas compatibles que tienen lo que hace falta en tu zona o a nivel nacional.' : 'Necesidades compatibles que piden lo que ofreces en tu zona o a nivel nacional.'}</p>
+              <p className="mt-1 mb-0 text-rd-14 text-rd-ink-2">{pide ? 'Ofertas que hacen match con lo que hace falta en tu zona o a nivel nacional.' : 'Necesidades que hacen match con lo que ofreces en tu zona o a nivel nacional.'}</p>
             </div>
             <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
               <X aria-hidden="true" className="h-5 w-5" />
@@ -151,9 +151,9 @@ export const TOPE_SUGERENCIAS_DEFECTO = 5;
 export function textoSugerencias(n: number, total?: number, maximo: number = TOPE_SUGERENCIAS_DEFECTO): string {
   const conteo = total ?? n;
   if (conteo > maximo) {
-    return `${maximo}+ compatibles`;
+    return `${maximo}+ matches`;
   }
-  return `${conteo} ${conteo === 1 ? 'compatible' : 'compatibles'}`;
+  return `${conteo} ${conteo === 1 ? 'match' : 'matches'}`;
 }
 
 /**

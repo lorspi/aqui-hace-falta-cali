@@ -150,10 +150,84 @@ function hayHover(): boolean {
   return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
 
+/**
+ * Distribuye un conjunto de marcadores superpuestos en círculos concéntricos de distintos
+ * niveles alrededor de su centro común, evitando que se tapen entre sí.
+ * - 2 a 6 elementos: 1 solo nivel (círculo simple, radio 40-52px).
+ * - 7 a 14 elementos: 2 niveles concéntricos (interior 44px, exterior 92px con desfase angular).
+ * - 15 a 24 elementos: 3 niveles concéntricos (44px, 92px, 140px).
+ * - 25+ elementos: 4 niveles concéntricos (44px, 92px, 140px, 188px).
+ */
+function calcularDistribucionNiveles<T>(
+  items: T[]
+): { item: T; radius: number; angle: number }[] {
+  const n = items.length;
+  if (n <= 1) return items.map((item) => ({ item, radius: 0, angle: 0 }));
+
+  if (n <= 6) {
+    const radius = n <= 2 ? 40 : n <= 3 ? 42 : n <= 4 ? 45 : n <= 5 ? 48 : 52;
+    const angleStep = (2 * Math.PI) / n;
+    return items.map((item, idx) => ({
+      item,
+      radius,
+      angle: angleStep * idx - Math.PI / 2,
+    }));
+  }
+
+  const niveles: { radius: number; count: number; angleOffset: number }[] = [];
+
+  if (n <= 14) {
+    const innerCount = Math.min(4, Math.max(3, Math.floor(n / 2.5)));
+    const outerCount = n - innerCount;
+    niveles.push(
+      { radius: 44, count: innerCount, angleOffset: -Math.PI / 2 },
+      { radius: 92, count: outerCount, angleOffset: -Math.PI / 2 + Math.PI / outerCount }
+    );
+  } else if (n <= 24) {
+    const level1 = 4;
+    const level2 = Math.min(8, Math.floor((n - 4) * 0.45));
+    const level3 = n - level1 - level2;
+    niveles.push(
+      { radius: 44, count: level1, angleOffset: -Math.PI / 2 },
+      { radius: 92, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
+      { radius: 140, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) }
+    );
+  } else {
+    const level1 = 4;
+    const level2 = 7;
+    const level3 = 10;
+    const level4 = n - level1 - level2 - level3;
+    niveles.push(
+      { radius: 44, count: level1, angleOffset: -Math.PI / 2 },
+      { radius: 92, count: level2, angleOffset: -Math.PI / 2 + Math.PI / level2 },
+      { radius: 140, count: level3, angleOffset: -Math.PI / 2 + Math.PI / (2 * level3) },
+      { radius: 188, count: level4, angleOffset: -Math.PI / 2 + Math.PI / (3 * level4) }
+    );
+  }
+
+  const res: { item: T; radius: number; angle: number }[] = [];
+  let itemIdx = 0;
+
+  for (const niv of niveles) {
+    const angleStep = (2 * Math.PI) / niv.count;
+    for (let i = 0; i < niv.count && itemIdx < n; i++) {
+      res.push({
+        item: items[itemIdx],
+        radius: niv.radius,
+        angle: niv.angleOffset + angleStep * i,
+      });
+      itemIdx++;
+    }
+  }
+
+  return res;
+}
+
 export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, encuadrarTodo, className = '' }) => {
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
+  const capaLineas = useRef<L.LayerGroup | null>(null);
   const alSeleccionar = useRef(onSeleccionar);
   alSeleccionar.current = onSeleccionar;
   /* Lo pintado: por id de publicación, y por grupo con las publicaciones que esconde. */
@@ -162,14 +236,20 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
   const estado = useRef({ seleccionada, resaltadas: resaltadas?.ids ?? [] });
   estado.current = { seleccionada, resaltadas: resaltadas?.ids ?? [] };
 
-  /* El índice se rehace cuando cambian las publicaciones filtradas. */
+  /* El índice se rehace cuando cambian las publicaciones filtradas, preservando coordenadas genuinas. */
   const indice = useMemo(() => {
-    const puntos: Punto[] = publicaciones.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { p } }));
-    /* `extent` 256 = la tesela de Leaflet: así el radio de 48 son 48 px en pantalla. */
+    const puntos: Punto[] = publicaciones
+      .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number' && !isNaN(p.lat) && !isNaN(p.lng))
+      .map((p) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        properties: { p },
+      }));
+    /* `extent` 256 = la tesela de Leaflet; radio 40 y maxZoom 15 para reducir capas y hacer la navegación fluida. */
     return new Supercluster<{ p: Publicacion }, { n: number; o: number }>({
-      radius: 48,
+      radius: 40,
       extent: 256,
-      maxZoom: 16,
+      maxZoom: 15,
       map: (props) => ({ n: props.p.tipo === 'necesidad' ? 1 : 0, o: props.p.tipo === 'oferta' ? 1 : 0 }),
       reduce: (acc, props) => {
         acc.n += props.n;
@@ -196,11 +276,105 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     });
   };
 
+  /* Desplaza en círculos concéntricos de distintos niveles los marcadores que coinciden o se amontonan
+     en el mismo punto de pantalla, conectándolos con líneas discontinuas hacia el epicentro. */
+  const desplazarMarcadoresSolapados = (m: L.Map) => {
+    const cLineas = capaLineas.current;
+    if (!cLineas) return;
+    cLineas.clearLayers();
+
+    // Marcadores visibles en pantalla (pines individuales y clusters)
+    const todos: { marker: L.Marker; originalLatLng: L.LatLng }[] = [];
+    pines.current.forEach((marker) => {
+      const orig = (marker as any)._posOriginal || marker.getLatLng();
+      todos.push({ marker, originalLatLng: orig });
+    });
+    grupos.current.forEach(({ marker }) => {
+      const orig = (marker as any)._posOriginal || marker.getLatLng();
+      todos.push({ marker, originalLatLng: orig });
+    });
+
+    if (todos.length < 2) return;
+
+    const nearbyDistance = 44; // Distancia de solapamiento en píxeles de pantalla (íconos son de 40px)
+    const puntosContenedor = todos.map((item) => m.latLngToContainerPoint(item.originalLatLng));
+    const procesados = new Set<number>();
+
+    for (let i = 0; i < todos.length; i++) {
+      if (procesados.has(i)) continue;
+
+      // Agrupación exhaustiva por componentes conexos (BFS) para no dejar marcadores vecinos sin incluir
+      const cola = [i];
+      procesados.add(i);
+      const grupoIndices: number[] = [];
+
+      while (cola.length > 0) {
+        const curr = cola.pop()!;
+        grupoIndices.push(curr);
+        const ptCurr = puntosContenedor[curr];
+
+        for (let j = 0; j < todos.length; j++) {
+          if (!procesados.has(j)) {
+            if (ptCurr.distanceTo(puntosContenedor[j]) < nearbyDistance) {
+              procesados.add(j);
+              cola.push(j);
+            }
+          }
+        }
+      }
+
+      if (grupoIndices.length <= 1) continue;
+
+      // Centroide visual de la agrupación
+      const grupoItems = grupoIndices.map((idx) => todos[idx]);
+      const grupoPts = grupoIndices.map((idx) => puntosContenedor[idx]);
+      const centroPx = grupoPts.reduce(
+        (acc, p) => L.point(acc.x + p.x / grupoPts.length, acc.y + p.y / grupoPts.length),
+        L.point(0, 0)
+      );
+      const centroLatLng = m.containerPointToLatLng(centroPx);
+
+      // Epicentro común: punto central discreto
+      L.circleMarker(centroLatLng, {
+        radius: 4,
+        fillColor: '#1B3A93',
+        fillOpacity: 0.9,
+        color: '#FFFFFF',
+        weight: 1.5,
+        interactive: false,
+      }).addTo(cLineas);
+
+      // Asignación de niveles concéntricos
+      const distribuidos = calcularDistribucionNiveles(grupoItems);
+
+      distribuidos.forEach(({ item, radius, angle }) => {
+        const nuevoPx = L.point(
+          centroPx.x + radius * Math.cos(angle),
+          centroPx.y + radius * Math.sin(angle)
+        );
+        const nuevoLatLng = m.containerPointToLatLng(nuevoPx);
+
+        item.marker.setLatLng(nuevoLatLng);
+
+        // Línea conectora discontinua
+        L.polyline([centroLatLng, nuevoLatLng], {
+          color: '#475569',
+          weight: 1.5,
+          opacity: 0.75,
+          dashArray: '4 4',
+          interactive: false,
+        }).addTo(cLineas);
+      });
+    }
+  };
+
   /* Pinta lo que cabe en la vista: pines sueltos o grupos, según el zoom. */
   const pintar = () => {
     const m = mapa.current;
     const c = capa.current;
+    const cLineas = capaLineas.current;
     if (!m || !c) return;
+    if (cLineas) cLineas.clearLayers();
     c.clearLayers();
     pines.current.clear();
     grupos.current = [];
@@ -213,13 +387,43 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
         const { n, o } = f.properties;
         const idGrupo = f.properties.cluster_id;
         const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
-        grupo.on('click', () => m.flyTo([lat, lng], Math.min(indiceRef.current.getClusterExpansionZoom(idGrupo), 18), { duration: 0.4 }));
+        (grupo as any)._posOriginal = L.latLng(lat, lng);
+
+        // Navegación ágil del cluster: encuadra directamente todos sus elementos en lugar de avanzar capa por capa
+        grupo.on('click', () => {
+          const leaves = indiceRef.current.getLeaves(idGrupo, Infinity);
+          if (!leaves || leaves.length === 0) {
+            m.flyTo([lat, lng], Math.min(m.getZoom() + 3, 17), { duration: 0.45 });
+            return;
+          }
+
+          const coords = leaves.map(
+            (h) => [h.geometry.coordinates[1], h.geometry.coordinates[0]] as [number, number]
+          );
+          const limites = L.latLngBounds(coords);
+
+          // Si todos los puntos están prácticamente en el mismo lugar (menos de 35 metros entre sí)
+          const sonMismoPunto = limites.getNorthEast().distanceTo(limites.getSouthWest()) < 35;
+
+          if (sonMismoPunto) {
+            // Vuela directamente a zoom 16 donde el Supercluster entrega los puntos individuales y se despliegan en círculos concéntricos con líneas
+            const targetZoom = Math.min(Math.max(m.getZoom() + 2, 16), 17);
+            m.flyTo([lat, lng], targetZoom, { duration: 0.45 });
+          } else {
+            // Encuadra todos los puntos del cluster, avanzando al menos 2 niveles de zoom para evitar pasos mínimos
+            const boundsZoom = m.getBoundsZoom(limites.pad(0.25));
+            const targetZoom = Math.min(Math.max(boundsZoom, m.getZoom() + 2), 17);
+            m.flyTo(limites.getCenter(), targetZoom, { duration: 0.45 });
+          }
+        });
+
         grupo.addTo(c);
         grupos.current.push({ marker: grupo, ids: indiceRef.current.getLeaves(idGrupo, Infinity).map((h) => h.properties.p.id) });
         return;
       }
       const p = (f.properties as { p: Publicacion }).p;
       const marker = L.marker([lat, lng], { icon: L.divIcon({ html: pinHTML(p), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }), keyboard: true, title: nombrePunto(p) });
+      (marker as any)._posOriginal = L.latLng(lat, lng);
       /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
          resto y para los lectores de pantalla, que leen el `aria-label` del pin. */
       if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p)), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
@@ -227,6 +431,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       marker.addTo(c);
       pines.current.set(p.id, marker);
     });
+
+    // Desplaza y conecta con líneas marcadores solapados en pantalla
+    desplazarMarcadoresSolapados(m);
     marcar();
   };
   const pintarRef = useRef(pintar);
@@ -260,6 +467,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     const m = L.map(nodo.current, { zoomControl: true, attributionControl: true }).setView(centroInicial, 6);
     m.zoomControl.setPosition('bottomright');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+    capaLineas.current = L.layerGroup().addTo(m);
     capa.current = L.layerGroup().addTo(m);
     mapa.current = m;
     m.on('moveend zoomend', () => pintarRef.current());

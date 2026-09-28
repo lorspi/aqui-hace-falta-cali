@@ -32,7 +32,6 @@ import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
-import { FloatingCreateNeedFAB } from '../../components/FloatingCreateNeedFAB';
 
 
 /**
@@ -386,7 +385,7 @@ const Radar: React.FC<RadarProps> = ({
 
   const cuentaUsuario = usuarioEfectivo
     ? {
-        entidad: usuarioEfectivo.organization || usuarioEfectivo.name || 'Mi Organización',
+        entidad: usuarioEfectivo.organization || usuarioEfectivo.org_name || usuarioEfectivo.name || 'Mi Organización',
         persona: usuarioEfectivo.name || usuarioEfectivo.email?.split('@')[0] || 'Usuario',
         rol: usuarioEfectivo.role || 'Miembro',
         iniciales: (usuarioEfectivo.name || usuarioEfectivo.email || 'US')
@@ -551,12 +550,6 @@ const Radar: React.FC<RadarProps> = ({
                 className="h-full w-full"
               />
 
-              {/* Botón flotante del chatbot en la parte izquierda del mapa */}
-              <FloatingCreateNeedFAB
-                onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}
-                position="in-map"
-              />
-
               {/* Leyenda del mapa en la esquina inferior izquierda DENTRO del mapa */}
               <div className="absolute bottom-4 left-4 z-[1000] font-rd flex flex-col items-start">
                 {leyendaExpandida ? (
@@ -618,8 +611,8 @@ const Radar: React.FC<RadarProps> = ({
               <button
                 type="button"
                 onClick={() => setPanelDerechoMinimizado((p) => !p)}
-                aria-label={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel a la derecha'}
-                title={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel a la derecha'}
+                aria-label={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel'}
+                title={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel'}
                 className="absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border border-rd-line bg-rd-surface/95 px-3 py-1.5 text-rd-12-5 font-semibold text-rd-ink shadow-rd-2 ring-1 ring-rd-ink/10 backdrop-blur-md transition-all hover:bg-rd-surface hover:text-rd-navy active:scale-95 cursor-pointer max-lg:hidden"
               >
                 {panelDerechoMinimizado ? (
@@ -629,7 +622,7 @@ const Radar: React.FC<RadarProps> = ({
                   </>
                 ) : (
                   <>
-                    <span>Minimizar mapa</span>
+                    <span>Minimizar panel</span>
                     <ChevronRight className="h-4 w-4 text-rd-ink-3" />
                   </>
                 )}

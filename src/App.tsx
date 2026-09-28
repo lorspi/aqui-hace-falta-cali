@@ -38,7 +38,6 @@ import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { MobileBottomBar } from "./components/MobileBottomBar";
 import { Footer } from "./components/Footer";
-import { FloatingCreateNeedFAB } from "./components/FloatingCreateNeedFAB";
 import { ChatbotTicketModal } from "./components/ChatbotTicketModal";
 // Lazy-loaded auth modals for code-splitting
 const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
@@ -241,7 +240,7 @@ function MainApp() {
       })()
     : null;
 
-  const [authUser, setAuthUser] = useState<{ name: string; email?: string } | null>(() => {
+  const [authUser, setAuthUser] = useState<any>(() => {
     if (sessionUser) return sessionUser;
     const local = typeof window !== 'undefined' ? localStorage.getItem('ahf_auth_user') : null;
     if (local) {
@@ -268,7 +267,16 @@ function MainApp() {
 
       // 1. Establecer el usuario INMEDIATAMENTE con los metadatos de la sesión
       const metaName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Usuario';
-      const immediateUserObj = { name: metaName, email: sessionUser.email };
+      const immediateUserObj = {
+        id: sessionUser.id,
+        name: metaName,
+        email: sessionUser.email,
+        role: sessionUser.user_metadata?.role || sessionUser.role,
+        profile_type: sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
+        org_name: sessionUser.user_metadata?.org_name,
+        organization: sessionUser.user_metadata?.org_name || sessionUser.user_metadata?.organization,
+        user_metadata: sessionUser.user_metadata,
+      };
       setAuthUser(immediateUserObj);
       localStorage.setItem('ahf_auth_user', JSON.stringify(immediateUserObj));
 
@@ -283,7 +291,16 @@ function MainApp() {
         if (profile) {
           setUserProfile(profile);
           const dbName = profile.full_name || profile.name || metaName;
-          const updatedUserObj = { name: dbName, email: sessionUser.email };
+          const updatedUserObj = {
+            id: sessionUser.id,
+            name: dbName,
+            email: sessionUser.email,
+            role: profile.role || sessionUser.user_metadata?.role || sessionUser.role,
+            profile_type: profile.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
+            org_name: profile.organization || sessionUser.user_metadata?.org_name,
+            organization: profile.organization || sessionUser.user_metadata?.org_name,
+            user_metadata: sessionUser.user_metadata,
+          };
           setAuthUser(updatedUserObj);
           localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
 

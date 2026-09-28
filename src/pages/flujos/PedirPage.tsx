@@ -4,13 +4,13 @@ import { Divisor } from '../../components/ui/Divisor';
 import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
-import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
+import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, NOMBRE_GRUPO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
 import { NECESIDAD, PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
 import { calcularMetas, declarado, detalleTexto, numero } from '../../utils/equivalencias';
-import { aDeclarar, caminoPedir, listoPedir } from '../../utils/pedir';
+import { aDeclarar, caminoPedir, gruposNecesarios, hayDiarios, listaY, listoPedir } from '../../utils/pedir';
 import { cifra, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcaEditada, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, Sugeridos, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
@@ -402,25 +402,67 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         />
       </>
     );
-  } else if (sub.id.startsWith('grupo:')) {
-    const g = sub.id.split(':')[1];
-    const base = BASES[g];
-    const v = e.grupo[g];
-    const etiqueta = base.unidad.charAt(0).toUpperCase() + base.unidad.slice(1);
-    const tieneDiarios = e.sel.some((it) => EQUIV[it]?.base === g && EQUIV[it]?.diario);
+  } else if (sub.id === 'afectacion' || sub.id === 'grupos' || sub.id.startsWith('grupo:')) {
+    const necesarios = sub.id.startsWith('grupo:') ? [sub.id.split(':')[1]] : gruposNecesarios(e.sel);
+    const tieneDiarios = hayDiarios(e.sel);
+    const nombres = necesarios.map((g) => NOMBRE_GRUPO[g] ?? g);
+    const tituloPregunta = necesarios.length === 1
+      ? PREGUNTA_GRUPO[necesarios[0]]
+      : `¿A cuántas ${listaY(nombres.map((n) => n.toLowerCase()))} atiendes?`;
     pantalla = (
       <>
-        <Pregunta titulo={PREGUNTA_GRUPO[g]} sub="Con esto calculamos cuánto hace falta. Un aproximado sirve." />
-        <CampoNumero id="gv" etiqueta={etiqueta} unidad={base.unidad} valor={v ? cifra(v) : ''} onChange={(t) => { fijarGrupo(g, t); errores.limpiar('gv'); }} onBlur={(t) => errores.validar('gv', ['numero'], t)} error={errores.errores.gv} />
-        <Sugeridos cifras={base.sugeridos ?? []} unidad={base.unidad} valor={v} onElegir={(n) => { set((p) => ({ grupo: { ...p.grupo, [g]: n } })); errores.limpiar('gv'); }} />
+        <Pregunta titulo={tituloPregunta} sub="Con esto calculamos cuánto hace falta. Un aproximado sirve." />
+        <div className="space-y-6">
+          {necesarios.map((g, idx) => {
+            const base = BASES[g];
+            const v = e.grupo[g];
+            const id = `gv-${g}`;
+            const etiqueta = base.unidad.charAt(0).toUpperCase() + base.unidad.slice(1);
+            return (
+              <div key={g} className={idx > 0 ? 'border-t border-rd-line pt-5' : ''}>
+                {necesarios.length > 1 && (
+                  <h3 className="font-rd mb-2 text-rd-13-5 font-semibold text-rd-ink">
+                    {PREGUNTA_GRUPO[g]}
+                  </h3>
+                )}
+                <CampoNumero
+                  id={id}
+                  etiqueta={etiqueta}
+                  unidad={base.unidad}
+                  valor={v ? cifra(v) : ''}
+                  onChange={(t) => {
+                    fijarGrupo(g, t);
+                    errores.limpiar(id);
+                  }}
+                  onBlur={(t) => errores.validar(id, ['numero'], t)}
+                  error={errores.errores[id]}
+                />
+                <Sugeridos
+                  cifras={base.sugeridos ?? []}
+                  unidad={base.unidad}
+                  valor={v}
+                  onElegir={(n) => {
+                    set((p) => ({ grupo: { ...p.grupo, [g]: n } }));
+                    errores.limpiar(id);
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
         {tieneDiarios && (
-          <div className="mt-5">
+          <div className="mt-6 border-t border-rd-line pt-5">
             <label className="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink">¿Por cuántos días?</label>
             <p className="mb-2 text-rd-12-5 text-rd-ink-2">Si tienes dudas, elige menos días: siempre puedes volver a pedir.</p>
-            <Chips nombre="dias" opciones={DIAS_OPCIONES.map((d) => `${d} ${d === 1 ? 'día' : 'días'}`)} valor={`${e.dias} ${e.dias === 1 ? 'día' : 'días'}`} onChange={(v) => set({ dias: parseInt(v, 10) })} />
+            <Chips
+              nombre="dias"
+              opciones={DIAS_OPCIONES.map((d) => `${d} ${d === 1 ? 'día' : 'días'}`)}
+              valor={e.dias > 0 ? `${e.dias} ${e.dias === 1 ? 'día' : 'días'}` : ''}
+              onChange={(v) => set({ dias: parseInt(v, 10) })}
+            />
           </div>
         )}
-        <BloqueVivo metas={metas} base={g} />
+        <BloqueVivo metas={metas} />
       </>
     );
   } else if (sub.id === 'declarar') {
@@ -556,10 +598,10 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
 /** La caja del cálculo, mientras se responde: solo lo que sale del número que se está
  *  respondiendo ahora, cada cifra con su fórmula detrás de un botón de ayuda. */
-const BloqueVivo: React.FC<{ metas: Meta[]; base: string }> = ({ metas, base }) => {
+const BloqueVivo: React.FC<{ metas: Meta[]; base?: string }> = ({ metas, base }) => {
   const [abierta, setAbierta] = useState<string | null>(null);
   const [anuncio, setAnuncio] = useState('');
-  const visibles = metas.filter((m) => m.meta != null && EQUIV[m.item]?.base === base);
+  const visibles = metas.filter((m) => m.meta != null && (!base || EQUIV[m.item]?.base === base));
   /* Se anuncia un resumen, y solo cuando la persona deja de escribir. */
   useEffect(() => {
     const t = window.setTimeout(() => setAnuncio(visibles.length ? `Calculado: ${visibles.map((m) => `${m.item}, ${cifra(m.meta as number)} ${unidad(m.meta as number, m.unidad ?? '')}`).join('; ')}` : ''), 700);

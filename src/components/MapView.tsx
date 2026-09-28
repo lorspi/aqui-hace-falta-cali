@@ -415,13 +415,32 @@ export const MapView: React.FC<MapViewProps> = ({
         L.point(0, 0)
       );
 
-      // Spread markers in a circle around center
-      const angleStep = (2 * Math.PI) / group.length;
-      const radius = group.length <= 3 ? spreadRadius : spreadRadius + (group.length - 3) * 6;
+      // Multi-level concentric distribution
+      const n = group.length;
+      const distribucion: { radius: number; angle: number }[] = [];
+      if (n <= 6) {
+        const radius = n <= 3 ? 36 : n <= 4 ? 42 : 46;
+        const angleStep = (2 * Math.PI) / n;
+        for (let idx = 0; idx < n; idx++) {
+          distribucion.push({ radius, angle: angleStep * idx - Math.PI / 2 });
+        }
+      } else {
+        const innerCount = Math.min(4, Math.floor(n / 2.5));
+        const outerCount = n - innerCount;
+        const angleStep1 = (2 * Math.PI) / innerCount;
+        for (let idx = 0; idx < innerCount; idx++) {
+          distribucion.push({ radius: 38, angle: angleStep1 * idx - Math.PI / 2 });
+        }
+        const angleStep2 = (2 * Math.PI) / outerCount;
+        for (let idx = 0; idx < outerCount; idx++) {
+          distribucion.push({ radius: 80, angle: angleStep2 * idx - Math.PI / 2 + Math.PI / outerCount });
+        }
+      }
 
       group.forEach((m, idx) => {
-        const originalLatLng = m.getLatLng();
-        const angle = angleStep * idx - Math.PI / 2;
+        const originalLatLng = (m as any)._originalLatLng || m.getLatLng();
+        (m as any)._originalLatLng = originalLatLng;
+        const { radius, angle } = distribucion[idx] || { radius: 36, angle: 0 };
         const newPoint = L.point(
           centerPoint.x + radius * Math.cos(angle),
           centerPoint.y + radius * Math.sin(angle)

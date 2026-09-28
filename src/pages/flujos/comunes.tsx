@@ -467,7 +467,7 @@ export const TarjetasOpcion: React.FC<{ nombre: string; opciones: { id: string; 
     {opciones.map((o) => {
       const marcada = o.id === valor;
       return (
-        <label key={o.id} className={`relative flex cursor-pointer flex-col items-center gap-2 rounded-rd-md border bg-rd-surface px-2 py-4 text-center transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-rd-navy hover:border-rd-ink-3 ${marcada ? 'border-rd-sel ring-1 ring-rd-sel' : 'border-rd-line'}`}>
+        <label key={o.id} className={`relative flex cursor-pointer flex-col items-center gap-2 rounded-rd-md border bg-rd-surface px-2 py-4 text-center transition-colors hover:border-rd-ink-3 ${marcada ? 'border-rd-sel ring-1 ring-rd-sel' : 'border-rd-line'}`}>
           <input type="radio" name={nombre} checked={marcada} onChange={() => onChange(o.id)} className="absolute inset-0 m-0 cursor-pointer opacity-0" />
           <span aria-hidden="true" className={`flex h-11 w-11 items-center justify-center rounded-rd-md border ${marcada ? 'border-rd-sel bg-rd-sel text-white' : 'border-rd-line bg-rd-sunken text-rd-ink-2'}`}>
             {o.icono}
@@ -850,7 +850,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
             <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
             <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
           </span>
-          Buscando compatibles…
+          Buscando matches…
         </p>
       ) : coincidencias.length > 0 ? (
         <div className="mt-6 flex justify-center">

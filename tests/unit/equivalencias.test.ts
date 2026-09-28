@@ -67,14 +67,14 @@ describe('caminoPedir', () => {
 
   it('con agua: incluye el paso de personas directamente (días y personas van juntos)', () => {
     const c = caminoPedir({ sel: ['Agua potable'] }).map((s) => s.id);
-    expect(c).toContain('grupo:personas');
+    expect(c).toContain('afectacion');
     expect(c).not.toContain('dias');
   });
 
   it('un recurso sin meta pide su cantidad en «Cantidades»', () => {
     const c = caminoPedir({ sel: ['Equipos de bombeo'] }).map((s) => s.id);
     expect(c).toContain('declarar');
-    expect(c).not.toContain('grupo:personas');
+    expect(c).not.toContain('afectacion');
   });
 
   it('no deja publicar un recurso sin cifra', () => {
@@ -83,6 +83,27 @@ describe('caminoPedir', () => {
     expect(listoPedir(e, { paso: 2, id: 'revisar', nombre: 'Revisar' })).toBe(false);
     e.det = { 'Equipos de bombeo': { num: 2 } };
     expect(listoPedir(e, { paso: 2, id: 'revisar', nombre: 'Revisar' })).toBe(true);
+  });
+
+  it('unifica personas, viviendas y animales en un solo paso de afectación y exige días', () => {
+    const sel = ['Agua potable', 'Remoción de escombros y barro', 'Cuidado y alimento de animales'];
+    const c = caminoPedir({ sel });
+    const afectacionPasos = c.filter((s) => s.id === 'afectacion');
+    expect(afectacionPasos).toHaveLength(1);
+    expect(afectacionPasos[0].nombre).toBe('Población y días');
+
+    const pasoAfectacion = afectacionPasos[0];
+    const e = { ...estadoInicialPedir(), sel, dias: 0, grupo: {} };
+    expect(listoPedir(e, pasoAfectacion)).toBe(false);
+
+    e.grupo = { personas: 50 };
+    expect(listoPedir(e, pasoAfectacion)).toBe(false);
+
+    e.grupo = { personas: 50, inmuebles: 10, animales: 5 };
+    expect(listoPedir(e, pasoAfectacion)).toBe(false);
+
+    e.dias = 7;
+    expect(listoPedir(e, pasoAfectacion)).toBe(true);
   });
 });
 

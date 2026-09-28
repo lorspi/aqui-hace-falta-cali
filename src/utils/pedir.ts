@@ -34,7 +34,12 @@ export function caminoPedir(e: Pick<EstadoPedir, 'sel'>): SubPaso[] {
     { paso: 1, id: 'evento', nombre: 'Emergencia' },
     { paso: 1, id: 'recursos', nombre: 'Qué hace falta' },
   ];
-  gruposNecesarios(e.sel).forEach((g) => c.push({ paso: 1, id: `grupo:${g}`, nombre: NOMBRE_GRUPO[g] ?? 'Cantidad' }));
+  const necesarios = gruposNecesarios(e.sel);
+  if (necesarios.length > 0) {
+    const nombres = necesarios.map((g) => NOMBRE_GRUPO[g] ?? g);
+    const nombrePaso = nombres.length === 1 ? `${nombres[0]} y días` : 'Población y días';
+    c.push({ paso: 1, id: 'afectacion', nombre: nombrePaso });
+  }
   if (aDeclarar(e.sel).length) c.push({ paso: 1, id: 'declarar', nombre: 'Cantidades' });
   c.push({ paso: 2, id: 'donde', nombre: 'Dónde' });
   c.push({ paso: 2, id: 'contacto', nombre: 'Contacto' });
@@ -64,10 +69,15 @@ export function contactoListo(e: { contacto: string; tel: string }): boolean {
  *  «Revisar» mira todo, porque ahí están todos los campos. */
 export function listoPedir(e: EstadoPedir, sub: SubPaso): boolean {
   if (sub.id === 'recursos') return e.sel.length > 0;
-  if (sub.id.startsWith('grupo:')) {
-    const g = sub.id.split(':')[1];
-    const v = e.grupo[g];
-    return BASES[g].libre ? Number(v) > 0 : !!v;
+  if (sub.id === 'afectacion' || sub.id === 'grupos' || sub.id.startsWith('grupo:')) {
+    const necesarios = gruposNecesarios(e.sel);
+    const gruposListos = necesarios.every((g) => {
+      const v = e.grupo[g];
+      return BASES[g]?.libre ? Number(v) > 0 : !!v;
+    });
+    const tieneDiarios = hayDiarios(e.sel);
+    const diasListo = !tieneDiarios || (e.dias != null && e.dias > 0);
+    return gruposListos && diasListo;
   }
   if (sub.id === 'contacto') return contactoListo(e);
   if (sub.id === 'donde') return !!e.dir.trim();
