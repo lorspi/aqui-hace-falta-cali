@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { BadgeCheck, Flag, Map as MapIcon, Share2 } from 'lucide-react';
+import { BadgeCheck, ExternalLink, Flag, Map as MapIcon, Share2 } from 'lucide-react';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { ResumenCoincidencias } from './Coincidencias';
 import type { Publicacion } from '../../types/publicacion';
 import { actorPublicacion, distanciaTexto, estadoPublicacion, iniciales } from '../../utils/publicaciones';
+import { sanitizeExternalUrl } from '../../utils/formatters';
 import { TituloPublicacion } from './TituloPublicacion';
 import { Button } from './Button';
 import { MenuAcciones } from './MenuAcciones';
@@ -91,6 +92,25 @@ export const Tarjeta: React.FC<TarjetaProps> = ({ publicacion: p, distanciaKm, c
           <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-4 max-sm:mb-3" />
           <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`Fotos de ${p.org}`} onCerrar={() => setFoto(null)} />
         </>
+      )}
+
+      {p.sourceUrl && (
+        <div className="mb-3 max-sm:mb-2.5 flex items-center justify-between gap-2 rounded-rd-md border border-rd-amber-line bg-rd-amber-soft/60 px-3 py-2 text-rd-12">
+          <span className="flex min-w-0 items-center gap-1.5 font-medium text-rd-amber-ink truncate">
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-rd-amber-ink" />
+            <span className="truncate">Campaña / Enlace oficial</span>
+          </span>
+          <a
+            href={sanitizeExternalUrl(p.sourceUrl)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(ev) => ev.stopPropagation()}
+            className="inline-flex items-center gap-1 font-semibold text-rd-navy hover:underline shrink-0 text-rd-12"
+          >
+            <span>Ver enlace</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
       )}
 
       <Recursos publicacion={p} className="mb-3.5 max-sm:mb-2.5" />

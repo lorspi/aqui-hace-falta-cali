@@ -51,6 +51,7 @@ export function needToPublicacion(need: Need): Publicacion {
           cuando: 'Evidencia',
         }))
       : [],
+    sourceUrl: need.sourceUrl,
   };
 
   return pub;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, CircleAlert, Eye, EyeOff } from 'lucide-react';
 
 /**
@@ -37,6 +37,10 @@ export interface FieldProps {
   opciones?: string[];
   /** Filas del textarea (3 por defecto). */
   filas?: number;
+  /** Si debe autoexpandir de 1 línea a multilínea interactiva al enfocar/escribir. */
+  autoExpand?: boolean;
+  /** Callback opcional al enfocar el control. */
+  onFocus?: (e: React.FocusEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
   /** `aria-required` en lo obligatorio que no se dice con asterisco. */
   requerido?: boolean;
   placeholder?: string;
@@ -63,12 +67,14 @@ export const Field: React.FC<FieldProps> = ({
   onChange,
   onChangeMarcado,
   onBlur,
+  onFocus,
   opcional = false,
   ayuda,
   error,
   icono,
   opciones = [],
   filas = 3,
+  autoExpand = false,
   requerido = false,
   placeholder,
   autoComplete,
@@ -82,7 +88,35 @@ export const Field: React.FC<FieldProps> = ({
   className = '',
 }) => {
   const [visible, setVisible] = useState(false);
+  const [enfocado, setEnfocado] = useState(false);
   const passRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const ajustarAltura = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el || !autoExpand) return;
+
+    const tieneContenido = Boolean(valor && valor.trim().length > 0);
+
+    if (!enfocado && !tieneContenido) {
+      el.style.height = '40px';
+      el.style.overflowY = 'hidden';
+      return;
+    }
+
+    el.style.height = 'auto';
+    el.style.overflowY = 'hidden';
+    const alturaContenido = el.scrollHeight;
+    const minAltura = enfocado ? 72 : 40;
+    const nuevaAltura = Math.max(minAltura, alturaContenido);
+    el.style.height = `${nuevaAltura}px`;
+  }, [autoExpand, enfocado, valor]);
+
+  useEffect(() => {
+    if (autoExpand && tipo === 'textarea') {
+      ajustarAltura();
+    }
+  }, [ajustarAltura, autoExpand, tipo, valor, enfocado]);
 
   useEffect(() => {
     if (tipo === 'password' && passRef.current && valorInicial) passRef.current.value = valorInicial;
@@ -196,17 +230,38 @@ export const Field: React.FC<FieldProps> = ({
           </div>
         ) : tipo === 'textarea' ? (
           <textarea
+            ref={textareaRef}
             id={id}
             value={valor}
-            rows={filas}
+            rows={autoExpand && !enfocado && !valor?.trim() ? 1 : filas}
             disabled={deshabilitado}
-            onChange={(e) => onChange?.(e.target.value)}
-            onBlur={(e) => onBlur?.(e.target.value)}
+            onChange={(e) => {
+              onChange?.(e.target.value);
+              if (autoExpand) {
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = `${Math.max(72, el.scrollHeight)}px`;
+              }
+            }}
+            onFocus={(e) => {
+              setEnfocado(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setEnfocado(false);
+              onBlur?.(e.target.value);
+            }}
             placeholder={placeholderFinal}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
             aria-required={requerido || undefined}
-            className={`${claseControl} h-auto min-h-18 resize-y py-2 leading-normal`}
+            className={
+              autoExpand
+                ? `${claseControl} resize-none py-2 leading-snug transition-[height] duration-150 ease-out ${
+                    !enfocado && !valor?.trim() ? 'min-h-10 h-10 overflow-hidden' : 'min-h-18'
+                  }`
+                : `${claseControl} h-auto min-h-18 resize-y py-2 leading-normal`
+            }
           />
         ) : tipo === 'password' ? (
           <>

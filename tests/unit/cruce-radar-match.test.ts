@@ -84,9 +84,9 @@ describe('Radar Match v2 Integration & Logic', () => {
   });
 
   it('generates unified readable match counters', () => {
-    expect(textoSugerencias(1)).toBe('1 compatible');
-    expect(textoSugerencias(3)).toBe('3 compatibles');
-    expect(textoSugerencias(5)).toBe('5 compatibles');
-    expect(textoSugerencias(5, 8)).toBe('5+ compatibles');
+    expect(textoSugerencias(1)).toBe('1 match');
+    expect(textoSugerencias(3)).toBe('3 matches');
+    expect(textoSugerencias(5)).toBe('5 matches');
+    expect(textoSugerencias(5, 8)).toBe('5+ matches');
   });
 });

@@ -78,6 +78,7 @@ export function estadoInicialPedir(): EstadoPedir {
     lat: 3.4516,
     lng: -76.5320,
     fotos: [],
+    sourceUrl: '',
     contacto: '',
     tel: '',
     wa: '',

@@ -62,6 +62,8 @@ export interface Publicacion {
   recursos: Recurso[];
   /** Las fotos de la publicación: públicas en el mapa, como en la app real. */
   fotos?: FotoPublicada[];
+  /** Enlace externo de campaña (Vaki, GoFundMe), video o fuente oficial. */
+  sourceUrl?: string;
   /** Modalidad logística: 'llevamos' | 'sitio' | 'remoto'. */
   modoEntrega?: 'llevamos' | 'sitio' | 'remoto';
   /** Cobertura declarada: '5 km' | '10 km' | '25 km' | '50 km' | 'Todo el país'. */

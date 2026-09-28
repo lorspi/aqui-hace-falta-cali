@@ -81,7 +81,7 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
       return { item: m.item, unidad, total, tramos: [] };
     })
     .filter((r) => r.total > 0);
-  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: publicacionSaleVerificada(), lat: e.lat, lng: e.lng, zona: '', recursos };
+  const base: Publicacion = { id: 'nueva', tipo: 'necesidad', titulo: '', org: CUENTA_PEDIR.organizacion, verificada: publicacionSaleVerificada(), lat: e.lat, lng: e.lng, zona: '', recursos, sourceUrl: e.sourceUrl?.trim() || undefined };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
@@ -157,6 +157,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       paraQuien: estado.paraQuien,
       userId: user?.id,
       evidenceUrl: photoUrls.join(','),
+      sourceUrl: estado.sourceUrl?.trim() || undefined,
     };
 
     const inserted = await createNeedWithItems(needPayload, itemsPayload);
@@ -171,6 +172,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       propia: true,
       org: org?.org_name || profile?.full_name || CUENTA_PEDIR.organizacion || 'Mi Organización',
       verificada: publicacionSaleVerificada(),
+      sourceUrl: estado.sourceUrl?.trim() || undefined,
     };
     setPublicacionPublicada(pubFinal);
 
@@ -552,6 +554,18 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       <>
         <Pregunta titulo="¿Tienes fotos de lo que pasó?" sub="Son opcionales. Una foto o un video le muestran a otra organización qué está pasando, y con eso deciden más rápido si pueden ayudar." />
         <CampoFotos fotos={e.fotos} onAgregar={(nuevas, pesados) => agregarFotos(nuevas, pesados)} onQuitar={quitarFoto} error={errores.errores.fotos} />
+        <div className="mt-6 border-t border-rd-line pt-5">
+          <Field
+            id="sourceUrl"
+            etiqueta="Enlace de campaña, video o fuente oficial"
+            opcional
+            tipo="text"
+            valor={e.sourceUrl}
+            placeholder="Ej: https://vaki.co/..., video de YouTube o noticia"
+            ayuda="Si tienes un enlace externo de campaña (Vaki, GoFundMe), video de YouTube o noticia oficial, pégalo aquí para que aparezca en tu tarjeta."
+            onChange={(v) => set({ sourceUrl: v })}
+          />
+        </div>
       </>
     );
   } else if (sub.id === 'revisar') {
@@ -566,6 +580,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
         <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
         <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave="Enlace" valor={e.sourceUrl?.trim() || 'Sin enlace'} accion={e.sourceUrl?.trim() ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
   }
@@ -684,15 +699,23 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
   return (
     <MetaPub item={m.item} valor={v != null && v !== 0 ? cifra(v) : ''} unidad={unidad(v ?? 0, u)} onChange={(t) => { onChange(t); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} linea={[linea, dt].filter(Boolean).length ? <>{linea}{linea && dt ? <Divisor /> : null}{dt}</> : undefined}>
       {otros.length > 0 && (
-        <>
-          <p className="mb-2 text-rd-12-5 text-rd-ink-2">
-            {D.pregunta}
-            {D.ayuda ? ` ${D.ayuda}` : ''}
-          </p>
+        <div className="mt-2 space-y-2">
           {otros.map((c) => (
-            <Field key={c.k} id={`${id}-${c.k}`} etiqueta={c.l} opcional tipo="textarea" filas={2} valor={String(e.det[m.item]?.[c.k] ?? '')} ayuda={c.p} onChange={(t) => onDetalle({ [c.k]: t })} />
+            <Field
+              key={c.k}
+              id={`${id}-${c.k}`}
+              etiqueta={D.pregunta || c.l}
+              ayuda={D.ayuda}
+              opcional
+              tipo="textarea"
+              autoExpand
+              filas={1}
+              valor={String(e.det[m.item]?.[c.k] ?? '')}
+              placeholder={c.p}
+              onChange={(t) => onDetalle({ [c.k]: t })}
+            />
           ))}
-        </>
+        </div>
       )}
     </MetaPub>
   );

@@ -101,6 +101,8 @@ export interface EstadoPedir {
   lat: number;
   lng: number;
   fotos: Foto[];
+  /** Enlace externo de campaña (Vaki, GoFundMe), video o fuente oficial. */
+  sourceUrl?: string;
   contacto: string;
   tel: string;
   wa: string;
