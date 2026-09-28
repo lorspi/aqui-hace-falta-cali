@@ -24,7 +24,13 @@ import {
   ArrowLeft,
   BookOpen,
   X,
+  Menu,
+  Bot,
   ExternalLink,
+  Building2,
+  Globe,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { Need, Offer, Priority, VerificationStatus } from "../types";
 import {
@@ -44,6 +50,8 @@ import { PublicEditModal } from "./PublicEditModal";
 import { NeedDetailModal } from "./NeedDetailModal";
 import { OfferDetailModal } from "./OfferDetailModal";
 import { ChatbotReportsList } from "./ChatbotReportsList";
+import { Avatar } from "./ui/Etiqueta";
+import { iniciales } from "../utils/publicaciones";
 import {
   useNeeds,
   useOffers,
@@ -65,8 +73,43 @@ import {
   AdminReport,
   AdminAuditLog,
   AdminUser,
+  AdminOrganization,
+  fetchAdminOrganizationsList,
+  updateOrganizationVerification,
 } from "../lib/supabaseService";
 import { useTranslation } from "../i18n/LanguageContext";
+
+function AdminPriorityPill({ priority }: { priority?: Priority }) {
+  if (!priority) return null;
+  const cfg = {
+    CRITICAL: { label: '🔴 Crítica', cls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line' },
+    HIGH: { label: '🟠 Alta', cls: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line' },
+    MEDIUM: { label: '🟡 Media', cls: 'bg-rd-navy-soft text-rd-navy border-rd-navy-line' },
+    LOW: { label: '🟢 Baja', cls: 'bg-rd-green-soft text-rd-green border-rd-green-line' },
+  }[priority] || { label: priority, cls: 'bg-rd-fondo text-rd-ink-meta border-rd-line' };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function AdminVerificationPill({ status }: { status: VerificationStatus }) {
+  const cfg = {
+    VERIFIED: { label: '✓ Verificada', cls: 'bg-rd-green-soft text-rd-green border-rd-green-line' },
+    PENDING_VERIFICATION: { label: '◷ Pendiente', cls: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line' },
+    REPORTED: { label: '⚠️ Reportada', cls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line' },
+    REJECTED: { label: '✕ Rechazada', cls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line' },
+    ARCHIVED: { label: '📁 Archivada', cls: 'bg-rd-fondo text-rd-ink-meta border-rd-line' },
+  }[status] || { label: status, cls: 'bg-rd-fondo text-rd-ink-meta border-rd-line' };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
 
 export const AdminPanelPage: React.FC = () => {
   const { language, t } = useTranslation();
@@ -83,6 +126,7 @@ export const AdminPanelPage: React.FC = () => {
   const [authError, setAuthError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [pendingStatusUser, setPendingStatusUser] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Auto-login si ya existe una sesión activa autenticada en Supabase
   useEffect(() => {
@@ -126,8 +170,8 @@ export const AdminPanelPage: React.FC = () => {
     checkSupabaseSession();
   }, [authToken]);
 
-  type AdminTab = "PENDING" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS" | "CHATBOT";
-  const VALID_TABS: AdminTab[] = ["PENDING", "REPORTS", "METRICS", "ALL", "AUDIT", "USERS", "CHATBOT"];
+  type AdminTab = "PENDING" | "ORGANIZATIONS" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS" | "CHATBOT";
+  const VALID_TABS: AdminTab[] = ["PENDING", "ORGANIZATIONS", "REPORTS", "METRICS", "ALL", "AUDIT", "USERS", "CHATBOT"];
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     const saved = localStorage.getItem("ahf_admin_active_tab");
     return saved && VALID_TABS.includes(saved as AdminTab) ? (saved as AdminTab) : "PENDING";
@@ -137,6 +181,19 @@ export const AdminPanelPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("ahf_admin_active_tab", activeTab);
   }, [activeTab]);
+
+  // Subpestaña activa del Chatbot (Tickets Rápidos vs WhatsApp)
+  const [chatbotSubTab, setChatbotSubTab] = useState<'QUICK_TICKETS' | 'WHATSAPP'>('QUICK_TICKETS');
+
+  // Subfiltro para la pestaña de Pendientes
+  const [pendingSubFilter, setPendingSubFilter] = useState<'ALL' | 'NEEDS' | 'OFFERS' | 'VOLUNTEERS'>('ALL');
+
+  // Organizations & Communities state
+  const [organizationsList, setOrganizationsList] = useState<AdminOrganization[]>([]);
+  const [viewingOrg, setViewingOrg] = useState<AdminOrganization | null>(null);
+  const [isSavingOrgStatus, setIsSavingOrgStatus] = useState(false);
+  const [orgStatusFilter, setOrgStatusFilter] = useState<'ALL' | 'PENDING' | 'VERIFIED'>('ALL');
+  const [orgCategoryFilter, setOrgCategoryFilter] = useState<'ALL' | 'ORGANIZACION' | 'COMUNIDAD'>('ALL');
 
   // Search & Filters
   const [adminSearch, setAdminSearch] = useState("");
@@ -198,18 +255,20 @@ export const AdminPanelPage: React.FC = () => {
     (n) => (n.source || "").toLowerCase() === "whatsapp" && n.verificationStatus === "PENDING_VERIFICATION"
   ).length;
 
-  // Load admin reports & users
+  // Load admin reports, users & organizations
   const loadData = async () => {
     setIsLoadingReports(true);
     try {
-      const [reps, logs, users] = await Promise.all([
+      const [reps, logs, users, orgs] = await Promise.all([
         fetchAdminReports(),
         fetchAuditLogs(),
         fetchUsersList(),
+        fetchAdminOrganizationsList(),
       ]);
       setReports(reps);
       setAuditLogs(logs);
       setUsersList(users);
+      setOrganizationsList(orgs);
     } catch (err) {
       console.error("Error loading admin data:", err);
     } finally {
@@ -488,6 +547,40 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
+  const handleToggleOrgVerification = async (org: AdminOrganization) => {
+    const nextStatus = !org.isVerified;
+    const actionVerb = nextStatus ? 'verificar' : 'revocar la verificación de';
+    if (!(await showConfirm(`¿Estás seguro de ${actionVerb} a "${org.name}"?`, {
+      title: nextStatus ? 'Verificar Organización / Comunidad' : 'Revocar Verificación',
+    }))) {
+      return;
+    }
+
+    setIsSavingOrgStatus(true);
+    try {
+      await updateOrganizationVerification(org.id, org.userId, nextStatus);
+      await logAudit(
+        nextStatus ? 'VERIFY_ORGANIZATION' : 'UNVERIFY_ORGANIZATION',
+        currentUser?.email || 'admin@lorspi.com',
+        `Entidad "${org.name}" (ID: ${org.id}) marcada como ${nextStatus ? 'VERIFICADA' : 'NO VERIFICADA'}.`
+      );
+      // Refrescar lista y modal abierto si coincide
+      const updated = await fetchAdminOrganizationsList();
+      setOrganizationsList(updated);
+      if (viewingOrg && viewingOrg.id === org.id) {
+        setViewingOrg({ ...viewingOrg, isVerified: nextStatus });
+      }
+      showAlert(
+        nextStatus ? `"${org.name}" ha sido verificada exitosamente.` : `Se revocó la verificación de "${org.name}".`,
+        { title: 'Éxito', variant: 'success' }
+      );
+    } catch (err: any) {
+      showAlert(err.message || 'Error al actualizar verificación', { title: 'Error', variant: 'error' });
+    } finally {
+      setIsSavingOrgStatus(false);
+    }
+  };
+
   const handleDeleteUserItem = async (userId: string, name: string) => {
     if (!(await showConfirm(`¿Eliminar al usuario "${name}"?`, { title: 'Eliminar usuario' }))) return;
     try {
@@ -501,21 +594,21 @@ export const AdminPanelPage: React.FC = () => {
 
   if (pendingStatusUser && !authToken) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
+      <div className="min-h-screen bg-rd-fondo flex items-center justify-center p-4 font-rd text-rd-ink">
+        <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-6 md:p-8 max-w-md w-full shadow-xs space-y-6 text-center">
+          <div className="w-12 h-12 rounded-rd-xl bg-rd-amber-soft border border-rd-amber-line flex items-center justify-center mx-auto text-rd-amber">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-black text-slate-900">Solicitud en Revisión</h1>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <h1 className="text-rd-18 font-bold text-rd-ink">Solicitud en Revisión</h1>
+            <p className="text-rd-12 text-rd-ink-2 leading-relaxed">
               Tu solicitud de moderador se encuentra en estado <strong>pendiente de aprobación</strong>. Un administrador revisará tu información para habilitar tu acceso al panel.
             </p>
           </div>
           <button
             type="button"
             onClick={() => { window.location.href = '/'; }}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-md text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold py-2.5 rounded-rd-md transition-colors text-rd-13 flex items-center justify-center gap-2 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver a la plataforma</span>
@@ -528,54 +621,52 @@ export const AdminPanelPage: React.FC = () => {
   // If not logged in, render Login View
   if (!authToken) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6">
+      <div className="min-h-screen bg-rd-fondo flex items-center justify-center p-4 font-rd text-rd-ink">
+        <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-6 md:p-8 max-w-md w-full shadow-xs space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <h1 className="text-xl font-black text-slate-900">{t('loginTitle')}</h1>
-            <p className="text-xs text-slate-500">
-              Aquí Hace Falta — Valle del Cauca
+            <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-8 mx-auto mb-1" />
+            <h1 className="text-rd-18 font-bold text-rd-ink">{t('loginTitle')}</h1>
+            <p className="text-rd-12 text-rd-ink-meta">
+              Panel Administrativo y de Moderación
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 text-xs">
+          <form onSubmit={handleLogin} className="space-y-4 text-rd-12">
             {authError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl flex items-center gap-2">
+              <div className="bg-rd-coral-soft border border-rd-coral-line text-rd-coral p-3 rounded-rd-md flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{authError}</span>
               </div>
             )}
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Correo electrónico</label>
+              <label className="block font-semibold text-rd-ink-2 mb-1">Correo electrónico</label>
               <input
                 type="email"
                 required
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="moderador@lorspi.com"
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm"
+                className="w-full h-10 px-3 bg-rd-surface border border-rd-line rounded-rd-md text-rd-13 text-rd-ink focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft transition-all"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">{t('passwordLabel')}</label>
+              <label className="block font-semibold text-rd-ink-2 mb-1">{t('passwordLabel')}</label>
               <input
                 type="password"
                 required
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 placeholder={t('passwordPlaceholder')}
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm"
+                className="w-full h-10 px-3 bg-rd-surface border border-rd-line rounded-rd-md text-rd-13 text-rd-ink focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs"
+              className="w-full h-10 bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold rounded-rd-md transition-colors shadow-xs flex items-center justify-center gap-2 text-rd-13 cursor-pointer"
             >
               {isLoggingIn ? (
                 <>
@@ -586,11 +677,10 @@ export const AdminPanelPage: React.FC = () => {
                 <span>{t('loginButton')}</span>
               )}
             </button>
-
           </form>
 
-          <div className="text-center pt-2 border-t border-slate-100">
-            <a href="/" className="text-xs text-slate-500 hover:text-slate-900 inline-flex items-center gap-1">
+          <div className="text-center pt-2 border-t border-rd-line">
+            <a href="/" className="text-rd-12 text-rd-ink-meta hover:text-rd-navy inline-flex items-center gap-1.5 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Volver a la plataforma</span>
             </a>
@@ -600,329 +690,790 @@ export const AdminPanelPage: React.FC = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col text-xs text-slate-800">
-      {/* Top Header */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <a
-              href="/mapa-ayudas-necesidades"
-              onClick={(e) => {
-                e.preventDefault();
-                window.history.pushState({}, '', '/mapa-ayudas-necesidades');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              title="Volver al Mapa"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </a>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              <span className="font-black text-sm tracking-tight">PANEL DE MODERACIÓN</span>
-              <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-indigo-500/30">
-                {currentUser?.role || 'MODERATOR'}
-              </span>
-            </div>
-          </div>
+  type AdminNavTabItem = {
+    id: AdminTab;
+    label: string;
+    icon: React.ReactNode;
+    count?: number;
+  };
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-300 hidden sm:inline">
-              👤 {currentUser?.name || currentUser?.email || 'Moderador'}
+  const adminNavItems: AdminNavTabItem[] = [
+    {
+      id: 'PENDING',
+      label: 'Pendientes',
+      icon: <Clock className="w-4 h-4 shrink-0" />,
+      count: pendingNeeds.length + pendingOffers.length + pendingVolunteers.length,
+    },
+    {
+      id: 'ORGANIZATIONS',
+      label: 'Org & Comunidades',
+      icon: <Building2 className="w-4 h-4 shrink-0" />,
+      count: organizationsList.filter((o) => !o.isVerified).length,
+    },
+    {
+      id: 'REPORTS',
+      label: 'Reportes',
+      icon: <Flag className="w-4 h-4 shrink-0" />,
+      count: pendingReports.length,
+    },
+    {
+      id: 'CHATBOT',
+      label: 'Chatbot',
+      icon: <MessageSquare className="w-4 h-4 shrink-0" />,
+      count: chatbotPendingCount,
+    },
+    {
+      id: 'ALL',
+      label: 'Publicaciones',
+      icon: <List className="w-4 h-4 shrink-0" />,
+      count: needs.length + offers.length,
+    },
+    {
+      id: 'AUDIT',
+      label: 'Auditoría',
+      icon: <FileText className="w-4 h-4 shrink-0" />,
+    },
+    ...(currentUser?.role === 'ADMIN'
+      ? [
+          {
+            id: 'USERS' as AdminTab,
+            label: 'Usuarios & Roles',
+            icon: <Users className="w-4 h-4 shrink-0" />,
+            count: usersList.length,
+          },
+        ]
+      : []),
+  ];
+
+  const currentTabConfig = adminNavItems.find((item) => item.id === activeTab) || adminNavItems[0];
+
+  const renderNavItem = (item: AdminNavTabItem) => {
+    const isCurrent = activeTab === item.id;
+    return (
+      <div key={item.id} className="space-y-1">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab(item.id);
+            setMobileMenuOpen(false);
+          }}
+          aria-current={isCurrent ? 'page' : undefined}
+          className={`font-rd flex w-full h-10 shrink-0 items-center gap-2.5 rounded-rd-lg px-3 text-rd-13 font-medium text-left transition-colors cursor-pointer ${
+            isCurrent
+              ? 'bg-rd-navy-soft font-semibold text-rd-navy'
+              : 'text-rd-ink-2 hover:bg-rd-fondo hover:text-rd-ink'
+          }`}
+        >
+          <span className={`shrink-0 ${isCurrent ? 'text-rd-navy' : 'text-rd-ink-3'}`}>
+            {item.icon}
+          </span>
+          <span className="truncate flex-1">{item.label}</span>
+          {item.count !== undefined && item.count > 0 && (
+            <span className="ml-auto shrink-0 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-rd-10 font-bold bg-rd-fondo text-rd-ink-meta border border-rd-line">
+              {item.count}
             </span>
-            <a
-              href="/moderador"
-              className="text-xs text-slate-300 hover:text-white flex items-center gap-1 bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Guía</span>
-            </a>
+          )}
+        </button>
+
+        {/* Submenú de Chatbot cuando está activo */}
+        {item.id === 'CHATBOT' && activeTab === 'CHATBOT' && (
+          <div className="ml-4 pl-3 border-l-2 border-rd-line space-y-1 my-1">
             <button
-              onClick={handleLogout}
-              className="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-red-500/30 transition-all flex items-center gap-1.5"
+              type="button"
+              onClick={() => {
+                setChatbotSubTab('QUICK_TICKETS');
+                setMobileMenuOpen(false);
+              }}
+              className={`font-rd flex w-full h-8 items-center gap-2 rounded-rd-md px-2.5 text-rd-12 font-medium text-left transition-colors cursor-pointer ${
+                chatbotSubTab === 'QUICK_TICKETS'
+                  ? 'bg-rd-navy text-white font-semibold shadow-xs'
+                  : 'text-rd-ink-2 hover:bg-rd-fondo hover:text-rd-ink'
+              }`}
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>{t('logoutButton')}</span>
+              <Bot className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate flex-1">Tickets Rápidos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setChatbotSubTab('WHATSAPP');
+                setMobileMenuOpen(false);
+              }}
+              className={`font-rd flex w-full h-8 items-center gap-2 rounded-rd-md px-2.5 text-rd-12 font-medium text-left transition-colors cursor-pointer ${
+                chatbotSubTab === 'WHATSAPP'
+                  ? 'bg-rd-navy text-white font-semibold shadow-xs'
+                  : 'text-rd-ink-2 hover:bg-rd-fondo hover:text-rd-ink'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate flex-1">WhatsApp</span>
+              {chatbotPendingCount > 0 && (
+                <span
+                  className={`ml-auto shrink-0 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-rd-10 font-bold ${
+                    chatbotSubTab === 'WHATSAPP'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-rd-fondo text-rd-ink-meta border border-rd-line'
+                  }`}
+                >
+                  {chatbotPendingCount}
+                </span>
+              )}
             </button>
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderUserFooter = () => (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-rd-lg bg-rd-fondo">
+        <div className="w-8 h-8 rounded-full bg-rd-navy-soft text-rd-navy font-bold text-rd-12 flex items-center justify-center shrink-0">
+          {(currentUser?.name || currentUser?.email || 'M').slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-rd-12 font-semibold text-rd-ink truncate">
+            {currentUser?.name || 'Moderador'}
+          </span>
+          <span className="text-rd-10 text-rd-ink-meta truncate">
+            {currentUser?.email || ''}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <a
+          href="/moderador"
+          className="flex-1 flex items-center justify-center gap-1.5 text-rd-11-5 font-medium text-rd-ink-2 hover:text-rd-navy bg-rd-fondo hover:bg-rd-navy-soft/60 px-2.5 py-1.5 rounded-rd-md transition-colors"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Guía</span>
+        </a>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center justify-center gap-1.5 text-rd-11-5 font-semibold text-rd-coral hover:bg-rd-coral-soft/50 px-2.5 py-1.5 rounded-rd-md transition-colors cursor-pointer"
+          title={t('logoutButton')}
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Salir</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="rd-app font-rd flex min-h-dvh gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-13-5 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-fondo max-lg:p-0">
+      {/* Mobile Drawer Backdrop & Drawer (<1024px) */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-rd-ink/40 backdrop-blur-xs lg:hidden flex"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="w-72 max-w-[85vw] h-full bg-rd-surface border-r border-rd-line p-4 flex flex-col shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="pb-3 mb-2 border-b border-rd-line space-y-2">
+              <div className="flex items-center justify-between">
+                <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-7 w-auto" />
+                <div className="flex items-center gap-2">
+                  <span className="bg-rd-fondo text-rd-navy text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border border-rd-line">
+                    {currentUser?.role || 'MOD'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1 text-rd-ink-meta hover:text-rd-ink rounded-rd-md transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h2 className="font-bold text-rd-14 text-rd-ink leading-tight">Panel de Moderación</h2>
+                <p className="text-rd-11 text-rd-ink-meta">Gestión y verificación</p>
+              </div>
+            </div>
+
+            {/* Nav list */}
+            <nav className="flex-1 overflow-y-auto space-y-1 py-2">
+              {adminNavItems.map(renderNavItem)}
+            </nav>
+
+            {/* Drawer Footer */}
+            <div className="pt-3 border-t border-rd-line mt-auto">
+              {renderUserFooter()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar (≥1024px) */}
+      <aside className="w-64 flex h-full shrink-0 flex-col rounded-rd-xl border border-rd-line bg-rd-surface py-4 px-3.5 max-lg:hidden">
+        {/* Return button */}
+        <a
+          href="/mapa-ayudas-necesidades"
+          onClick={(e) => {
+            e.preventDefault();
+            window.history.pushState({}, '', '/mapa-ayudas-necesidades');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+          className="inline-flex items-center gap-1.5 text-rd-11-5 text-rd-ink-meta hover:text-rd-navy transition-colors mb-3 px-1"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Volver a la plataforma</span>
+        </a>
+
+        {/* Brand & Title */}
+        <div className="px-1 pb-3 mb-2 border-b border-rd-line space-y-2">
+          {/* Fila 1: Logo + Rol */}
+          <div className="flex items-center justify-between">
+            <img src="/logo-radar.svg" alt="RaDAR de Ayuda" className="h-7 w-auto" />
+            <span className="bg-rd-fondo text-rd-navy text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border border-rd-line">
+              {currentUser?.role || 'MOD'}
+            </span>
+          </div>
+          {/* Fila 2: Título y subtítulo */}
+          <div>
+            <h2 className="font-bold text-rd-14 text-rd-ink leading-tight">Panel de Moderación</h2>
+            <p className="text-rd-11 text-rd-ink-meta">Gestión y verificación</p>
+          </div>
+        </div>
+
+        {/* Nav Items */}
+        <nav className="flex-1 overflow-y-auto space-y-1 py-1">
+          {adminNavItems.map(renderNavItem)}
+        </nav>
+
+        {/* Footer profile & actions */}
+        <div className="mt-auto border-t border-rd-line pt-3">
+          {renderUserFooter()}
+        </div>
+      </aside>
+
+      {/* Mobile Top Header (<1024px) */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-rd-surface border-b border-rd-line">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-1.5 -ml-1 text-rd-ink-2 hover:bg-rd-fondo rounded-rd-md transition-colors"
+            aria-label="Abrir menú"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <img src="/logo-radar.svg" alt="RaDAR" className="h-6 w-auto" />
+          <span className="font-bold text-rd-13 text-rd-ink">Panel Admin</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="bg-rd-navy-soft text-rd-navy text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border border-rd-navy-line">
+            {currentUser?.role || 'MOD'}
+          </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="text-rd-coral p-1.5 hover:bg-rd-coral-soft rounded-rd-md transition-colors"
+            title={t('logoutButton')}
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6 flex-1 w-full">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-1">
-          <button
-            onClick={() => setActiveTab('PENDING')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'PENDING'
-                ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Pendientes por Verificar</span>
-            {(pendingNeeds.length + pendingOffers.length) > 0 && (
-              <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                {pendingNeeds.length + pendingOffers.length}
+      {/* Content Area */}
+      <main className="flex-1 min-w-0 flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface overflow-hidden max-lg:rounded-none max-lg:border-0">
+        {/* Content Header */}
+        <div className="px-5 py-3.5 border-b border-rd-line bg-rd-surface flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-rd-navy">
+              {currentTabConfig.icon}
+            </span>
+            <h1 className="font-bold text-rd-15 text-rd-ink truncate">
+              {currentTabConfig.label}
+              {activeTab === 'CHATBOT' && (
+                <span className="font-normal text-rd-ink-meta text-rd-13 ml-1.5">
+                  / {chatbotSubTab === 'QUICK_TICKETS' ? 'Tickets Rápidos' : 'WhatsApp'}
+                </span>
+              )}
+            </h1>
+            {currentTabConfig.count !== undefined && currentTabConfig.count > 0 && (
+              <span className="bg-rd-fondo text-rd-ink-meta text-rd-11 font-semibold px-2 py-0.5 rounded-full border border-rd-line">
+                {currentTabConfig.count}
               </span>
             )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('REPORTS')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'REPORTS'
-                ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <Flag className="w-4 h-4" />
-            <span>{t('pendingReports')}</span>
-            {pendingReports.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                {pendingReports.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('CHATBOT')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'CHATBOT'
-                ? 'bg-white text-emerald-600 border-t-2 border-emerald-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Reportes del Chatbot</span>
-            {chatbotPendingCount > 0 && (
-              <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                {chatbotPendingCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'ALL'
-                ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <List className="w-4 h-4" />
-            <span>Todas las Solicitudes ({needs.length + offers.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('AUDIT')}
-            className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'AUDIT'
-                ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Historial de Auditoría</span>
-          </button>
-
-          {currentUser?.role === 'ADMIN' && (
-            <button
-              onClick={() => setActiveTab('USERS')}
-              className={`px-4 py-2.5 rounded-t-xl font-bold text-xs flex items-center gap-2 transition-colors whitespace-nowrap ${
-                activeTab === 'USERS'
-                  ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/60'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Usuarios & Moderadores ({usersList.length})</span>
-            </button>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-rd-11 text-rd-ink-meta hidden sm:inline">
+              👤 {currentUser?.name || currentUser?.email || 'Moderador'}
+            </span>
+          </div>
         </div>
 
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-rd-fondo/40">
         {/* TAB 1: PENDING VERIFICATION */}
-        {activeTab === 'PENDING' && (
-          <div className="space-y-6">
-            {/* Pending Needs */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  Necesidades Pendientes ({pendingNeeds.length})
-                </h3>
+        {activeTab === 'PENDING' && (() => {
+          const totalPending = pendingNeeds.length + pendingOffers.length + pendingVolunteers.length;
+          const showNeeds = pendingSubFilter === 'ALL' || pendingSubFilter === 'NEEDS';
+          const showOffers = pendingSubFilter === 'ALL' || pendingSubFilter === 'OFFERS';
+          const showVolunteers = pendingSubFilter === 'ALL' || pendingSubFilter === 'VOLUNTEERS';
+
+          const hasItems =
+            (showNeeds && pendingNeeds.length > 0) ||
+            (showOffers && pendingOffers.length > 0) ||
+            (showVolunteers && pendingVolunteers.length > 0);
+
+          return (
+            <div className="space-y-4">
+              {/* Sub-filter Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPendingSubFilter('ALL')}
+                    className={`h-8 px-3 rounded-rd-md text-rd-12 font-medium transition-colors cursor-pointer border ${
+                      pendingSubFilter === 'ALL'
+                        ? 'bg-rd-navy text-white border-rd-navy font-semibold shadow-xs'
+                        : 'bg-rd-surface text-rd-ink hover:bg-rd-fondo border-rd-line'
+                    }`}
+                  >
+                    Todos ({totalPending})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingSubFilter('NEEDS')}
+                    className={`h-8 px-3 rounded-rd-md text-rd-12 font-medium transition-colors cursor-pointer border ${
+                      pendingSubFilter === 'NEEDS'
+                        ? 'bg-rd-navy text-white border-rd-navy font-semibold shadow-xs'
+                        : 'bg-rd-surface text-rd-ink hover:bg-rd-fondo border-rd-line'
+                    }`}
+                  >
+                    Necesidades ({pendingNeeds.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingSubFilter('OFFERS')}
+                    className={`h-8 px-3 rounded-rd-md text-rd-12 font-medium transition-colors cursor-pointer border ${
+                      pendingSubFilter === 'OFFERS'
+                        ? 'bg-rd-navy text-white border-rd-navy font-semibold shadow-xs'
+                        : 'bg-rd-surface text-rd-ink hover:bg-rd-fondo border-rd-line'
+                    }`}
+                  >
+                    Ofertas ({pendingOffers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingSubFilter('VOLUNTEERS')}
+                    className={`h-8 px-3 rounded-rd-md text-rd-12 font-medium transition-colors cursor-pointer border ${
+                      pendingSubFilter === 'VOLUNTEERS'
+                        ? 'bg-rd-navy text-white border-rd-navy font-semibold shadow-xs'
+                        : 'bg-rd-surface text-rd-ink hover:bg-rd-fondo border-rd-line'
+                    }`}
+                  >
+                    Voluntarios ({pendingVolunteers.length})
+                  </button>
+                </div>
+                <span className="text-rd-11-5 text-rd-ink-meta font-medium">
+                  {totalPending} en cola
+                </span>
               </div>
 
-              {pendingNeeds.length === 0 ? (
-                <p className="text-slate-500 italic text-center py-6">
-                  No hay necesidades pendientes de verificación. 🎉
-                </p>
+              {!hasItems ? (
+                <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-10 text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-rd-green mx-auto opacity-70" />
+                  <h4 className="font-bold text-rd-ink text-rd-15">¡Todo al día!</h4>
+                  <p className="text-rd-ink-meta text-rd-12">
+                    No hay solicitudes pendientes de verificación en esta sección. 🎉
+                  </p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pendingNeeds.map((need) => (
-                    <div key={need.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-bold text-slate-900">{need.title}</h4>
-                          <p className="text-[11px] text-slate-500">{need.address}, {need.neighborhood}</p>
+                <div className="space-y-3">
+                  {/* Needs */}
+                  {showNeeds &&
+                    pendingNeeds.map((need) => (
+                      <div
+                        key={need.id}
+                        className="bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="bg-rd-coral-soft text-rd-coral border border-rd-coral-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                              Necesidad
+                            </span>
+                            <AdminPriorityPill priority={need.priority} />
+                            <span className="bg-rd-amber-soft text-rd-amber-ink border border-rd-amber-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                              ◷ Pendiente
+                            </span>
+                            <span className="text-rd-11-5 text-rd-ink-meta flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+                              {need.neighborhood ? `${need.neighborhood}, ` : ''}{need.address || 'Ubicación registrada'}
+                            </span>
+                            <span className="text-rd-11 text-rd-ink-meta flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-rd-ink-3" />
+                              {formatTimeAgo(need.updatedAt, 'es')}
+                            </span>
+                          </div>
+                          <h4 className="font-semibold text-rd-ink text-rd-14">{need.title}</h4>
+                          <p className="text-rd-12 text-rd-ink-2 line-clamp-2">{need.description}</p>
                         </div>
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          {need.priority}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyNeed(need.id, 'verify')}
+                            className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{t('verifyAction')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewingNeed(need)}
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                          >
+                            Ver detalle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyNeed(need.id, 'archive')}
+                            className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                          >
+                            {t('archiveAction')}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-2">{need.description}</p>
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                        <button
-                          onClick={() => handleVerifyNeed(need.id, 'verify')}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{t('verifyAction')}</span>
-                        </button>
-                        <button
-                          onClick={() => setViewingNeed(need)}
-                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-lg"
-                        >
-                          Ver detalle
-                        </button>
-                        <button
-                          onClick={() => handleVerifyNeed(need.id, 'archive')}
-                          className="bg-slate-600 hover:bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg ml-auto"
-                        >
-                          {t('archiveAction')}
-                        </button>
+                    ))}
+
+                  {/* Offers */}
+                  {showOffers &&
+                    pendingOffers.map((offer) => (
+                      <div
+                        key={offer.id}
+                        className="bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="bg-rd-navy-soft text-rd-navy border border-rd-navy-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                              Oferta
+                            </span>
+                            <span className="bg-rd-amber-soft text-rd-amber-ink border border-rd-amber-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                              ◷ Pendiente
+                            </span>
+                            <span className="text-rd-11-5 text-rd-ink-meta flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+                              {offer.neighborhood ? `${offer.neighborhood}, ` : ''}{offer.address || 'Ubicación registrada'}
+                            </span>
+                            <span className="text-rd-11 text-rd-ink-meta flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-rd-ink-3" />
+                              {formatTimeAgo(offer.updatedAt, 'es')}
+                            </span>
+                          </div>
+                          <h4 className="font-semibold text-rd-ink text-rd-14">{offer.title}</h4>
+                          <p className="text-rd-12 text-rd-ink-2 line-clamp-2">{offer.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyOffer(offer.id, 'verify')}
+                            className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{t('verifyAction')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewingOffer(offer)}
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                          >
+                            Ver detalle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyOffer(offer.id, 'archive')}
+                            className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                          >
+                            {t('archiveAction')}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+
+                  {/* Volunteers */}
+                  {showVolunteers &&
+                    pendingVolunteers.map((vol) => (
+                      <div
+                        key={vol.id}
+                        className="bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="bg-rd-amber-soft text-rd-amber-ink font-bold text-rd-10 px-2 py-0.5 rounded-rd-sm border border-rd-amber-line uppercase tracking-wider">
+                              🧑‍🌾 Voluntario RaDAR
+                            </span>
+                            <span className="bg-rd-amber-soft text-rd-amber-ink text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border border-rd-amber-line">
+                              ◷ Pendiente
+                            </span>
+                            <span className="text-rd-11-5 text-rd-ink-meta">
+                              {vol.email} {vol.phone ? `• Tel: ${vol.phone}` : ''}
+                            </span>
+                          </div>
+                          <h4 className="font-semibold text-rd-ink text-rd-14">{vol.name}</h4>
+                          <p className="text-rd-12 text-rd-ink-2">
+                            <strong className="text-rd-ink">Aporte:</strong>{' '}
+                            {vol.volunteerConnectionType === 'VOLUNTEER'
+                              ? 'Ser voluntario/a'
+                              : vol.volunteerConnectionType === 'OFFER_HELP'
+                              ? 'Ofrecer ayuda'
+                              : vol.volunteerConnectionType === 'COLLABORATE'
+                              ? 'Colaborar'
+                              : vol.volunteerConnectionType === 'COMMUNITY'
+                              ? 'Comunidad'
+                              : 'Voluntariado'}{' '}
+                            • <strong className="text-rd-ink">Contacto preferido:</strong>{' '}
+                            {vol.preferredContactMethod || 'WhatsApp'}
+                          </p>
+                          {vol.volunteerNotes && (
+                            <p className="text-rd-11-5 text-rd-ink-meta italic">"{vol.volunteerNotes}"</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleChangeModerationStatus(vol.id, 'APPROVED')}
+                            disabled={isSavingUserStatus}
+                            className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-40"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Aprobar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewingUser(vol)}
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                          >
+                            Ver ficha
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleChangeModerationStatus(vol.id, 'REJECTED')}
+                            disabled={isSavingUserStatus}
+                            className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Rechazar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
+          );
+        })()}
 
-            {/* Pending Offers */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-500" />
-                  {t('pendingVerificationOffers')} ({pendingOffers.length})
-                </h3>
+        {/* TAB: ORGANIZATIONS & COMMUNITIES */}
+        {activeTab === 'ORGANIZATIONS' && (() => {
+          const filteredOrgs = organizationsList.filter((org) => {
+            if (orgStatusFilter === 'PENDING' && org.isVerified) return false;
+            if (orgStatusFilter === 'VERIFIED' && !org.isVerified) return false;
+            if (orgCategoryFilter !== 'ALL' && org.category !== orgCategoryFilter) return false;
+            return true;
+          });
+
+          const sortedOrgs = [...filteredOrgs].sort((a, b) => {
+            if (a.isVerified !== b.isVerified) {
+              return a.isVerified ? 1 : -1;
+            }
+            return (b.createdAt || '').localeCompare(a.createdAt || '');
+          });
+
+          return (
+            <div className="space-y-4">
+              {/* Header de filtros */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-rd-navy" />
+                  <h3 className="font-bold text-rd-ink text-rd-14">
+                    Organizaciones y Comunidades ({organizationsList.length})
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CustomSelect
+                    value={orgStatusFilter}
+                    onChange={(v) => setOrgStatusFilter(v as any)}
+                    className="w-48"
+                    icon={<CheckCircle className="w-3.5 h-3.5 text-rd-ink-3" />}
+                    options={[
+                      { value: 'ALL', label: 'Todos los estados' },
+                      { value: 'PENDING', label: '◷ Pendiente verificación' },
+                      { value: 'VERIFIED', label: '✓ Verificadas' },
+                    ]}
+                  />
+                  <CustomSelect
+                    value={orgCategoryFilter}
+                    onChange={(v) => setOrgCategoryFilter(v as any)}
+                    className="w-52"
+                    icon={<Users className="w-3.5 h-3.5 text-rd-ink-3" />}
+                    options={[
+                      { value: 'ALL', label: 'Todas las categorías' },
+                      { value: 'ORGANIZACION', label: '🏢 Organizaciones / ONGs' },
+                      { value: 'COMUNIDAD', label: '🤝 Comunidades / Líderes' },
+                    ]}
+                  />
+                </div>
               </div>
 
-              {pendingOffers.length === 0 ? (
-                <p className="text-slate-500 italic text-center py-6">
-                  No hay ofertas pendientes de verificación. 🎉
-                </p>
+              {/* Lista en modo estandarizado */}
+              {sortedOrgs.length === 0 ? (
+                <div className="text-center py-12 bg-rd-surface rounded-rd-xl border border-rd-line shadow-xs">
+                  <p className="text-rd-ink-meta italic text-rd-13">
+                    {organizationsList.length === 0
+                      ? 'No hay organizaciones ni comunidades registradas.'
+                      : 'No se encontraron resultados con los filtros aplicados.'}
+                  </p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pendingOffers.map((offer) => (
-                    <div key={offer.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-bold text-slate-900">{offer.title}</h4>
-                          <p className="text-[11px] text-slate-500">{offer.address}, {offer.neighborhood}</p>
+                <div className="space-y-3">
+                  {sortedOrgs.map((org) => {
+                    const isOrgCategory = org.category === 'ORGANIZACION';
+
+                    return (
+                      <div
+                        key={org.id}
+                        className="bg-rd-surface rounded-rd-xl border border-rd-line p-4 md:p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
+                      >
+                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                          <div className="shrink-0 mt-0.5">
+                            <Avatar iniciales={iniciales(org.name)} tamano="md" />
+                          </div>
+
+                          <div className="min-w-0 space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-semibold text-rd-ink text-rd-14 truncate">
+                                {org.name}
+                              </h4>
+
+                              {/* Category pill */}
+                              <span
+                                className={`text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border ${
+                                  isOrgCategory
+                                    ? 'bg-rd-coral-soft text-rd-coral border-rd-coral-line'
+                                    : 'bg-rd-navy-soft text-rd-navy border-rd-navy-line'
+                                }`}
+                              >
+                                {isOrgCategory ? '🏢 Organización' : '🤝 Comunidad / Líder'}
+                              </span>
+
+                              {/* Verification pill */}
+                              {org.isVerified ? (
+                                <span className="bg-rd-green-soft text-rd-green border border-rd-green-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                                  ✓ Verificada
+                                </span>
+                              ) : (
+                                <span className="bg-rd-amber-soft text-rd-amber-ink border border-rd-amber-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                                  ◷ Pendiente verificación
+                                </span>
+                              )}
+
+                              {/* Org type tag */}
+                              <span className="bg-rd-fondo text-rd-ink-meta border border-rd-line text-rd-10 font-medium px-2 py-0.5 rounded-rd-sm truncate max-w-xs">
+                                {org.organizationType}
+                              </span>
+                            </div>
+
+                            {/* Contact info row */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-rd-12 text-rd-ink-2">
+                              {org.contactName && (
+                                <span className="truncate">
+                                  <strong>Contacto:</strong> {org.contactName}
+                                </span>
+                              )}
+                              {org.documentNumber && (
+                                <span className="text-rd-ink-meta">
+                                  {org.documentType ? org.documentType.toUpperCase() : 'DOC'}: {org.documentNumber}
+                                </span>
+                              )}
+                              {org.contactPhone && (
+                                <span className="text-rd-ink-meta">
+                                  Tel: {org.contactPhone}
+                                </span>
+                              )}
+                              {org.contactEmail && (
+                                <span className="text-rd-ink-meta truncate">
+                                  {org.contactEmail}
+                                </span>
+                              )}
+                              {org.address && (
+                                <span className="text-rd-ink-meta flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-rd-ink-3 shrink-0" />
+                                  <span className="truncate max-w-xs">{org.address}</span>
+                                </span>
+                              )}
+                              {org.websiteOrSocial && (
+                                <a
+                                  href={org.websiteOrSocial.startsWith('http') ? org.websiteOrSocial : `https://${org.websiteOrSocial}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-rd-navy hover:underline flex items-center gap-1 shrink-0"
+                                >
+                                  <Globe className="w-3 h-3" />
+                                  <span>Web / Red</span>
+                                </a>
+                              )}
+                            </div>
+
+                            {org.description && (
+                              <p className="text-rd-11 text-rd-ink-meta line-clamp-1 italic">
+                                {org.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                          Oferta
-                        </span>
+
+                        {/* Botones de acción */}
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                          {!org.isVerified ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleOrgVerification(org)}
+                              disabled={isSavingOrgStatus}
+                              className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-40"
+                              title="Aprobar y verificar esta organización"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Verificar</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleOrgVerification(org)}
+                              disabled={isSavingOrgStatus}
+                              className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                              title="Revocar sello de verificación"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Revocar verificación</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setViewingOrg(org)}
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Detalle</span>
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-600 line-clamp-2">{offer.description}</p>
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                        <button
-                          onClick={() => handleVerifyOffer(offer.id, 'verify')}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{t('verifyAction')}</span>
-                        </button>
-                        <button
-                          onClick={() => setViewingOffer(offer)}
-                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-lg"
-                        >
-                          Ver detalle
-                        </button>
-                        <button
-                          onClick={() => handleVerifyOffer(offer.id, 'archive')}
-                          className="bg-slate-600 hover:bg-slate-700 text-white font-semibold px-3 py-1.5 rounded-lg ml-auto"
-                        >
-                          {t('archiveAction')}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-
-            {/* Pending Volunteers */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <Users className="w-4 h-4 text-amber-600" />
-                  Postulaciones de Voluntarios Pendientes ({pendingVolunteers.length})
-                </h3>
-              </div>
-
-              {pendingVolunteers.length === 0 ? (
-                <p className="text-slate-500 italic text-center py-6">
-                  No hay solicitudes de voluntarios pendientes de revisión. 🎉
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pendingVolunteers.map((vol) => (
-                    <div key={vol.id} className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200/80 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            🧑‍🌾 Voluntario RaDAR
-                          </span>
-                          <h4 className="font-extrabold text-slate-900 mt-1">{vol.name}</h4>
-                          <p className="text-xs text-slate-600">{vol.email}</p>
-                        </div>
-                        <span className="bg-amber-500/20 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-500/30">
-                          ◷ PENDIENTE
-                        </span>
-                      </div>
-
-                      <div className="bg-white/80 rounded-xl p-2.5 text-xs text-slate-700 space-y-1 border border-amber-100">
-                        <p><strong className="text-slate-900">Contacto:</strong> {vol.phone || 'No registrado'} ({vol.preferredContactMethod || 'WhatsApp'})</p>
-                        <p><strong className="text-slate-900">Tipo Aporte:</strong> {vol.volunteerConnectionType === 'VOLUNTEER' ? 'Ser voluntario/a' : vol.volunteerConnectionType === 'OFFER_HELP' ? 'Ofrecer ayuda' : vol.volunteerConnectionType === 'COLLABORATE' ? 'Colaborar' : vol.volunteerConnectionType === 'COMMUNITY' ? 'Comunidad' : 'Voluntariado'}</p>
-                        {vol.volunteerNotes && (
-                          <p className="italic text-slate-600 border-t border-slate-100 pt-1 mt-1">"{vol.volunteerNotes}"</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-2 border-t border-amber-200/60">
-                        <button
-                          onClick={() => handleChangeModerationStatus(vol.id, 'APPROVED')}
-                          disabled={isSavingUserStatus}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Aprobar</span>
-                        </button>
-                        <button
-                          onClick={() => handleChangeModerationStatus(vol.id, 'REJECTED')}
-                          disabled={isSavingUserStatus}
-                          className="bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs px-3 py-2 rounded-xl transition-all border border-red-200 flex items-center gap-1 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Rechazar</span>
-                        </button>
-                        <button
-                          onClick={() => setViewingUser(vol)}
-                          className="bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs px-3 py-2 rounded-xl border border-slate-200 ml-auto cursor-pointer"
-                        >
-                          Ver detalle
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB 2: REPORTS */}
         {activeTab === 'REPORTS' && (() => {
@@ -936,63 +1487,67 @@ export const AdminPanelPage: React.FC = () => {
           const hasActiveFilters = reportStatusFilter !== 'ALL' || reportTypeFilter !== 'ALL';
 
           return (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                <Flag className="w-4 h-4 text-red-500" />
-                {t('pendingReports')} ({filteredReports.length}{hasActiveFilters ? ` de ${reports.length}` : ''})
-              </h3>
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
+                <h3 className="font-bold text-rd-ink text-rd-14 flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-rd-coral" />
+                  {t('pendingReports')} ({filteredReports.length}{hasActiveFilters ? ` de ${reports.length}` : ''})
+                </h3>
 
-              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-                {/* Filtro por estado */}
-                <CustomSelect
-                  value={reportStatusFilter}
-                  onChange={setReportStatusFilter}
-                  className="w-44"
-                  icon={<Flag className="w-3.5 h-3.5 text-slate-400" />}
-                  options={[
-                    { value: 'ALL', label: 'Todos los estados' },
-                    { value: 'PENDING', label: '◷ Pendientes' },
-                    { value: 'RESOLVED', label: '✓ Resueltos' },
-                    { value: 'DISMISSED', label: '📁 Desestimados' },
-                  ]}
-                />
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                  {/* Filtro por estado */}
+                  <CustomSelect
+                    value={reportStatusFilter}
+                    onChange={setReportStatusFilter}
+                    className="w-44"
+                    icon={<Flag className="w-3.5 h-3.5 text-rd-ink-3" />}
+                    options={[
+                      { value: 'ALL', label: 'Todos los estados' },
+                      { value: 'PENDING', label: '◷ Pendientes' },
+                      { value: 'RESOLVED', label: '✓ Resueltos' },
+                      { value: 'DISMISSED', label: '📁 Desestimados' },
+                    ]}
+                  />
 
-                {/* Filtro por tipo */}
-                <CustomSelect
-                  value={reportTypeFilter}
-                  onChange={setReportTypeFilter}
-                  className="w-52"
-                  icon={<List className="w-3.5 h-3.5 text-slate-400" />}
-                  options={[
-                    { value: 'ALL', label: 'Necesidades y ofertas' },
-                    { value: 'NEEDS', label: 'Solo necesidades' },
-                    { value: 'OFFERS', label: 'Solo ofertas' },
-                  ]}
-                />
+                  {/* Filtro por tipo */}
+                  <CustomSelect
+                    value={reportTypeFilter}
+                    onChange={setReportTypeFilter}
+                    className="w-52"
+                    icon={<List className="w-3.5 h-3.5 text-rd-ink-3" />}
+                    options={[
+                      { value: 'ALL', label: 'Necesidades y ofertas' },
+                      { value: 'NEEDS', label: 'Solo necesidades' },
+                      { value: 'OFFERS', label: 'Solo ofertas' },
+                    ]}
+                  />
 
-                {hasActiveFilters && (
-                  <button
-                    onClick={() => {
-                      setReportStatusFilter('ALL');
-                      setReportTypeFilter('ALL');
-                    }}
-                    className="text-xs text-rose-600 font-bold hover:underline ml-1"
-                  >
-                    Limpiar filtros
-                  </button>
-                )}
+                  {hasActiveFilters && (
+                    <button
+                      onClick={() => {
+                        setReportStatusFilter('ALL');
+                        setReportTypeFilter('ALL');
+                      }}
+                      className="text-rd-12 text-rd-coral font-semibold hover:underline ml-1 cursor-pointer"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {filteredReports.length === 0 ? (
-              <p className="text-slate-500 italic text-center py-6">
-                {reports.length === 0
-                  ? 'No hay reportes registrados por los usuarios.'
-                  : 'No hay reportes que coincidan con los filtros seleccionados.'}
-              </p>
-            ) : (
-              <div className="space-y-3">
+              {filteredReports.length === 0 ? (
+                <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-10 text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-rd-green mx-auto opacity-70" />
+                  <h4 className="font-bold text-rd-ink text-rd-15">¡Sin reportes pendientes!</h4>
+                  <p className="text-rd-ink-meta text-rd-12">
+                    {reports.length === 0
+                      ? 'No hay reportes registrados por los usuarios.'
+                      : 'No hay reportes que coincidan con los filtros seleccionados.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
                 {filteredReports.map((rep) => {
                   const isOffer = !!rep.offerId;
                   const relatedNeed = rep.needId ? needs.find((n) => n.id === rep.needId) : undefined;
@@ -1011,59 +1566,72 @@ export const AdminPanelPage: React.FC = () => {
                   };
 
                   return (
-                  <div key={rep.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${rep.status === 'PENDING' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {rep.status}
-                        </span>
-                        <span className="font-bold text-slate-900">{rep.reason}</span>
-                      </div>
-
-                      {/* Entrada relacionada con el reporte */}
-                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${isOffer ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <div key={rep.id} className="bg-rd-surface p-4 md:p-4.5 rounded-rd-xl border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`px-2 py-0.5 text-rd-10 font-bold rounded-rd-sm border ${
+                          isOffer
+                            ? 'bg-rd-navy-soft text-rd-navy border-rd-navy-line'
+                            : 'bg-rd-coral-soft text-rd-coral border-rd-coral-line'
+                        }`}>
                           {isOffer ? 'Oferta' : 'Necesidad'}
                         </span>
-                        <span className="text-xs font-semibold text-slate-700 truncate">
-                          {entryTitle || 'Entrada no disponible'}
+                        <span className={`px-2 py-0.5 text-rd-10 font-bold rounded-rd-sm border ${
+                          rep.status === 'PENDING'
+                            ? 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line'
+                            : rep.status === 'RESOLVED'
+                            ? 'bg-rd-green-soft text-rd-green border-rd-green-line'
+                            : 'bg-rd-fondo text-rd-ink-meta border-rd-line'
+                        }`}>
+                          {rep.status === 'PENDING' ? '◷ Reporte Pendiente' : rep.status === 'RESOLVED' ? '✓ Resuelto' : '📁 Desestimado'}
+                        </span>
+                        <span className="px-2 py-0.5 text-rd-10 font-medium rounded-rd-sm border border-rd-line bg-rd-fondo text-rd-ink-2">
+                          Motivo: {rep.reason}
                         </span>
                       </div>
 
-                      <p className="text-xs text-slate-600">{rep.description}</p>
+                      <h4 className="text-rd-13-5 font-semibold text-rd-ink">
+                        "{entryTitle || 'Publicación no disponible'}"
+                      </h4>
+
+                      <p className="text-rd-12 text-rd-ink-2">{rep.description}</p>
                       {rep.reporterContact && (
-                        <p className="text-[11px] text-slate-400">Contacto: {rep.reporterContact}</p>
+                        <p className="text-rd-11 text-rd-ink-meta">Contacto: {rep.reporterContact}</p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
                       <button
+                        type="button"
                         onClick={handleOpenEntry}
                         disabled={!canOpen}
                         title={canOpen ? 'Abrir la entrada reportada' : 'La entrada ya no está disponible'}
-                        className="bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 cursor-pointer"
+                        className="bg-rd-navy hover:bg-rd-navy-hover disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        Abrir
+                        <span>Abrir</span>
                       </button>
 
                       {rep.status === 'PENDING' && (
                         <>
                           <button
+                            type="button"
                             onClick={() => handleResolveReportItem(rep.id, isOffer)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg"
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
                           >
                             {t('resolveReport')}
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleResolveAndArchiveReportItem(rep.id, isOffer ? rep.offerId : rep.needId, isOffer, entryTitle)}
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg"
+                            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink-2 font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
                           >
                             Resolver y archivar
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDismissReportItem(rep.id, isOffer)}
-                            className="bg-slate-300 hover:bg-slate-400 text-slate-800 font-semibold px-3 py-1.5 rounded-lg"
+                            className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
                           >
                             {t('dismissReport')}
                           </button>
@@ -1075,34 +1643,39 @@ export const AdminPanelPage: React.FC = () => {
                 })}
               </div>
             )}
-          </div>
+            </div>
           );
         })()}
 
         {/* TAB 2.5: CHATBOT REPORTS (US-5) */}
         {activeTab === 'CHATBOT' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <ChatbotReportsList operator={currentUser} />
+          <div className="space-y-4">
+            <ChatbotReportsList
+              operator={currentUser}
+              showHeader={false}
+              activeSubTab={chatbotSubTab}
+              onSubTabChange={setChatbotSubTab}
+            />
           </div>
         )}
 
         {/* TAB 3: ALL NEEDS & OFFERS */}
         {activeTab === 'ALL' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <h3 className="font-black text-slate-900 text-sm">
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
+              <h3 className="font-bold text-rd-ink text-rd-14">
                 Gestión Global ({needs.length} Necesidades, {offers.length} Ofertas)
               </h3>
               
               <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
                 <div className="relative flex-1 sm:w-60 min-w-[200px]">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-3.5 h-3.5 text-rd-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={adminSearch}
                     onChange={(e) => setAdminSearch(e.target.value)}
                     placeholder="Filtrar por título o barrio..."
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                    className="w-full pl-9 pr-3 py-1.5 bg-rd-fondo border border-rd-line rounded-rd-md text-rd-12 text-rd-ink placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft transition-all"
                   />
                 </div>
 
@@ -1111,7 +1684,7 @@ export const AdminPanelPage: React.FC = () => {
                   value={adminTypeFilter}
                   onChange={setAdminTypeFilter}
                   className="w-52"
-                  icon={<List className="w-3.5 h-3.5 text-slate-400" />}
+                  icon={<List className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
                     { value: 'ALL', label: 'Todas (necesidades + ofertas)' },
                     { value: 'NEEDS', label: 'Solo necesidades' },
@@ -1124,7 +1697,7 @@ export const AdminPanelPage: React.FC = () => {
                   value={adminPriorityFilter}
                   onChange={setAdminPriorityFilter}
                   className="w-44"
-                  icon={<AlertTriangle className="w-3.5 h-3.5 text-slate-400" />}
+                  icon={<AlertTriangle className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
                     { value: 'ALL', label: 'Todas las prioridades' },
                     { value: 'CRITICAL', label: '🔴 Crítica' },
@@ -1139,7 +1712,7 @@ export const AdminPanelPage: React.FC = () => {
                   value={adminVerificationFilter}
                   onChange={setAdminVerificationFilter}
                   className="w-48"
-                  icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
+                  icon={<ShieldCheck className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
                     { value: 'ALL', label: 'Todas las verificaciones' },
                     { value: 'VERIFIED', label: '✓ Verificadas' },
@@ -1157,7 +1730,7 @@ export const AdminPanelPage: React.FC = () => {
                       setAdminVerificationFilter('ALL');
                       setAdminTypeFilter('ALL');
                     }}
-                    className="text-xs text-rose-600 font-bold hover:underline ml-1"
+                    className="text-rd-12 text-rd-coral font-semibold hover:underline ml-1 cursor-pointer"
                   >
                     Limpiar filtros
                   </button>
@@ -1219,105 +1792,95 @@ export const AdminPanelPage: React.FC = () => {
 
               return (
                 <div className="space-y-3">
-                  <div className="text-xs text-slate-500 font-medium">
+                  <div className="text-rd-12 text-rd-ink-meta font-medium">
                     Mostrando <strong>{filteredItems.length}</strong> publicaciones de {needs.length + offers.length} totales
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                          <th className="p-3">Título / Ubicación</th>
-                          <th className="p-3">Tipo</th>
-                          <th className="p-3">Prioridad</th>
-                          <th className="p-3">Estado Verificación</th>
-                          <th className="p-3 text-right">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredItems.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-6 text-center text-slate-400 italic">
-                              No se encontraron publicaciones con los filtros seleccionados.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredItems.map((entry) => (
-                            <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="p-3">
-                                <p className="font-bold text-slate-900">{entry.title}</p>
-                                <p className="text-[11px] text-slate-500">{entry.neighborhood}, {entry.address}</p>
-                              </td>
-                              <td className="p-3">
-                                {entry.type === 'NEED' ? (
-                                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
-                                    Necesidad
-                                  </span>
-                                ) : (
-                                  <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
-                                    Oferta
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                {entry.priority ? (
-                                  <span className="font-bold text-[11px]">
-                                    {entry.priority === 'CRITICAL' ? '🔴 Crítica' : entry.priority === 'HIGH' ? '🟠 Alta' : entry.priority === 'MEDIUM' ? '🟡 Media' : '🟢 Baja'}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">—</span>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                  entry.verificationStatus === 'VERIFIED'
-                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
-                                    : entry.verificationStatus === 'PENDING_VERIFICATION'
-                                    ? 'bg-slate-100 text-slate-700'
-                                    : entry.verificationStatus === 'REPORTED'
-                                    ? 'bg-rose-100 text-rose-800'
-                                    : 'bg-slate-200 text-slate-600'
-                                }`}>
-                                  {entry.verificationStatus === 'VERIFIED'
-                                    ? '✓ Verificada'
-                                    : entry.verificationStatus === 'PENDING_VERIFICATION'
-                                    ? '◷ Pendiente'
-                                    : entry.verificationStatus === 'REPORTED'
-                                    ? '⚠️ Reportada'
-                                    : '📁 Archivada'}
+                  <div className="space-y-3">
+                    {filteredItems.length === 0 ? (
+                      <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-8 text-center text-rd-ink-meta italic text-rd-12">
+                        No se encontraron publicaciones con los filtros seleccionados.
+                      </div>
+                    ) : (
+                      filteredItems.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
+                        >
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {entry.type === 'NEED' ? (
+                                <span className="bg-rd-coral-soft text-rd-coral border border-rd-coral-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
+                                  Necesidad
                                 </span>
-                              </td>
-                              <td className="p-3 text-right space-x-2">
-                                <button
-                                  onClick={() => {
-                                    if (entry.type === 'NEED') {
-                                      setEditingNeedViaModal(entry.item as Need);
-                                    } else {
-                                      setEditingOfferViaModal(entry.item as Offer);
-                                    }
-                                  }}
-                                  className="text-blue-600 font-bold hover:underline"
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (entry.type === 'NEED') {
-                                      handleArchiveNeedItem(entry.id, entry.title);
-                                    } else {
-                                      handleArchiveOfferItem(entry.id, entry.title);
-                                    }
-                                  }}
-                                  className="text-slate-600 font-bold hover:underline"
-                                >
-                                  Archivar
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                              ) : (
+                                <span className="bg-rd-navy-soft text-rd-navy border border-rd-navy-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
+                                  Oferta
+                                </span>
+                              )}
+                              <AdminPriorityPill priority={entry.priority} />
+                              <AdminVerificationPill status={entry.verificationStatus} />
+                              <span className="text-rd-11-5 text-rd-ink-meta flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+                                {entry.neighborhood ? `${entry.neighborhood}, ` : ''}{entry.address || 'Ubicación registrada'}
+                              </span>
+                              <span className="text-rd-11 text-rd-ink-meta flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-rd-ink-3" />
+                                {formatTimeAgo(entry.updatedAt, 'es')}
+                              </span>
+                            </div>
+
+                            <h4 className="font-semibold text-rd-ink text-rd-14 leading-snug">{entry.title}</h4>
+                            {entry.item.description && (
+                              <p className="text-rd-12 text-rd-ink-2 line-clamp-1">{entry.item.description}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (entry.type === 'NEED') {
+                                  setEditingNeedViaModal(entry.item as Need);
+                                } else {
+                                  setEditingOfferViaModal(entry.item as Offer);
+                                }
+                              }}
+                              className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (entry.type === 'NEED') {
+                                  setViewingNeed(entry.item as Need);
+                                } else {
+                                  setViewingOffer(entry.item as Offer);
+                                }
+                              }}
+                              className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                            >
+                              Ver detalle
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (entry.type === 'NEED') {
+                                  handleArchiveNeedItem(entry.id, entry.title);
+                                } else {
+                                  handleArchiveOfferItem(entry.id, entry.title);
+                                }
+                              }}
+                              className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                            >
+                              Archivar
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               );
@@ -1327,18 +1890,25 @@ export const AdminPanelPage: React.FC = () => {
 
         {/* TAB 4: AUDIT LOGS */}
         {activeTab === 'AUDIT' && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-            <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-600" />
-              Historial de Auditoría ({auditLogs.length})
-            </h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          <div className="space-y-4">
+            <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-3.5 flex items-center justify-between shadow-xs">
+              <h3 className="font-bold text-rd-ink text-rd-14 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-rd-navy" />
+                Historial de Auditoría ({auditLogs.length})
+              </h3>
+            </div>
+            <div className="space-y-2.5 max-h-[600px] overflow-y-auto">
               {auditLogs.map((log) => (
-                <div key={log.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start justify-between gap-4">
-                  <div>
-                    <span className="font-bold text-indigo-700">{log.action}</span>
-                    <p className="text-xs text-slate-700">{log.details}</p>
-                    <span className="text-[10px] text-slate-400">{log.adminEmail} • {new Date(log.timestamp).toLocaleString()}</span>
+                <div
+                  key={log.id}
+                  className="p-3.5 bg-rd-surface rounded-rd-xl border border-rd-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-rd-ink-3/40 transition-colors shadow-xs"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <span className="font-semibold text-rd-navy text-rd-12">{log.action}</span>
+                    <p className="text-rd-12 text-rd-ink-2">{log.details}</p>
+                    <span className="text-rd-10 text-rd-ink-meta">
+                      {log.adminEmail} • {new Date(log.timestamp).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -1350,31 +1920,30 @@ export const AdminPanelPage: React.FC = () => {
         {activeTab === 'USERS' && currentUser?.role === 'ADMIN' && (
           <div className="space-y-4">
             {/* Users List */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <h3 className="font-black text-slate-900 text-sm flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-600" />
-                  Usuarios Registrados ({usersList.length})
-                </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
+              <h3 className="font-bold text-rd-ink text-rd-14 flex items-center gap-2">
+                <Users className="w-4 h-4 text-rd-navy" />
+                Usuarios Registrados ({usersList.length})
+              </h3>
 
-                <div className="flex items-center gap-2">
-                  <CustomSelect
-                    value={userStatusFilter}
-                    onChange={setUserStatusFilter}
-                    className="w-40"
-                    icon={<CheckCircle className="w-3.5 h-3.5 text-slate-400" />}
-                    options={[
-                      { value: 'ALL', label: 'Todos los estados' },
-                      { value: 'PENDING', label: 'Pendiente' },
-                      { value: 'APPROVED', label: 'Aprobado' },
-                      { value: 'REJECTED', label: 'Rechazado' },
-                    ]}
-                  />
-                  <CustomSelect
-                    value={userRoleFilter}
-                    onChange={setUserRoleFilter}
-                    className="w-44"
-                    icon={<ShieldCheck className="w-3.5 h-3.5 text-slate-400" />}
+              <div className="flex items-center gap-2">
+                <CustomSelect
+                  value={userStatusFilter}
+                  onChange={setUserStatusFilter}
+                  className="w-40"
+                  icon={<CheckCircle className="w-3.5 h-3.5 text-rd-ink-3" />}
+                  options={[
+                    { value: 'ALL', label: 'Todos los estados' },
+                    { value: 'PENDING', label: 'Pendiente' },
+                    { value: 'APPROVED', label: 'Aprobado' },
+                    { value: 'REJECTED', label: 'Rechazado' },
+                  ]}
+                />
+                <CustomSelect
+                  value={userRoleFilter}
+                  onChange={setUserRoleFilter}
+                  className="w-44"
+                  icon={<ShieldCheck className="w-3.5 h-3.5 text-rd-ink-3" />}
                     options={[
                       { value: 'ALL', label: 'Todos los roles' },
                       { value: 'VOLUNTARIO', label: '🧑‍🌾 Voluntario RaDAR' },
@@ -1415,7 +1984,7 @@ export const AdminPanelPage: React.FC = () => {
 
                 if (sortedUsers.length === 0) {
                   return (
-                    <p className="text-slate-500 italic text-center py-6">
+                    <p className="text-rd-ink-meta italic text-center py-6 text-rd-12">
                       {usersList.length === 0
                         ? 'No hay usuarios registrados.'
                         : 'No hay usuarios que coincidan con los filtros.'}
@@ -1432,32 +2001,38 @@ export const AdminPanelPage: React.FC = () => {
                       return (
                         <div
                           key={usr.id}
-                          className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                            isPending
-                              ? 'bg-amber-50/70 border-amber-200'
-                              : 'bg-slate-50 border-slate-200'
-                          }`}
+                          className="bg-rd-surface rounded-rd-xl border border-rd-line p-4 md:p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
                         >
-                          <div className="min-w-0 space-y-1">
+                          <div className="min-w-0 space-y-1 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-extrabold text-slate-900 truncate">{usr.name}</h4>
+                              <h4 className="font-semibold text-rd-ink text-rd-14 truncate">{usr.name}</h4>
                               {isVoluntario ? (
-                                <span className="bg-amber-100 text-amber-900 font-extrabold text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">
+                                <span className="bg-rd-amber-soft text-rd-amber-ink font-bold text-rd-10 px-2 py-0.5 rounded-rd-sm border border-rd-amber-line uppercase tracking-wider">
                                   🧑‍🌾 Voluntario RaDAR
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 inline-block">
+                                <span className="text-rd-10 font-bold text-rd-navy bg-rd-navy-soft px-2 py-0.5 rounded-rd-sm border border-rd-navy-line inline-block">
                                   {usr.role}
                                 </span>
                               )}
                               <ModerationStatusChip status={usr.moderationStatus} />
                             </div>
 
-                            <p className="text-xs text-slate-600 truncate">{usr.email} {usr.phone ? `• Tel: ${usr.phone}` : ''}</p>
+                            <p className="text-rd-12 text-rd-ink-2 truncate">
+                              {usr.email} {usr.phone ? `• Tel: ${usr.phone}` : ''}
+                            </p>
 
                             {isVoluntario && (
-                              <p className="text-[11px] text-slate-500 italic truncate">
-                                <strong>Aporte:</strong> {usr.volunteerConnectionType === 'VOLUNTEER' ? 'Tiempo/Experiencia' : usr.volunteerConnectionType === 'OFFER_HELP' ? 'Recursos/Ayuda' : usr.volunteerConnectionType === 'COLLABORATE' ? 'Alianza' : 'Voluntariado'} • <strong>Prefiere:</strong> {usr.preferredContactMethod || 'WhatsApp'}
+                              <p className="text-rd-11 text-rd-ink-meta italic truncate">
+                                <strong>Aporte:</strong>{' '}
+                                {usr.volunteerConnectionType === 'VOLUNTEER'
+                                  ? 'Tiempo/Experiencia'
+                                  : usr.volunteerConnectionType === 'OFFER_HELP'
+                                  ? 'Recursos/Ayuda'
+                                  : usr.volunteerConnectionType === 'COLLABORATE'
+                                  ? 'Alianza'
+                                  : 'Voluntariado'}{' '}
+                                • <strong>Prefiere:</strong> {usr.preferredContactMethod || 'WhatsApp'}
                               </p>
                             )}
                           </div>
@@ -1466,18 +2041,20 @@ export const AdminPanelPage: React.FC = () => {
                             {isPending && (
                               <>
                                 <button
+                                  type="button"
                                   onClick={() => handleChangeModerationStatus(usr.id, 'APPROVED')}
                                   disabled={isSavingUserStatus}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                  className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-40"
                                   title="Aprobar Solicitud"
                                 >
                                   <Check className="w-3.5 h-3.5" />
                                   <span>Aprobar</span>
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleChangeModerationStatus(usr.id, 'REJECTED')}
                                   disabled={isSavingUserStatus}
-                                  className="bg-red-50 hover:bg-red-100 text-red-700 font-extrabold text-xs px-3 py-1.5 rounded-lg transition-all border border-red-200 flex items-center gap-1 cursor-pointer"
+                                  className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
                                   title="Rechazar Solicitud"
                                 >
                                   <X className="w-3.5 h-3.5" />
@@ -1487,18 +2064,20 @@ export const AdminPanelPage: React.FC = () => {
                             )}
 
                             <button
+                              type="button"
                               onClick={() => setViewingUser(usr)}
-                              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                              className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line flex items-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <Search className="w-3.5 h-3.5" />
                               <span>Detalle</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleDeleteUserItem(usr.id, usr.name)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
+                              className="h-8 w-8 flex items-center justify-center text-rd-ink-meta hover:text-rd-coral hover:bg-rd-coral-soft/50 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
                               title="Eliminar usuario"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1507,10 +2086,10 @@ export const AdminPanelPage: React.FC = () => {
                   </div>
                 );
               })()}
-            </div>
           </div>
         )}
-      </div>
+        </div>
+      </main>
 
       {/* Modals */}
       {viewingNeed && (
@@ -1573,6 +2152,15 @@ export const AdminPanelPage: React.FC = () => {
           onClose={() => setViewingUser(null)}
         />
       )}
+
+      {viewingOrg && (
+        <OrgDetailModal
+          org={viewingOrg}
+          isSaving={isSavingOrgStatus}
+          onToggleVerification={(org) => handleToggleOrgVerification(org)}
+          onClose={() => setViewingOrg(null)}
+        />
+      )}
     </div>
   );
 };
@@ -1581,19 +2169,19 @@ export const AdminPanelPage: React.FC = () => {
 // MODERATION STATUS CHIP
 // ==========================================
 const MODERATION_STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'Pendiente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  APPROVED: { label: 'Aprobado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  REJECTED: { label: 'Rechazado', className: 'bg-red-100 text-red-700 border-red-200' },
+  PENDING: { label: '◷ Pendiente', className: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line' },
+  APPROVED: { label: '✓ Aprobado', className: 'bg-rd-green-soft text-rd-green border-rd-green-line' },
+  REJECTED: { label: '✕ Rechazado', className: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line' },
 };
 
 const ModerationStatusChip: React.FC<{ status?: string }> = ({ status }) => {
   const key = (status || 'APPROVED').toUpperCase();
   const cfg = MODERATION_STATUS_STYLES[key] || {
     label: key,
-    className: 'bg-slate-100 text-slate-700 border-slate-200',
+    className: 'bg-rd-fondo text-rd-ink-meta border-rd-line',
   };
   return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${cfg.className}`}>
+    <span className={`text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border inline-block ${cfg.className}`}>
       {cfg.label}
     </span>
   );
@@ -1611,9 +2199,9 @@ const UserDetailModal: React.FC<{
   const currentStatus = (user.moderationStatus || 'APPROVED').toUpperCase();
 
   const Row: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
-    <div className="flex flex-col gap-0.5 py-2 border-b border-slate-100">
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
-      <span className="text-xs text-slate-800 break-words">{value?.toString().trim() || '—'}</span>
+    <div className="flex flex-col gap-0.5 py-2 border-b border-rd-line/60">
+      <span className="text-rd-10 font-semibold text-rd-ink-meta uppercase tracking-wide">{label}</span>
+      <span className="text-rd-12 text-rd-ink break-words">{value?.toString().trim() || '—'}</span>
     </div>
   );
 
@@ -1625,26 +2213,26 @@ const UserDetailModal: React.FC<{
   const isModerator = user.role === 'MODERATOR' || user.rawRole === 'moderador';
 
   const statusOptions: Array<{ value: 'PENDING' | 'APPROVED' | 'REJECTED'; label: string; className: string }> = [
-    { value: 'APPROVED', label: 'Aprobar', className: 'bg-emerald-600 hover:bg-emerald-500 text-white' },
-    { value: 'PENDING', label: 'Marcar pendiente', className: 'bg-amber-500 hover:bg-amber-400 text-white' },
-    { value: 'REJECTED', label: 'Rechazar', className: 'bg-red-600 hover:bg-red-500 text-white' },
+    { value: 'APPROVED', label: 'Aprobar', className: 'bg-rd-navy hover:bg-rd-navy-hover text-white shadow-xs' },
+    { value: 'PENDING', label: 'Marcar pendiente', className: 'bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium border border-rd-line' },
+    { value: 'REJECTED', label: 'Rechazar', className: 'bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-coral font-medium border border-rd-line' },
   ];
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-rd-ink/40 backdrop-blur-xs flex items-center justify-center p-4 font-rd text-rd-ink"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-scroll shadow-2xl"
+        className="bg-rd-surface rounded-rd-xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-scroll border border-rd-line shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between gap-4">
+        <div className="sticky top-0 bg-rd-surface border-b border-rd-line px-5 py-4 flex items-start justify-between gap-4 z-10">
           <div className="min-w-0">
-            <h3 className="font-black text-slate-900 text-base truncate">{user.name}</h3>
+            <h3 className="font-bold text-rd-ink text-rd-16 truncate">{user.name}</h3>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              <span className="text-rd-10 font-bold text-rd-navy bg-rd-navy-soft px-2 py-0.5 rounded-rd-sm border border-rd-navy-line">
                 {user.role}
               </span>
               <ModerationStatusChip status={user.moderationStatus} />
@@ -1652,7 +2240,7 @@ const UserDetailModal: React.FC<{
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg shrink-0"
+            className="p-1.5 text-rd-ink-meta hover:text-rd-ink hover:bg-rd-fondo rounded-rd-md shrink-0 cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1660,7 +2248,7 @@ const UserDetailModal: React.FC<{
 
         {/* Body */}
         <div className="px-5 py-3">
-          <h4 className="text-xs font-black text-slate-700 mt-1 mb-1">Datos personales</h4>
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-1 mb-1">Datos personales</h4>
           <Row label="Nombres" value={user.firstName} />
           <Row label="Apellidos" value={user.lastName} />
           <Row label="Nombre completo" value={user.name} />
@@ -1669,14 +2257,14 @@ const UserDetailModal: React.FC<{
           <Row label="Tipo de documento" value={user.documentType} />
           <Row label="Número de documento" value={user.documentNumber} />
 
-          <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Ubicación</h4>
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-4 mb-1">Ubicación</h4>
           <Row label="País" value={user.country} />
           <Row label="Departamento" value={user.department} />
           <Row label="Ciudad" value={user.city} />
 
           {isModerator && (
             <>
-              <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Solicitud de moderador</h4>
+              <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-4 mb-1">Solicitud de moderador</h4>
               <Row label="Comunidad / colectivo" value={user.moderatorCommunityCollective} />
               <Row label="Motivación" value={user.moderatorMotivation} />
             </>
@@ -1684,14 +2272,14 @@ const UserDetailModal: React.FC<{
 
           {(user.rawRole === 'voluntario' || user.volunteerConnectionType || user.volunteerNotes) && (
             <>
-              <h4 className="text-xs font-black text-amber-700 mt-4 mb-1">Postulación de Voluntario / Aliado</h4>
+              <h4 className="text-rd-11 font-bold text-rd-amber-ink uppercase tracking-wider mt-4 mb-1">Postulación de Voluntario / Aliado</h4>
               <Row label="Forma de conexión" value={user.volunteerConnectionType === 'VOLUNTEER' ? 'Ser voluntario/a (tiempo/experiencia)' : user.volunteerConnectionType === 'OFFER_HELP' ? 'Ofrecer ayuda (recursos/servicios)' : user.volunteerConnectionType === 'COLLABORATE' ? 'Colaborar (alianza/proyecto)' : user.volunteerConnectionType === 'COMMUNITY' ? 'Ser parte de la comunidad' : user.volunteerConnectionType} />
               <Row label="Contacto preferido" value={user.preferredContactMethod === 'WHATSAPP' ? 'Mensaje WhatsApp' : user.preferredContactMethod === 'PHONE_CALL' ? 'Llamada telefónica' : user.preferredContactMethod === 'EMAIL' ? 'Correo electrónico' : user.preferredContactMethod} />
               <Row label="Propuesta / Notas" value={user.volunteerNotes} />
             </>
           )}
 
-          <h4 className="text-xs font-black text-slate-700 mt-4 mb-1">Cuenta</h4>
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-4 mb-1">Cuenta</h4>
           <Row label="Rol (crudo)" value={user.rawRole || user.role} />
           <Row label="Términos aceptados" value={user.acceptTerms ? 'Sí' : 'No'} />
           <Row label="Fecha aceptación términos" value={user.termsAcceptedAt} />
@@ -1699,9 +2287,9 @@ const UserDetailModal: React.FC<{
         </div>
 
         {/* Footer: change moderation status */}
-        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-5 py-4 space-y-2">
+        <div className="sticky bottom-0 bg-rd-fondo border-t border-rd-line px-5 py-4 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold text-slate-600">Estado de moderación</span>
+            <span className="text-rd-11 font-semibold text-rd-ink-2">Estado de moderación</span>
             <ModerationStatusChip status={user.moderationStatus} />
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -1710,13 +2298,13 @@ const UserDetailModal: React.FC<{
                 key={opt.value}
                 disabled={isSaving || currentStatus === opt.value}
                 onClick={() => onChangeStatus(opt.value)}
-                className={`py-2 rounded-lg text-[11px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${opt.className}`}
+                className={`py-2 rounded-rd-md text-rd-11 font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${opt.className}`}
               >
                 {isSaving ? '...' : opt.label}
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-slate-400 leading-snug">
+          <p className="text-rd-10 text-rd-ink-meta leading-snug">
             Al aprobar, el usuario obtiene los permisos correspondientes a su rol.
           </p>
         </div>
@@ -1724,3 +2312,148 @@ const UserDetailModal: React.FC<{
     </div>
   );
 };
+
+// ==========================================
+// ORGANIZATION / COMMUNITY DETAIL MODAL
+// ==========================================
+const OrgDetailModal: React.FC<{
+  org: AdminOrganization;
+  isSaving: boolean;
+  onToggleVerification: (org: AdminOrganization) => void;
+  onClose: () => void;
+}> = ({ org, isSaving, onToggleVerification, onClose }) => {
+  const isOrgCategory = org.category === 'ORGANIZACION';
+
+  const Row: React.FC<{ label: string; value?: string | null; isLink?: boolean }> = ({ label, value, isLink }) => (
+    <div className="flex flex-col gap-0.5 py-2 border-b border-rd-line/60">
+      <span className="text-rd-10 font-semibold text-rd-ink-meta uppercase tracking-wide">{label}</span>
+      {isLink && value ? (
+        <a
+          href={value.startsWith('http') ? value : `https://${value}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-rd-12 text-rd-navy hover:underline flex items-center gap-1 break-all"
+        >
+          <span>{value}</span>
+          <ExternalLink className="w-3 h-3 shrink-0" />
+        </a>
+      ) : (
+        <span className="text-rd-12 text-rd-ink break-words">{value?.toString().trim() || '—'}</span>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-rd-ink/40 backdrop-blur-xs flex items-center justify-center p-4 font-rd text-rd-ink"
+      onClick={onClose}
+    >
+      <div
+        className="bg-rd-surface rounded-rd-xl w-full max-w-lg max-h-[90vh] overflow-y-auto modal-scroll border border-rd-line shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-rd-surface border-b border-rd-line px-5 py-4 flex items-start justify-between gap-4 z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar iniciales={iniciales(org.name)} tamano="lg" />
+            <div className="min-w-0">
+              <h3 className="font-bold text-rd-ink text-rd-16 truncate">{org.name}</h3>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span
+                  className={`text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm border ${
+                    isOrgCategory
+                      ? 'bg-rd-coral-soft text-rd-coral border-rd-coral-line'
+                      : 'bg-rd-navy-soft text-rd-navy border-rd-navy-line'
+                  }`}
+                >
+                  {isOrgCategory ? '🏢 Organización' : '🤝 Comunidad / Líder'}
+                </span>
+                {org.isVerified ? (
+                  <span className="bg-rd-green-soft text-rd-green border border-rd-green-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                    ✓ Verificada
+                  </span>
+                ) : (
+                  <span className="bg-rd-amber-soft text-rd-amber-ink border border-rd-amber-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm">
+                    ◷ Pendiente verificación
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-rd-ink-meta hover:text-rd-ink hover:bg-rd-fondo rounded-rd-md shrink-0 cursor-pointer transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-3">
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-1 mb-1">
+            Información Institucional / Comunitaria
+          </h4>
+          <Row label="Nombre oficial" value={org.name} />
+          <Row label="Tipo de entidad" value={org.organizationType} />
+          {org.communityCollective && (
+            <Row label="Colectivo / Comunidad" value={org.communityCollective} />
+          )}
+          <Row
+            label={org.documentType ? `Documento (${org.documentType.toUpperCase()})` : 'Documento'}
+            value={org.documentNumber}
+          />
+          <Row label="Sitio Web / Red Social" value={org.websiteOrSocial} isLink />
+          <Row label="Descripción / Referencia" value={org.description} />
+
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-4 mb-1">
+            Persona de Contacto y Canales
+          </h4>
+          <Row label="Contacto principal" value={org.contactName} />
+          <Row label="Teléfono de contacto" value={org.contactPhone} />
+          <Row label="WhatsApp" value={org.contactWhatsapp} />
+          <Row label="Correo electrónico" value={org.contactEmail} />
+
+          <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-4 mb-1">
+            Ubicación y Registro
+          </h4>
+          <Row label="Dirección / Zona" value={org.address} />
+          <Row label="Fecha de registro" value={org.createdAt} />
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-rd-fondo border-t border-rd-line px-5 py-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-9 px-4 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+          >
+            Cerrar
+          </button>
+
+          {!org.isVerified ? (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => onToggleVerification(org)}
+              className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-9 px-4 rounded-rd-md transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-40"
+            >
+              <Check className="w-4 h-4" />
+              <span>{isSaving ? 'Guardando...' : 'Verificar Entidad'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => onToggleVerification(org)}
+              className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-coral font-medium text-rd-12 h-9 px-4 rounded-rd-md border border-rd-line transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+            >
+              <X className="w-4 h-4" />
+              <span>{isSaving ? 'Guardando...' : 'Revocar Verificación'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+

@@ -515,24 +515,24 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
     <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
       <button
         onClick={onClose}
-        className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+        className="h-8 w-8 rounded-rd-md border border-rd-line text-rd-ink-2 hover:bg-rd-fondo hover:text-rd-ink flex items-center justify-center transition-colors cursor-pointer"
         aria-label={t('conversationDetailBack')}
       >
         <ArrowLeft className="w-4 h-4" />
       </button>
-      <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40">
-        <MessageSquare className="w-5 h-5 text-emerald-600" />
+      <div className="p-2 rounded-rd-lg bg-rd-green-soft border border-rd-green-line">
+        <MessageSquare className="w-5 h-5 text-rd-green" />
       </div>
       <div className="flex-1 min-w-0">
-        <h2 className="text-lg font-black text-slate-900 leading-tight flex items-center gap-2">
+        <h2 className="text-rd-16 font-bold text-rd-ink leading-tight flex items-center gap-2">
           {t('conversationDetailTitle')}
           {state.kind === 'ready' && state.rebuild.need && (
-            <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
+            <span className="bg-rd-fondo text-rd-ink-meta text-rd-10 font-bold px-2 py-0.5 rounded-full border border-rd-line">
               {state.rebuild.need.priority}
             </span>
           )}
         </h2>
-        <p className="text-xs text-slate-500 truncate">{t('conversationDetailTagline')}</p>
+        <p className="text-rd-12 text-rd-ink-meta truncate">{t('conversationDetailTagline')}</p>
       </div>
     </div>
   );
@@ -544,8 +544,8 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
     return (
       <div className="space-y-4">
         {header}
-        <div className="bg-white rounded-2xl border border-slate-200 p-10 flex flex-col items-center justify-center gap-3 text-slate-500 text-sm">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+        <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-10 flex flex-col items-center justify-center gap-3 text-rd-ink-meta text-rd-12">
+          <Loader2 className="w-6 h-6 animate-spin text-rd-navy" />
           <span>{t('conversationDetailLoading')}</span>
         </div>
       </div>
@@ -556,23 +556,23 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
     return (
       <div className="space-y-4">
         {header}
-        <div className="bg-white rounded-2xl border border-red-200 p-8 text-center space-y-3 shadow-sm">
-          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto" />
-          <h4 className="font-bold text-slate-900 text-base">
+        <div className="bg-rd-surface rounded-rd-xl border border-rd-coral-line p-8 text-center space-y-3 shadow-xs">
+          <AlertTriangle className="w-10 h-10 text-rd-coral mx-auto" />
+          <h4 className="font-bold text-rd-ink text-rd-15">
             {isNeedNotFound ? t('conversationDetailNeedNotFound') : t('conversationDetailError')}
           </h4>
-          <p className="text-xs text-slate-600 max-w-sm mx-auto">
+          <p className="text-rd-12 text-rd-ink-2 max-w-sm mx-auto">
             {isNeedNotFound ? t('conversationDetailNeedNotFoundHint') : t('conversationDetailErrorHint')}
           </p>
           {!isNeedNotFound && state.message && (
-            <p className="text-[10px] text-slate-400 font-mono max-w-sm mx-auto truncate" data-testid="detail-error-message">
+            <p className="text-rd-10 text-rd-ink-meta font-mono max-w-sm mx-auto truncate" data-testid="detail-error-message">
               {state.message}
             </p>
           )}
           {!isNeedNotFound && (
             <button
               onClick={load}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs inline-flex items-center gap-1.5"
+              className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md shadow-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               {t('conversationDetailRetry')}
@@ -638,7 +638,7 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
                 <button
                   onClick={handleApprove}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1.5 bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   data-testid="review-approve"
                 >
                   {isProcessing ? (
@@ -651,7 +651,7 @@ export const ChatbotReportDetail: React.FC<ChatbotReportDetailProps> = ({
                 <button
                   onClick={handleReject}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1.5 bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   data-testid="review-reject"
                 >
                   {isProcessing ? (

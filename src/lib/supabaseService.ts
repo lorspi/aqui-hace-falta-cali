@@ -1211,6 +1211,145 @@ export async function fetchUserOrganization(userId: string) {
   }
 }
 
+export interface AdminOrganization {
+  id: string;
+  userId?: string;
+  name: string;
+  organizationType: string;
+  description?: string;
+  websiteOrSocial?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  documentType?: string;
+  documentNumber?: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+  contactEmail?: string;
+  isVerified: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  contactName?: string;
+  communityCollective?: string;
+  category: 'ORGANIZACION' | 'COMUNIDAD';
+}
+
+export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]> {
+  try {
+    const { data: orgs, error: orgsError } = await supabase
+      .from('organizations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (orgsError) {
+      console.error('[Supabase] Error fetching admin organizations:', orgsError);
+    }
+
+    // Traer perfiles para enriquecer datos del líder o representante
+    const { data: profiles, error: profsError } = await supabase
+      .from('profiles')
+      .select('*');
+
+    if (profsError) {
+      console.error('[Supabase] Error fetching profiles for organizations:', profsError);
+    }
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+    const result: AdminOrganization[] = (orgs || []).map((o: any) => {
+      const p = profileMap.get(o.user_id);
+      const orgType = (o.organization_type || '').toLowerCase();
+      const isComunidad =
+        orgType.includes('junta') ||
+        orgType.includes('comun') ||
+        orgType.includes('albergue') ||
+        orgType.includes('colectivo') ||
+        p?.profile_type === 'liderazgo' ||
+        Boolean(p?.community_type);
+
+      return {
+        id: o.id,
+        userId: o.user_id,
+        name: o.org_name || 'Organización sin nombre',
+        organizationType: o.organization_type || 'Organización',
+        description: o.description || undefined,
+        websiteOrSocial: o.website_or_social || undefined,
+        address: o.address || (p?.city ? `${p.city}, ${p.department || ''}` : undefined),
+        latitude: o.latitude || undefined,
+        longitude: o.longitude || undefined,
+        documentType: o.document_type || p?.document_type || 'nit',
+        documentNumber: o.document_number || p?.document_number || undefined,
+        contactPhone: o.contact_phone || p?.phone || undefined,
+        contactWhatsapp: o.contact_whatsapp || p?.whatsapp || undefined,
+        contactEmail: o.contact_email || p?.email || undefined,
+        isVerified: Boolean(o.is_verified),
+        createdAt: o.created_at,
+        updatedAt: o.updated_at,
+        contactName: p?.full_name || undefined,
+        communityCollective: p?.moderator_community_collective || undefined,
+        category: isComunidad ? 'COMUNIDAD' : 'ORGANIZACION',
+      };
+    });
+
+    // Incluir perfiles de líderes comunitarios que aún no tengan fila en organizations
+    const orgUserIds = new Set(result.map((r) => r.userId));
+    (profiles || []).forEach((p: any) => {
+      if (
+        (p.profile_type === 'liderazgo' || p.community_type || p.moderator_community_collective) &&
+        !orgUserIds.has(p.id)
+      ) {
+        result.push({
+          id: 'prof-' + p.id,
+          userId: p.id,
+          name: p.moderator_community_collective || p.full_name || 'Líder Comunitario',
+          organizationType: p.community_type || 'Comunidad / Liderazgo',
+          description: p.moderator_motivation || undefined,
+          address: p.city ? `${p.city}, ${p.department || ''}` : undefined,
+          documentType: p.document_type || 'cedula',
+          documentNumber: p.document_number || undefined,
+          contactPhone: p.phone || undefined,
+          contactWhatsapp: p.whatsapp || undefined,
+          contactEmail: p.email || undefined,
+          isVerified: Boolean(p.is_verified),
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+          contactName: p.full_name,
+          communityCollective: p.moderator_community_collective || undefined,
+          category: 'COMUNIDAD',
+        });
+      }
+    });
+
+    return result;
+  } catch (err) {
+    console.error('[Supabase] Exception in fetchAdminOrganizationsList:', err);
+    return [];
+  }
+}
+
+export async function updateOrganizationVerification(
+  orgId: string,
+  userId?: string,
+  isVerified: boolean = true
+): Promise<void> {
+  if (!orgId.startsWith('prof-')) {
+    const { error } = await supabase
+      .from('organizations')
+      .update({ is_verified: isVerified, updated_at: new Date().toISOString() })
+      .eq('id', orgId);
+    if (error) throw error;
+  }
+
+  if (userId) {
+    const { error: profError } = await supabase
+      .from('profiles')
+      .update({ is_verified: isVerified, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (profError) throw profError;
+  }
+}
+
+
 // ==========================================
 // MATCHING FUNCTIONS (NEEDS <-> OFFERS)
 // ==========================================

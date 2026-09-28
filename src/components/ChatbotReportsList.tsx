@@ -21,7 +21,7 @@ import {
   Clock,
   Archive,
 } from 'lucide-react';
-import { Need, PlaceType, Priority, QuickTicket } from '../types';
+import { Need, PlaceType, Priority, QuickTicket, VerificationStatus } from '../types';
 import {
   useChatbotReports,
   ChatbotVerificationFilter,
@@ -46,6 +46,10 @@ interface ChatbotReportsListProps {
   showHeader?: boolean;
   /** Operador autenticado en el panel (se pasa al detalle para `verified_by`). */
   operator?: AdminUser | null;
+  /** Subpestaña activa controlada desde el exterior ('QUICK_TICKETS' | 'WHATSAPP') */
+  activeSubTab?: 'QUICK_TICKETS' | 'WHATSAPP';
+  /** Callback al cambiar subpestaña */
+  onSubTabChange?: (tab: 'QUICK_TICKETS' | 'WHATSAPP') => void;
 }
 
 const VERIFICATION_STATUSES: ChatbotVerificationFilter[] = [
@@ -59,27 +63,74 @@ const VERIFICATION_STATUSES: ChatbotVerificationFilter[] = [
 
 const PRIORITY_OPTIONS: Priority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
-/** Badge de estado de verificación con la config compartida del proyecto. */
+const VERIFICATION_BADGE_CONFIG: Record<
+  VerificationStatus,
+  { label: string; className: string }
+> = {
+  VERIFIED: {
+    label: '✓ Verificado',
+    className: 'bg-rd-green-soft text-rd-green border-rd-green-line',
+  },
+  PENDING_VERIFICATION: {
+    label: '◷ Pendiente',
+    className: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line',
+  },
+  REPORTED: {
+    label: '⚠️ Reportado',
+    className: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+  },
+  REJECTED: {
+    label: '✕ Rechazado',
+    className: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+  },
+  ARCHIVED: {
+    label: '📁 Archivado',
+    className: 'bg-rd-fondo text-rd-ink-meta border-rd-line',
+  },
+};
+
+const PRIORITY_BADGE_CONFIG: Record<
+  Priority,
+  { label: string; className: string }
+> = {
+  CRITICAL: {
+    label: '🔴 Crítica',
+    className: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+  },
+  HIGH: {
+    label: '🟠 Alta',
+    className: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line',
+  },
+  MEDIUM: {
+    label: '🟡 Media',
+    className: 'bg-rd-navy-soft text-rd-navy border-rd-navy-line',
+  },
+  LOW: {
+    label: '🟢 Baja',
+    className: 'bg-rd-green-soft text-rd-green border-rd-green-line',
+  },
+};
+
+/** Badge de estado de verificación con diseño unificado RaDAR. */
 function VerificationBadge({ status }: { status: Need['verificationStatus'] }) {
-  const info = VERIFICATION_CONFIG[status] || VERIFICATION_CONFIG.PENDING_VERIFICATION;
+  const cfg = VERIFICATION_BADGE_CONFIG[status] || VERIFICATION_BADGE_CONFIG.PENDING_VERIFICATION;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${info.badgeClass}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${cfg.className}`}
     >
-      <span>{info.icon}</span>
-      <span>{info.label}</span>
+      {cfg.label}
     </span>
   );
 }
 
-/** Badge de prioridad reutilizando PRIORITY_CONFIG. */
+/** Badge de prioridad con diseño unificado RaDAR. */
 function PriorityBadge({ priority }: { priority: Priority }) {
-  const info = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.MEDIUM;
+  const cfg = PRIORITY_BADGE_CONFIG[priority] || PRIORITY_BADGE_CONFIG.MEDIUM;
   return (
     <span
-      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider italic border ${info.badgeClass}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${cfg.className}`}
     >
-      {info.label}
+      {cfg.label}
     </span>
   );
 }
@@ -96,175 +147,164 @@ function ChatbotReportCard({
   const contact = report.contactWhatsapp || report.contactPhone || '';
   const title = report.title?.trim() || t('chatbotReportsNoTitle');
   const category = useMemo(
-    () => report.categories?.[0] ? getCategoryLabel(report.categories[0], language)?.label : null,
+    () => (report.categories?.[0] ? getCategoryLabel(report.categories[0], language)?.label : null),
     [report.categories, language]
   );
   const location = report.address?.trim() || report.neighborhood?.trim() || '';
 
-  const enrichment = report.locationEnrichmentStatus;
-  const enrichmentLabel =
-    enrichment === 'RESOLVED'
-      ? t('chatbotReportsLocationResolved')
-      : enrichment === 'PENDING'
-      ? t('chatbotReportsLocationPending')
-      : enrichment || null;
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpenDetail(report)}
-      className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+    <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-4 md:p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs">
+      <div className="space-y-1.5 min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border bg-rd-green-soft text-rd-green border-rd-green-line">
+            💬 WhatsApp
+          </span>
           <VerificationBadge status={report.verificationStatus} />
           <PriorityBadge priority={report.priority} />
           {category && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="px-2 py-0.5 rounded-rd-sm text-rd-10 font-medium bg-rd-fondo text-rd-ink-2 border border-rd-line">
               {category}
             </span>
           )}
+          <span className="text-rd-10 text-rd-ink-meta font-mono">#{report.id.slice(0, 8)}</span>
+          <span className="text-rd-10 text-rd-ink-meta font-medium">
+            {new Date(report.createdAt).toLocaleString(language === 'en' ? 'en-US' : 'es-CO', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
         </div>
-        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-          {new Date(report.createdAt).toLocaleString(language === 'en' ? 'en-US' : 'es-CO', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </span>
+
+        <h4 className="font-semibold text-rd-ink text-rd-14 leading-snug">{title}</h4>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-rd-12 text-rd-ink-meta">
+          {contact && (
+            <span className="inline-flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-rd-ink-3" />
+              <span className="font-semibold text-rd-ink">{contact}</span>
+            </span>
+          )}
+          {location && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+              <span>{location}</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      <h4 className="font-bold text-slate-900 text-sm leading-snug">{title}</h4>
-
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
-        <span className="inline-flex items-center gap-1">
-          <Phone className="w-3 h-3 text-slate-400" />
-          {contact ? <span className="font-semibold text-slate-700">{contact}</span> : <span className="italic">{t('chatbotReportsNoContact')}</span>}
-        </span>
-        {location && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-slate-400" />
-            <span>{location}</span>
-          </span>
-        )}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => onOpenDetail(report)}
+          className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span>Ver detalle</span>
+        </button>
       </div>
     </div>
   );
 }
 
 /** Componente de Tarjeta para QuickTicket */
-function QuickTicketCard({ ticket, onStatusChange }: { ticket: QuickTicket; onStatusChange: (id: string, newStatus: string) => void }) {
+function QuickTicketCard({
+  ticket,
+  onStatusChange,
+}: {
+  ticket: QuickTicket;
+  onStatusChange: (id: string, newStatus: string) => void;
+}) {
   const cleanPhone = ticket.contactPhone.replace(/[^0-9]/g, '');
 
-  const getStatusBadge = (s: string) => {
-    switch (s) {
-      case 'PENDING':
-        return <span className="bg-amber-50 text-amber-800 border border-amber-300 font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">◷ Pendiente</span>;
-      case 'IN_REVIEW':
-        return <span className="bg-blue-50 text-blue-800 border border-blue-300 font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">🔍 En Revisión</span>;
-      case 'CONVERTED':
-        return <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">✓ Convertido</span>;
-      case 'ARCHIVED':
-        return <span className="bg-slate-100 text-slate-600 border border-slate-300 font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">📁 Archivada</span>;
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm hover:shadow-md transition-all">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-        <div className="flex items-center gap-2">
-          {getStatusBadge(ticket.status)}
-          <span className="text-[10px] font-mono text-slate-400">#{ticket.id.slice(0, 8)}</span>
-        </div>
-        <span className="text-[10px] font-bold text-slate-400">
-          {new Date(ticket.createdAt).toLocaleString('es-CO', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </span>
-      </div>
-
-      {/* Necesidad expresada */}
-      <div>
-        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide text-blue-600">Necesidad Solicitada</h4>
-        <p className="text-sm font-semibold text-slate-800 mt-0.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-          "{ticket.needSummary}"
-        </p>
-      </div>
-
-      {/* Ubicación y Contacto */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700">
-        <div className="flex items-start gap-1.5">
-          <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-          <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase">Ubicación</span>
-            <span className="font-semibold">{ticket.locationText}</span>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-1.5">
-          <Phone className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase">Contacto</span>
-            <span className="font-bold text-slate-900">{ticket.contactPhone}</span>
-            {ticket.contactName && <span className="text-slate-500 text-[11px]"> ({ticket.contactName})</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Detalles Adicionales */}
-      {ticket.additionalDetails && (
-        <div className="text-xs text-slate-600 bg-amber-50/60 border border-amber-100 p-2 rounded-xl">
-          <strong className="text-amber-900 font-bold block text-[10px] uppercase">Detalles adicionales:</strong>
-          <span>{ticket.additionalDetails}</span>
-        </div>
-      )}
-
-      {/* Acciones del Moderador */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-        <div className="flex items-center gap-2">
-          {cleanPhone && (
-            <a
-              href={`https://wa.me/57${cleanPhone}`}
-              target="_blank"
-              rel="noreferrer"
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-xs"
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>WhatsApp</span>
-            </a>
-          )}
-          <a
-            href={`tel:${ticket.contactPhone}`}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-xs"
+    <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-4 md:p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs">
+      <div className="space-y-1.5 min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border bg-rd-navy-soft text-rd-navy border-rd-navy-line">
+            🤖 App Ticket
+          </span>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${
+              ticket.status === 'PENDING'
+                ? 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line'
+                : ticket.status === 'IN_REVIEW'
+                ? 'bg-rd-navy-soft text-rd-navy border-rd-navy-line'
+                : ticket.status === 'CONVERTED'
+                ? 'bg-rd-green-soft text-rd-green border-rd-green-line'
+                : 'bg-rd-fondo text-rd-ink-meta border-rd-line'
+            }`}
           >
-            <Phone className="w-3 h-3" />
-            <span>Llamar</span>
-          </a>
+            {ticket.status === 'PENDING'
+              ? '◷ Pendiente'
+              : ticket.status === 'IN_REVIEW'
+              ? '🔍 En Revisión'
+              : ticket.status === 'CONVERTED'
+              ? '✓ Convertido'
+              : '📁 Archivado'}
+          </span>
+          <span className="text-rd-10 text-rd-ink-meta font-mono">#{ticket.id.slice(0, 8)}</span>
+          <span className="text-rd-10 text-rd-ink-meta font-medium">
+            {new Date(ticket.createdAt).toLocaleString('es-CO', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
         </div>
 
-        {/* Cambiar Estado */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Estado:</span>
-          <CustomSelect
-            className="min-w-[140px]"
-            value={ticket.status}
-            onChange={(val) => onStatusChange(ticket.id, val)}
-            options={[
-              { value: 'PENDING', label: 'Pendiente' },
-              { value: 'IN_REVIEW', label: 'En Revisión' },
-              { value: 'CONVERTED', label: 'Convertido' },
-              { value: 'ARCHIVED', label: 'Archivado' },
-            ]}
-          />
+        <h4 className="font-semibold text-rd-ink text-rd-14">"{ticket.needSummary}"</h4>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-rd-12 text-rd-ink-meta">
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+            <span>{ticket.locationText}</span>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Phone className="w-3.5 h-3.5 text-rd-ink-3" />
+            <span className="font-semibold text-rd-ink">{ticket.contactPhone}</span>
+            {ticket.contactName && <span>({ticket.contactName})</span>}
+          </span>
         </div>
+
+        {ticket.additionalDetails && (
+          <p className="text-rd-11-5 text-rd-ink-2 italic pt-0.5">"{ticket.additionalDetails}"</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        {cleanPhone && (
+          <a
+            href={`https://wa.me/57${cleanPhone}`}
+            target="_blank"
+            rel="noreferrer"
+            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>WhatsApp</span>
+          </a>
+        )}
+        <a
+          href={`tel:${ticket.contactPhone}`}
+          className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <Phone className="w-3.5 h-3.5" />
+          <span>Llamar</span>
+        </a>
+        <CustomSelect
+          className="w-36"
+          value={ticket.status}
+          onChange={(val) => onStatusChange(ticket.id, val)}
+          options={[
+            { value: 'PENDING', label: 'Pendiente' },
+            { value: 'IN_REVIEW', label: 'En Revisión' },
+            { value: 'CONVERTED', label: 'Convertido' },
+            { value: 'ARCHIVED', label: 'Archivado' },
+          ]}
+        />
       </div>
     </div>
   );
@@ -273,9 +313,16 @@ function QuickTicketCard({ ticket, onStatusChange }: { ticket: QuickTicket; onSt
 export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
   showHeader = true,
   operator = null,
+  activeSubTab,
+  onSubTabChange,
 }) => {
   const { t, language } = useTranslation();
-  const [subTab, setSubTab] = useState<'QUICK_TICKETS' | 'WHATSAPP'>('QUICK_TICKETS');
+  const [internalSubTab, setInternalSubTab] = useState<'QUICK_TICKETS' | 'WHATSAPP'>('QUICK_TICKETS');
+  const subTab = activeSubTab ?? internalSubTab;
+  const setSubTab = (newTab: 'QUICK_TICKETS' | 'WHATSAPP') => {
+    setInternalSubTab(newTab);
+    onSubTabChange?.(newTab);
+  };
 
   // Quick Tickets State
   const [quickTickets, setQuickTickets] = useState<QuickTicket[]>([]);
@@ -385,9 +432,9 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
       {/* Subtab 1: Quick Tickets App */}
       {subTab === 'QUICK_TICKETS' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-slate-700">Filtrar por estado:</label>
+              <label className="text-rd-12 font-semibold text-rd-ink">Filtrar por estado:</label>
               <CustomSelect
                 className="min-w-[200px]"
                 value={quickTicketFilter}
@@ -403,8 +450,9 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
             </div>
 
             <button
+              type="button"
               onClick={loadQuickTicketsData}
-              className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"
+              className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Actualizar</span>
@@ -412,20 +460,20 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
           </div>
 
           {loadingTickets ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+            <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-8 text-center text-rd-ink-meta text-rd-12 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-rd-navy" />
               <span>Cargando tickets rápidos...</span>
             </div>
           ) : quickTickets.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2 shadow-xs">
-              <Inbox className="w-10 h-10 text-slate-300 mx-auto" />
-              <h4 className="font-bold text-slate-900 text-sm">No se encontraron tickets rápidos</h4>
-              <p className="text-xs text-slate-500">
+            <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-8 text-center space-y-2 shadow-xs">
+              <Inbox className="w-10 h-10 text-rd-ink-3 mx-auto" />
+              <h4 className="font-semibold text-rd-ink text-rd-14">No se encontraron tickets rápidos</h4>
+              <p className="text-rd-12 text-rd-ink-meta">
                 Los tickets enviados desde la opción de Chatbot en la app aparecerán aquí para revisión del equipo.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
               {quickTickets.map((ticket) => (
                 <QuickTicketCard
                   key={ticket.id}
@@ -441,10 +489,10 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
       {/* Subtab 2: WhatsApp Reports */}
       {subTab === 'WHATSAPP' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm">
+          <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-3.5 shadow-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
+                <label className="block font-semibold text-rd-ink-2 mb-1 text-rd-11 uppercase tracking-wider">
                   Verificación
                 </label>
                 <CustomSelect
@@ -461,7 +509,7 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
+                <label className="block font-semibold text-rd-ink-2 mb-1 text-rd-11 uppercase tracking-wider">
                   Prioridad
                 </label>
                 <CustomSelect
@@ -479,7 +527,7 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px] uppercase tracking-wider">
+                <label className="block font-semibold text-rd-ink-2 mb-1 text-rd-11 uppercase tracking-wider">
                   Orden
                 </label>
                 <CustomSelect
@@ -496,14 +544,17 @@ export const ChatbotReportsList: React.FC<ChatbotReportsListProps> = ({
           </div>
 
           {loadingWhatsapp ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 flex items-center justify-center gap-2 text-slate-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-8 flex items-center justify-center gap-2 text-rd-ink-meta text-rd-12">
+              <Loader2 className="w-4 h-4 animate-spin text-rd-navy" />
               <span>{t('loading')}</span>
             </div>
           ) : chatbotReports.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2 shadow-sm">
-              <Inbox className="w-10 h-10 text-slate-300 mx-auto" />
-              <h4 className="font-bold text-slate-900 text-base">No hay reportes de WhatsApp</h4>
+            <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-10 text-center space-y-2 shadow-xs">
+              <Inbox className="w-10 h-10 text-rd-ink-3 mx-auto" />
+              <h4 className="font-semibold text-rd-ink text-rd-14">No hay reportes de WhatsApp</h4>
+              <p className="text-rd-ink-meta text-rd-12">
+                No hay conversaciones procesadas que coincidan con los filtros seleccionados.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
