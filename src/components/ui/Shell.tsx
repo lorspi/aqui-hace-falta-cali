@@ -3,6 +3,7 @@ import { Bell, ChevronLeft, ClipboardList, Hand, HeartHandshake, House, LogIn, L
 import { Avatar, Contador } from './Etiqueta';
 import { Divisor } from './Divisor';
 import { supabase } from '../../lib/supabaseClient';
+import { entidadActual } from '../../utils/cuenta';
 
 /**
  * El cascarón de la app con sesión (`rd-shell` del prototipo), con utilidades sobre los
@@ -184,7 +185,18 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   const profileType = (activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || activeUser?.profile_type || '').toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
-  const esOrganizacion = estaLogueado && (
+  const esComunidad =
+    profileType === 'comunidad' ||
+    profileType === 'liderazgo' ||
+    profileType === 'lider' ||
+    userRole === 'lider' ||
+    userRole === 'liderazgo' ||
+    userRole === 'comunidad' ||
+    entidadStorage === 'liderazgo' ||
+    entidadStorage === 'comunidad' ||
+    entidadActual() === 'liderazgo';
+
+  const esOrganizacion = (
     hasOrg ||
     profileType === 'organizacion' ||
     profileType === 'comunidad' ||
@@ -201,10 +213,12 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     Boolean(activeUser?.organization) ||
     entidadStorage === 'organizacion' ||
     entidadStorage === 'liderazgo' ||
-    entidadStorage === 'comunidad'
+    entidadStorage === 'comunidad' ||
+    entidadActual() === 'organizacion' ||
+    entidadActual() === 'liderazgo'
   );
 
-  const esAdminOModerador = estaLogueado && (
+  const esAdminOModerador = (
     isModeratorOrAdmin ||
     userRole === 'admin' ||
     userRole === 'moderador' ||
@@ -212,32 +226,89 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     activeUser?.email?.includes('moderador')
   );
 
+  const esIndividual =
+    profileType === 'persona' ||
+    profileType === 'individual' ||
+    userRole === 'voluntario' ||
+    userRole === 'regular' ||
+    entidadStorage === 'individual' ||
+    entidadActual() === 'individual' ||
+    (!esOrganizacion && !esAdminOModerador && estaLogueado);
+
+  const nombrePanelDinamico = esComunidad
+    ? 'Mi comunidad'
+    : (panelNombre && panelNombre !== 'Panel' ? panelNombre : 'Mi organización');
+
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
     { id: 'radar', nombre: 'Radar', href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
     { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
   ];
 
-  const esComunidad =
-    profileType === 'comunidad' ||
-    profileType === 'liderazgo' ||
-    profileType === 'lider' ||
-    userRole === 'lider' ||
-    userRole === 'liderazgo' ||
-    userRole === 'comunidad' ||
-    entidadStorage === 'liderazgo' ||
-    entidadStorage === 'comunidad';
-
-  const nombrePanelDinamico = esComunidad ? 'Mi comunidad' : (panelNombre && panelNombre !== 'Panel' ? panelNombre : 'Mi organización');
-
-  if (esOrganizacion) {
-    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
-  } else if (estaLogueado && !esAdminOModerador) {
-    secciones.push({ id: 'actividad', nombre: 'Mi actividad', href: rutas.actividad || '/mi-actividad', icono: <ClipboardList className="h-5 w-5" />, n: pendientes });
-  }
-
   if (esAdminOModerador) {
-    secciones.push({ id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> });
+    secciones.push({ id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: rutas['panel-admin'] || '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> });
+    if (esOrganizacion) {
+      secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+    }
+  } else if (esComunidad || esOrganizacion) {
+    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+  } else if (esIndividual) {
+    secciones.push({ id: 'actividad', nombre: 'Mi actividad', href: rutas.actividad || '/mi-actividad', icono: <ClipboardList className="h-5 w-5" />, n: pendientes });
+  } else {
+    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
   }
+
+  // 5ta pestaña móvil: Mi organización / Mi comunidad / Mi actividad / Panel admin según perfil
+  const tabPerfil = useMemo(() => {
+    // 1. Administrador o Moderador
+    if (esAdminOModerador && (userRole === 'admin' || userRole === 'moderador' || seccion === 'panel-admin' || !esOrganizacion)) {
+      return {
+        id: 'panel-admin' as Seccion,
+        nombre: 'Panel admin',
+        href: rutas['panel-admin'] || '/panel-admin',
+        icono: <ShieldCheck className="h-6 w-6" />,
+        actual: seccion === 'panel-admin',
+        n: 0,
+        etiqueta: 'Panel admin',
+      };
+    }
+
+    // 2. Líder comunitario / Comunidad
+    if (esComunidad) {
+      return {
+        id: 'panel' as Seccion,
+        nombre: 'Mi comunidad',
+        href: rutas.panel || '/panel-v2',
+        icono: <House className="h-6 w-6" />,
+        actual: seccion === 'panel',
+        n: pendientes,
+        etiqueta: `Mi comunidad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      };
+    }
+
+    // 3. Voluntario / Persona natural / Mi actividad
+    if (esIndividual) {
+      return {
+        id: 'actividad' as Seccion,
+        nombre: 'Mi actividad',
+        href: rutas.actividad || '/mi-actividad',
+        icono: <ClipboardList className="h-6 w-6" />,
+        actual: seccion === 'actividad',
+        n: pendientes,
+        etiqueta: `Mi actividad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      };
+    }
+
+    // 4. Organización (ONG, Fundación, etc.) por defecto
+    return {
+      id: 'panel' as Seccion,
+      nombre: nombrePanelDinamico || 'Mi organización',
+      href: rutas.panel || '/panel-v2',
+      icono: <House className="h-6 w-6" />,
+      actual: seccion === 'panel',
+      n: pendientes,
+      etiqueta: `${nombrePanelDinamico || 'Mi organización'}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+    };
+  }, [esAdminOModerador, userRole, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes, nombrePanelDinamico]);
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
     const actual = s.id === seccion;
@@ -268,22 +339,26 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         aria-label="Secciones"
         className={`flex h-full shrink-0 flex-col rounded-rd-md border border-rd-line bg-rd-surface py-4 transition-all duration-200 max-lg:hidden ${plegado ? 'w-16 px-2' : 'w-58 px-3'}`}
       >
-        <div className={`flex shrink-0 items-center mb-2 ${plegado ? 'justify-center' : 'justify-between px-1'}`}>
-          {!plegado && (
-            <a
-              href={rutas.inicio}
-              onClick={(e) => handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades')}
-              aria-label="RaDAR de ayuda, inicio"
-              className="flex items-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy"
-            >
+        <div className={`flex shrink-0 ${plegado ? 'flex-col items-center gap-2 mb-2' : 'items-center justify-between px-1 mb-2'}`}>
+          <a
+            href={rutas.inicio}
+            onClick={(e) => handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades')}
+            aria-label="RaDAR de ayuda, inicio"
+            title="RaDAR de ayuda, inicio"
+            className="flex items-center justify-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy hover:opacity-90 transition-opacity"
+          >
+            {plegado ? (
+              <img src="/simbolo-radar.svg" alt="Radar de Ayuda" className="block h-7.5 w-7.5 shrink-0 object-contain" />
+            ) : (
               <img src="/logo-radar.svg" alt="Radar de Ayuda" className="block h-8 w-auto min-w-0" />
-            </a>
-          )}
+            )}
+          </a>
           <button
             type="button"
             onClick={() => setPlegado((p) => !p)}
             aria-label={plegado ? 'Desplegar el menú' : 'Plegar el menú'}
             aria-expanded={!plegado}
+            title={plegado ? 'Desplegar el menú' : 'Plegar el menú'}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-3 hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
           >
             <ChevronLeft aria-hidden="true" className={`h-4.5 w-4.5 transition-transform duration-200 ${plegado ? 'rotate-180' : ''}`} />
@@ -385,6 +460,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           )}
         </div>
         <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre="Avisos" icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`Avisos, ${avisosNuevos} nuevos`} />
+        <TabItem
+          href={tabPerfil.href}
+          actual={tabPerfil.actual}
+          nombre={tabPerfil.nombre}
+          icono={tabPerfil.icono}
+          n={tabPerfil.n}
+          etiqueta={tabPerfil.etiqueta}
+        />
       </nav>
 
       {/* ---- cajón lateral (solo < 1024) ---- */}

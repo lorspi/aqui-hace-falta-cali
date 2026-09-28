@@ -70,6 +70,20 @@ export interface Publicacion {
   radio?: string;
   /** Texto legible de entrega o recepción (ej. 'Lo llevamos · Todo el país', 'Remoto · WhatsApp'). */
   comoEntrega?: string;
+  /** Nombre o cargo de la persona de enlace / contacto */
+  contactoNombre?: string;
+  /** Teléfono de contacto */
+  contactoTel?: string;
+  /** Si el teléfono cuenta con WhatsApp habilitado */
+  contactoWa?: boolean;
+  /** Correo de contacto oficial */
+  contactoEmail?: string;
+  /** Horario de atención, despacho o recepción */
+  horario?: string;
+  /** Indicaciones de acceso, punto de acopio o cómo llegar */
+  comoLlegar?: string;
+  /** Comunidad, población o grupo beneficiario para quien es la ayuda */
+  paraQuien?: string;
 }
 
 /** Icono del catálogo (Phosphor en el prototipo; aquí se resuelve a Lucide en la vista). */

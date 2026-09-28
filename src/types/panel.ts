@@ -58,6 +58,10 @@ export interface Solicitud {
    *  «Archivar» o solas a los 30 días (Alejandro, 16 de septiembre de 2026), para que no se
    *  acumulen en el tablero. */
   cerradaEl?: string;
+  /** Marca si la entrega fue registrada directamente sin solicitud previa en plataforma */
+  esEntregaDirecta?: boolean;
+  /** Marca si la necesidad fue asumida internamente por la brigada de la organización */
+  esInterna?: boolean;
 }
 
 /** Un recurso de MI oferta publicada. Sin `entregado` ni `quedan`: se cuentan desde las
@@ -120,6 +124,8 @@ export interface EntregaRecibida {
   motivoCancelacion?: string;
   /** Fecha (AAAA-MM-DD) en que la confirmaste o distribuiste. */
   cerradaEl?: string;
+  /** Marca si la necesidad fue asumida internamente por la misma organización / brigada */
+  esInterna?: boolean;
 }
 
 /** Estado de una solicitud directa que el líder comunitario envió a la oferta de un donante. */

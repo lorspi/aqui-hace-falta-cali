@@ -1,4 +1,4 @@
-import { Archive, Check, CircleDashed, CircleDot, Clock, Eye, MapPin, Package, Phone, Truck, Users, X } from 'lucide-react';
+import { Archive, Check, CheckCircle2, CircleDashed, CircleDot, Clock, Eye, MapPin, Package, Phone, Truck, Users, X } from 'lucide-react';
 import type { EntregaRecibida, MiembroEquipo, Solicitud } from '../../types/panel';
 import { EQUIPO } from '../../mocks/panelMock';
 import { ENTIDADES } from '../../mocks/directorioMock';
@@ -405,6 +405,19 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
   const { cierre, fotos } = cierreDe(s, acciones.onVerFotos);
   const lleva = quienLleva(s);
   const contacto = buscarContactoEntidad(s.quien);
+  const badgeEstado = estado ?? (
+    s.esInterna ? (
+      <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
+        <CheckCircle2 aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-navy" />
+        <span>Brigada interna</span>
+      </span>
+    ) : s.esEntregaDirecta ? (
+      <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-green-line bg-rd-green-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-green">
+        <Check aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-green" />
+        <span>Entrega directa</span>
+      </span>
+    ) : null
+  );
   return (
     <TarjetaEntrega
       titulo={`${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`}
@@ -414,7 +427,7 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
       recurso={s.rec}
       lleva={lleva}
       contacto={contacto}
-      estado={estado}
+      estado={badgeEstado}
       cierre={cierre}
       fotos={fotos}
       acciones={accionesDe(s, acciones)}

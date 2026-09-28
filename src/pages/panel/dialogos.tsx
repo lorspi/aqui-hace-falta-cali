@@ -1310,6 +1310,7 @@ export const DialogoDetallePublicacionPanel: React.FC<{
       <div className="p-4 sm:p-5 bg-rd-fondo/40">
         <Tarjeta
           publicacion={p}
+          completa
           onVerEnMapa={(id) => {
             if (onVerEnMapa) {
               onVerEnMapa(id);

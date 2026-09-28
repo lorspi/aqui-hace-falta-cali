@@ -523,6 +523,25 @@ header {
   font-family: var(--font-rd);
   background: var(--color-rd-mapa);
 }
+.rd-mapa .leaflet-control-zoom {
+  border: 1px solid var(--color-rd-line) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+}
+.rd-mapa .leaflet-control-zoom a {
+  background-color: var(--color-rd-surface) !important;
+  color: var(--color-rd-ink) !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 30px !important;
+  font-size: 16px !important;
+  transition: background-color 0.15s ease;
+}
+.rd-mapa .leaflet-control-zoom a:hover {
+  background-color: var(--color-rd-fondo) !important;
+  color: var(--color-rd-navy) !important;
+}
 @media (max-width: 1023px) {
   .rd-mapa .leaflet-bottom {
     bottom: 4rem;

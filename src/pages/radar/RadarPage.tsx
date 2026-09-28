@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Flag, Funnel, Hand, HeartHandshake, Info, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
@@ -156,7 +156,6 @@ const Radar: React.FC<RadarProps> = ({
   const [dbPubs, setDbPubs] = useState<Publicacion[]>([]);
   const [cargandoDb, setCargandoDb] = useState(true);
   const [panelDerechoMinimizado, setPanelDerechoMinimizado] = useState(false);
-  const [leyendaExpandida, setLeyendaExpandida] = useState(false);
 
 
 
@@ -493,40 +492,46 @@ const Radar: React.FC<RadarProps> = ({
         </header>
 
         {/* ---- consulta ---- */}
-        <div className="flex flex-none items-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto border-b border-rd-line bg-rd-surface px-4 py-2 sm:px-6 lg:px-8">
-          <Segmented<Tipo>
-            etiquetaGrupo="Qué quieres ver"
-            valor={tipo}
-            onChange={setTipo}
-            className="shrink-0"
-            opciones={[
-              { id: 'todo', etiqueta: 'Todo', n: conteo.todo },
-              { id: 'necesidad', etiqueta: 'Necesidades', n: conteo.necesidad, pip: 'necesidad' },
-              { id: 'oferta', etiqueta: 'Ofertas', n: conteo.oferta, pip: 'oferta' },
-            ]}
-          />
-          {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
-              de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
-              la píldora flotante de abajo. */}
-          <div role="group" aria-label="Vista" className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
-            <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-            <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+        <div className="flex flex-none flex-col border-b border-rd-line bg-rd-surface px-4 py-2 sm:px-6 lg:flex-row lg:items-center lg:gap-3 lg:px-8">
+          {/* Fila 1 en móvil: Tabs Todo / Necesidades / Ofertas (+ Mapa/Lista en desktop) */}
+          <div className="flex items-center gap-2 overflow-x-auto max-lg:w-full lg:shrink-0">
+            <Segmented<Tipo>
+              etiquetaGrupo="Qué quieres ver"
+              valor={tipo}
+              onChange={setTipo}
+              className="shrink-0 max-lg:w-full max-lg:justify-between"
+              opciones={[
+                { id: 'todo', etiqueta: 'Todo', n: conteo.todo },
+                { id: 'necesidad', etiqueta: 'Necesidades', n: conteo.necesidad, pip: 'necesidad' },
+                { id: 'oferta', etiqueta: 'Ofertas', n: conteo.oferta, pip: 'oferta' },
+              ]}
+            />
+            {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
+                de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
+                la píldora flotante de abajo. */}
+            <div role="group" aria-label="Vista" className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
+              <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
+              <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+            </div>
+            <span aria-hidden="true" className="h-6 w-px shrink-0 flex-none bg-rd-line max-lg:hidden" />
           </div>
-          <span aria-hidden="true" className="h-6 w-px shrink-0 flex-none bg-rd-line max-lg:hidden" />
-          {/* Decisión 70: qué ves y cómo lo ves │ Filtros y chips │ el buscador a la derecha (146: lupa bajo 1024). */}
-          <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
-          <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
-            {estado}
-          </p>
-          {chips.length > 0 && (
-            <ZonaChips>
-              {chips.map((c) => (
-                <ChipAplicado key={c.clave} texto={c.texto} onQuitar={() => setFiltros(c.quitar(filtros))} />
-              ))}
-              <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
-            </ZonaChips>
-          )}
-          <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
+
+          {/* Fila 2 en móvil (abajo de los tabs): Pill de filtros, chips aplicados y buscador */}
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pt-2 max-lg:w-full sm:gap-3 lg:pt-0">
+            <BotonFiltros aplicados={aplicados} abierta={hojaFiltros} onClick={() => setHojaFiltros(true)} />
+            <p id="rd-consulta-estado" aria-live="polite" aria-atomic="true" className="sr-only">
+              {estado}
+            </p>
+            {chips.length > 0 && (
+              <ZonaChips>
+                {chips.map((c) => (
+                  <ChipAplicado key={c.clave} texto={c.texto} onQuitar={() => setFiltros(c.quitar(filtros))} />
+                ))}
+                <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
+              </ZonaChips>
+            )}
+            <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
+          </div>
         </div>
 
         {/* ---- mapa + lista ---- */}
@@ -598,63 +603,6 @@ const Radar: React.FC<RadarProps> = ({
                 resaltadas={resaltadas}
                 className="h-full w-full"
               />
-
-              {/* Leyenda del mapa en la esquina inferior izquierda DENTRO del mapa */}
-              <div className="absolute bottom-4 left-4 z-[1000] font-rd flex flex-col items-start">
-                {leyendaExpandida ? (
-                  <div className="w-56 rounded-rd-xl border border-rd-line bg-rd-surface/95 p-3 shadow-rd-2 backdrop-blur-md animate-in fade-in duration-150 text-rd-ink">
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-rd-line">
-                      <span className="text-rd-11 font-bold tracking-wider uppercase text-rd-ink-meta">
-                        Leyenda del mapa
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setLeyendaExpandida(false)}
-                        className="p-1 text-rd-ink-3 hover:text-rd-ink rounded-rd-sm transition-colors cursor-pointer"
-                        title="Minimizar leyenda"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-1.5 text-rd-12 font-medium">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-rd-coral shrink-0" />
-                        <span>Crítica</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
-                        <span>Alta</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-yellow-400 shrink-0" />
-                        <span>Media</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-rd-green shrink-0" />
-                        <span>Baja</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-purple-600 shrink-0" />
-                        <span>Centro de acopio</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-rd-navy shrink-0" />
-                        <span>Oferta de ayuda</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setLeyendaExpandida(true)}
-                    className="inline-flex items-center gap-2 rounded-full border border-rd-line bg-rd-surface/95 px-3.5 py-1.5 text-rd-12-5 font-semibold text-rd-ink shadow-rd-2 ring-1 ring-rd-ink/10 backdrop-blur-md transition-all hover:bg-rd-surface hover:text-rd-navy active:scale-95 cursor-pointer"
-                  >
-                    <Info className="h-4 w-4 text-rd-navy shrink-0" />
-                    <span>Leyenda del mapa</span>
-                    <ChevronUp className="h-4 w-4 text-rd-ink-3 shrink-0" />
-                  </button>
-                )}
-              </div>
 
               {/* Botón para minimizar/desplegar el panel derecho hacia la derecha */}
               <button

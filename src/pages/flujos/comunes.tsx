@@ -555,7 +555,8 @@ export const MiniMapa: React.FC<{ lat: number; lng: number; onMover: (lat: numbe
     const safeLat = typeof lat === 'number' && !isNaN(lat) && lat !== 0 ? lat : 3.4516;
     const safeLng = typeof lng === 'number' && !isNaN(lng) && lng !== 0 ? lng : -76.5320;
 
-    const m = L.map(nodo.current, { zoomControl: false, attributionControl: false }).setView([safeLat, safeLng], 15);
+    const m = L.map(nodo.current, { zoomControl: true, attributionControl: false }).setView([safeLat, safeLng], 15);
+    m.zoomControl?.setPosition('topright');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
     const pin = L.marker([safeLat, safeLng], { draggable: true, title: 'El punto donde llega la ayuda; arrástralo si es otro' }).addTo(m);
     

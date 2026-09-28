@@ -207,6 +207,12 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       propia: true,
       org: org?.org_name || nombreOrg || profile?.full_name || CUENTA_OFRECER.organizacion || 'Mi Organización',
       verificada: publicacionSaleVerificada(),
+      contactoNombre: estado.contacto || CUENTA_OFRECER.contacto,
+      contactoTel: estado.tel || CUENTA_OFRECER.telefono,
+      contactoWa: true,
+      contactoEmail: user?.email,
+      horario: estado.horario || 'Lunes a domingo 8:00 a 18:00',
+      comoEntrega: textoEntrega(estado),
     };
     setPublicacionPublicada(pubFinal);
 
@@ -322,9 +328,11 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   }, [set]);
 
   const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
+  const [textoGeocodificacion, setTextoGeocodificacion] = useState('Buscando ubicación en el mapa...');
   const [cargandoGps, setCargandoGps] = useState(false);
   const [errorGps, setErrorGps] = useState<string | null>(null);
   const omitirAutoGeocodificacionRef = useRef(false);
+  const ultimoMovimientoRef = useRef<number>(0);
 
   const obtenerUbicacionGPS = useCallback(() => {
     if (!navigator.geolocation) {
@@ -364,8 +372,33 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     );
   }, [set, errores]);
 
+  const manejarMovimientoMapa = useCallback(async (lat: number, lng: number) => {
+    const timestampActual = Date.now();
+    ultimoMovimientoRef.current = timestampActual;
+    omitirAutoGeocodificacionRef.current = true;
+    set({ lat, lng });
+    setTextoGeocodificacion('Obteniendo dirección del punto seleccionado...');
+    setCargandoGeocodificacion(true);
+
+    try {
+      const direccionFormateada = await reverseGeocodeAddress(lat, lng);
+      if (ultimoMovimientoRef.current === timestampActual && direccionFormateada) {
+        omitirAutoGeocodificacionRef.current = true;
+        set({ dir: direccionFormateada });
+        errores.limpiar('dir');
+      }
+    } catch (err) {
+      console.warn('Error al obtener dirección inversa del pin:', err);
+    } finally {
+      if (ultimoMovimientoRef.current === timestampActual) {
+        setCargandoGeocodificacion(false);
+      }
+    }
+  }, [set, errores]);
+
   const geocodificarDireccion = useCallback(async (direccion: string) => {
     if (!direccion || direccion.trim().length < 3) return;
+    setTextoGeocodificacion('Buscando ubicación en el mapa...');
     setCargandoGeocodificacion(true);
     try {
       const res = await geocodeAddress(direccion, undefined, 'Cali');
@@ -517,8 +550,13 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           error={errores.errores.dir}
           className="mb-3"
         />
-        {cargandoGeocodificacion && <p className="text-rd-12 text-rd-navy animate-pulse mb-1">Buscando ubicación en el mapa...</p>}
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={(lat, lng) => { omitirAutoGeocodificacionRef.current = true; set({ lat, lng }); }} />
+        {cargandoGeocodificacion && (
+          <div className="flex items-center gap-1.5 text-rd-12 text-rd-navy animate-pulse mb-1.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            <span>{textoGeocodificacion}</span>
+          </div>
+        )}
+        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} />
       </>
     );
   } else if (sub.id === 'contacto') {

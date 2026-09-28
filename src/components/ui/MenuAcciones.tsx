@@ -112,6 +112,10 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
     </div>
   );
 
+  if (!items || items.length === 0) return null;
+
+  const portalPadre = typeof document !== 'undefined' ? (raiz.current?.closest('dialog') || document.body) : null;
+
   return (
     /* `inline-flex` y no un span suelto: siendo inline, el botón se apoyaba en la línea base y
        el interlineado lo bajaba unos píxeles respecto a los botones de al lado (Alejandro, 25
@@ -133,7 +137,7 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
       >
         <EllipsisVertical aria-hidden="true" className="h-4.5 w-4.5" />
       </Button>
-      {abierto && (flotante ? createPortal(menuContenido, document.body) : menuContenido)}
+      {abierto && (flotante && portalPadre ? createPortal(menuContenido, portalPadre) : menuContenido)}
     </span>
   );
 };

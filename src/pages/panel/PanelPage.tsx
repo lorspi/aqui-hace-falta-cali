@@ -256,6 +256,8 @@ const Panel: React.FC = () => {
   const [cancelandoSolicitudEnviada, setCancelandoSolicitudEnviada] = useState<SolicitudEnviada | null>(null);
   const [cancelandoOfrecimientoEnviado, setCancelandoOfrecimientoEnviado] = useState<OfrecimientoEnviado | null>(null);
   const [cancelandoRecibidaCompromiso, setCancelandoRecibidaCompromiso] = useState<EntregaRecibida | null>(null);
+  const [atendiendoInternamente, setAtendiendoInternamente] = useState<RecursoPedido | null>(null);
+  const [entregandoDirecta, setEntregandoDirecta] = useState<RecursoOfrecido | null>(null);
 
   const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>(() => {
     try {
@@ -921,6 +923,104 @@ const Panel: React.FC = () => {
     setRecibidas((l) => l.map((r) => (r.id === id ? { ...r, estado: 'aceptada' } : r)));
     avisar('Oferta aceptada. Coordinan la entrega contigo', { tipo: 'ok' });
   };
+  const confirmarAtenderInternamente = (
+    r: RecursoPedido,
+    cantidad: number,
+    miembroId: number | null,
+    notas: string
+  ) => {
+    const nuevaSol: Solicitud = {
+      id: Date.now(),
+      quien: pubNecesidad.zona || pubNecesidad.dir || 'Comunidad atendida',
+      rec: r.n,
+      cant: cantidad,
+      u: r.unidad,
+      estado: 'aceptada',
+      cuando: 'Hoy (brigada interna)',
+      vol: miembroId,
+      dist: 'Brigada interna',
+      notasCamino: notas || undefined,
+      notasEntrega: notas || undefined,
+      esInterna: true,
+    };
+
+    setSol((prev) => [nuevaSol, ...prev]);
+
+    setRecursosNecesidad((prev) => {
+      const act = prev.map((item) =>
+        item.n === r.n ? { ...item, camino: (item.camino || 0) + cantidad } : item
+      );
+      try {
+        localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+
+    setPubNecesidad((prev) => {
+      const act = {
+        ...prev,
+        recursos: prev.recursos.map((item) =>
+          item.item === r.n ? { ...item, camino: (item.camino || 0) + cantidad } : item
+        ),
+      };
+      try {
+        localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+
+    setAtendiendoInternamente(null);
+    avisar('Necesidad asumida por tu brigada. La encuentras en el tablero de "Ayuda que entrego".', { tipo: 'ok' });
+  };
+
+  const confirmarEntregaDirecta = (
+    r: RecursoOfrecido,
+    cantidad: number,
+    beneficiario: string,
+    miembroId: number | null,
+    notas: string
+  ) => {
+    const nuevaSol: Solicitud = {
+      id: Date.now(),
+      quien: beneficiario,
+      rec: r.n,
+      cant: cantidad,
+      u: r.unidad,
+      estado: 'entregada',
+      cuando: 'Hoy (entrega directa)',
+      vol: miembroId,
+      notasEntrega: notas || 'Despacho registrado directamente en sede o por fuera de la plataforma.',
+      esEntregaDirecta: true,
+    };
+
+    setSol((prev) => [nuevaSol, ...prev]);
+
+    setRecursosOferta((prev) => {
+      const act = prev.map((item) =>
+        item.n === r.n ? { ...item, total: Math.max(0, item.total - cantidad) } : item
+      );
+      try {
+        localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+
+    setPubOferta((prev) => {
+      const act = {
+        ...prev,
+        recursos: prev.recursos.map((item) =>
+          item.item === r.n ? { ...item, total: Math.max(0, item.total - cantidad) } : item
+        ),
+      };
+      try {
+        localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(act));
+      } catch {}
+      return act;
+    });
+
+    setEntregandoDirecta(null);
+    avisar('Entrega directa registrada con éxito. Puedes certificarla en Seguimiento.', { tipo: 'ok' });
+  };
   const rechazarRecibida = (id: number) => {
     const r = recibidas.find((x) => x.id === id);
     if (r) setRechazandoRecibida(r);
@@ -1013,6 +1113,7 @@ const Panel: React.FC = () => {
                 onTogglePausa={togglePausaNecesidad}
                 onCancelarSolicitudEnviada={cancelarSolicitudEnviada}
                 onIrASeguimiento={() => cambiarTab('seguimiento')}
+                onAtenderInternamente={(r) => setAtendiendoInternamente(r)}
               />
             )}
             {actual === 'ofertas' && (
@@ -1033,6 +1134,7 @@ const Panel: React.FC = () => {
                 onTogglePausa={togglePausaOferta}
                 onCancelarOfrecimientoEnviado={cancelarOfrecimientoEnviado}
                 onIrASeguimiento={() => cambiarTab('seguimiento')}
+                onRegistrarEntregaDirecta={(r) => setEntregandoDirecta(r)}
               />
             )}
             {actual === 'seguimiento' && (
@@ -1461,6 +1563,185 @@ const Panel: React.FC = () => {
             setDistribuyendo(null);
           }}
         />
+        <Dialogo
+          abierto={atendiendoInternamente !== null}
+          titulo="Atender necesidad internamente"
+          accion="Confirmar y coordinar"
+          onCerrar={() => setAtendiendoInternamente(null)}
+          onEnviar={(form) => {
+            if (!atendiendoInternamente) return;
+            const data = new FormData(form);
+            const cantidad = Number(data.get('cantidad')) || 1;
+            const miembroRaw = String(data.get('miembro') ?? '');
+            const miembroId = miembroRaw ? Number(miembroRaw) : null;
+            const notas = String(data.get('notas') ?? '').trim();
+            confirmarAtenderInternamente(atendiendoInternamente, cantidad, miembroId, notas);
+          }}
+        >
+          {atendiendoInternamente && (
+            <div className="space-y-4 text-rd-ink">
+              <p className="text-rd-13 text-rd-ink-2 leading-relaxed">
+                Asigna esta necesidad a tu propio equipo o brigada. Se creará una entrega en la columna{' '}
+                <strong className="text-rd-ink font-semibold">Comprometida</strong> del tablero de{' '}
+                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas despacharla y certificarla con fotos y acta oficial.
+              </p>
+
+              <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3 text-rd-13">
+                <div className="font-semibold text-rd-ink">{atendiendoInternamente.n}</div>
+                <div className="text-rd-12 text-rd-ink-meta mt-0.5">
+                  Meta total: {atendiendoInternamente.total} {atendiendoInternamente.unidad} • Pendiente:{' '}
+                  {Math.max(0, atendiendoInternamente.total - (atendiendoInternamente.confirmada || 0) - (atendiendoInternamente.camino || 0))} {atendiendoInternamente.unidad}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="cant-interna">
+                  Cantidad a asumir ({atendiendoInternamente.unidad})
+                </label>
+                <input
+                  id="cant-interna"
+                  name="cantidad"
+                  type="number"
+                  min={1}
+                  max={atendiendoInternamente.total}
+                  defaultValue={Math.max(1, atendiendoInternamente.total - (atendiendoInternamente.confirmada || 0) - (atendiendoInternamente.camino || 0))}
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink focus:border-brand-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="resp-interna">
+                  Responsable de la brigada / equipo (opcional)
+                </label>
+                <select
+                  id="resp-interna"
+                  name="miembro"
+                  defaultValue=""
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink focus:border-brand-primary focus:outline-none"
+                >
+                  <option value="">Sin asignar por ahora (Brigada general)</option>
+                  {equipo.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.n} — {m.rol} {m.veh ? `(${m.veh})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="notas-interna">
+                  Instrucciones o notas internas (opcional)
+                </label>
+                <textarea
+                  id="notas-interna"
+                  name="notas"
+                  rows={3}
+                  placeholder="Ej. Solicitud recibida por Facebook o teléfono. Se programa visita técnica con brigada propia..."
+                  className="w-full resize-none rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink placeholder:text-rd-ink-meta focus:border-brand-primary focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </Dialogo>
+        <Dialogo
+          abierto={entregandoDirecta !== null}
+          titulo="Registrar entrega directa"
+          accion="Registrar despacho"
+          onCerrar={() => setEntregandoDirecta(null)}
+          onEnviar={(form) => {
+            if (!entregandoDirecta) return;
+            const data = new FormData(form);
+            const beneficiario = String(data.get('beneficiario') ?? '').trim();
+            if (!beneficiario) return;
+            const cantidad = Number(data.get('cantidad')) || 1;
+            const miembroRaw = String(data.get('miembro') ?? '');
+            const miembroId = miembroRaw ? Number(miembroRaw) : null;
+            const notas = String(data.get('notas') ?? '').trim();
+            confirmarEntregaDirecta(entregandoDirecta, cantidad, beneficiario, miembroId, notas);
+          }}
+        >
+          {entregandoDirecta && (
+            <div className="space-y-4 text-rd-ink">
+              <p className="text-rd-13 text-rd-ink-2 leading-relaxed">
+                Registra una entrega o donación que realizaste por fuera de la plataforma. Se descontará del stock disponible y pasará a la columna{' '}
+                <strong className="text-rd-ink font-semibold">Entregada</strong> de seguimiento con el distintivo{' '}
+                <span className="inline-flex items-center rounded-rd-full border border-rd-green-line bg-rd-green-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-green">
+                  Entrega directa
+                </span>.
+              </p>
+
+              <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3 text-rd-13">
+                <div className="font-semibold text-rd-ink">{entregandoDirecta.n}</div>
+                <div className="text-rd-12 text-rd-ink-meta mt-0.5">
+                  Disponible en inventario: {entregandoDirecta.total} {entregandoDirecta.unidad}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="cant-directa">
+                  Cantidad entregada ({entregandoDirecta.unidad}) *
+                </label>
+                <input
+                  id="cant-directa"
+                  name="cantidad"
+                  type="number"
+                  min={1}
+                  max={entregandoDirecta.total}
+                  defaultValue={Math.min(10, entregandoDirecta.total)}
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink focus:border-brand-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="ben-directa">
+                  Beneficiario o comunidad receptora *
+                </label>
+                <input
+                  id="ben-directa"
+                  name="beneficiario"
+                  type="text"
+                  placeholder="Ej. JAC Siloé / Comedor comunitario Los Álamos"
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink placeholder:text-rd-ink-meta focus:border-brand-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="resp-directa">
+                  Quién realizó la entrega (opcional)
+                </label>
+                <select
+                  id="resp-directa"
+                  name="miembro"
+                  defaultValue=""
+                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-14 text-rd-ink focus:border-brand-primary focus:outline-none"
+                >
+                  <option value="">Entrega en sede / Sin registrar persona</option>
+                  {equipo.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.n} — {m.rol}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-rd-13 font-semibold text-rd-ink mb-1.5" htmlFor="notas-directa">
+                  Observaciones o notas del despacho (opcional)
+                </label>
+                <textarea
+                  id="notas-directa"
+                  name="notas"
+                  rows={2}
+                  placeholder="Ej. Entrega directa en sede a líder comunitaria. Pendiente subir constancia o fotos..."
+                  className="w-full resize-none rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink placeholder:text-rd-ink-meta focus:border-brand-primary focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </Dialogo>
       </div>
     </Shell>
   );
@@ -1855,6 +2136,7 @@ const MisNecesidades: React.FC<{
   onTogglePausa: (r: RecursoPedido) => void;
   onCancelarSolicitudEnviada?: (id: number | string) => void;
   onIrASeguimiento?: () => void;
+  onAtenderInternamente?: (r: RecursoPedido) => void;
 }> = ({
   recursos,
   solicitudesEnviadas = [],
@@ -1864,6 +2146,7 @@ const MisNecesidades: React.FC<{
   onEditar,
   onTogglePausa,
   onCancelarSolicitudEnviada,
+  onAtenderInternamente,
 }) => {
   // Las solicitudes aceptadas pasan 100% al tablero de Seguimiento (Ayuda que recibo)
   const solicitudesVisibles = useMemo(
@@ -1945,6 +2228,11 @@ const MisNecesidades: React.FC<{
                           texto: 'Ver',
                           icono: <Eye className="h-4 w-4" />,
                           onElegir: () => onVerPublicacion?.(),
+                        },
+                        {
+                          texto: 'Atender internamente',
+                          icono: <CheckCircle2 className="h-4 w-4 text-rd-green" />,
+                          onElegir: () => onAtenderInternamente?.(r),
                         },
                         {
                           texto: 'Editar',
@@ -2514,6 +2802,7 @@ const MisOfertas: React.FC<{
   onTogglePausa: (r: RecursoOfrecido) => void;
   onCancelarOfrecimientoEnviado?: (id: number | string) => void;
   onIrASeguimiento?: () => void;
+  onRegistrarEntregaDirecta?: (r: RecursoOfrecido) => void;
 }> = ({
   recursos,
   sol,
@@ -2524,6 +2813,7 @@ const MisOfertas: React.FC<{
   onEditar,
   onTogglePausa,
   onCancelarOfrecimientoEnviado,
+  onRegistrarEntregaDirecta,
 }) => {
   // Los ofrecimientos aceptados pasan 100% al tablero de Seguimiento (Ayuda que entrego)
   const ofrecimientosVisibles = useMemo(
@@ -2615,6 +2905,11 @@ const MisOfertas: React.FC<{
                           texto: 'Ver',
                           icono: <Eye className="h-4 w-4" />,
                           onElegir: () => onVerPublicacion?.(),
+                        },
+                        {
+                          texto: 'Registrar entrega directa',
+                          icono: <Check className="h-4 w-4 text-rd-green" />,
+                          onElegir: () => onRegistrarEntregaDirecta?.(r),
                         },
                         {
                           texto: 'Editar',
