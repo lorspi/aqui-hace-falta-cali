@@ -176,8 +176,6 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     profileType === 'comunidad' ||
     userRole === 'organizacion' ||
     userRole === 'lider' ||
-    userRole === 'admin' ||
-    userRole === 'moderador' ||
     Boolean(activeUser?.user_metadata?.org_name)
   );
 
@@ -299,7 +297,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           ) : (
             <button
               type="button"
-              onClick={onOpenLoginModal || (() => { window.location.href = '/registro-v2?modo=registro'; })}
+              onClick={onOpenLoginModal || (() => {
+                window.history.pushState({}, '', '/registro-v2?modo=login');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              })}
               className={`flex items-center gap-2.5 rounded-rd-lg px-3 py-2.5 text-rd-navy font-semibold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer ${plegado ? 'justify-center px-0' : ''}`}
               title="Iniciar sesión / Registro"
             >
@@ -353,7 +354,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           <button type="button" aria-label="Cerrar el menú" onClick={onCerrarCajon} className="absolute inset-0 cursor-default bg-rd-ink/40" />
           <div role="dialog" aria-modal="true" aria-label="Menú" className="absolute top-0 right-0 bottom-0 flex w-4/5 max-w-90 flex-col overflow-auto rounded-l-rd-md bg-rd-surface shadow-rd-2">
             <div className="flex min-h-16 items-center justify-between border-b border-rd-line px-4 py-3 sm:px-6">
-              <a href={rutas.inicio} aria-label="RaDAR de ayuda, inicio">
+              <a
+                href={rutas.inicio}
+                onClick={(e) => {
+                  onCerrarCajon?.();
+                  handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades');
+                }}
+                aria-label="RaDAR de ayuda, inicio"
+              >
                 <img src="/logo-radar.svg" alt="" className="block h-7.5 w-auto" />
               </a>
               <button type="button" onClick={onCerrarCajon} aria-label="Cerrar el menú" className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-sunken text-rd-ink focus-visible:outline-2 focus-visible:outline-rd-navy">
@@ -365,7 +373,15 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                 <li key={s.id}>{enlace(s, true)}</li>
               ))}
               <li>
-                <a href={rutas.avisos} aria-current={seccion === 'avisos' ? 'page' : undefined} className={`${ITEM} h-13 rounded-rd-md text-rd-16 ${seccion === 'avisos' ? ITEM_ACTUAL : ''}`}>
+                <a
+                  href={rutas.avisos}
+                  onClick={(e) => {
+                    onCerrarCajon?.();
+                    handleClickNav(e, rutas.avisos || '/avisos-v2');
+                  }}
+                  aria-current={seccion === 'avisos' ? 'page' : undefined}
+                  className={`${ITEM} h-13 rounded-rd-md text-rd-16 ${seccion === 'avisos' ? ITEM_ACTUAL : ''}`}
+                >
                   <Bell aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
                   <span className="flex-1">Avisos</span>
                   {avisosNuevos > 0 && <Contador n={avisosNuevos} className="ml-auto" />}
@@ -414,7 +430,15 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
               <div className="mt-auto border-t border-rd-line px-4 pt-4 pb-6 sm:px-6">
                 <button
                   type="button"
-                  onClick={() => { onCerrarCajon?.(); (onOpenLoginModal || (() => { window.location.href = '/registro-v2?modo=registro'; }))(); }}
+                  onClick={() => {
+                    onCerrarCajon?.();
+                    if (onOpenLoginModal) {
+                      onOpenLoginModal();
+                    } else {
+                      window.history.pushState({}, '', '/registro-v2?modo=login');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
+                  }}
                   className="flex w-full items-center justify-center gap-2.5 rounded-rd-lg px-4 py-3 text-rd-navy font-bold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer text-rd-15"
                 >
                   <LogIn aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-navy" />

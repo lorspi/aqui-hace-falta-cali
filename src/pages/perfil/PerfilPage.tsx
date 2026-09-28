@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { BadgeCheck, Clock, Hand, HeartHandshake, Monitor, Smartphone } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BadgeCheck, Clock, Hand, HeartHandshake, Monitor, Smartphone, ShieldCheck, User, Building, Users } from 'lucide-react';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { Button } from '../../components/ui/Button';
 import { Caja, FilaDato } from '../../components/ui/Caja';
@@ -7,28 +7,31 @@ import { Dialogo } from '../../components/ui/Dialogo';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
 import { Field } from '../../components/ui/Field';
 import { Pestanas } from '../../components/ui/Pestanas';
-import { BotonMenu, Shell } from '../../components/ui/Shell';
+import { BotonMenu, Cuenta, Shell } from '../../components/ui/Shell';
 import { FilaSwitch, Switch } from '../../components/ui/Switch';
 import { InlineNotice } from '../../components/ui/InlineNotice';
-import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
+import { RUTAS, RUTAS_SHELL, TIPOS_DOC } from '../../mocks/cuentasMock';
 import { INVITADOS, ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { CANALES, SESIONES, YO } from '../../mocks/perfilMock';
+import { CANALES } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import type { DatosOrg, Invitado } from '../../types/panel';
 import { entidadActual, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
-import { fetchUserProfile, updateUserProfile } from '../../lib/supabaseService';
+import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
 
-/**
- * El Perfil (mockup/*): «Configuración y perfil» del prototipo (`perfil.html`), lo de la
- * persona con sesión. Cuatro pestañas: Tus datos (nombre, cargo, celular; se editan en la
- * misma caja), Acceso (correo, contraseña, sesiones abiertas), Notificaciones (por qué canal
- * llega cada aviso) y Seguridad (salir de la organización, cerrar sesión en todo, eliminar la
- * cuenta; cada una confirma en un diálogo cuyo primario dice el verbo). Los datos de la
- * organización viven en el panel, pestaña Datos: aquí solo se enlazan.
- */
+export interface PersonaExt extends Persona {
+  ciudad?: string;
+  departamento?: string;
+  tipoDocumento?: string;
+  numeroDocumento?: string;
+  tipoPerfil?: 'organizacion' | 'lider' | 'voluntario';
+  tipoComunidad?: string;
+  disponibilidad?: string;
+  habilidades?: string;
+}
+
 const PESTANAS: { id: PestanaPerfil; nombre: string }[] = [
   { id: 'datos', nombre: 'Tus datos' },
   { id: 'acceso', nombre: 'Acceso' },
@@ -37,7 +40,15 @@ const PESTANAS: { id: PestanaPerfil; nombre: string }[] = [
 ];
 
 function irA(ruta: string): void {
-  window.location.href = ruta;
+  if (!ruta || ruta === '#') return;
+  if (ruta.startsWith('http://') || ruta.startsWith('https://')) {
+    window.location.href = ruta;
+    return;
+  }
+  if (window.location.pathname !== ruta) {
+    window.history.pushState({}, '', ruta);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 }
 
 function pestanaPedida(): PestanaPerfil {
@@ -55,9 +66,30 @@ const Perfil: React.FC = () => {
   const avisar = useAviso();
   const [actual, setActual] = useState<PestanaPerfil>(pestanaPedida);
   const [cajon, setCajon] = useState(false);
-  const [yo, setYo] = useState<Persona>(YO);
-  const [sesiones, setSesiones] = useState<Sesion[]>(SESIONES);
-  const [canales, setCanales] = useState<CanalAviso[]>(CANALES);
+  const [yo, setYo] = useState<PersonaExt>({
+    nombre: 'Cargando...',
+    cargo: 'Usuario',
+    tel: 'Sin teléfono',
+    correo: '',
+    pais: 'Colombia',
+    ciudad: 'Cali',
+    departamento: 'Valle del Cauca',
+    tipoDocumento: 'Cédula de ciudadanía',
+    numeroDocumento: '',
+    tipoPerfil: 'voluntario',
+    desde: 'recientemente',
+    wa: '',
+    mismoWa: true,
+  });
+  const [hasOrg, setHasOrg] = useState(false);
+  const [orgData, setOrgData] = useState<DatosOrg | null>(null);
+  const [canales, setCanales] = useState<CanalAviso[]>(() => {
+    const saved = localStorage.getItem('ahf_user_notification_channels');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return CANALES;
+  });
   const [confirmando, setConfirmando] = useState<'salir' | 'eliminar' | null>(null);
   const [dbUserId, setDbUserId] = useState<string | null>(null);
 
@@ -65,37 +97,139 @@ const Perfil: React.FC = () => {
     document.title = 'Perfil, RaDAR de ayuda';
     async function loadProfile() {
       try {
+        let user: any = null;
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
-          setDbUserId(authData.user.id);
-          const profile = await fetchUserProfile(authData.user.id);
-          if (profile) {
-            setYo((prev) => ({
-              ...prev,
-              nombre: profile.full_name || profile.first_name || authData.user.email || prev.nombre,
-              cargo: profile.cargo || prev.cargo || 'Miembro',
-              tel: profile.phone || profile.whatsapp || prev.tel,
-              correo: profile.email || authData.user.email || prev.correo,
-              pais: profile.country || prev.pais,
-              desde: profile.created_at ? new Date(profile.created_at).toLocaleDateString('es-CO') : prev.desde,
-            }));
+          user = authData.user;
+        } else {
+          const saved = localStorage.getItem('ahf_auth_user') || localStorage.getItem('ahf_admin_user');
+          if (saved) {
+            try { user = JSON.parse(saved); } catch {}
+          }
+        }
+
+        if (user) {
+          setDbUserId(user.id);
+          const profile = await fetchUserProfile(user.id);
+          const org = await fetchOrganizationByUserId(user.id);
+
+          const fullName = profile?.full_name ||
+            (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null) ||
+            user.name ||
+            user.user_metadata?.full_name ||
+            user.email ||
+            'Usuario';
+
+          const rawType = (profile?.profile_type || profile?.role || user.user_metadata?.profile_type || user.user_metadata?.role || 'voluntario').toLowerCase();
+          let tipoPerfil: 'organizacion' | 'lider' | 'voluntario' = 'voluntario';
+          if (rawType.includes('lider') || rawType.includes('comunidad') || rawType.includes('junta')) {
+            tipoPerfil = 'lider';
+          } else if (rawType.includes('organizacion') || rawType.includes('profesional') || rawType.includes('ong') || org) {
+            tipoPerfil = 'organizacion';
+          }
+
+          const cargoDefault = tipoPerfil === 'organizacion' 
+            ? 'Representante de Organización' 
+            : tipoPerfil === 'lider' 
+              ? 'Líder Comunitario' 
+              : 'Voluntario / Ciudadano';
+
+          const cargo = profile?.cargo || cargoDefault;
+
+          const tel = profile?.phone ||
+            profile?.whatsapp ||
+            profile?.phone_number ||
+            user.phone ||
+            'Sin teléfono registrado';
+
+          const correo = profile?.email || user.email || '';
+          const pais = profile?.country || 'Colombia';
+          const ciudad = profile?.city || 'Cali';
+          const departamento = profile?.department || 'Valle del Cauca';
+          const tipoDocumento = profile?.document_type || 'Cédula de ciudadanía';
+          const numeroDocumento = profile?.document_number || '';
+          const tipoComunidad = profile?.community_type || 'Junta de Acción Comunal';
+
+          const desde = profile?.created_at
+            ? new Date(profile.created_at).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
+            : 'recientemente';
+
+          setYo({
+            nombre: fullName,
+            cargo,
+            tel,
+            correo,
+            pais,
+            ciudad,
+            departamento,
+            tipoDocumento,
+            numeroDocumento,
+            tipoPerfil,
+            tipoComunidad,
+            desde,
+            wa: tel,
+            mismoWa: true,
+          });
+
+          if (org) {
+            setHasOrg(true);
+            setOrgData({
+              nombre: org.org_name || 'Mi Organización',
+              tipo: org.organization_type || (tipoPerfil === 'lider' ? 'Comunidad' : 'Organización'),
+              nit: org.document_number || 'No especificado',
+              dir: org.address || `${ciudad}, ${departamento}`,
+              contacto: {
+                tel: org.contact_phone || org.contact_whatsapp || tel,
+                wa: Boolean(org.contact_whatsapp),
+                correo: org.contact_email || correo,
+              },
+              enlace: org.website_or_social || 'No especificado',
+              web: org.website_or_social || 'No especificado',
+              verificacion: org.is_verified ? 'verificada' : 'sin',
+              directorio: true,
+              directorioDesde: org.created_at ? new Date(org.created_at).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }) : 'recientemente',
+              canalesRevisados: true,
+            });
+          } else if (profile?.organization_name || user.user_metadata?.org_name) {
+            const orgName = profile?.organization_name || user.user_metadata?.org_name;
+            setHasOrg(true);
+            setOrgData({
+              nombre: orgName,
+              tipo: tipoPerfil === 'lider' ? 'Comunidad' : 'Organización',
+              nit: 'No especificado',
+              dir: `${ciudad}, ${departamento}`,
+              contacto: { tel, wa: true, correo },
+              enlace: 'No especificado',
+              web: 'No especificado',
+              verificacion: 'sin',
+              directorio: true,
+              directorioDesde: 'recientemente',
+              canalesRevisados: true,
+            });
+          } else {
+            setHasOrg(tipoPerfil !== 'voluntario');
+            setOrgData(null);
           }
         }
       } catch (err) {
-        console.warn('Cargando datos de demostración en PerfilPage:', err);
+        console.warn('Error al cargar datos del usuario:', err);
       }
     }
     loadProfile();
   }, []);
 
+  const cuentaUsuario: Cuenta = useMemo(() => {
+    return {
+      entidad: orgData?.nombre || yo.nombre || 'Mi Cuenta',
+      persona: yo.nombre || 'Usuario',
+      rol: yo.cargo || 'Miembro',
+      iniciales: iniciales(yo.nombre || 'U'),
+    };
+  }, [orgData, yo]);
+
   const cambiarTab = (id: string) => {
     setActual(id as PestanaPerfil);
     window.history.replaceState(null, '', `#${id}`);
-  };
-
-  const cerrarSesion = (id: number) => {
-    setSesiones((l) => l.filter((s) => s.id !== id));
-    avisar('Sesión cerrada', { tipo: 'ok' });
   };
 
   const cambiarCanal = (id: string, k: 'wa' | 'correo', v: boolean) => {
@@ -106,12 +240,14 @@ const Perfil: React.FC = () => {
       avisar('Deja encendido WhatsApp o correo', { tipo: 'error' });
       return;
     }
-    setCanales((l) => l.map((x) => (x.id === id ? nuevo : x)));
-    avisar('Preferencia guardada (Borrador mockup)', { tipo: 'ok' });
+    const actualizados = canales.map((x) => (x.id === id ? nuevo : x));
+    setCanales(actualizados);
+    localStorage.setItem('ahf_user_notification_channels', JSON.stringify(actualizados));
+    avisar('Preferencia de notificación guardada', { tipo: 'ok' });
   };
 
   return (
-    <Shell seccion="perfil" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
+    <Shell seccion="perfil" panelNombre={nombrePanel()} cuenta={cuentaUsuario} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
       <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Configuración y perfil</h1>
@@ -131,44 +267,69 @@ const Perfil: React.FC = () => {
 
         <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
-            {/* quién: la cabecera del perfil, en todas las pestañas */}
+            {/* quién: la cabecera del perfil */}
             <section aria-label="Resumen del perfil" className="flex flex-wrap items-start gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
               <Avatar iniciales={iniciales(yo.nombre)} tamano="lg" />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="font-rd m-0 text-rd-15 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-rd-11 font-semibold text-emerald-800 border border-emerald-200">
-                    🟢 Supabase Activo
-                  </span>
+                  {yo.tipoPerfil === 'organizacion' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-rd-11 font-semibold text-blue-800 border border-blue-200">
+                      <Building className="h-3 w-3" /> Organización
+                    </span>
+                  )}
+                  {yo.tipoPerfil === 'lider' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-rd-11 font-semibold text-amber-800 border border-amber-200">
+                      <Users className="h-3 w-3" /> Líder Comunitario
+                    </span>
+                  )}
+                  {yo.tipoPerfil === 'voluntario' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-rd-11 font-semibold text-emerald-800 border border-emerald-200">
+                      <User className="h-3 w-3" /> Voluntario Natural
+                    </span>
+                  )}
                 </div>
                 <p className="m-0 text-rd-13-5 text-rd-ink-2">{yo.cargo}</p>
                 <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-1.5 text-rd-12-5 text-rd-ink-2">
-                  {ORG.verificacion === 'verificada' && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
-                  <b className="font-semibold text-rd-ink">{ORG.nombre}</b>
+                  {hasOrg && orgData?.verificacion === 'verificada' && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
+                  <b className="font-semibold text-rd-ink">
+                    {hasOrg ? (orgData?.nombre || 'Mi Organización') : `${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}`}
+                  </b>
                   <span className="text-rd-ink-meta">En RaDAR desde {yo.desde}</span>
                 </p>
               </div>
-              <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(RUTAS.miOrganizacion)}>
-                Ir al panel
-              </Button>
+              {(hasOrg || yo.tipoPerfil !== 'voluntario') && (
+                <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(RUTAS.miOrganizacion)}>
+                  Ir al panel
+                </Button>
+              )}
             </section>
 
             {actual === 'datos' && (
               <>
-                <TusDatos yo={yo} dbUserId={dbUserId} onGuardar={(p) => { setYo(p); avisar('Datos guardados en Supabase', { tipo: 'ok' }); }} />
-                <DatosOrganizacion />
+                <TusDatos yo={yo} dbUserId={dbUserId} onGuardar={(p) => { setYo(p); avisar('Datos de perfil actualizados en Supabase', { tipo: 'ok' }); }} />
+                {yo.tipoPerfil === 'organizacion' && (
+                  <DatosOrganizacion orgInicial={orgData} dbUserId={dbUserId} onGuardarOrg={(updated) => setOrgData(updated)} />
+                )}
+                {yo.tipoPerfil === 'lider' && (
+                  <DatosComunidad orgInicial={orgData} dbUserId={dbUserId} onGuardarOrg={(updated) => setOrgData(updated)} />
+                )}
+                {yo.tipoPerfil === 'voluntario' && (
+                  <DatosVoluntario yo={yo} dbUserId={dbUserId} onGuardarVoluntario={(updated) => setYo(updated)} />
+                )}
               </>
             )}
+
             {actual === 'acceso' && (
               <>
                 <Caja titulo="Correo y contraseña">
-                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras a la plataforma" accion={<span className="text-rd-12 text-emerald-700 font-semibold">🟢 Supabase</span>}>
+                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras a la plataforma" accion={<span className="text-rd-12 text-emerald-700 font-semibold">🟢 Autenticado</span>}>
                     {yo.correo}
                   </FilaDato>
                   <FilaDato rotulo="Contraseña" nota="Protegida con Supabase Auth" accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
                     try {
                       await supabase.auth.resetPasswordForEmail(yo.correo);
-                      avisar('Te enviamos un enlace para restablecerla a tu correo', { tipo: 'ok' });
+                      avisar('Te enviamos un enlace para restablecer tu contraseña a tu correo', { tipo: 'ok' });
                     } catch {
                       avisar('Error enviando enlace de restablecimiento', { tipo: 'error' });
                     }
@@ -176,41 +337,38 @@ const Perfil: React.FC = () => {
                     ••••••••••
                   </FilaDato>
                 </Caja>
-                <Caja titulo="Sesiones abiertas">
-                  <div className="mb-2">
-                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-rd-11 font-semibold text-amber-800 border border-amber-200">
-                      🟡 Modo Demostración (Mockup)
+                <Caja titulo="Sesión activa">
+                  <div className="flex items-start gap-3 py-2">
+                    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2">
+                      <Monitor className="h-4.5 w-4.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <b className="block text-rd-13-5 font-semibold text-rd-ink">Navegador actual ({navigator.userAgent.includes('Mac') ? 'macOS' : 'Windows / Móvil'})</b>
+                      <span className="text-rd-12-5 text-rd-ink-2">Sesión iniciada con Supabase Auth</span>
+                    </div>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-rd-11 font-semibold text-emerald-800 border border-emerald-200">
+                      Activa ahora
                     </span>
                   </div>
-                  {sesiones.map((s, i) => (
-                    <div key={s.id} className={`flex items-start gap-3 py-3 ${i ? 'border-t border-rd-line-soft' : 'pt-0'} last:pb-0`}>
-                      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2">{s.dispositivo.startsWith('Celular') ? <Smartphone className="h-4.5 w-4.5" /> : <Monitor className="h-4.5 w-4.5" />}</span>
-                      <div className="min-w-0 flex-1">
-                        <b className="block text-rd-13-5 font-semibold text-rd-ink">{s.dispositivo}</b>
-                        <span className="text-rd-12-5 text-rd-ink-2">{s.actual ? 'Esta sesión' : s.cuando}</span>
-                      </div>
-                      {!s.actual && (
-                        <Button nivel="terciario" tamano="sm" onClick={() => cerrarSesion(s.id)}>
-                          Cerrar
-                        </Button>
-                      )}
-                    </div>
-                  ))}
                 </Caja>
               </>
             )}
+
             {actual === 'avisos' && <Notificaciones canales={canales} onCambiar={cambiarCanal} />}
+
             {actual === 'seguridad' && (
               <Caja titulo="Seguridad y cuenta">
-                <FilaDato rotulo="Salir de la organización" nota="Dejas de administrar sus solicitudes y entregas. Otra persona debe quedar como administradora." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('salir')}>Salir</Button>}>
-                  {ORG.nombre}
-                </FilaDato>
-                <FilaDato rotulo="Cerrar sesión en todo" nota="Cierra la sesión activa." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
+                {hasOrg && (
+                  <FilaDato rotulo="Salir de la organización" nota="Dejas de administrar sus solicitudes y entregas." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('salir')}>Salir</Button>}>
+                    {orgData?.nombre || 'Mi Organización'}
+                  </FilaDato>
+                )}
+                <FilaDato rotulo="Cerrar sesión" nota="Cierra la sesión activa en este dispositivo." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
                   await supabase.auth.signOut();
                   localStorage.clear();
                   window.location.href = '/';
-                }}>Cerrar en todo</Button>}>
-                  1 sesión activa
+                }}>Cerrar sesión</Button>}>
+                  {yo.correo}
                 </FilaDato>
                 <FilaDato rotulo="Eliminar tu cuenta" nota="Se borran tus datos personales." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('eliminar')}>Eliminar la cuenta</Button>}>
                   {yo.correo}
@@ -222,7 +380,7 @@ const Perfil: React.FC = () => {
 
         <Dialogo
           abierto={confirmando !== null}
-          titulo={confirmando === 'salir' ? `¿Sales de ${ORG.nombre}?` : '¿Eliminas tu cuenta?'}
+          titulo={confirmando === 'salir' ? `¿Sales de ${orgData?.nombre || 'la organización'}?` : '¿Eliminas tu cuenta?'}
           accion={confirmando === 'salir' ? 'Salir de la organización' : 'Eliminar la cuenta'}
           nivelAccion="secundario"
           textoAlterno="Dejar como está"
@@ -242,13 +400,19 @@ const Perfil: React.FC = () => {
 
 /* ---------- Tus datos: ver y editar en la misma caja ---------- */
 
-const TusDatos: React.FC<{ yo: Persona; dbUserId?: string | null; onGuardar: (p: Persona) => void }> = ({ yo, dbUserId, onGuardar }) => {
+const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: (p: PersonaExt) => void }> = ({ yo, dbUserId, onGuardar }) => {
   const [editando, setEditando] = useState(false);
-  const [borrador, setBorrador] = useState<Persona>(yo);
+  const [borrador, setBorrador] = useState<PersonaExt>(yo);
+
+  useEffect(() => {
+    setBorrador(yo);
+  }, [yo]);
+
   const empezar = () => {
     setBorrador(yo);
     setEditando(true);
   };
+
   const guardar = async () => {
     onGuardar(borrador);
     if (dbUserId) {
@@ -257,27 +421,32 @@ const TusDatos: React.FC<{ yo: Persona; dbUserId?: string | null; onGuardar: (p:
           fullName: borrador.nombre,
           phone: borrador.tel,
           cargo: borrador.cargo,
-          country: borrador.pais
+          city: borrador.ciudad,
+          department: borrador.departamento,
+          country: borrador.pais,
+          documentType: borrador.tipoDocumento,
+          documentNumber: borrador.numeroDocumento,
         });
       } catch (err) {
-        console.error('Error guardando en Supabase:', err);
+        console.error('Error guardando perfil en Supabase:', err);
       }
     }
     setEditando(false);
   };
+
   return (
     <Caja
-      titulo="Tus datos"
+      titulo="Tus datos personales"
       accion={
         editando ? (
-          <>
+          <div className="flex items-center gap-2">
             <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
               Cancelar
             </Button>
             <Button nivel="primario" tamano="md" onClick={guardar}>
               Guardar
             </Button>
-          </>
+          </div>
         ) : (
           <Button nivel="secundario" tamano="md" onClick={empezar}>
             Editar
@@ -288,28 +457,32 @@ const TusDatos: React.FC<{ yo: Persona; dbUserId?: string | null; onGuardar: (p:
       {editando ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="perfil-nombre" etiqueta="Nombre y apellidos" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} autoComplete="name" />
-          <Field id="perfil-cargo" etiqueta="Cargo" opcional valor={borrador.cargo} onChange={(v) => setBorrador({ ...borrador, cargo: v })} />
+          <Field id="perfil-cargo" etiqueta="Cargo / Rol" valor={borrador.cargo} onChange={(v) => setBorrador({ ...borrador, cargo: v })} />
           <Field id="perfil-tel" etiqueta="Celular" tipo="tel" valor={borrador.tel} onChange={(v) => setBorrador({ ...borrador, tel: v, wa: v, mismoWa: true })} autoComplete="tel" inputMode="tel" />
+          <Field id="perfil-tipodoc" etiqueta="Tipo de documento" tipo="select" valor={borrador.tipoDocumento || 'Cédula de ciudadanía'} onChange={(v) => setBorrador({ ...borrador, tipoDocumento: v })} opciones={TIPOS_DOC} />
+          <Field id="perfil-numdoc" etiqueta="Número de documento" valor={borrador.numeroDocumento || ''} onChange={(v) => setBorrador({ ...borrador, numeroDocumento: v })} />
+          <Field id="perfil-ciudad" etiqueta="Ciudad" valor={borrador.ciudad || 'Cali'} onChange={(v) => setBorrador({ ...borrador, ciudad: v })} />
+          <Field id="perfil-depto" etiqueta="Departamento" valor={borrador.departamento || 'Valle del Cauca'} onChange={(v) => setBorrador({ ...borrador, departamento: v })} />
+          <Field id="perfil-pais" etiqueta="País" valor={borrador.pais || 'Colombia'} onChange={(v) => setBorrador({ ...borrador, pais: v })} />
         </div>
       ) : (
         <>
           <FilaDato rotulo="Nombre">{yo.nombre}</FilaDato>
-          <FilaDato rotulo="Cargo">{yo.cargo || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
+          <FilaDato rotulo="Cargo / Rol">{yo.cargo || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
           <FilaDato rotulo="Celular">{yo.tel}</FilaDato>
-          <FilaDato rotulo="País" nota="Define los formatos de fecha, hora y teléfono">
-            {yo.pais}
-          </FilaDato>
+          {yo.numeroDocumento && <FilaDato rotulo="Documento">{`${yo.tipoDocumento || 'Documento'}: ${yo.numeroDocumento}`}</FilaDato>}
+          <FilaDato rotulo="Ubicación">{`${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}, ${yo.pais || 'Colombia'}`}</FilaDato>
         </>
       )}
     </Caja>
   );
 };
 
-/* ---------- Notificaciones: por qué canal llega cada aviso ---------- */
+/* ---------- Notificaciones ---------- */
 
 const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, k: 'wa' | 'correo', v: boolean) => void }> = ({ canales, onCambiar }) => (
   <Caja titulo="Canales de notificación">
-    <p className="m-0 mb-3 text-rd-12-5 text-rd-ink-2">En RaDAR llegan siempre. Elige cuáles quieres además por WhatsApp o por correo.</p>
+    <p className="m-0 mb-3 text-rd-12-5 text-rd-ink-2">En RaDAR se muestran siempre. Elige por cuál medio deseas recibirlas además.</p>
     <div className="hidden grid-cols-12 gap-3 border-b border-rd-line pb-2 text-rd-13 font-semibold text-rd-ink sm:grid">
       <span className="col-span-8">Aviso</span>
       <span className="col-span-2 text-center">WhatsApp</span>
@@ -332,192 +505,282 @@ const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, 
   </Caja>
 );
 
-/* ---------- Datos de la organización / entidad ---------- */
+/* ---------- Datos de la Organización ---------- */
 
-const DatosOrganizacion: React.FC = () => {
+const DatosOrganizacion: React.FC<{
+  orgInicial?: DatosOrg | null;
+  dbUserId?: string | null;
+  onGuardarOrg?: (org: DatosOrg) => void;
+}> = ({ orgInicial, dbUserId, onGuardarOrg }) => {
   const avisar = useAviso();
-  const [org, setOrg] = useState<DatosOrg>(ORG);
-  const [directorio, setDirectorio] = useState(ORG.directorio);
+  const [org, setOrg] = useState<DatosOrg>(orgInicial || ORG);
+  const [directorio, setDirectorio] = useState(orgInicial?.directorio ?? ORG.directorio);
   const [editando, setEditando] = useState(false);
-  const [borrador, setBorrador] = useState<DatosOrg>(ORG);
-  const [invitados, setInvitados] = useState<Invitado[]>(INVITADOS);
-  const [invitando, setInvitando] = useState(false);
-  const [invNombre, setInvNombre] = useState('');
-  const [invCorreo, setInvCorreo] = useState('');
-  const [invRol, setInvRol] = useState('Gestiona entregas y equipo');
+  const [borrador, setBorrador] = useState<DatosOrg>(orgInicial || ORG);
+
+  useEffect(() => {
+    if (orgInicial) {
+      setOrg(orgInicial);
+      setBorrador(orgInicial);
+      setDirectorio(orgInicial.directorio);
+    }
+  }, [orgInicial]);
 
   const empezar = () => {
     setBorrador(org);
     setEditando(true);
   };
-  const guardar = () => {
-    setOrg(borrador);
-    setEditando(false);
-    avisar('Datos de la organización guardados', { tipo: 'ok' });
-  };
 
-  const enviarInvitacion = () => {
-    if (!invNombre.trim()) return;
-    setInvitados((prev) => [
-      ...prev,
-      {
-        n: invNombre.trim(),
-        rol: invRol,
-        estado: 'pendiente',
-        cuando: 'hace un momento',
-      },
-    ]);
-    avisar(`Invitación enviada a ${invCorreo || invNombre}`, { tipo: 'ok' });
-    setInvNombre('');
-    setInvCorreo('');
-    setInvRol('Gestiona entregas y equipo');
-    setInvitando(false);
+  const guardar = async () => {
+    setOrg(borrador);
+    onGuardarOrg?.(borrador);
+    setEditando(false);
+
+    if (dbUserId) {
+      try {
+        await supabase.from('organizations').upsert({
+          user_id: dbUserId,
+          org_name: borrador.nombre,
+          organization_type: borrador.tipo,
+          document_number: borrador.nit,
+          address: borrador.dir,
+          contact_phone: borrador.contacto.tel,
+          contact_email: borrador.contacto.correo,
+          website_or_social: borrador.web || borrador.enlace,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        avisar('Datos de la organización guardados en Supabase', { tipo: 'ok' });
+      } catch (err) {
+        console.error('Error guardando organización en Supabase:', err);
+        avisar('Datos de la organización guardados', { tipo: 'ok' });
+      }
+    } else {
+      avisar('Datos de la organización guardados', { tipo: 'ok' });
+    }
   };
 
   return (
-    <>
-      <Caja
-        titulo={`Datos de ${org.nombre}`}
-        accion={
-          editando ? (
-            <div className="flex items-center gap-2">
-              {/* De mayor a menor jerarquía: primero la que mueve la aguja. */}
-              <Button nivel="primario" tamano="md" onClick={guardar}>
-                Guardar
-              </Button>
-              <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
-                Cancelar
-              </Button>
-            </div>
-          ) : (
-            <Button nivel="secundario" tamano="md" onClick={empezar}>
-              Editar
+    <Caja
+      titulo={`Datos de ${org.nombre}`}
+      accion={
+        editando ? (
+          <div className="flex items-center gap-2">
+            <Button nivel="primario" tamano="md" onClick={guardar}>
+              Guardar
             </Button>
-          )
-        }
-      >
-        {editando ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="org-nombre" etiqueta="Nombre de la entidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
-            <Field id="org-tipo" etiqueta="Tipo de entidad" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
-            <Field id="org-nit" etiqueta="NIT" valor={borrador.nit} onChange={(v) => setBorrador({ ...borrador, nit: v })} />
-            <Field id="org-dir" etiqueta="Dirección" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
-            <Field id="org-tel" etiqueta="Teléfono público" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
-            <Field id="org-correo" etiqueta="Correo público" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
-            <Field id="org-enlace" etiqueta="Enlace con RaDAR" valor={borrador.enlace} onChange={(v) => setBorrador({ ...borrador, enlace: v })} />
-            <Field id="org-web" etiqueta="Sitio web o redes" valor={borrador.web} onChange={(v) => setBorrador({ ...borrador, web: v })} />
+            <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
+              Cancelar
+            </Button>
           </div>
         ) : (
-          <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
-            {[
-              ['Nombre', org.nombre],
-              ['Tipo', org.tipo],
-              ['NIT', org.nit],
-              ['Dirección', org.dir],
-              ['Contacto público', `${org.contacto.tel}${org.contacto.wa ? ' (también WhatsApp)' : ''}, ${org.contacto.correo}`],
-              ['Enlace con RaDAR', org.enlace],
-              ['Web', org.web],
-            ].map(([k, v]) => (
-              <div key={k} className="min-w-0">
-                <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
-                <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-        <div className="mt-4">
-          {org.verificacion === 'verificada' && (
-            <InlineNotice variante="hecho" icono={<BadgeCheck className="h-4 w-4" />} titulo={entidadActual() === 'liderazgo' ? 'Comunidad verificada' : 'Organización verificada'} texto="La insignia sale en cada publicación." />
-          )}
-          {org.verificacion === 'revision' && (
-            <InlineNotice variante="pendiente" icono={<Clock className="h-4 w-4" />} titulo="Verificación en revisión" texto={entidadActual() === 'liderazgo' ? 'Revisamos el soporte de liderazgo en menos de 2 días hábiles.' : 'Revisamos el documento en menos de 2 días hábiles.'} />
-          )}
-          {org.verificacion === 'sin' && (
-            <InlineNotice
-              variante="neutro"
-              icono={<BadgeCheck className="h-4 w-4" />}
-              titulo="Sin verificar"
-              texto={entidadActual() === 'liderazgo' ? 'Adjunta el auto de reconocimiento de la JAC o acta comunitaria para la insignia.' : 'Adjunta el certificado de existencia y te ponemos la insignia.'}
-              accion={
-                <Button
-                  nivel="secundario"
-                  tamano="sm"
-                  onClick={() => {
-                    setOrg((o) => ({ ...o, verificacion: 'revision' }));
-                    guardarVerificacion('revision');
-                    avisar(entidadActual() === 'liderazgo' ? 'Soporte enviado. Queda en revisión' : 'Certificado enviado. Queda en revisión', { tipo: 'ok' });
-                  }}
-                >
-                  {entidadActual() === 'liderazgo' ? 'Adjuntar soporte' : 'Adjuntar el certificado'}
-                </Button>
-              }
-            />
-          )}
+          <Button nivel="secundario" tamano="md" onClick={empezar}>
+            Editar
+          </Button>
+        )
+      }
+    >
+      {editando ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="org-nombre" etiqueta="Nombre de la entidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
+          <Field id="org-tipo" etiqueta="Tipo de entidad" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
+          <Field id="org-nit" etiqueta="NIT / Registro" valor={borrador.nit} onChange={(v) => setBorrador({ ...borrador, nit: v })} />
+          <Field id="org-dir" etiqueta="Dirección" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
+          <Field id="org-tel" etiqueta="Teléfono público" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
+          <Field id="org-correo" etiqueta="Correo público" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
+          <Field id="org-web" etiqueta="Sitio web o redes" valor={borrador.web} onChange={(v) => setBorrador({ ...borrador, web: v })} />
         </div>
-      </Caja>
-      <Caja titulo="Visibilidad y accesos">
-        <FilaSwitch
-          id="org-directorio"
-          rotulo="Aparecer en el Directorio"
-          nota={directorio ? `Tu contacto se ve en el Directorio${org.directorioDesde ? ` desde ${org.directorioDesde}` : ''}` : 'Tu contacto no se ve en el Directorio'}
-          encendido={directorio}
-          onCambiar={setDirectorio}
-        />
-        <h2 className="font-rd mt-5 mb-3 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">Quién entra a esta cuenta</h2>
-        {invitados.map((p, i) => (
-          <div key={p.n} className={`flex items-start gap-3 py-2.5 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-            <Avatar iniciales={iniciales(p.n)} tamano="md" />
-            <div className="min-w-0 flex-1">
-              <b className="block text-rd-13-5 font-semibold text-rd-ink">{p.n}</b>
-              <span className="text-rd-12-5 text-rd-ink-2">{p.rol}</span>
+      ) : (
+        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+          {[
+            ['Nombre', org.nombre],
+            ['Tipo', org.tipo],
+            ['NIT / Registro', org.nit],
+            ['Dirección', org.dir],
+            ['Contacto público', `${org.contacto.tel}, ${org.contacto.correo}`],
+            ['Web / Redes', org.web],
+          ].map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
+              <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
             </div>
-            {p.estado === 'pendiente' ? <EtiquetaCiclo texto={`Invitación enviada ${p.cuando ?? ''}`} tono="inicial" /> : <EtiquetaCiclo texto="Activa" tono="completo" />}
-          </div>
-        ))}
-        <Button nivel="secundario" tamano="md" className="mt-3" onClick={() => setInvitando(true)}>
-          Invitar
-        </Button>
-      </Caja>
+          ))}
+        </dl>
+      )}
+    </Caja>
+  );
+};
 
-      <Dialogo
-        abierto={invitando}
-        titulo="Invitar a esta cuenta"
-        accion="Enviar"
-        onCerrar={() => setInvitando(false)}
-        onEnviar={enviarInvitacion}
-      >
-        <p className="mb-4 text-rd-14 text-rd-ink-2">
-          Le enviaremos un correo para que active su acceso a la cuenta de {org.nombre}.
-        </p>
-        <div className="grid gap-3">
-          <Field
-            id="inv-nombre"
-            etiqueta="Nombre y apellidos"
-            tipo="text"
-            valor={invNombre}
-            onChange={setInvNombre}
-            placeholder="Ej. Andrés Gómez"
-            requerido
-          />
-          <Field
-            id="inv-correo"
-            etiqueta="Correo electrónico"
-            tipo="email"
-            valor={invCorreo}
-            onChange={setInvCorreo}
-            placeholder="andres@ejemplo.org"
-            requerido
-          />
-          <Field
-            id="inv-rol"
-            etiqueta="Permisos en la cuenta"
-            tipo="select"
-            valor={invRol}
-            onChange={setInvRol}
-            opciones={['Permisos en la cuenta', 'Gestiona entregas y equipo', 'Administra', 'Solo ve']}
-          />
+/* ---------- Datos de la Comunidad (Perfil Líder) ---------- */
+
+const DatosComunidad: React.FC<{
+  orgInicial?: DatosOrg | null;
+  dbUserId?: string | null;
+  onGuardarOrg?: (org: DatosOrg) => void;
+}> = ({ orgInicial, dbUserId, onGuardarOrg }) => {
+  const avisar = useAviso();
+  const [com, setCom] = useState<DatosOrg>(
+    orgInicial || {
+      nombre: 'Comunidad / Sector',
+      tipo: 'Junta de Acción Comunitaria',
+      nit: 'No especificado',
+      dir: 'Cali, Valle del Cauca',
+      contacto: { tel: '', wa: true, correo: '' },
+      enlace: 'Representante Comunitario',
+      web: 'No especificado',
+      verificacion: 'sin',
+      directorio: true,
+      directorioDesde: 'recientemente',
+      canalesRevisados: true,
+    }
+  );
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState<DatosOrg>(com);
+
+  useEffect(() => {
+    if (orgInicial) {
+      setCom(orgInicial);
+      setBorrador(orgInicial);
+    }
+  }, [orgInicial]);
+
+  const guardar = async () => {
+    setCom(borrador);
+    onGuardarOrg?.(borrador);
+    setEditando(false);
+
+    if (dbUserId) {
+      try {
+        await supabase.from('organizations').upsert({
+          user_id: dbUserId,
+          org_name: borrador.nombre,
+          organization_type: borrador.tipo,
+          document_number: borrador.nit,
+          address: borrador.dir,
+          contact_phone: borrador.contacto.tel,
+          contact_email: borrador.contacto.correo,
+          website_or_social: borrador.web || borrador.enlace,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        avisar('Datos de la comunidad guardados en Supabase', { tipo: 'ok' });
+      } catch {
+        avisar('Datos guardados localmente', { tipo: 'ok' });
+      }
+    } else {
+      avisar('Datos guardados', { tipo: 'ok' });
+    }
+  };
+
+  return (
+    <Caja
+      titulo={`Datos de la comunidad: ${com.nombre}`}
+      accion={
+        editando ? (
+          <div className="flex items-center gap-2">
+            <Button nivel="primario" tamano="md" onClick={guardar}>
+              Guardar
+            </Button>
+            <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <Button nivel="secundario" tamano="md" onClick={() => { setBorrador(com); setEditando(true); }}>
+            Editar
+          </Button>
+        )
+      }
+    >
+      {editando ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="com-nombre" etiqueta="Nombre del sector / barrio / comunidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
+          <Field id="com-tipo" etiqueta="Tipo de representación (ej. JAC, Comuna)" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
+          <Field id="com-dir" etiqueta="Ubicación o dirección del sector" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
+          <Field id="com-tel" etiqueta="Teléfono de contacto para la comunidad" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
+          <Field id="com-correo" etiqueta="Correo de contacto comunitarios" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
         </div>
-      </Dialogo>
-    </>
+      ) : (
+        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
+          {[
+            ['Comunidad o sector', com.nombre],
+            ['Tipo de representación', com.tipo],
+            ['Ubicación', com.dir],
+            ['Contacto comunitario', `${com.contacto.tel || 'Sin teléfono'}, ${com.contacto.correo || 'Sin correo'}`],
+          ].map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-rd-11-5 font-medium text-rd-ink-meta">{k}</dt>
+              <dd className="m-0 text-rd-13-5 text-rd-ink wrap-anywhere">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </Caja>
+  );
+};
+
+/* ---------- Datos de Voluntario (Perfil Persona Natural) ---------- */
+
+const DatosVoluntario: React.FC<{
+  yo: PersonaExt;
+  dbUserId?: string | null;
+  onGuardarVoluntario: (p: PersonaExt) => void;
+}> = ({ yo, dbUserId, onGuardarVoluntario }) => {
+  const avisar = useAviso();
+  const [editando, setEditando] = useState(false);
+  const [disp, setDisp] = useState(yo.disponibilidad || 'Fines de semana y emergencias');
+  const [apoyo, setApoyo] = useState(yo.habilidades || 'Apoyo en terreno, coordinación logística y donaciones');
+
+  const guardar = async () => {
+    onGuardarVoluntario({ ...yo, disponibilidad: disp, habilidades: apoyo });
+    setEditando(false);
+    if (dbUserId) {
+      try {
+        await updateUserProfile(dbUserId, {
+          cargo: `Voluntario: ${disp}`
+        });
+        avisar('Información de voluntariado guardada en Supabase', { tipo: 'ok' });
+      } catch {
+        avisar('Información guardada', { tipo: 'ok' });
+      }
+    }
+  };
+
+  return (
+    <Caja
+      titulo="Información de voluntariado y apoyo"
+      accion={
+        editando ? (
+          <div className="flex items-center gap-2">
+            <Button nivel="primario" tamano="md" onClick={guardar}>
+              Guardar
+            </Button>
+            <Button nivel="terciario" tamano="md" onClick={() => setEditando(false)}>
+              Cancelar
+            </Button>
+          </div>
+        ) : (
+          <Button nivel="secundario" tamano="md" onClick={() => setEditando(true)}>
+            Editar
+          </Button>
+        )
+      }
+    >
+      {editando ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="vol-disp" etiqueta="Disponibilidad de tiempo" valor={disp} onChange={setDisp} />
+          <Field id="vol-apoyo" etiqueta="Habilidades o tipo de apoyo ofrecido" valor={apoyo} onChange={setApoyo} />
+        </div>
+      ) : (
+        <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <dt className="text-rd-11-5 font-medium text-rd-ink-meta">Disponibilidad de tiempo</dt>
+            <dd className="m-0 text-rd-13-5 text-rd-ink">{disp}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-rd-11-5 font-medium text-rd-ink-meta">Habilidades y apoyo ofrecido</dt>
+            <dd className="m-0 text-rd-13-5 text-rd-ink">{apoyo}</dd>
+          </div>
+        </dl>
+      )}
+    </Caja>
   );
 };

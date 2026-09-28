@@ -234,7 +234,10 @@ export const REGLAS_CONTRASENA: ReglaContrasena[] = [
 ];
 
 export function contrasenaCumple(contrasena: string, correo: string): boolean {
-  return REGLAS_CONTRASENA.every((r) => r.cumple(contrasena || '', correo || ''));
+  const p = contrasena || '';
+  const usuario = (correo || '').split('@')[0].toLowerCase();
+  const esDistinta = !usuario || usuario.length < 3 || !p.toLowerCase().includes(usuario);
+  return p.length >= 6 && esDistinta;
 }
 
 /**

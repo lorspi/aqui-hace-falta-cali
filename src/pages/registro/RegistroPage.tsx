@@ -78,7 +78,27 @@ function leerRapida(): boolean {
 }
 
 export const RegistroPage: React.FC = () => {
-  const [e, setE] = useState<EstadoRegistro>(() => estadoInicial(leerRapida()));
+  const [e, setE] = useState<EstadoRegistro>(() => {
+    const init = estadoInicial(leerRapida());
+    const params = new URLSearchParams(window.location.search);
+    const m = params.get('modo') as ModoRegistro | null;
+    if (m && ['registro', 'login', 'recuperar', 'recuperar_enviado', 'nueva_contrasena'].includes(m)) {
+      return { ...init, modo: m };
+    }
+    return init;
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const m = params.get('modo') as ModoRegistro | null;
+      if (m && ['registro', 'login', 'recuperar', 'recuperar_enviado', 'nueva_contrasena'].includes(m)) {
+        setE((prev) => ({ ...prev, modo: m }));
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const pass = useRef<Contrasenas>({});
   const [, repintar] = useReducer((n: number) => n + 1, 0);
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -112,6 +132,14 @@ export const RegistroPage: React.FC = () => {
   useEffect(() => {
     document.title = T.titulo;
   }, []);
+
+  useEffect(() => {
+    if (e.perfil === 'organizacion' && e.org.contacto.correo && !e.per.correo) {
+      setE((prev) => ({ ...prev, per: { ...prev.per, correo: prev.org.contacto.correo } }));
+    } else if (e.perfil === 'liderazgo' && e.com.contacto.correo && !e.per.correo) {
+      setE((prev) => ({ ...prev, per: { ...prev.per, correo: prev.com.contacto.correo } }));
+    }
+  }, [e.perfil, e.org.contacto.correo, e.com.contacto.correo, e.per.correo]);
 
   /* Al cambiar de paso, el foco va al primer campo; si el paso no tiene campo de texto (la
      intención, el éxito), al encabezado. Sin esto el foco cae a body y quien navega con
@@ -326,16 +354,26 @@ export const RegistroPage: React.FC = () => {
       }
 
       if (authData.user) {
-        if (e.perfil === 'organizacion') {
+        if (e.perfil === 'organizacion' || e.perfil === 'liderazgo') {
+          const isOrg = e.perfil === 'organizacion';
+          const orgName = isOrg ? e.org.nombre.trim() : e.com.nombre.trim();
+          const orgType = isOrg ? (e.org.tipo || 'ONG') : (e.com.tipo || 'Junta de acción comunal');
+          const docNum = isOrg ? e.org.nit : 'Comunidad';
+          const tel = isOrg ? e.org.contacto.tel : e.com.contacto.tel;
+          const wa = isOrg 
+            ? (e.org.contacto.mismoWa ? e.org.contacto.tel : e.org.contacto.wa) 
+            : (e.com.contacto.mismoWa ? e.com.contacto.tel : e.com.contacto.wa);
+          const web = isOrg ? (e.org.web.trim() || undefined) : undefined;
+
           await supabase.from('organizations').upsert({
             user_id: authData.user.id,
-            org_name: e.org.nombre.trim(),
-            organization_type: e.org.tipo || 'ONG',
-            website_or_social: e.org.web.trim() || undefined,
-            document_type: 'nit',
-            document_number: e.org.nit,
-            contact_phone: e.org.contacto.tel,
-            contact_whatsapp: e.org.contacto.mismoWa ? e.org.contacto.tel : e.org.contacto.wa,
+            org_name: orgName,
+            organization_type: orgType,
+            website_or_social: web,
+            document_type: isOrg ? 'nit' : 'soporte',
+            document_number: docNum,
+            contact_phone: tel,
+            contact_whatsapp: wa,
             contact_email: email,
           }, { onConflict: 'user_id' });
         }

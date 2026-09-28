@@ -80,7 +80,15 @@ function conParametros(base: EstadoOfrecer): EstadoOfrecer {
 }
 
 function irA(ruta: string): void {
-  window.location.href = ruta;
+  if (!ruta || ruta === '#') return;
+  if (ruta.startsWith('http://') || ruta.startsWith('https://')) {
+    window.location.href = ruta;
+    return;
+  }
+  if (window.location.pathname !== ruta) {
+    window.history.pushState({}, '', ruta);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 }
 
 export interface OfrecerProps {

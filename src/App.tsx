@@ -1160,8 +1160,14 @@ function MainApp() {
         <RadarPage
           onOpenCreateNeedModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-          onOpenLoginModal={() => setIsLoginModalOpen(true)}
-          onOpenProfileModal={() => setIsProfileModalOpen(true)}
+          onOpenLoginModal={() => {
+            window.history.pushState({}, '', '/registro-v2?modo=login');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+          onOpenProfileModal={() => {
+            window.history.pushState({}, '', '/perfil-v2');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
           onLogout={async () => {
             try {
               await supabase.auth.signOut();
@@ -1484,7 +1490,10 @@ function MainApp() {
         onSuccess={handleNeedCreated}
         isSubmitting={isSubmittingCreate}
         initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
-        onRequireAuth={() => setIsLoginModalOpen(true)}
+        onRequireAuth={() => {
+          window.history.pushState({}, '', '/registro-v2?modo=login');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
       />
 
       <ReportModal
@@ -1527,7 +1536,10 @@ function MainApp() {
         onClose={() => setShowCreateOffer(false)}
         onSuccess={handleOfferCreated}
         selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
-        onRequireAuth={() => setIsLoginModalOpen(true)}
+        onRequireAuth={() => {
+          window.history.pushState({}, '', '/registro-v2?modo=login');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
       />
 
       <OfferDetailModal

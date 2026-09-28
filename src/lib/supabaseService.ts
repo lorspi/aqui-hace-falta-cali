@@ -1036,7 +1036,13 @@ export async function updateUserProfile(userId: string, updates: {
   phone?: string;
   cargo?: string;
   city?: string;
+  department?: string;
   country?: string;
+  documentType?: string;
+  documentNumber?: string;
+  communityType?: string;
+  profileType?: string;
+  role?: string;
 }): Promise<any> {
   const rowUpdates: any = {
     updated_at: new Date().toISOString()
@@ -1048,7 +1054,13 @@ export async function updateUserProfile(userId: string, updates: {
   }
   if (updates.cargo !== undefined) rowUpdates.cargo = updates.cargo;
   if (updates.city !== undefined) rowUpdates.city = updates.city;
+  if (updates.department !== undefined) rowUpdates.department = updates.department;
   if (updates.country !== undefined) rowUpdates.country = updates.country;
+  if (updates.documentType !== undefined) rowUpdates.document_type = updates.documentType;
+  if (updates.documentNumber !== undefined) rowUpdates.document_number = updates.documentNumber;
+  if (updates.communityType !== undefined) rowUpdates.community_type = updates.communityType;
+  if (updates.profileType !== undefined) rowUpdates.profile_type = updates.profileType;
+  if (updates.role !== undefined) rowUpdates.role = updates.role;
 
   const { data, error } = await supabase
     .from('profiles')

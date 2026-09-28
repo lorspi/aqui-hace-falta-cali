@@ -155,10 +155,9 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  if (onOpenRegisterModal) {
-                    onOpenRegisterModal();
-                  } else {
-                    window.location.href = '/registro-v2?modo=registro';
+                  if (window.location.pathname !== '/registro-v2') {
+                    window.history.pushState({}, '', '/registro-v2?modo=registro');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                   }
                 }}
                 className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
@@ -170,10 +169,9 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  if (onOpenLoginModal) {
-                    onOpenLoginModal();
-                  } else {
-                    window.location.href = '/registro-v2?modo=login';
+                  if (window.location.pathname !== '/registro-v2') {
+                    window.history.pushState({}, '', '/registro-v2?modo=login');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                   }
                 }}
                 className="w-full text-left px-3.5 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"

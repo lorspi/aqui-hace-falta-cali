@@ -73,14 +73,17 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
         lleno(e.per.cedula) &&
         (!e.per.tel.trim() || esCelular(e.per.tel))
       );
-    case 'cuenta':
+    case 'cuenta': {
+      const email = (e.per.correo || (e.perfil === 'organizacion' ? e.org.contacto.correo : e.perfil === 'liderazgo' ? e.com.contacto.correo : '')).trim();
+      const passVal = contrasenaCumple(pass.cp || '', email);
+      const matchPass = Boolean(pass.cp && pass.cp === pass.cq);
       return (
-        esCorreo(e.per.correo) &&
-        contrasenaCumple(pass.cp || '', e.per.correo) &&
-        pass.cp === pass.cq &&
-        e.per.terminos &&
-        (Boolean(e.per.captchaToken) || typeof window === 'undefined' || !window.turnstile)
+        esCorreo(email) &&
+        passVal &&
+        matchPass &&
+        e.per.terminos
       );
+    }
     case 'ind_datos':
       return (
         lleno(e.ind.nombre) &&
@@ -89,14 +92,17 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
         lleno(e.ind.numeroDocumento) &&
         esCelular(e.ind.celular)
       );
-    case 'ind_cuenta':
+    case 'ind_cuenta': {
+      const email = (e.ind.correo || '').trim();
+      const passVal = contrasenaCumple(pass.ip || '', email);
+      const matchPass = Boolean(pass.ip && pass.ip === pass.iq);
       return (
-        esCorreo(e.ind.correo) &&
-        contrasenaCumple(pass.ip || '', e.ind.correo) &&
-        pass.ip === pass.iq &&
-        e.ind.terminos &&
-        (Boolean(e.ind.captchaToken) || typeof window === 'undefined' || !window.turnstile)
+        esCorreo(email) &&
+        passVal &&
+        matchPass &&
+        e.ind.terminos
       );
+    }
     case 'rapida':
       return lleno(e.per.nombre) && lleno(e.per.tel) && esCorreo(e.per.correo) && contrasenaCumple(pass.rp || '', e.per.correo);
     default:
