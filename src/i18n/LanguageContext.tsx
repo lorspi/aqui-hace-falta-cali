@@ -14,11 +14,11 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ahf_language') as Language;
       if (saved === 'es' || saved === 'en' || saved === 'pt' || saved === 'fr') return saved;
-      const navLang = navigator.language.toLowerCase();
-      if (navLang.startsWith('en')) return 'en';
-      if (navLang.startsWith('pt')) return 'pt';
-      if (navLang.startsWith('fr')) return 'fr';
     }
+    /* El español es el idioma principal y el de arranque (Alejandro, 28 de septiembre de 2026):
+       RaDAR opera en Colombia. Antes el idioma del navegador mandaba, así que a un visitante con
+       Chrome en inglés la página le abría en inglés. Los otros tres siguen disponibles en el
+       selector y se recuerdan en `localStorage`. */
     return 'es';
   });
 

@@ -49,6 +49,10 @@
   --color-rd-fondo: #F6F7FB;
   --color-rd-line: #E1E4EE;
   --color-rd-line-soft: #ECEEF5;
+  /* El marco al pasar por encima, un escalón por encima de `rd-line`. Se usaba en cuatro sitios
+     —dos en el panel, del equipo— sin estar definido, así que esos `hover` no pintaban nada
+     (encontrado el 28 de septiembre de 2026 al armar la landing). */
+  --color-rd-line-strong: #C7CCDB;
   --color-rd-track: #DFE3EE;
   --color-rd-mapa: #EAE6DE;
 
@@ -72,6 +76,15 @@
   --text-rd-24: 24px;
   --text-rd-28: 28px;
   --text-rd-32: 32px;
+  /* Escala de display, solo para la landing (28 de septiembre de 2026). La escala de arriba está
+     hecha para la herramienta, donde el título de pantalla mide 22; una página de marca necesita
+     titulares que en la herramienta serían un error. Nacen como tokens para que la landing no
+     escriba medidas crudas ni corchetes, que el estándar del equipo prohíbe. */
+  --text-rd-40: 40px;
+  --text-rd-48: 48px;
+  --text-rd-56: 56px;
+  --text-rd-64: 64px;
+  --text-rd-72: 72px;
   /* Un escalón por debajo de `sm`, para la línea de tiempo del congrats: desde 480 caben los
      tres pasos en fila y debajo van en columna. Nace como token para no escribir `min-[480px]:`,
      que el estándar del equipo prohíbe (`ESTANDAR_TECNICO_Y_MOCKS.md`, sin corchetes). */
@@ -88,6 +101,11 @@
   --radius-rd-md: 8px;
   --radius-rd-lg: 12px;
   --radius-rd-xl: 16px;
+  /* Radios de dispositivo, para las maquetas de la landing: el marco de un teléfono y el de una
+     ventana. Nacen como tokens porque el estándar del equipo prohíbe los corchetes de Tailwind
+     (29 de septiembre de 2026). */
+  --radius-rd-2xl: 26px;
+  --radius-rd-3xl: 34px;
   --spacing-rd-h-sm: 32px;
   --spacing-rd-h-md: 40px;
   --spacing-rd-h-lg: 48px;
@@ -807,3 +825,116 @@ body.modal-open {
   }
 }
 
+
+/* La ruta del mapa de Colombia de la landing (paso «Conecta»): se dibuja sola de Cali a Bogotá
+   y se mantiene. Con `prefers-reduced-motion` aparece ya trazada, sin animación. */
+.rd-ruta {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: rd-trazar 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+}
+
+@keyframes rd-trazar {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-ruta {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ======================================================================
+   MOVIMIENTO DE LA LANDING (29 de septiembre de 2026)
+   Las piezas aparecen al llegar a ellas, las barras se llenan y el sello del acta entra con un
+   rebote corto. No es adorno: RaDAR cuenta lo que le pasa a gente real, y un dato que se llena
+   delante de uno pesa más que el mismo dato ya puesto. Todo se apaga con movimiento reducido.
+   ====================================================================== */
+
+.rd-revela {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+.rd-revela.es-visible {
+  animation: rd-entra 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--rd-retraso, 0ms) both;
+}
+@keyframes rd-entra {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* La barra de un recurso: se llena desde la izquierda al aparecer. */
+.rd-barra {
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.rd-barra.es-visible {
+  animation: rd-llena 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+@keyframes rd-llena {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* El sello de constancia del acta: entra con un rebote corto, como un timbre. */
+.rd-sello {
+  opacity: 0;
+}
+.rd-sello.es-visible {
+  animation: rd-timbre 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both;
+}
+@keyframes rd-timbre {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* El punto de la ciudad que pide: late despacio mientras la ruta se traza. */
+.rd-late {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rd-latido 2.6s ease-in-out infinite;
+}
+@keyframes rd-latido {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-revela,
+  .rd-revela.es-visible,
+  .rd-barra,
+  .rd-barra.es-visible,
+  .rd-sello,
+  .rd-sello.es-visible,
+  .rd-late {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -102,7 +102,8 @@ export const LandingFooter: React.FC = () => {
             <a href="https://instagram.com/radardeayuda" target="_blank" rel="noopener noreferrer" className="hover:text-white">
               @radardeayuda
             </a>
-            <span>·</span>
+            {/* Divisor, no punto medio: el punto medio está prohibido en RaDAR. */}
+            <span aria-hidden="true" className="inline-block h-3 w-px bg-slate-700" />
             <span>www.radardeayuda.co</span>
           </div>
         </div>

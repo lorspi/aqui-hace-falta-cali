@@ -1,197 +1,160 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Hand, HeartHandshake, Map, Menu, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Hand, HeartHandshake, Menu, X } from 'lucide-react';
 import { LanguageSelector } from '../../../components/LanguageSelector';
+import { BotonLanding } from './base';
 import { useTranslation } from '../../../i18n/LanguageContext';
 
+/**
+ * La barra superior de la landing, rehecha el 28 de septiembre de 2026 porque «no se parece en
+ * nada al de la app que hemos iterado» (Alejandro). Era cierto: usaba `slate-200`, `rounded-xl`,
+ * `text-xs font-bold` y dos botones sólidos rojo y azul, nada del sistema.
+ *
+ * Ahora comparte con el cascarón de la app (`components/ui/Shell`) el logo a 38, el marco
+ * `rd-line`, el fondo `rd-surface` y el tratamiento de los enlaces de navegación: `rd-13-5`
+ * en `rd-ink-2`, que pasan a `rd-ink` al apuntarlos. Y toma de la referencia que **los enlaces
+ * se vean**, en vez de esconderse tras una hamburguesa en escritorio, y que las dos acciones
+ * vayan a la derecha en píldora.
+ *
+ * Las dos van llenas, navy y coral, como el menú «+» de la app: coral pide, navy ofrece. No es
+ * una pareja de primaria y secundaria (29 de septiembre de 2026).
+ */
 interface LandingHeaderProps {
   onOpenChat: () => void;
 }
 
+const ENLACE =
+  'font-rd rounded-rd-sm px-2 py-1 text-rd-13-5 font-medium text-rd-ink-2 no-underline transition-colors hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy';
+
 export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
   const { t } = useTranslation();
-  const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
-  // Cerrar menú de escritorio al hacer click afuera
+  /* El menú de mano bloquea el desplazamiento del fondo mientras está abierto, y Escape cierra. */
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (desktopMenuRef.current && !desktopMenuRef.current.contains(event.target as Node)) {
-        setIsDesktopMenuOpen(false);
-      }
-    };
-    if (isDesktopMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    if (!menuAbierto) return;
+    const alTeclear = (e: KeyboardEvent) => e.key === 'Escape' && setMenuAbierto(false);
+    document.addEventListener('keydown', alTeclear);
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', alTeclear);
+      document.body.style.overflow = '';
     };
-  }, [isDesktopMenuOpen]);
+  }, [menuAbierto]);
+
+  const enlaces = [
+    { href: '/mapa-ayudas-necesidades', texto: t('landingNavGoToApp') },
+    { href: '#organizaciones', texto: t('landingNavForOrgs') },
+    { href: '#contacto', texto: t('landingNavContact') },
+  ];
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between">
-        {/* Logo raDAR oficial a la izquierda */}
-        <a href="/" className="flex items-center gap-3 group shrink-0">
-          <img
-            src="/logo-radar.svg"
-            alt="raDAR de Ayuda"
-            className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-102"
-          />
+    <header className="sticky top-0 z-40 border-b border-rd-line bg-rd-surface/95 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-360 items-center gap-6 px-5 sm:px-8 lg:px-12">
+        <a
+          href="/"
+          aria-label="RaDAR de ayuda, inicio"
+          className="flex shrink-0 items-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy"
+        >
+          <img src="/logo-radar.svg" alt="" className="block h-9.5 w-auto" />
         </a>
 
-        {/* Acciones principales de escritorio */}
-        <div className="hidden md:flex items-center gap-2.5 sm:gap-3">
-          {/* Botón primario: Pedir ayuda (Rojo con manito levantada Hand) */}
-          <button
-            type="button"
-            onClick={onOpenChat}
-            className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-red/90 active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
-          >
-            <Hand className="w-4 h-4 text-white" />
-            <span>{t('landingHeroCtaNeed')}</span>
-          </button>
+        {/* Navegación a la vista desde 1024, como en la referencia. */}
+        <nav aria-label="Secciones" className="hidden items-center gap-1 lg:flex">
+          {enlaces.map((e) => (
+            <a key={e.href} href={e.href} className={ENLACE}>
+              {e.texto}
+            </a>
+          ))}
+        </nav>
 
-          {/* Botón: Ofrecer ayuda (Azul con letra blanca y HeartHandshake) */}
-          <a
-            href="/mapa-ayudas-necesidades?ofrecer=true"
-            className="inline-flex items-center gap-2 px-4 sm:px-4.5 py-2 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-xs hover:shadow-md transition-all cursor-pointer font-sans"
-          >
-            <HeartHandshake className="w-4 h-4 text-white" />
-            <span>{t('landingHeroCtaOffer')}</span>
-          </a>
-
-          {/* Menú Hamburguesa en Computador: A LA DERECHA de Pedir ayuda */}
-          <div className="relative" ref={desktopMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsDesktopMenuOpen(!isDesktopMenuOpen)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-normal transition-all cursor-pointer font-sans border ${
-                isDesktopMenuOpen
-                  ? 'bg-slate-100 text-slate-900 border-slate-300'
-                  : 'bg-white/90 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-slate-200/80 shadow-xs'
-              }`}
-              aria-label="Menú de navegación"
-              aria-expanded={isDesktopMenuOpen}
-            >
-              {isDesktopMenuOpen ? (
-                <X className="w-3.5 h-3.5 text-slate-600" />
-              ) : (
-                <Menu className="w-3.5 h-3.5 text-slate-600" />
-              )}
-              <span className="text-xs tracking-tight">{t('landingNavMenu')}</span>
-            </button>
-
-            {/* Menú Flotante Horizontal: No apilado, ligero, diáfano y alineado a la derecha */}
-            {isDesktopMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 p-1.5 bg-white/98 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-900/5 flex flex-row items-center gap-1 whitespace-nowrap z-50 animate-fade-in font-sans">
-                <a
-                  href="/mapa-ayudas-necesidades"
-                  onClick={() => setIsDesktopMenuOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 inline-flex items-center gap-1.5 transition-colors"
-                >
-                  <Map className="w-3 h-3 text-brand-blue" />
-                  <span>{t('landingNavGoToApp')}</span>
-                </a>
-                <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
-                <a
-                  href="#organizaciones"
-                  onClick={() => setIsDesktopMenuOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-colors"
-                >
-                  {t('landingNavForOrgs')}
-                </a>
-                <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
-                <a
-                  href="#contacto"
-                  onClick={() => setIsDesktopMenuOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-colors"
-                >
-                  {t('landingNavContact')}
-                </a>
-                <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
-                <LanguageSelector variant="ghost" className="shrink-0" />
-              </div>
-            )}
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <div className="hidden sm:block">
+            <LanguageSelector />
           </div>
-        </div>
 
-        {/* Móvil: Solo Botón Hamburguesa */}
-        <div className="flex md:hidden items-center">
+          <div className="hidden items-center gap-2.5 sm:flex">
+            <BotonLanding
+              nivel="primario"
+              tamano="md"
+              como="enlace"
+              href="/mapa-ayudas-necesidades?ofrecer=true"
+              icono={<HeartHandshake aria-hidden="true" className="h-4 w-4 shrink-0" />}
+            >
+              {t('landingHeroCtaOffer')}
+            </BotonLanding>
+            <BotonLanding nivel="pedir" tamano="md" onClick={onOpenChat} icono={<Hand aria-hidden="true" className="h-4 w-4 shrink-0" />}>
+              {t('landingHeroCtaNeed')}
+            </BotonLanding>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 focus:outline-hidden transition-colors"
-            aria-label="Abrir menú de navegación móvil"
-            aria-expanded={isMobileMenuOpen}
+            onClick={() => setMenuAbierto(true)}
+            aria-label="Abrir el menú"
+            aria-expanded={menuAbierto}
+            className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink hover:bg-rd-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy lg:hidden"
           >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
+            <Menu className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Menú Desplegable en Móvil */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200/80 bg-white/98 backdrop-blur-xl px-4 pt-3 pb-6 space-y-4 shadow-xl animate-fade-in">
-          {/* Opciones en celular: 3 columnas equilibradas */}
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100/70 rounded-xl border border-slate-200/60 text-center font-sans">
-            <a
-              href="/mapa-ayudas-necesidades"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="px-2 py-2 rounded-lg text-xs font-normal text-slate-700 hover:bg-white hover:shadow-xs transition-all flex items-center justify-center gap-1.5"
-            >
-              <Map className="w-3 h-3 text-brand-blue" />
-              <span>{t('landingNavGoToApp')}</span>
-            </a>
-            <a
-              href="#organizaciones"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="px-2 py-2 rounded-lg text-xs font-normal text-slate-700 hover:bg-white hover:shadow-xs transition-all flex items-center justify-center"
-            >
-              {t('landingNavForOrgs')}
-            </a>
-            <a
-              href="#contacto"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="px-2 py-2 rounded-lg text-xs font-normal text-slate-700 hover:bg-white hover:shadow-xs transition-all flex items-center justify-center"
-            >
-              {t('landingNavContact')}
-            </a>
-          </div>
+      {/* El cajón de mano: el mismo dibujo que el de la app (velo en tinta, panel a la derecha). */}
+      {menuAbierto && (
+        <div className="fixed inset-0 z-900 lg:hidden">
+          <button type="button" aria-label="Cerrar el menú" onClick={() => setMenuAbierto(false)} className="absolute inset-0 cursor-default bg-rd-ink/40" />
+          <div role="dialog" aria-modal="true" aria-label={t('landingNavMenu')} className="absolute top-0 right-0 bottom-0 flex w-4/5 max-w-90 flex-col overflow-auto rounded-l-rd-md bg-rd-surface shadow-rd-2">
+            <div className="flex min-h-16 items-center justify-between border-b border-rd-line px-5">
+              <img src="/logo-radar.svg" alt="" className="block h-7.5 w-auto" />
+              <button
+                type="button"
+                onClick={() => setMenuAbierto(false)}
+                aria-label="Cerrar"
+                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-          {/* Selector de idioma en móvil */}
-          <div className="flex items-center justify-between px-2 pt-1 border-t border-slate-100 font-sans">
-            <span className="text-xs font-medium text-slate-500">{t('landingNavLanguage')}</span>
-            <LanguageSelector className="shrink-0" />
-          </div>
+            <nav aria-label="Secciones" className="flex flex-col gap-1 p-4">
+              {enlaces.map((e) => (
+                <a
+                  key={e.href}
+                  href={e.href}
+                  onClick={() => setMenuAbierto(false)}
+                  className="font-rd flex h-11 items-center rounded-rd-lg px-3 text-rd-15 font-medium text-rd-ink no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
+                >
+                  {e.texto}
+                </a>
+              ))}
+            </nav>
 
-          <div className="pt-1 flex flex-col gap-2.5 font-sans">
-            {/* Pedir ayuda en móvil (Rojo con manito Hand) */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                onOpenChat();
-              }}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-red hover:bg-brand-red/90 active:scale-98 shadow-sm transition-all font-sans"
-            >
-              <Hand className="w-4 h-4 text-white" />
-              <span>{t('landingHeroCtaNeed')}</span>
-            </button>
-
-            {/* Ofrecer ayuda en móvil (Azul con HeartHandshake) */}
-            <a
-              href="/mapa-ayudas-necesidades?ofrecer=true"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-blue hover:bg-brand-blue/90 active:scale-98 shadow-sm transition-all font-sans"
-            >
-              <HeartHandshake className="w-4 h-4 text-white" />
-              <span>{t('landingHeroCtaOffer')}</span>
-            </a>
+            <div className="mt-auto flex flex-col gap-3 border-t border-rd-line p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-rd text-rd-13-5 text-rd-ink-meta">{t('landingNavLanguage')}</span>
+                <LanguageSelector />
+              </div>
+              <BotonLanding
+                nivel="primario"
+                como="enlace"
+                href="/mapa-ayudas-necesidades?ofrecer=true"
+                ancho
+                icono={<HeartHandshake aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />}
+              >
+                {t('landingHeroCtaOffer')}
+              </BotonLanding>
+              <BotonLanding
+                nivel="pedir"
+                ancho
+                icono={<Hand aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />}
+                onClick={() => {
+                  setMenuAbierto(false);
+                  onOpenChat();
+                }}
+              >
+                {t('landingHeroCtaNeed')}
+              </BotonLanding>
+            </div>
           </div>
         </div>
       )}
