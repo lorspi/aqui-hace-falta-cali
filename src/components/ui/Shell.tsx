@@ -164,25 +164,50 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   };
 
   const [hasOrg, setHasOrg] = useState<boolean>(false);
+  const [dbProfileType, setDbProfileType] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeUser?.id) {
       setHasOrg(false);
+      setDbProfileType(null);
       return;
     }
-    async function checkOrg() {
+    let isMounted = true;
+    async function checkUserOrgAndProfile() {
       try {
-        const { data } = await supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle();
-        if (data) {
-          setHasOrg(true);
+        const [orgRes, profRes] = await Promise.all([
+          supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle(),
+          supabase.from('profiles').select('profile_type, role').eq('id', activeUser.id).maybeSingle()
+        ]);
+        if (!isMounted) return;
+        setHasOrg(Boolean(orgRes.data));
+        if (profRes.data) {
+          setDbProfileType((profRes.data.profile_type || profRes.data.role || '').toLowerCase());
         }
       } catch {}
     }
-    checkOrg();
+    checkUserOrgAndProfile();
+    return () => {
+      isMounted = false;
+    };
   }, [activeUser?.id]);
 
-  const userRole = (activeUser?.user_metadata?.role || activeUser?.role || cuentaFinal?.rol || '').toLowerCase();
-  const profileType = (activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || activeUser?.profile_type || '').toLowerCase();
+  const userRole = (
+    activeUser?.user_metadata?.role ||
+    activeUser?.role ||
+    dbProfileType ||
+    cuentaFinal?.rol ||
+    ''
+  ).toLowerCase();
+
+  const profileType = (
+    dbProfileType ||
+    activeUser?.user_metadata?.profile_type ||
+    activeUser?.user_metadata?.profileType ||
+    activeUser?.profile_type ||
+    ''
+  ).toLowerCase();
+
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
   const esComunidad =
@@ -202,12 +227,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     profileType === 'comunidad' ||
     profileType === 'liderazgo' ||
     profileType === 'lider' ||
+    profileType === 'organization' ||
     userRole === 'organizacion' ||
     userRole === 'lider' ||
     userRole === 'liderazgo' ||
     userRole === 'comunidad' ||
     userRole === 'moderador' ||
     userRole === 'entidad_profesional' ||
+    userRole === 'organization' ||
     Boolean(activeUser?.user_metadata?.org_name) ||
     Boolean(activeUser?.org_name) ||
     Boolean(activeUser?.organization) ||

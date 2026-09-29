@@ -950,7 +950,7 @@ export async function updateAdminUser(userId: string, updates: Partial<{ name: s
   const payload: Record<string, any> = {};
   if (updates.name) payload.full_name = updates.name;
   if (updates.role) payload.role = updates.role.toLowerCase();
-  
+
   const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
   if (error) throw error;
 }
@@ -1004,7 +1004,7 @@ export async function fetchUserProfile(userId: string) {
       .maybeSingle();
 
     if (profileById) return profileById;
-  } catch (e) {}
+  } catch (e) { }
 
   // 2. Buscar por correo de la sesión exclusivamente en `profiles`
   const { data: sessionData } = await supabase.auth.getSession();
@@ -1022,7 +1022,7 @@ export async function fetchUserProfile(userId: string) {
         .maybeSingle();
 
       if (profileByEmail) return profileByEmail;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   return null;
