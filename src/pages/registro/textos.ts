@@ -73,11 +73,6 @@ export const TEXTOS = {
     mismoWa: 'Este número también es WhatsApp',
     wa: 'WhatsApp de la organización',
     correo: 'Correo de contacto',
-    docTitulo: 'Documento de representación legal',
-    docSub: 'Con él la organización sale con la insignia de verificación.',
-    docAdjuntado: 'Adjuntado correctamente.',
-    adjuntar: 'Adjuntar',
-    cambiar: 'Cambiar',
   },
 
   com: {
@@ -156,8 +151,6 @@ export const TEXTOS = {
     panelPorDefecto: 'tu panel',
     sub: 'Desde el mapa pides ayuda o publicas lo que tienes.',
     irMapa: 'Ir al mapa',
-    sinVerificarTitulo: 'Sin verificar',
-    sinVerificarTexto: (panel: string) => `Para la insignia de verificada, sube el documento de representación en ${panel}.`,
     comoFunciona: 'Ver cómo funciona',
   },
 

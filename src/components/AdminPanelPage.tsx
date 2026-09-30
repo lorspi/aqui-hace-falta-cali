@@ -77,6 +77,8 @@ import {
   fetchAdminOrganizationsList,
   updateOrganizationVerification,
 } from "../lib/supabaseService";
+import { cargarDocumentosOrg } from "../utils/documentosVerificacion";
+import type { DocumentoVerificacion } from "../types/panel";
 import { useTranslation } from "../i18n/LanguageContext";
 
 function AdminPriorityPill({ priority }: { priority?: Priority }) {
@@ -191,6 +193,7 @@ export const AdminPanelPage: React.FC = () => {
   // Organizations & Communities state
   const [organizationsList, setOrganizationsList] = useState<AdminOrganization[]>([]);
   const [viewingOrg, setViewingOrg] = useState<AdminOrganization | null>(null);
+  const [previewingDoc, setPreviewingDoc] = useState<DocumentoVerificacion | null>(null);
   const [isSavingOrgStatus, setIsSavingOrgStatus] = useState(false);
   const [orgStatusFilter, setOrgStatusFilter] = useState<'ALL' | 'PENDING' | 'VERIFIED'>('ALL');
   const [orgCategoryFilter, setOrgCategoryFilter] = useState<'ALL' | 'ORGANIZACION' | 'COMUNIDAD'>('ALL');
@@ -1428,6 +1431,56 @@ export const AdminPanelPage: React.FC = () => {
                                 {org.description}
                               </p>
                             )}
+
+                            {/* Documentos de verificación (Miniaturas) */}
+                            {(() => {
+                              const orgDocs = (org.verificationDocuments && org.verificationDocuments.length > 0)
+                                ? org.verificationDocuments
+                                : cargarDocumentosOrg(org.id, org.name, org.userId);
+                              if (orgDocs.length === 0) return null;
+                              return (
+                                <div className="pt-1.5 flex items-center gap-2 flex-wrap">
+                                  <span className="text-rd-10 font-bold uppercase tracking-wider text-rd-ink-meta flex items-center gap-1">
+                                    <FileText className="w-3 h-3 text-rd-navy" />
+                                    Docs ({orgDocs.length}):
+                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {orgDocs.slice(0, 3).map((d) => (
+                                      <button
+                                        key={d.id}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPreviewingDoc(d);
+                                        }}
+                                        title={`Ver ${d.nombre} (${d.categoria || 'Soporte'})`}
+                                        className="h-8 w-8 rounded-rd-md border border-rd-line overflow-hidden bg-rd-sunken hover:border-rd-navy hover:scale-105 transition-all shrink-0 cursor-pointer relative group shadow-2xs"
+                                      >
+                                        {d.tipo === 'imagen' ? (
+                                          <img src={d.url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 text-red-700 text-rd-8 font-black leading-none">
+                                            PDF
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                    {orgDocs.length > 3 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewingOrg(org);
+                                        }}
+                                        className="h-8 px-2 rounded-rd-md border border-rd-line bg-rd-sunken text-rd-10 font-bold text-rd-ink-meta hover:text-rd-navy hover:border-rd-navy transition-colors cursor-pointer"
+                                      >
+                                        +{orgDocs.length - 3}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
@@ -2159,6 +2212,14 @@ export const AdminPanelPage: React.FC = () => {
           isSaving={isSavingOrgStatus}
           onToggleVerification={(org) => handleToggleOrgVerification(org)}
           onClose={() => setViewingOrg(null)}
+          onPreviewDoc={(doc) => setPreviewingDoc(doc)}
+        />
+      )}
+
+      {previewingDoc && (
+        <DocPreviewModal
+          doc={previewingDoc}
+          onClose={() => setPreviewingDoc(null)}
         />
       )}
     </div>
@@ -2321,7 +2382,8 @@ const OrgDetailModal: React.FC<{
   isSaving: boolean;
   onToggleVerification: (org: AdminOrganization) => void;
   onClose: () => void;
-}> = ({ org, isSaving, onToggleVerification, onClose }) => {
+  onPreviewDoc?: (doc: DocumentoVerificacion) => void;
+}> = ({ org, isSaving, onToggleVerification, onClose, onPreviewDoc }) => {
   const isOrgCategory = org.category === 'ORGANIZACION';
 
   const Row: React.FC<{ label: string; value?: string | null; isLink?: boolean }> = ({ label, value, isLink }) => (
@@ -2342,6 +2404,10 @@ const OrgDetailModal: React.FC<{
       )}
     </div>
   );
+
+  const orgDocs = (org.verificationDocuments && org.verificationDocuments.length > 0)
+    ? org.verificationDocuments
+    : cargarDocumentosOrg(org.id, org.name, org.userId);
 
   return (
     <div
@@ -2418,6 +2484,77 @@ const OrgDetailModal: React.FC<{
           </h4>
           <Row label="Dirección / Zona" value={org.address} />
           <Row label="Fecha de registro" value={org.createdAt} />
+
+          {/* Documentos de Verificación */}
+          <div className="mt-5 pt-4 border-t border-rd-line">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider flex items-center gap-1.5 m-0">
+                <FileText className="w-3.5 h-3.5 text-rd-navy" />
+                <span>Documentos de Verificación ({orgDocs.length})</span>
+              </h4>
+              {orgDocs.length > 0 && (
+                <span className="text-rd-10 text-rd-ink-meta font-normal">
+                  Toca para ampliar
+                </span>
+              )}
+            </div>
+
+            {orgDocs.length === 0 ? (
+              <div className="rounded-rd-lg border border-dashed border-rd-line bg-rd-fondo/60 p-4 text-center">
+                <p className="text-rd-12 text-rd-ink-meta italic m-0">
+                  Esta entidad aún no ha adjuntado documentos de verificación.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {orgDocs.map((doc) => (
+                  <div
+                    key={doc.id}
+                    onClick={() => onPreviewDoc?.(doc)}
+                    className="flex items-center gap-3 p-2.5 rounded-rd-lg border border-rd-line bg-rd-sunken/40 hover:bg-rd-sunken hover:border-rd-navy/60 transition-colors cursor-pointer group"
+                    title={`Ver ${doc.nombre}`}
+                  >
+                    {/* Miniatura */}
+                    <div className="h-11 w-11 shrink-0 rounded-rd-md border border-rd-line bg-rd-surface overflow-hidden flex items-center justify-center">
+                      {doc.tipo === 'imagen' ? (
+                        <img
+                          src={doc.url}
+                          alt=""
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center bg-red-50 text-red-700 h-full w-full">
+                          <FileText className="h-5 w-5" />
+                          <span className="text-rd-8 font-black">PDF</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Textos */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rd-12 font-semibold text-rd-ink truncate m-0 group-hover:text-rd-navy transition-colors">
+                        {doc.nombre}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {doc.categoria && (
+                          <span className="text-rd-9 font-bold bg-rd-navy-soft text-rd-navy px-1.5 py-0.5 rounded-rd-xs border border-rd-navy-line">
+                            {doc.categoria}
+                          </span>
+                        )}
+                        {doc.peso && (
+                          <span className="text-rd-10 text-rd-ink-meta">
+                            {doc.peso}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <ExternalLink className="w-3.5 h-3.5 text-rd-ink-3 group-hover:text-rd-navy shrink-0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -2451,6 +2588,101 @@ const OrgDetailModal: React.FC<{
               <span>{isSaving ? 'Guardando...' : 'Revocar Verificación'}</span>
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// DOCUMENT PREVIEW MODAL (LIGHTBOX)
+// ==========================================
+const DocPreviewModal: React.FC<{
+  doc: DocumentoVerificacion | null;
+  onClose: () => void;
+}> = ({ doc, onClose }) => {
+  if (!doc) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-60 bg-rd-ink/60 backdrop-blur-xs flex items-center justify-center p-4 font-rd text-rd-ink"
+      onClick={onClose}
+    >
+      <div
+        className="bg-rd-surface rounded-rd-xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-rd-line shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-rd-sunken/60 border-b border-rd-line px-5 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FileText className="w-5 h-5 text-rd-navy shrink-0" />
+            <div className="min-w-0">
+              <h3 className="font-bold text-rd-ink text-rd-14 truncate">{doc.nombre}</h3>
+              <div className="flex items-center gap-2 text-rd-11 text-rd-ink-meta mt-0.5">
+                {doc.categoria && (
+                  <span className="bg-rd-navy-soft text-rd-navy font-bold px-1.5 py-0.2 rounded-rd-xs border border-rd-navy-line text-rd-9">
+                    {doc.categoria}
+                  </span>
+                )}
+                <span>Subido el {doc.creadoEn}</span>
+                {doc.peso && <span>• {doc.peso}</span>}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-rd-ink-meta hover:text-rd-ink hover:bg-rd-fondo rounded-rd-md shrink-0 cursor-pointer transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-rd-sunken/20 min-h-[300px] max-h-[72vh]">
+          {doc.tipo === 'imagen' ? (
+            <img
+              src={doc.url}
+              alt={doc.nombre}
+              className="max-h-[68vh] w-auto max-w-full rounded-rd-md object-contain border border-rd-line shadow-sm"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-100 text-red-700 flex items-center justify-center mb-3">
+                <FileText className="w-8 h-8" />
+              </div>
+              <b className="text-rd-14 font-semibold text-rd-ink mb-1">{doc.nombre}</b>
+              <p className="text-rd-12 text-rd-ink-meta mb-4">Documento en formato PDF</p>
+              <a
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-rd-navy hover:bg-rd-navy-hover text-white text-rd-12 font-semibold px-4 py-2 rounded-rd-md shadow-xs flex items-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Abrir PDF en pestaña nueva</span>
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-rd-fondo border-t border-rd-line px-5 py-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+          >
+            Cerrar visor
+          </button>
+          <a
+            href={doc.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-rd-navy hover:underline text-rd-12 font-semibold flex items-center gap-1.5"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Ver archivo original</span>
+          </a>
         </div>
       </div>
     </div>

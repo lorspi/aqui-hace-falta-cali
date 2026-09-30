@@ -43,6 +43,16 @@ export function activarModulo(modulo: keyof ModulosCuenta): void {
   }
 }
 
+/** Desactivar el módulo al eliminar una publicación. */
+export function desactivarModulo(modulo: keyof ModulosCuenta): void {
+  try {
+    const actual = leerModulos('', localStorage.getItem(CLAVE));
+    localStorage.setItem(CLAVE, JSON.stringify({ ...actual, [modulo]: false }));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+
 /** Las pestañas: lo que se pide antes que lo que se ofrece, Seguimiento unificado para
  *  ambas caras, y siempre Resumen al principio y Mi equipo al final. */
 export function pestanasDe(m: ModulosCuenta, conteos: { porConfirmarRecibidas: number; nuevas: number; porConfirmar: number }): PestanaPanel[] {

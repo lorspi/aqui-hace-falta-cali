@@ -192,7 +192,7 @@ export interface PermisosRol {
   auditoriaLectura: boolean;
 }
 
-export type DisponibilidadMiembro = 'tiempo_completo' | 'fines_de_semana' | 'emergencias' | 'tardes' | 'hoy' | 'manana' | 'finde' | '';
+export type DisponibilidadMiembro = 'tiempo_completo' | 'entre_semana' | 'fines_de_semana' | 'emergencias' | 'tardes' | 'hoy' | 'manana' | 'finde' | '';
 
 export interface MiembroEquipo {
   id: number;
@@ -214,6 +214,16 @@ export interface Actividad {
 
 export type Verificacion = 'sin' | 'revision' | 'verificada' | 'rechazada';
 
+export interface DocumentoVerificacion {
+  id: string;
+  nombre: string;
+  url: string;
+  tipo: 'imagen' | 'pdf' | 'archivo';
+  categoria?: 'Cédula' | 'NIT / RUT' | 'Cámara de Comercio' | 'Acta comunitaria' | 'Carta o personería' | 'Otro';
+  peso?: string;
+  creadoEn: string;
+}
+
 export interface DatosOrg {
   nombre: string;
   tipo: string;
@@ -227,6 +237,7 @@ export interface DatosOrg {
   verificacion: Verificacion;
   motivoRechazo?: string;
   canalesRevisados: boolean;
+  documentosVerificacion?: DocumentoVerificacion[];
 }
 
 export interface Invitado {

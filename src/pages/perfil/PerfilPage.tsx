@@ -20,6 +20,7 @@ import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
+import { DocumentosVerificacionSection } from '../../components/perfil/DocumentosVerificacionSection';
 
 export interface PersonaExt extends Persona {
   ciudad?: string;
@@ -308,6 +309,7 @@ const Perfil: React.FC = () => {
             {actual === 'datos' && (
               <>
                 <TusDatos yo={yo} dbUserId={dbUserId} onGuardar={(p) => { setYo(p); avisar('Datos de perfil actualizados en Supabase', { tipo: 'ok' }); }} />
+                <DocumentosVerificacionSection yo={yo} dbUserId={dbUserId} orgData={orgData} />
                 {yo.tipoPerfil === 'organizacion' && (
                   <DatosOrganizacion orgInicial={orgData} dbUserId={dbUserId} onGuardarOrg={(updated) => setOrgData(updated)} />
                 )}

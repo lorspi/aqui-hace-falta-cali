@@ -28,7 +28,7 @@ import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
 import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
-import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
+import { actasDe, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
@@ -207,7 +207,7 @@ const Panel: React.FC = () => {
     else irA(a.accion.al);
   };
 
-  const [modulos] = useState<ModulosCuenta>(modulosGuardados);
+  const [modulos, setModulos] = useState<ModulosCuenta>(modulosGuardados);
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
   const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
   const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
@@ -367,6 +367,58 @@ const Panel: React.FC = () => {
       } catch {}
       avisar('Necesidad actualizada', { tipo: 'ok' });
     }
+  };
+
+  const eliminarGestionPublicacion = async (id: string, tipo: 'oferta' | 'necesidad') => {
+    try {
+      const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (esUuid) {
+        const tabla = tipo === 'oferta' ? 'offers' : 'needs';
+        await supabase
+          .from(tabla)
+          .update({
+            verification_status: 'ARCHIVED',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+      }
+    } catch (e) {
+      console.warn('Error al archivar en Supabase:', e);
+    }
+
+    if (tipo === 'oferta') {
+      try {
+        localStorage.removeItem('rd-oferta-creada-gestion');
+        localStorage.removeItem('rd-oferta-creada-recursos');
+        desactivarModulo('ofrece');
+      } catch {}
+      setModulos((prev) => ({ ...prev, ofrece: false }));
+      setRecursosOferta([]);
+      setPubOferta((prev) => ({
+        ...prev,
+        recursos: [],
+        pausadaGlobal: true,
+      }));
+      cambiarTab('resumen');
+      avisar('Publicación de oferta eliminada', { tipo: 'ok' });
+    } else {
+      try {
+        localStorage.removeItem('rd-necesidad-creada-gestion');
+        localStorage.removeItem('rd-necesidad-creada-recursos');
+        desactivarModulo('pide');
+      } catch {}
+      setModulos((prev) => ({ ...prev, pide: false }));
+      setRecursosNecesidad([]);
+      setPubNecesidad((prev) => ({
+        ...prev,
+        recursos: [],
+        pausadaGlobal: true,
+      }));
+      cambiarTab('resumen');
+      avisar('Publicación de necesidad eliminada', { tipo: 'ok' });
+    }
+
+    setGestionandoPublicacion(null);
   };
   const [cajon, setCajon] = useState(false);
   const [pasosOcultos, setPasosOcultos] = useState(false);
@@ -1213,6 +1265,7 @@ const Panel: React.FC = () => {
           recursoFoco={gestionandoPublicacion?.recursoFoco}
           onCerrar={() => setGestionandoPublicacion(null)}
           onGuardar={guardarGestionPublicacion}
+          onEliminar={eliminarGestionPublicacion}
           onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
         />
         <DialogoDetallePublicacionPanel
@@ -1948,6 +2001,7 @@ const PulsoOperativo: React.FC<{
 const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisDe>[1]; pasosOcultos: boolean; onOcultarPasos: () => void; onAccion: (al: string) => void }> = ({ modulos, datos, pasosOcultos, onOcultarPasos, onAccion }) => {
   const [pasosDesplegados, setPasosDesplegados] = useState(false);
   const sinModulos = !modulos.pide && !modulos.ofrece;
+  const [actividadDesplegada, setActividadDesplegada] = useState(!sinModulos);
   const pendientes = pendientesDe(modulos, datos);
   const decisiones = pendientes.filter((p) => p.grupo === 'decision');
   const operaciones = pendientes.filter((p) => p.grupo === 'operacion');
@@ -2030,16 +2084,56 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           </div>
         </Caja>
       )}
-      <Caja titulo="Actividad reciente" className="col-span-full">
-        {sinModulos ? (
-          <Vacio icono={<Clock className="h-6.5 w-6.5" />} titulo="Sin actividad todavía" texto="Aquí queda lo que pase con tus publicaciones y entregas." />
-        ) : (
-          ACTIVIDAD.map((a, i) => (
-            <div key={i} className={`flex gap-3 py-2 text-rd-13 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-              <time className="w-16 shrink-0 text-rd-ink-meta tabular-nums">{a.cuando}</time>
-              <span className="text-rd-ink">{a.texto}</span>
+      <Caja
+        className="col-span-full border-rd-line bg-rd-surface"
+        titulo={
+          <div className="flex items-center gap-2">
+            <span>Actividad reciente</span>
+            <Conteo n={sinModulos ? 0 : ACTIVIDAD.length} />
+          </div>
+        }
+        accion={
+          <Button
+            nivel="secundario"
+            tamano="md"
+            onClick={() => setActividadDesplegada((v) => !v)}
+            iconoDespues={
+              actividadDesplegada ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )
+            }
+          >
+            {actividadDesplegada ? 'Plegar' : 'Ver actividad'}
+          </Button>
+        }
+      >
+        {actividadDesplegada ? (
+          sinModulos ? (
+            <div className="mt-2 flex items-center gap-2.5 rounded-rd-md bg-rd-fondo p-3 text-rd-13 text-rd-ink-2">
+              <Clock aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
+              <span>Sin actividad todavía. Aquí queda lo que pase con tus publicaciones y entregas.</span>
             </div>
-          ))
+          ) : (
+            <div className="mt-2 space-y-0 divide-y divide-rd-line-soft border-t border-rd-line-soft pt-1">
+              {ACTIVIDAD.map((a, i) => (
+                <div key={i} className={`flex gap-3 py-2 text-rd-13 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
+                  <time className="w-16 shrink-0 text-rd-ink-meta tabular-nums">{a.cuando}</time>
+                  <span className="text-rd-ink">{a.texto}</span>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div className="flex items-center gap-2 text-rd-12-5 text-rd-ink-meta">
+            <Clock aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-ink-3" />
+            <span>
+              {sinModulos
+                ? 'Sin actividad reciente todavía. Aquí quedará el registro de tus publicaciones y entregas.'
+                : `${ACTIVIDAD.length} eventos registrados en el historial.`}
+            </span>
+          </div>
         )}
       </Caja>
       {!pasosOcultos && listos < pasos.length && (
@@ -3717,6 +3811,8 @@ const MiEquipo: React.FC<{
       if (filtroDisp) {
         if (filtroDisp === 'tiempo_completo') {
           if (!['tiempo_completo', 'tardes', 'hoy', 'manana'].includes(m.disp)) return false;
+        } else if (filtroDisp === 'entre_semana') {
+          if (m.disp !== 'entre_semana') return false;
         } else if (filtroDisp === 'fines_de_semana') {
           if (!['fines_de_semana', 'finde'].includes(m.disp)) return false;
         } else if (filtroDisp === 'emergencias') {

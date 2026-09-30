@@ -127,7 +127,7 @@ function parseUrlPath(pathname: string): ParsedRoute {
 }
 
 // Check if current path is a static page or special view
-function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'radar-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'actividad' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
+function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type: 'guia' } | { type: 'moderador' } | { type: 'panel' } | { type: 'terminos' } | { type: 'privacidad' } | { type: 'reg2' } | { type: 'registro-v2' } | { type: 'pedir-v2' } | { type: 'ofrecer-v2' } | { type: 'panel-v2' } | { type: 'directorio-v2' } | { type: 'avisos-v2' } | { type: 'perfil-v2' } | { type: 'cifras' } | { type: 'actividad' } | { type: 'social'; needId: string; format: 'post' | 'story' } | null {
   const rawPath = currentPathName ?? (typeof window !== 'undefined' ? window.location.pathname : '');
   const path = rawPath.replace(/^\//, '').replace(/\/$/, '');
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -138,6 +138,7 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
     path === 'mapa' ||
     path === 'mapa-ayudas-necesidades' ||
     path === 'radar' ||
+    path === 'radar-v2' ||
     ((path === '' || path === 'landing') && (params.has('accion') || params.has('pedir') || params.has('ofrecer')))
   ) {
     return null;
@@ -150,7 +151,6 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
-  if (path === 'radar-v2') return { type: 'radar-v2' };
   if (path === 'pedir-v2') return { type: 'pedir-v2' };
   if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
   if (path === 'panel-v2' || path === 'panel-organizacion' || path === 'panel') return { type: 'panel-v2' };
@@ -169,11 +169,25 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
 }
 
 export default function App() {
-  const [currentPath, setCurrentPath] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : '/'));
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/radar-v2') {
+        window.history.replaceState(null, '', '/mapa-ayudas-necesidades' + (window.location.search || ''));
+        return '/mapa-ayudas-necesidades';
+      }
+      return window.location.pathname;
+    }
+    return '/';
+  });
 
   useEffect(() => {
     const handleLocationChange = () => {
-      setCurrentPath(window.location.pathname);
+      let path = window.location.pathname;
+      if (path === '/radar-v2') {
+        window.history.replaceState(null, '', '/mapa-ayudas-necesidades' + (window.location.search || ''));
+        path = '/mapa-ayudas-necesidades';
+      }
+      setCurrentPath(path);
     };
     window.addEventListener('popstate', handleLocationChange);
     return () => {
@@ -200,8 +214,6 @@ export default function App() {
     content = <SimulatedRegisterPage />;
   } else if (specialRoute?.type === 'registro-v2') {
     content = <RegistroPage />;
-  } else if (specialRoute?.type === 'radar-v2') {
-    content = <RadarPage />;
   } else if (specialRoute?.type === 'pedir-v2') {
     content = <PedirPage />;
   } else if (specialRoute?.type === 'ofrecer-v2') {
