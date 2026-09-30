@@ -254,6 +254,7 @@ export const VEHICULOS = [
 
 export const DISPONIBILIDADES: { valor: MiembroEquipo['disp']; etiqueta: string }[] = [
   { valor: 'tiempo_completo', etiqueta: 'Cualquier día (tiempo completo)' },
+  { valor: 'entre_semana', etiqueta: 'Entre semana' },
   { valor: 'fines_de_semana', etiqueta: 'Fines de semana' },
   { valor: 'emergencias', etiqueta: 'Bajo llamado (emergencias)' },
 ];
@@ -772,6 +773,7 @@ export const DialogoGestionPublicacion: React.FC<{
   recursoFoco?: string;
   onCerrar: () => void;
   onGuardar: (datos: DatosPublicacionGestion) => void;
+  onEliminar?: (id: string, tipo: 'oferta' | 'necesidad') => void;
   onVerEnMapa?: (id: string) => void;
 }> = ({
   abierto,
@@ -780,10 +782,12 @@ export const DialogoGestionPublicacion: React.FC<{
   recursoFoco,
   onCerrar,
   onGuardar,
+  onEliminar,
   onVerEnMapa,
 }) => {
   const ref = useRef<HTMLDialogElement>(null);
   const [modo, setModo] = useState<'vista' | 'editar'>(modoInicial);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   const [descripcion, setDescripcion] = useState('');
   const [zona, setZona] = useState('');
@@ -800,6 +804,12 @@ export const DialogoGestionPublicacion: React.FC<{
     if (!d) return;
     if (abierto && !d.open) d.showModal();
     else if (!abierto && d.open) d.close();
+  }, [abierto]);
+
+  useEffect(() => {
+    if (!abierto) {
+      setConfirmandoEliminar(false);
+    }
   }, [abierto]);
 
   useEffect(() => {
@@ -910,12 +920,13 @@ export const DialogoGestionPublicacion: React.FC<{
   };
 
   return (
-    <dialog
-      ref={ref}
-      onClose={onCerrar}
-      onClick={(e) => e.target === ref.current && onCerrar()}
-      className="font-rd m-auto w-full max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
-    >
+    <>
+      <dialog
+        ref={ref}
+        onClose={onCerrar}
+        onClick={(e) => e.target === ref.current && onCerrar()}
+        className="font-rd m-auto w-full max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+      >
       {/* Cabecera */}
       <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-surface">
         <div>
@@ -1240,10 +1251,11 @@ export const DialogoGestionPublicacion: React.FC<{
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rd-line bg-rd-surface px-5 py-3">
             <button
               type="button"
-              onClick={() => setPausadaGlobal((p) => !p)}
-              className="text-rd-13 font-semibold text-rd-amber-ink hover:underline cursor-pointer"
+              onClick={() => setConfirmandoEliminar(true)}
+              className="flex items-center gap-1.5 text-rd-13 font-semibold text-rd-coral hover:underline cursor-pointer"
             >
-              {pausadaGlobal ? 'Reanudar toda la publicación' : 'Pausar toda la publicación'}
+              <Trash2 className="h-4 w-4" />
+              Eliminar toda la publicación
             </button>
             <div className="flex items-center gap-2">
               {/* Dato propio y reversible: la 223 C7 cierra esos diálogos en secundario --lg
@@ -1266,6 +1278,35 @@ export const DialogoGestionPublicacion: React.FC<{
         </form>
       )}
     </dialog>
+
+    {confirmandoEliminar && (
+      <Dialogo
+        abierto={confirmandoEliminar}
+        titulo={`¿Eliminar esta publicación de ${esOferta ? 'oferta' : 'necesidad'}?`}
+        accion="Eliminar definitivamente"
+        nivelAccion="pedir"
+        textoAlterno="Mantener publicación"
+        onCerrar={() => setConfirmandoEliminar(false)}
+        onEnviar={() => {
+          setConfirmandoEliminar(false);
+          if (onEliminar && pubInicial) {
+            onEliminar(pubInicial.id, pubInicial.tipo);
+          }
+          onCerrar();
+        }}
+      >
+        <p className="mb-3 text-rd-14 text-rd-ink-2">
+          Esta acción retirará la publicación del Radar y del Directorio público. Las personas u organizaciones ya no podrán solicitarla ni comprometerse con ella.
+        </p>
+        <div className="rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2.5 text-rd-12 text-rd-ink-2">
+          <p className="font-semibold text-rd-ink">Registro y trazabilidad histórica:</p>
+          <p className="mt-0.5 text-rd-ink-meta">
+            Los compromisos y entregas previas que ya hayan sido coordinadas o confirmadas permanecerán registradas en tu historial y actas oficiales de RaDAR.
+          </p>
+        </div>
+      </Dialogo>
+    )}
+  </>
   );
 };
 

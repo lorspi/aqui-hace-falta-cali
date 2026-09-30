@@ -53,32 +53,99 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
 
-  const [sessionUser, setSessionUser] = useState<any>(authUser || null);
+  const [sessionUser, setSessionUser] = useState<any>(() => {
+    if (authUser) return authUser;
+    return null;
+  });
+
+  const [hasOrg, setHasOrg] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
+
     const checkUser = async () => {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user && isMounted) {
-          setSessionUser(data.user);
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        if (user && isMounted) {
+          // Consultar perfil en DB para obtener el rol real
+          let profileData: any = null;
+          try {
+            const { data: p } = await supabase
+              .from('profiles')
+              .select('id, role, profile_type, organization, full_name, moderation_status')
+              .eq('id', user.id)
+              .maybeSingle();
+            profileData = p;
+          } catch (e) {
+            console.warn('Error al consultar perfil en Shell:', e);
+          }
+
+          // Consultar si pertenece a una organización en DB
+          let orgData: any = null;
+          try {
+            const { data: o } = await supabase
+              .from('organizations')
+              .select('id, name')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            orgData = o;
+          } catch {}
+
+          if (isMounted) {
+            setHasOrg(Boolean(orgData));
+
+            const normRole = (profileData?.role || user.user_metadata?.role || '').toString().trim().toUpperCase();
+            const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
+            const isMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR');
+
+            const fullUser = {
+              ...user,
+              name: profileData?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
+              role: profileData?.role || user.user_metadata?.role || (isAdmin ? 'admin' : user.role),
+              profile_type: profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType,
+              org_name: orgData?.name || profileData?.organization || user.user_metadata?.org_name,
+              organization: orgData?.name || profileData?.organization || user.user_metadata?.organization,
+              user_metadata: user.user_metadata,
+            };
+
+            setSessionUser(fullUser);
+
+            if (isAdmin || isMod) {
+              if (typeof window !== 'undefined' && !localStorage.getItem('ahf_admin_user')) {
+                const adminUserObj = {
+                  id: user.id,
+                  name: fullUser.name || 'Admin',
+                  email: user.email || '',
+                  role: isAdmin ? 'ADMIN' : 'MODERATOR',
+                  active: true,
+                };
+                localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+                if (!localStorage.getItem('ahf_admin_token')) {
+                  const { data: sessionRes } = await supabase.auth.getSession();
+                  localStorage.setItem('ahf_admin_token', sessionRes?.session?.access_token || 'supabase_token');
+                }
+              }
+            }
+          }
           return;
         }
       } catch {}
-      const saved = localStorage.getItem('ahf_auth_user') || localStorage.getItem('ahf_admin_user');
-      if (saved && isMounted) {
-        try {
-          setSessionUser(JSON.parse(saved));
-        } catch {}
+
+      if (isMounted && !authUser) {
+        setSessionUser(null);
+        setHasOrg(false);
       }
     };
+
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user && isMounted) {
-        setSessionUser(session.user);
+        checkUser();
       } else if (!authUser && isMounted) {
         setSessionUser(null);
+        setHasOrg(false);
       }
     });
 
@@ -89,7 +156,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [authUser]);
 
   const activeUser = useMemo(() => {
-    if (!authUser && !sessionUser) return null;
+    if (!authUser && !sessionUser) {
+      return null;
+    }
     return {
       ...(sessionUser || {}),
       ...(authUser || {}),
@@ -98,9 +167,11 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         ...(sessionUser?.user_metadata || {}),
         ...(authUser?.user_metadata || {}),
       },
-      role: authUser?.role || sessionUser?.user_metadata?.role || sessionUser?.role,
-      profile_type: authUser?.profile_type || sessionUser?.user_metadata?.profile_type || sessionUser?.user_metadata?.profileType || sessionUser?.profile_type,
-      org_name: authUser?.org_name || sessionUser?.user_metadata?.org_name || sessionUser?.org_name || sessionUser?.organization,
+      role: authUser?.role || sessionUser?.role || sessionUser?.user_metadata?.role,
+      profile_type: authUser?.profile_type || sessionUser?.profile_type || sessionUser?.user_metadata?.profile_type || sessionUser?.user_metadata?.profileType,
+      org_name: authUser?.org_name || sessionUser?.org_name || sessionUser?.user_metadata?.org_name || sessionUser?.organization,
+      organization: authUser?.organization || sessionUser?.organization || authUser?.org_name || sessionUser?.org_name,
+      name: authUser?.name || sessionUser?.name || authUser?.user_metadata?.full_name || sessionUser?.user_metadata?.full_name,
     };
   }, [authUser, sessionUser]);
 
@@ -108,12 +179,12 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
   const cuentaFinal = useMemo(() => {
     if (!activeUser) return cuenta;
-    const name = activeUser.name || activeUser.user_metadata?.full_name || activeUser.email || cuenta.entidad;
+    const name = activeUser.name || activeUser.full_name || activeUser.user_metadata?.full_name || activeUser.email || cuenta.entidad;
     const inicialesStr = name.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || cuenta.iniciales;
     return {
-      entidad: name,
+      entidad: activeUser.org_name || activeUser.organization || name,
       persona: activeUser.email || cuenta.persona,
-      rol: activeUser.user_metadata?.role || cuenta.rol,
+      rol: activeUser.role || activeUser.user_metadata?.role || cuenta.rol,
       iniciales: inicialesStr
     };
   }, [activeUser, cuenta]);
@@ -163,104 +234,173 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     }
   };
 
-  const [hasOrg, setHasOrg] = useState<boolean>(false);
-
   useEffect(() => {
     if (!activeUser?.id) {
       setHasOrg(false);
       return;
     }
+    let isMounted = true;
     async function checkOrg() {
       try {
         const { data } = await supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle();
-        if (data) {
-          setHasOrg(true);
+        if (isMounted) {
+          setHasOrg(Boolean(data));
         }
       } catch {}
     }
     checkOrg();
+    return () => {
+      isMounted = false;
+    };
   }, [activeUser?.id]);
 
-  const userRole = (activeUser?.user_metadata?.role || activeUser?.role || cuentaFinal?.rol || '').toLowerCase();
-  const profileType = (activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || activeUser?.profile_type || '').toLowerCase();
+  const hasAdminToken = typeof window !== 'undefined' ? Boolean(localStorage.getItem('ahf_admin_token')) : false;
+  let adminStorageRole = '';
+  try {
+    const rawAdmin = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_user') : null;
+    if (rawAdmin) {
+      const parsed = JSON.parse(rawAdmin);
+      adminStorageRole = (parsed?.role || '').toLowerCase();
+    }
+  } catch {}
+
+  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || adminStorageRole || '').toString().trim().toLowerCase();
+  const normProfileType = (activeUser?.profile_type || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
-  const esComunidad =
-    profileType === 'comunidad' ||
-    profileType === 'liderazgo' ||
-    profileType === 'lider' ||
-    userRole === 'lider' ||
-    userRole === 'liderazgo' ||
-    userRole === 'comunidad' ||
-    entidadStorage === 'liderazgo' ||
-    entidadStorage === 'comunidad' ||
-    entidadActual() === 'liderazgo';
-
-  const esOrganizacion = (
-    hasOrg ||
-    profileType === 'organizacion' ||
-    profileType === 'comunidad' ||
-    profileType === 'liderazgo' ||
-    profileType === 'lider' ||
-    userRole === 'organizacion' ||
-    userRole === 'lider' ||
-    userRole === 'liderazgo' ||
-    userRole === 'comunidad' ||
-    userRole === 'moderador' ||
-    userRole === 'entidad_profesional' ||
-    Boolean(activeUser?.user_metadata?.org_name) ||
-    Boolean(activeUser?.org_name) ||
-    Boolean(activeUser?.organization) ||
-    entidadStorage === 'organizacion' ||
-    entidadStorage === 'liderazgo' ||
-    entidadStorage === 'comunidad' ||
-    entidadActual() === 'organizacion' ||
-    entidadActual() === 'liderazgo'
-  );
-
-  const esAdminOModerador = (
+  const esAdminOModerador = Boolean(
     isModeratorOrAdmin ||
-    userRole === 'admin' ||
-    userRole === 'moderador' ||
-    activeUser?.email?.includes('admin') ||
-    activeUser?.email?.includes('moderador')
+    hasAdminToken ||
+    adminStorageRole === 'admin' ||
+    adminStorageRole === 'moderador' ||
+    adminStorageRole === 'moderator' ||
+    normUserRole === 'admin' ||
+    normUserRole === 'administrador' ||
+    normUserRole === 'moderador' ||
+    normUserRole === 'moderator' ||
+    activeUser?.email?.toLowerCase().includes('admin') ||
+    activeUser?.email?.toLowerCase().includes('moderador')
   );
 
-  const esIndividual =
-    profileType === 'persona' ||
-    profileType === 'individual' ||
-    userRole === 'voluntario' ||
-    userRole === 'regular' ||
-    entidadStorage === 'individual' ||
-    entidadActual() === 'individual' ||
-    (!esOrganizacion && !esAdminOModerador && estaLogueado);
+  // 1. ¿Es persona natural / voluntario / ciudadano?
+  const esIndividual = Boolean(
+    normProfileType === 'persona' ||
+    normProfileType === 'individual' ||
+    normUserRole === 'voluntario' ||
+    normUserRole === 'regular' ||
+    normUserRole === 'ciudadano' ||
+    normUserRole === 'user' ||
+    (!estaLogueado && (entidadStorage === 'individual' || entidadActual() === 'individual'))
+  );
 
-  const nombrePanelDinamico = esComunidad
-    ? 'Mi comunidad'
-    : (panelNombre && panelNombre !== 'Panel' ? panelNombre : 'Mi organización');
+  // 2. ¿Es comunidad / líder comunitario? (siempre que no sea individual)
+  const esComunidad = !esIndividual && Boolean(
+    normProfileType === 'comunidad' ||
+    normProfileType === 'liderazgo' ||
+    normProfileType === 'lider' ||
+    normProfileType === 'junta_vecinal' ||
+    normUserRole === 'lider' ||
+    normUserRole === 'liderazgo' ||
+    normUserRole === 'comunidad' ||
+    (!estaLogueado && (entidadStorage === 'liderazgo' || entidadStorage === 'comunidad' || entidadActual() === 'liderazgo'))
+  );
+
+  // 3. ¿Es organización? (siempre que no sea individual ni comunidad)
+  const esOrganizacion = !esIndividual && !esComunidad && Boolean(
+    hasOrg ||
+    normProfileType === 'organizacion' ||
+    normProfileType === 'entidad_profesional' ||
+    normUserRole === 'organizacion' ||
+    normUserRole === 'entidad_profesional' ||
+    (!estaLogueado && (entidadStorage === 'organizacion' || entidadActual() === 'organizacion')) ||
+    (estaLogueado && !esAdminOModerador)
+  );
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
     { id: 'radar', nombre: 'Radar', href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
     { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
   ];
 
-  if (esAdminOModerador) {
-    secciones.push({ id: 'panel-admin' as Seccion, nombre: 'Panel admin', href: rutas['panel-admin'] || '/panel-admin', icono: <ShieldCheck className="h-5 w-5" /> });
-    if (esOrganizacion) {
-      secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
+  if (estaLogueado) {
+    if (esAdminOModerador) {
+      secciones.push({
+        id: 'panel-admin' as Seccion,
+        nombre: 'Panel admin',
+        href: rutas['panel-admin'] || '/panel-admin',
+        icono: <ShieldCheck className="h-5 w-5" />
+      });
+      if (esComunidad) {
+        secciones.push({
+          id: 'panel',
+          nombre: 'Mi comunidad',
+          href: rutas.panel || '/panel-v2',
+          icono: <House className="h-5 w-5" />,
+          n: pendientes
+        });
+      } else if (esOrganizacion) {
+        secciones.push({
+          id: 'panel',
+          nombre: 'Mi organización',
+          href: rutas.panel || '/panel-v2',
+          icono: <House className="h-5 w-5" />,
+          n: pendientes
+        });
+      }
+    } else if (esIndividual) {
+      secciones.push({
+        id: 'actividad',
+        nombre: 'Mi actividad',
+        href: rutas.actividad || '/mi-actividad',
+        icono: <ClipboardList className="h-5 w-5" />,
+        n: pendientes
+      });
+    } else if (esComunidad) {
+      secciones.push({
+        id: 'panel',
+        nombre: 'Mi comunidad',
+        href: rutas.panel || '/panel-v2',
+        icono: <House className="h-5 w-5" />,
+        n: pendientes
+      });
+    } else {
+      secciones.push({
+        id: 'panel',
+        nombre: 'Mi organización',
+        href: rutas.panel || '/panel-v2',
+        icono: <House className="h-5 w-5" />,
+        n: pendientes
+      });
     }
-  } else if (esComunidad || esOrganizacion) {
-    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
-  } else if (esIndividual) {
-    secciones.push({ id: 'actividad', nombre: 'Mi actividad', href: rutas.actividad || '/mi-actividad', icono: <ClipboardList className="h-5 w-5" />, n: pendientes });
-  } else {
-    secciones.push({ id: 'panel', nombre: nombrePanelDinamico, href: rutas.panel || '/panel-organizacion', icono: <House className="h-5 w-5" />, n: pendientes });
   }
 
   // 5ta pestaña móvil: Mi organización / Mi comunidad / Mi actividad / Panel admin según perfil
   const tabPerfil = useMemo(() => {
+    if (!estaLogueado) {
+      return {
+        id: 'perfil' as Seccion,
+        nombre: 'Ingresar',
+        href: '/registro-v2?modo=login',
+        icono: <LogIn className="h-6 w-6" />,
+        actual: false,
+        n: 0,
+        etiqueta: 'Iniciar sesión o registrarse',
+      };
+    }
+
     // 1. Administrador o Moderador
-    if (esAdminOModerador && (userRole === 'admin' || userRole === 'moderador' || seccion === 'panel-admin' || !esOrganizacion)) {
+    if (esAdminOModerador) {
+      if (seccion === 'panel' && (esOrganizacion || esComunidad)) {
+        const nombrePanelOrg = esComunidad ? 'Mi comunidad' : 'Mi organización';
+        return {
+          id: 'panel' as Seccion,
+          nombre: nombrePanelOrg,
+          href: rutas.panel || '/panel-v2',
+          icono: <House className="h-6 w-6" />,
+          actual: true,
+          n: pendientes,
+          etiqueta: `${nombrePanelOrg}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+        };
+      }
       return {
         id: 'panel-admin' as Seccion,
         nombre: 'Panel admin',
@@ -272,20 +412,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       };
     }
 
-    // 2. Líder comunitario / Comunidad
-    if (esComunidad) {
-      return {
-        id: 'panel' as Seccion,
-        nombre: 'Mi comunidad',
-        href: rutas.panel || '/panel-v2',
-        icono: <House className="h-6 w-6" />,
-        actual: seccion === 'panel',
-        n: pendientes,
-        etiqueta: `Mi comunidad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
-      };
-    }
-
-    // 3. Voluntario / Persona natural / Mi actividad
+    // 2. Voluntario / Persona natural / Mi actividad
     if (esIndividual) {
       return {
         id: 'actividad' as Seccion,
@@ -298,17 +425,30 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       };
     }
 
+    // 3. Líder comunitario / Comunidad
+    if (esComunidad) {
+      return {
+        id: 'panel' as Seccion,
+        nombre: 'Mi comunidad',
+        href: rutas.panel || '/panel-v2',
+        icono: <House className="h-6 w-6" />,
+        actual: seccion === 'panel',
+        n: pendientes,
+        etiqueta: `Mi comunidad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      };
+    }
+
     // 4. Organización (ONG, Fundación, etc.) por defecto
     return {
       id: 'panel' as Seccion,
-      nombre: nombrePanelDinamico || 'Mi organización',
+      nombre: 'Mi organización',
       href: rutas.panel || '/panel-v2',
       icono: <House className="h-6 w-6" />,
       actual: seccion === 'panel',
       n: pendientes,
-      etiqueta: `${nombrePanelDinamico || 'Mi organización'}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      etiqueta: `Mi organización${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
     };
-  }, [esAdminOModerador, userRole, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes, nombrePanelDinamico]);
+  }, [estaLogueado, esAdminOModerador, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes]);
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
     const actual = s.id === seccion;

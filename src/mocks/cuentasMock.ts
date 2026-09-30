@@ -127,7 +127,7 @@ export const RUTAS_SHELL = {
   panel: RUTAS.miOrganizacion,
   actividad: '/mi-actividad',
   'panel-admin': RUTAS.panelAdmin,
-  radar: '/radar-v2',
+  radar: RUTAS.radar,
   directorio: RUTAS.directorio,
   avisos: RUTAS.avisos,
   perfil: RUTAS.perfil,

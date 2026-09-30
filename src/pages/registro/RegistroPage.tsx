@@ -13,7 +13,6 @@ import {
   Mail,
   MapPin,
   Phone,
-  ShieldCheck,
   User,
   Users,
 } from 'lucide-react';
@@ -828,31 +827,6 @@ export const RegistroPage: React.FC = () => {
             error={error('o-correo')}
           />
         </div>
-
-        {/* Documento de representación legal */}
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-rd-line bg-rd-surface p-3.5 px-4 text-rd-12 text-rd-ink-2">
-          {e.org.documentoAdjunto ? (
-            <Check className="h-5 w-5 shrink-0 text-rd-green" />
-          ) : (
-            <ShieldCheck className="h-5 w-5 shrink-0 text-rd-ink-meta" />
-          )}
-          <div className="flex-1">
-            <b className="block font-semibold text-rd-ink">
-              {T.org.docTitulo} <span className="font-normal text-rd-ink-meta">(opcional)</span>
-            </b>
-            <span>
-              {e.org.documentoAdjunto ? T.org.docAdjuntado : T.org.docSub}
-            </span>
-          </div>
-          <Button
-            type="button"
-            nivel="secundario"
-            tamano="sm"
-            onClick={() => patchOrg({ documentoAdjunto: !e.org.documentoAdjunto })}
-          >
-            {e.org.documentoAdjunto ? T.org.cambiar : T.org.adjuntar}
-          </Button>
-        </div>
       </div>
     </>
   );
@@ -1208,20 +1182,7 @@ export const RegistroPage: React.FC = () => {
             </Button>
           </>
         }
-      >
-        {esOrg && (
-          <InlineNotice
-            variante={e.org.documentoAdjunto ? 'pendiente' : 'info'}
-            icono={<ShieldCheck className="h-4 w-4" />}
-            titulo={e.org.documentoAdjunto ? 'Documento en revisión' : T.exito.sinVerificarTitulo}
-            texto={
-              e.org.documentoAdjunto
-                ? 'Revisaremos el documento para otorgar la insignia de verificación.'
-                : T.exito.sinVerificarTexto(panel)
-            }
-          />
-        )}
-      </Success>
+      />
     );
   })();
 
