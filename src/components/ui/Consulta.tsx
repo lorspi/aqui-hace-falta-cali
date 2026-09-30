@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Funnel, Search, X } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * Las piezas de la barra de consulta (`rd-consulta` del prototipo, decisión 70): una sola
@@ -25,21 +26,25 @@ export const BotonFiltros: React.FC<{
   etiqueta?: string;
   chevron?: boolean;
   refBoton?: React.RefObject<HTMLButtonElement | null>;
-}> = ({ aplicados, abierta, onClick, etiqueta = 'Filtrar y ordenar', chevron = false, refBoton }) => (
-  <button
-    ref={refBoton}
-    type="button"
-    onClick={onClick}
-    aria-expanded={abierta}
-    aria-label={aplicados ? `${etiqueta}, ${aplicados} aplicados` : etiqueta}
-    className={`font-rd inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border bg-rd-surface px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${aplicados ? 'border-rd-sel' : 'border-rd-line'}`}
-  >
-    <Funnel aria-hidden="true" className="h-3.75 w-3.75 text-rd-ink-3" />
-    {etiqueta}
-    {aplicados > 0 && <span aria-hidden="true" className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{aplicados}</span>}
-    {chevron && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 text-rd-ink-3 transition-transform duration-150 ${abierta ? 'rotate-180' : ''}`} />}
-  </button>
-);
+}> = ({ aplicados, abierta, onClick, etiqueta, chevron = false, refBoton }) => {
+  const { t } = useTranslation();
+  const labelFinal = etiqueta ?? t('filterAndSort');
+  return (
+    <button
+      ref={refBoton}
+      type="button"
+      onClick={onClick}
+      aria-expanded={abierta}
+      aria-label={aplicados ? `${labelFinal}, ${aplicados} aplicados` : labelFinal}
+      className={`font-rd inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border bg-rd-surface px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${aplicados ? 'border-rd-sel' : 'border-rd-line'}`}
+    >
+      <Funnel aria-hidden="true" className="h-3.75 w-3.75 text-rd-ink-3" />
+      {labelFinal}
+      {aplicados > 0 && <span aria-hidden="true" className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{aplicados}</span>}
+      {chevron && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 text-rd-ink-3 transition-transform duration-150 ${abierta ? 'rotate-180' : ''}`} />}
+    </button>
+  );
+};
 
 /** Un chip aplicado con su ×. */
 export const ChipAplicado: React.FC<{ texto: string; onQuitar: () => void }> = ({ texto, onQuitar }) => (
@@ -51,11 +56,14 @@ export const ChipAplicado: React.FC<{ texto: string; onQuitar: () => void }> = (
   </span>
 );
 
-export const QuitarTodos: React.FC<{ onClick: () => void }> = ({ onClick }) => (
-  <button type="button" onClick={onClick} className="font-rd mr-2 flex-none cursor-pointer px-1 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink-2 underline underline-offset-2 hover:text-rd-ink">
-    Quitar todos
-  </button>
-);
+export const QuitarTodos: React.FC<{ onClick: () => void; texto?: string }> = ({ onClick, texto }) => {
+  const { t } = useTranslation();
+  return (
+    <button type="button" onClick={onClick} className="font-rd mr-2 flex-none cursor-pointer px-1 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink-2 underline underline-offset-2 hover:text-rd-ink">
+      {texto ?? t('clearAll')}
+    </button>
+  );
+};
 
 /** La fila de chips: se desplaza sin barra y, si hay chips fuera de la vista a la derecha,
  *  muestra › para llegar a ellos. En el prototipo ese botón vivía solo bajo 1024

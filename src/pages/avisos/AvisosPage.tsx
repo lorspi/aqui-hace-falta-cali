@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Hand, HeartHandshake } from 'lucide-react';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { ListaAvisos } from '../../components/ui/Avisos';
@@ -8,6 +8,7 @@ import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
+import { supabase } from '../../lib/supabaseClient';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import type { Aviso } from '../../types/aviso';
 import { nombrePanel } from '../../utils/cuenta';
@@ -33,13 +34,46 @@ function irA(ruta: string): void {
   }
 }
 
-export const AvisosPage: React.FC = () => (
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+
+export interface AvisosPageProps {
+  authUser?: any;
+}
+
+export const AvisosPage: React.FC<AvisosPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Avisos />
+    <Avisos authUser={authUser} />
   </AvisosProvider>
 );
 
-const Avisos: React.FC = () => {
+const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
+
   const avisar = useAviso();
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
   const [filtro, setFiltro] = useState<Filtro>('todos');
@@ -65,8 +99,27 @@ const Avisos: React.FC = () => {
   };
 
   return (
-    <Shell seccion="avisos" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="avisos"
+      panelNombre={nombrePanel()}
+      cuenta={CUENTA}
+      authUser={usuarioEfectivo}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      avisosNuevos={sinLeer}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Avisos</h1>
           <span className="ml-auto flex items-center gap-2">
@@ -98,7 +151,7 @@ const Avisos: React.FC = () => {
           </Button>
         </div>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
           <section className="mx-auto max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-1.5 sm:py-2 sm:px-2">
             {lista.length === 0 ? <Vacio icono={<Bell className="h-6.5 w-6.5" />} titulo={filtro === 'nuevos' ? 'Nada sin leer' : 'Nada nuevo'} texto="Cuando pase algo con lo tuyo, aparece aquí." /> : <ListaAvisos avisos={lista} onAccion={accionDeAviso} />}
           </section>

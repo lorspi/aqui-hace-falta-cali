@@ -97,6 +97,7 @@ export interface OfrecerProps {
   isModal?: boolean;
   initialCityId?: string;
   onRequireAuth?: () => void;
+  authUser?: any;
 }
 
 export const OfrecerPage: React.FC<OfrecerProps> = (props) => (

@@ -64,6 +64,7 @@ export interface PedirProps {
   isModal?: boolean;
   initialCityId?: string;
   onRequireAuth?: () => void;
+  authUser?: any;
 }
 
 export const PedirPage: React.FC<PedirProps> = (props) => (

@@ -3,6 +3,7 @@ import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, Mail, MapPin, Map as Ma
 import { Donde } from '../../components/ui/Donde';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { ROTULO_GRUPO } from '../../components/ui/tipografia';
@@ -23,6 +24,7 @@ import { FilaSwitch } from '../../components/ui/Switch';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
+import { supabase } from '../../lib/supabaseClient';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../mocks/directorioMock';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
@@ -37,6 +39,8 @@ import { directorioDeParams, escribirUrl, paramsActuales, paramsDeDirectorio } f
 import { conteoPorCiudad } from '../../utils/lugares';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante } from '../../utils/publicaciones';
+import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**
  * El Directorio (mockup/*): quién está en la red (`organizaciones.html` del prototipo,
@@ -75,14 +79,48 @@ function irA(ruta: string): void {
 }
 
 
-export const DirectorioPage: React.FC = () => (
+export interface DirectorioPageProps {
+  authUser?: any;
+  onOpenLoginModal?: () => void;
+  onOpenProfileModal?: () => void;
+}
+
+export const DirectorioPage: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal, onOpenProfileModal }) => (
   <AvisosProvider>
-    <Directorio />
+    <Directorio authUser={authUser} onOpenLoginModal={onOpenLoginModal} onOpenProfileModal={onOpenProfileModal} />
   </AvisosProvider>
 );
 
-const Directorio: React.FC = () => {
+const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal, onOpenProfileModal }) => {
+  const { t } = useTranslation();
   const avisar = useAviso();
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
+
   /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
      (`utils/enlace.ts`), con el mismo vocabulario de la Radar. */
   const inicial = useMemo(() => directorioDeParams(paramsActuales()), []);
@@ -99,6 +137,30 @@ const Directorio: React.FC = () => {
   useEffect(() => {
     document.title = 'Directorio, RaDAR de ayuda';
   }, []);
+
+  // Reanudar automáticamente compromiso tras registro / login
+  useEffect(() => {
+    const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
+    if (!estaAutenticado) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const idParaCompromiso = searchParams.get('abrirCompromiso');
+    const pendiente = obtenerAccionPendiente();
+    const targetId = idParaCompromiso || (pendiente?.tipo === 'compromiso' && pendiente.autoEjecutar ? pendiente.publicacionId : null);
+
+    if (targetId) {
+      const pub = obtenerPublicaciones().find((p) => p.id === targetId) || PUBLICACIONES.find((p) => p.id === targetId);
+      if (pub) {
+        setCompromiso(pub);
+        limpiarAccionPendiente();
+        if (idParaCompromiso) {
+          searchParams.delete('abrirCompromiso');
+          const nuevoSearch = searchParams.toString() ? `?${searchParams.toString()}` : '';
+          window.history.replaceState(null, '', window.location.pathname + nuevoSearch + window.location.hash);
+        }
+      }
+    }
+  }, [usuarioEfectivo]);
 
   /* La URL dice lo que se ve, para poder compartirlo. */
   useEffect(() => {
@@ -129,6 +191,30 @@ const Directorio: React.FC = () => {
     setReporte(null);
     avisar('Reporte enviado. Lo revisa moderación', { tipo: 'ok' });
   };
+  const abrirCompromiso = (pub: Publicacion) => {
+    const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
+    if (!estaAutenticado) {
+      guardarAccionPendiente({
+        tipo: 'compromiso',
+        publicacionId: pub.id,
+        tipoPublicacion: pub.tipo,
+        rutaRetorno: window.location.pathname + (window.location.search || ''),
+        autoEjecutar: true,
+        mensaje: pub.tipo === 'oferta'
+          ? 'Inicia sesión o regístrate para solicitar este recurso.'
+          : 'Inicia sesión o regístrate para ofrecer tu ayuda en esta necesidad.',
+      });
+      // Cerrar el modal de entidad para que el diálogo de autenticación se muestre limpio y sin conflicto de top-layer
+      setDetalle(null);
+      if (onOpenLoginModal) {
+        onOpenLoginModal();
+      } else {
+        window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+      }
+      return;
+    }
+    setCompromiso(pub);
+  };
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
@@ -149,18 +235,39 @@ const Directorio: React.FC = () => {
   const vacio = vacioDe(q, clase);
 
   return (
-    <Shell seccion="directorio" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} avisosNuevos={avisos.filter((a) => !a.leido).length} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="directorio"
+      panelNombre={nombrePanel()}
+      cuenta={CUENTA}
+      authUser={usuarioEfectivo}
+      onOpenLoginModal={onOpenLoginModal}
+      onOpenProfileModal={onOpenProfileModal}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      avisosNuevos={avisos.filter((a) => !a.leido).length}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         {/* ---- cabecera: la misma de la Radar y del panel ---- */}
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Directorio</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('navDirectory')}</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeed')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('offerHelp')}
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
@@ -168,7 +275,7 @@ const Directorio: React.FC = () => {
             <button
               type="button"
               onClick={() => setBuscando((b) => !b)}
-              aria-label="Buscar"
+              aria-label={t('searchKeyword')}
               aria-expanded={buscando}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
             >
@@ -199,7 +306,7 @@ const Directorio: React.FC = () => {
         </div>
 
         {/* ---- la lista ---- */}
-        <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           {lista.length === 0 ? (
             aplicados > 0 ? (
               <Vacio
@@ -255,7 +362,7 @@ const Directorio: React.FC = () => {
 
         <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
         <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
-        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} onCerrar={() => setDetalle(null)} onCompromiso={(pub) => setCompromiso(pub)} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
+        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
       </div>
     </Shell>
@@ -528,16 +635,16 @@ const DialogoDetalleEntidad: React.FC<{
  *  ofrece o pide con sus cantidades, y las acciones. Antes repetía el nombre de la entidad como
  *  título y no se entendía qué era (Alejandro, 22 de septiembre de 2026). */
 const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entidad; onCompromiso?: (pub: Publicacion) => void; onVerEnMapa: () => void }> = ({ publicacion: pub, entidad: e, onCompromiso, onVerEnMapa }) => {
+  const { t } = useTranslation();
   const est = estadoPublicacion(pub);
   const esPropia = pub.propia || pub.org === ENTIDAD_PROPIA || e.nombre === ENTIDAD_PROPIA;
   const esOferta = pub.tipo === 'oferta';
-  /* Solo se puede solicitar lo que queda; y solo se puede ayudar a lo que piden si yo ofrezco
-     alguno de esos mismos recursos. */
+  /* Solo se puede solicitar lo que queda; y se puede ayudar a lo que piden si tiene saldo */
   const puedeSolicitar = esOferta && !esPropia && pub.recursos.some((r) => restante(r) > 0);
   const puedeAyudar =
     !esOferta &&
     !esPropia &&
-    pub.recursos.some((r) => restante(r) > 0 && MIS_OFERTAS.some((mo) => mo.recursos.some((mor) => mor.item.toLowerCase() === r.item.toLowerCase() && restante(mor) > 0)));
+    pub.recursos.some((r) => restante(r) > 0);
 
   return (
     <li className="flex flex-col gap-2.5 rounded-rd-lg border border-rd-line bg-rd-surface p-3">
@@ -561,7 +668,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
       {(puedeSolicitar || puedeAyudar) && (
         <div className="flex items-center gap-2 border-t border-rd-line-soft pt-2.5">
           <Button nivel="primario" tamano="md" onClick={() => onCompromiso?.(pub)}>
-            {esOferta ? 'Solicitar' : 'Ayudar'}
+            {esOferta ? t('actionRequest') : t('actionHelp')}
           </Button>
         </div>
       )}

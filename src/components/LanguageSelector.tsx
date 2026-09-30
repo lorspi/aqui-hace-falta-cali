@@ -19,8 +19,9 @@ const LANGUAGES: LanguageOption[] = [
 export const LanguageSelector: React.FC<{
   className?: string;
   iconOnly?: boolean;
-  variant?: 'default' | 'ghost';
-}> = ({ className = '', iconOnly = false, variant = 'default' }) => {
+  variant?: 'default' | 'ghost' | 'sidebar';
+  dropUp?: boolean;
+}> = ({ className = '', iconOnly = false, variant = 'default', dropUp = false }) => {
   const { language, setLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,9 @@ export const LanguageSelector: React.FC<{
   }, []);
 
   const buttonClass =
-    variant === 'ghost'
+    variant === 'sidebar'
+      ? `flex items-center ${iconOnly ? 'justify-center w-9 h-9' : 'justify-between w-full px-2.5 py-1.5'} rounded-rd-md border border-rd-line bg-rd-surface hover:bg-rd-fondo text-rd-ink text-rd-12 font-medium transition-colors cursor-pointer`
+      : variant === 'ghost'
       ? `px-3 py-1.5 rounded-xl text-xs font-normal transition-colors cursor-pointer inline-flex items-center gap-1.5 border-0 bg-transparent ${
           isOpen
             ? 'bg-slate-100 text-slate-900'
@@ -57,17 +60,23 @@ export const LanguageSelector: React.FC<{
         id="btn-language-selector"
         title={`Idioma: ${currentLang.label}`}
       >
-        <img src={currentLang.flag} alt={currentLang.label} className="w-4 h-4 rounded-xs object-cover" />
+        <span className="flex items-center gap-2">
+          <img src={currentLang.flag} alt={currentLang.label} className="w-4 h-4 rounded-xs object-cover shrink-0" />
+          {!iconOnly && (
+            <span className="truncate text-rd-12 text-rd-ink font-medium">{currentLang.label}</span>
+          )}
+        </span>
         {!iconOnly && (
-          <>
-            <span className="uppercase tracking-tight text-xs">{currentLang.code}</span>
-            <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
-          </>
+          <ChevronDown className={`w-3.5 h-3.5 text-rd-ink-3 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 bg-white/98 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-xl py-1.5 w-38 z-50 animate-fade-in font-sans">
+        <div
+          className={`absolute ${
+            dropUp ? 'bottom-full mb-2' : 'top-full mt-2'
+          } ${iconOnly ? 'left-0' : 'right-0 w-full min-w-36'} bg-white/98 backdrop-blur-xl border border-rd-line rounded-rd-lg shadow-rd-2 py-1 z-50 animate-fade-in font-sans`}
+        >
           {LANGUAGES.map((lang) => {
             const isSelected = lang.code === language;
             return (

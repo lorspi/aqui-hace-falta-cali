@@ -21,6 +21,7 @@ import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { DocumentosVerificacionSection } from '../../components/perfil/DocumentosVerificacionSection';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 export interface PersonaExt extends Persona {
   ciudad?: string;
@@ -57,13 +58,17 @@ function pestanaPedida(): PestanaPerfil {
   return PESTANAS.some((p) => p.id === t) ? (t as PestanaPerfil) : 'datos';
 }
 
-export const PerfilPage: React.FC = () => (
+export interface PerfilPageProps {
+  authUser?: any;
+}
+
+export const PerfilPage: React.FC<PerfilPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Perfil />
+    <Perfil authUser={authUser} />
   </AvisosProvider>
 );
 
-const Perfil: React.FC = () => {
+const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const avisar = useAviso();
   const [actual, setActual] = useState<PestanaPerfil>(pestanaPedida);
   const [cajon, setCajon] = useState(false);
@@ -248,8 +253,26 @@ const Perfil: React.FC = () => {
   };
 
   return (
-    <Shell seccion="perfil" panelNombre={nombrePanel()} cuenta={cuentaUsuario} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="perfil"
+      panelNombre={nombrePanel()}
+      cuenta={cuentaUsuario}
+      authUser={authUser || getStoredAuthUser()}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Configuración y perfil</h1>
           <span className="ml-auto flex items-center gap-2">
@@ -266,7 +289,7 @@ const Perfil: React.FC = () => {
         </header>
         <Pestanas etiqueta="Pestañas del perfil" pestanas={PESTANAS} actual={actual} onCambiar={cambiarTab} className="px-4 sm:px-6 lg:px-8" />
 
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
             {/* quién: la cabecera del perfil */}
             <section aria-label="Resumen del perfil" className="flex flex-wrap items-start gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
@@ -366,9 +389,11 @@ const Perfil: React.FC = () => {
                   </FilaDato>
                 )}
                 <FilaDato rotulo="Cerrar sesión" nota="Cierra la sesión activa en este dispositivo." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
-                  await supabase.auth.signOut();
-                  localStorage.clear();
-                  window.location.href = '/';
+                  clearStoredAuthUser();
+                  try {
+                    await supabase.auth.signOut();
+                  } catch {}
+                  window.location.href = '/mapa-ayudas-necesidades';
                 }}>Cerrar sesión</Button>}>
                   {yo.correo}
                 </FilaDato>

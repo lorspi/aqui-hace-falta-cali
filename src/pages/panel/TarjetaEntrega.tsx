@@ -188,18 +188,16 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
       return (
         <>
           {!v && (
-            <Button nivel="primario" tamano="md" onClick={() => a.onAsignar(s)}>
+            <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => a.onAsignar(s)}>
               Asignar
             </Button>
           )}
           <Button
-            nivel={v ? 'primario' : 'secundario'}
+            nivel="primario"
             tamano="md"
-            disabled={!v}
-            title={v ? undefined : 'Asigna primero a alguien'}
             onClick={() => (a.onEnCamino ? a.onEnCamino(s) : a.onMover(s.id, 'camino'))}
           >
-            Despachar
+            Enviar
           </Button>
         </>
       );

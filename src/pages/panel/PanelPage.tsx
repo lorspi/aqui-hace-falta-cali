@@ -39,6 +39,7 @@ import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from 
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -186,13 +187,43 @@ const PestanasPanel: React.FC<{
   );
 };
 
-export const PanelPage: React.FC = () => (
+export interface PanelPageProps {
+  authUser?: any;
+}
+
+export const PanelPage: React.FC<PanelPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Panel />
+    <Panel authUser={authUser} />
   </AvisosProvider>
 );
 
-const Panel: React.FC = () => {
+const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
   const avisar = useAviso();
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
   const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
@@ -820,7 +851,7 @@ const Panel: React.FC = () => {
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
-      const quien = quienLleva(s, equipo) ?? 'Bomberos Voluntarios Usme';
+      const quien = quienLleva(s, equipo) ?? ORG.nombre ?? 'Equipo de entrega';
       const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
         url: f.url,
         alt: `En camino a ${s.quien} - ${f.nombre}`,
@@ -1126,8 +1157,27 @@ const Panel: React.FC = () => {
   };
 
   return (
-    <Shell seccion="panel" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientes} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="panel"
+      panelNombre={nombrePanel()}
+      cuenta={CUENTA}
+      authUser={usuarioEfectivo}
+      pendientes={pendientes}
+      avisosNuevos={sinLeer}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{nombrePanel()}</h1>
           <span className="ml-auto flex items-center gap-2">
@@ -1145,7 +1195,7 @@ const Panel: React.FC = () => {
           </span>
         </header>
         <PestanasPanel pestanas={pestanas} actual={actual} onCambiar={cambiarTab} nombrePanel={nombrePanel()} />
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
             {actual === 'necesidades' && (
@@ -1538,17 +1588,17 @@ const Panel: React.FC = () => {
         </Dialogo>
         <DialogoCierre
           abierto={marcandoEnCamino !== null}
-          titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
+          titulo={marcandoEnCamino ? `Enviar ayuda a ${marcandoEnCamino.quien}` : ''}
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}, ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Puedes registrar fotos del cargue o despacho y notas de transporte o entrega para evidenciar que la ayuda va en camino.`
               : ''
           }
-          accion="Despachar"
+          accion="Enviar"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
           nota={{
-            etiqueta: 'Detalles de despacho o transporte (vehículo, conductor, ruta)',
-            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, llegada estimada 2:30 PM...',
+            etiqueta: 'Detalles del envío o transporte (vehículo, conductor, ruta u observaciones)',
+            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, entrega directa...',
             ayuda: 'Estas notas quedarán registradas en el seguimiento y en el acta oficial de entrega.',
           }}
           onCerrar={() => setMarcandoEnCamino(null)}
@@ -1636,7 +1686,7 @@ const Panel: React.FC = () => {
               <p className="text-rd-13 text-rd-ink-2 leading-relaxed">
                 Asigna esta necesidad a tu propio equipo o brigada. Se creará una entrega en la columna{' '}
                 <strong className="text-rd-ink font-semibold">Comprometida</strong> del tablero de{' '}
-                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas despacharla y certificarla con fotos y acta oficial.
+                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas enviarla y certificarla con fotos y acta oficial.
               </p>
 
               <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3 text-rd-13">
@@ -3341,7 +3391,6 @@ function puedeMover(s: Solicitud, a: Solicitud['estado']): string | null {
   if (a === 'archivada' || s.estado === 'archivada') return 'Las completadas se archivan con el botón';
   if (a === 'confirmada') return null; // Arrastrar a Completada abre la certificación
   if (s.estado === 'confirmada') return 'Las completadas se archivan con el botón';
-  if (a === 'camino' && !s.vol) return 'Asigna primero a alguien';
   if (Math.abs(ORDEN_CICLO[a] - ORDEN_CICLO[s.estado]) > 1) return 'De a un paso';
   return null;
 }

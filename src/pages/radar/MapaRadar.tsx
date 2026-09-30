@@ -38,6 +38,7 @@ export interface MapaRadarProps {
   resaltadas?: { ids: string[]; n: number } | null;
   /** Cuando cambia, el mapa encuadra todo lo visible (al cambiar de ciudad). */
   encuadrarTodo?: { n: number } | null;
+  onMiUbicacion?: (ubicacion: Ubicacion) => void;
   className?: string;
 }
 
@@ -223,13 +224,28 @@ function calcularDistribucionNiveles<T>(
   return res;
 }
 
-export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, encuadrarTodo, className = '' }) => {
+export const MapaRadar: React.FC<MapaRadarProps> = ({
+  publicaciones,
+  ubicacion,
+  seleccionada,
+  onSeleccionar,
+  encuadrar,
+  tapadoAbajo = 0,
+  resaltadas,
+  encuadrarTodo,
+  onMiUbicacion,
+  className = '',
+}) => {
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
   const capaLineas = useRef<L.LayerGroup | null>(null);
   const alSeleccionar = useRef(onSeleccionar);
   alSeleccionar.current = onSeleccionar;
+  const onMiUbicacionRef = useRef(onMiUbicacion);
+  onMiUbicacionRef.current = onMiUbicacion;
+  const marcadorUbicacion = useRef<L.Marker | null>(null);
+  const botonUbicacionRef = useRef<HTMLAnchorElement | null>(null);
   /* Lo pintado: por id de publicación, y por grupo con las publicaciones que esconde. */
   const pines = useRef<Map<string, L.Marker>>(new Map());
   const grupos = useRef<{ marker: L.Marker; ids: string[] }[]>([]);
@@ -477,12 +493,101 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     }
   };
 
+  const irAMiUbicacion = () => {
+    const m = mapa.current;
+    if (!m) return;
+
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      alert('Tu navegador no soporta geolocalización.');
+      return;
+    }
+
+    if (botonUbicacionRef.current) {
+      botonUbicacionRef.current.classList.add('animate-pulse');
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (botonUbicacionRef.current) {
+          botonUbicacionRef.current.classList.remove('animate-pulse');
+        }
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const nuevaUbicacion: Ubicacion = {
+          lat,
+          lng,
+          zona: 'Tu ubicación',
+          simulada: false,
+        };
+
+        if (marcadorUbicacion.current) {
+          marcadorUbicacion.current.setLatLng([lat, lng]);
+        } else {
+          const userIcon = L.divIcon({
+            className: 'user-location-pin',
+            html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          });
+          marcadorUbicacion.current = L.marker([lat, lng], {
+            icon: userIcon,
+            zIndexOffset: 1000,
+          }).addTo(m);
+          marcadorUbicacion.current.bindPopup(
+            '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
+          );
+        }
+
+        m.flyTo([lat, lng], Math.max(m.getZoom(), 15), { duration: 0.5 });
+        onMiUbicacionRef.current?.(nuevaUbicacion);
+      },
+      (error) => {
+        if (botonUbicacionRef.current) {
+          botonUbicacionRef.current.classList.remove('animate-pulse');
+        }
+        console.warn('Error al obtener ubicación:', error);
+        alert('No pudimos acceder a tu ubicación. Verifica que los permisos de ubicación estén habilitados en tu navegador.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
   useEffect(() => {
     if (!nodo.current) return;
     // Centro geográfico por defecto en Colombia (Zoom 6 para ver el país si está vacio)
     const centroInicial: [number, number] = ubicacion ? [ubicacion.lat, ubicacion.lng] : [4.5709, -74.2973];
-    const m = L.map(nodo.current, { zoomControl: true, attributionControl: true }).setView(centroInicial, 6);
-    m.zoomControl.setPosition('bottomright');
+    const m = L.map(nodo.current, { zoomControl: false, attributionControl: true }).setView(centroInicial, 6);
+
+    // 1. Control de ubicación ("felchita") justo arriba del zoom
+    const LocationControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-location');
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        const a = L.DomUtil.create('a', '', container);
+        a.href = '#';
+        a.title = 'Ir a mi ubicación';
+        a.setAttribute('role', 'button');
+        a.setAttribute('aria-label', 'Ir a mi ubicación');
+        a.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+
+        L.DomEvent.on(a, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          irAMiUbicacion();
+        });
+
+        botonUbicacionRef.current = a;
+        return container;
+      },
+    });
+
+    new LocationControl().addTo(m);
+
+    // 2. Control de Zoom de Leaflet debajo del botón de ubicación
+    L.control.zoom({ position: 'bottomright' }).addTo(m);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     capaLineas.current = L.layerGroup().addTo(m);
     capa.current = L.layerGroup().addTo(m);
@@ -508,10 +613,35 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       ro.disconnect();
       m.remove();
       mapa.current = null;
+      marcadorUbicacion.current = null;
+      botonUbicacionRef.current = null;
     };
     // El mapa se crea una vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* Si la ubicación del usuario se detecta o actualiza, sincronizar su pin en el mapa */
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !ubicacion || ubicacion.simulada) return;
+    if (marcadorUbicacion.current) {
+      marcadorUbicacion.current.setLatLng([ubicacion.lat, ubicacion.lng]);
+    } else {
+      const userIcon = L.divIcon({
+        className: 'user-location-pin',
+        html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      marcadorUbicacion.current = L.marker([ubicacion.lat, ubicacion.lng], {
+        icon: userIcon,
+        zIndexOffset: 1000,
+      }).addTo(m);
+      marcadorUbicacion.current.bindPopup(
+        '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
+      );
+    }
+  }, [ubicacion]);
 
   /* Los pines siguen a las publicaciones filtradas; encuadra si no lo ha hecho aun. */
   useEffect(() => {

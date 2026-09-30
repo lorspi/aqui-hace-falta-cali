@@ -192,7 +192,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
         </button>
         {/* La pantalla de éxito empieza siempre arriba anclada */}
         {publicado ? (
-          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto px-4 sm:px-6">
+          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4 sm:px-6">
             {children}
           </div>
         ) : (
@@ -200,7 +200,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
             <div className="flex-none px-4 pt-5 pr-14 sm:px-6 sm:pr-16">
               <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((t, j) => ({ nombre: t.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
-            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
+            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4 pb-5 sm:px-6">
               {errorPublicar && (
                 <div className="mb-4 flex items-center gap-2 rounded-rd-md border border-red-300 bg-red-50 p-3 text-rd-13 text-red-800">
                   <CircleAlert className="h-5 w-5 shrink-0 text-red-600" />

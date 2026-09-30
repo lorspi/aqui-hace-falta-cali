@@ -14,6 +14,7 @@ import { Donde } from './Donde';
 import { Recursos } from './Recursos';
 import { IconoWhatsApp } from './IconoMarca';
 import { useAviso } from './AvisoCorto';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * La tarjeta de una publicación (`rd-tarjeta` del prototipo): etiquetas de tipo y estado,
@@ -62,6 +63,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
   onReportar,
   onVerDetalle,
 }) => {
+  const { t } = useTranslation();
   const esOferta = p.tipo === 'oferta';
   const dist = distanciaTexto(distanciaKm);
   const estado = estadoPublicacion(p);
@@ -209,7 +211,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               }}
               className="mt-0.5 inline-block text-rd-11-5 font-semibold text-rd-navy hover:underline cursor-pointer"
             >
-              {expandirTexto ? 'Ver menos' : 'Ver más'}
+              {expandirTexto ? t('seeLess') : t('seeMore')}
             </button>
           )}
         </div>
@@ -367,7 +369,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
             onPrimaria?.(p.id);
           }}
         >
-          {textoPrimaria ?? (esOferta ? 'Solicitar' : 'Ayudar')}
+          {textoPrimaria ?? (esOferta ? t('actionRequest') : t('actionHelp'))}
         </Button>
         {/* Pie de tarjeta: las acciones a la izquierda, de mayor a menor jerarquía, y el ⋮
             al extremo derecho (Alejandro, 24 de septiembre de 2026). */}
@@ -375,8 +377,8 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
           <Button
             nivel="secundario"
             tamano="md"
-            aria-label="Ver en el mapa"
-            title="Ver en el mapa"
+            aria-label={t('viewOnMap')}
+            title={t('viewOnMap')}
             soloIcono
             className="shadow-2xs"
             onClick={(ev) => {
@@ -391,8 +393,8 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
           <Button
             nivel="secundario"
             tamano="md"
-            aria-label="Ver tarjeta completa"
-            title="Ver tarjeta completa"
+            aria-label={t('viewFullCard')}
+            title={t('viewFullCard')}
             soloIcono
             className="shadow-2xs"
             onClick={(ev) => {

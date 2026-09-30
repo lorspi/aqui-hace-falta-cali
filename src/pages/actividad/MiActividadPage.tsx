@@ -57,9 +57,15 @@ function irA(ruta: string): void {
   }
 }
 
-export const MiActividadPage: React.FC = () => (
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+
+export interface MiActividadPageProps {
+  authUser?: any;
+}
+
+export const MiActividadPage: React.FC<MiActividadPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <MiActividad />
+    <MiActividad authUser={authUser} />
   </AvisosProvider>
 );
 
@@ -68,7 +74,7 @@ const PESTANAS_ACTIVIDAD: Pestana[] = [
   { id: 'ofertas', nombre: 'Lo que ofrecí' },
 ];
 
-const MiActividad: React.FC = () => {
+const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const avisar = useAviso();
   const [tab, setTab] = useState<'necesidades' | 'ofertas'>('necesidades');
   const [cajon, setCajon] = useState(false);
@@ -84,14 +90,34 @@ const MiActividad: React.FC = () => {
   const [editDir, setEditDir] = useState('');
   const [editContacto, setEditContacto] = useState('');
   const [editTel, setEditTel] = useState('');
-  const [sessionUser, setSessionUser] = useState<any>(null);
+  const [sessionUser, setSessionUser] = useState<any>(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setSessionUser(authUser);
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setSessionUser(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
 
   // Cargar usuario actual
   useEffect(() => {
+    if (authUser === null) return;
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) setSessionUser(data.user);
     });
-  }, []);
+  }, [authUser]);
 
   // Cargar publicaciones del usuario
   const cargarActividad = useCallback(async () => {
@@ -328,13 +354,21 @@ const MiActividad: React.FC = () => {
       seccion="actividad"
       panelNombre="Mi actividad"
       cuenta={CUENTA}
+      authUser={authUser !== undefined ? authUser : sessionUser}
       rutas={RUTAS_SHELL}
       onPedir={() => irA(RUTAS.pedir)}
       onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
       cajonAbierto={cajon}
       onCerrarCajon={() => setCajon(false)}
     >
-      <div className="flex h-full flex-col overflow-hidden bg-rd-surface">
+      <div className="flex h-full min-h-0 flex-col bg-rd-surface">
         {/* Cabecera superior */}
         <header className="border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
@@ -370,7 +404,7 @@ const MiActividad: React.FC = () => {
         <main
           role="region"
           aria-label="Lista de tu actividad"
-          className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
         >
           {cargando ? (
             <div className="flex h-64 items-center justify-center gap-2 text-rd-ink-meta">
@@ -664,7 +698,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
   return (
     <article
       id={p.id}
-      className={`min-w-0 rounded-rd-xl border bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:p-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_260px] xl:items-center xl:gap-8 ${
+      className={`min-w-0 rounded-rd-xl border bg-rd-surface p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:p-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_260px] xl:items-center xl:gap-8 ${
         resuelta
           ? 'border-rd-green/40 bg-rd-green/5'
           : pausada
@@ -673,17 +707,17 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       }`}
     >
       {/* 1. Publicación, tipo, ubicación y estado */}
-      <div className="flex min-w-0 items-start gap-3.5">
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3.5">
         <Avatar iniciales={iniciales(p.org || 'Tú')} tamano="md" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
             <EtiquetaTipo tipo={p.tipo} />
             {resuelta ? (
-              <span className="rounded-rd-sm bg-rd-green-soft px-2 py-0.5 text-rd-11 font-bold text-rd-green">
+              <span className="rounded-rd-sm bg-rd-green-soft px-1.5 py-0.5 text-rd-10-5 font-bold text-rd-green sm:px-2 sm:text-rd-11">
                 ✅ Resuelta / Completada
               </span>
             ) : pausada ? (
-              <span className="rounded-rd-sm bg-rd-sunken px-2 py-0.5 text-rd-11 font-semibold text-rd-ink-meta">
+              <span className="rounded-rd-sm bg-rd-sunken px-1.5 py-0.5 text-rd-10-5 font-semibold text-rd-ink-meta sm:px-2 sm:text-rd-11">
                 ⏸ Pausada
               </span>
             ) : (
@@ -693,7 +727,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
 
           <div className="flex min-w-0 items-center gap-1.5">
             <h2
-              className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink sm:text-rd-14 cursor-pointer hover:text-rd-navy hover:underline transition-colors"
+              className="font-rd m-0 min-w-0 truncate text-rd-13 font-semibold leading-snug text-rd-ink sm:text-rd-14 cursor-pointer hover:text-rd-navy hover:underline transition-colors"
               onClick={() => onVerDetalle(p)}
               title="Ver tarjeta completa"
             >
@@ -714,16 +748,16 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
           />
 
           {p.descripcion && (
-            <p className="m-0 mt-0.5 text-rd-12 text-rd-ink-2 line-clamp-2 leading-relaxed">
+            <p className="m-0 mt-0.5 text-rd-11-5 sm:text-rd-12 text-rd-ink-2 line-clamp-1 sm:line-clamp-2 leading-relaxed">
               {p.descripcion}
             </p>
           )}
 
           {/* Banner de compromiso / entrega en camino con WhatsApp */}
           {compromisoEnCamino && !resuelta && (
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-rd-md border border-rd-green/30 bg-rd-green-soft/40 px-3 py-1.5 text-rd-12 text-rd-ink">
+            <div className="mt-1.5 flex items-center justify-between gap-2 rounded-rd-md border border-rd-green/30 bg-rd-green-soft/40 px-2.5 py-1 text-rd-11-5 sm:text-rd-12 sm:px-3 sm:py-1.5 text-rd-ink">
               <div className="flex min-w-0 items-center gap-1.5">
-                <Sparkles className="h-4 w-4 shrink-0 text-rd-green" />
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-rd-green" />
                 <span className="truncate">
                   <strong className="text-rd-green">
                     {p.tipo === 'necesidad' ? '¡Ayuda en camino!' : 'Compromiso activo:'}
@@ -748,17 +782,17 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       </div>
 
       {/* 2. Recursos con sus anillos y estados (idéntico a la fila del Radar) */}
-      <div className="flex min-w-0 flex-col gap-2 max-xl:mt-3">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:gap-2 max-xl:mt-2.5 sm:max-xl:mt-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6 sm:gap-y-3">
           {p.recursos.map((r) => {
             const completo = restante(r) === 0;
             return (
-              <span key={r.item} className="flex items-center gap-2.5">
+              <span key={r.item} className="flex items-center gap-2 sm:gap-2.5">
                 <Anillo recurso={r} />
                 <span className="flex min-w-0 flex-col leading-tight">
-                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <b className="truncate text-rd-12-5 sm:text-rd-13 font-semibold text-rd-ink">{r.item}</b>
                   <span
-                    className={`text-rd-11-5 tabular-nums ${
+                    className={`text-rd-11 sm:text-rd-11-5 tabular-nums ${
                       completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'
                     }`}
                   >
@@ -772,7 +806,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       </div>
 
       {/* 3. Acciones en el extremo derecho en una sola línea compacta */}
-      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch max-xl:mt-3 max-xl:border-t max-xl:border-rd-line max-xl:pt-3">
+      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch max-xl:mt-2 max-xl:border-t max-xl:border-rd-line max-xl:pt-2 sm:max-xl:mt-3 sm:max-xl:pt-3">
         <div className="mt-auto flex w-full flex-nowrap items-center justify-between gap-2 xl:w-auto xl:justify-end">
           {!resuelta ? (
             <Button

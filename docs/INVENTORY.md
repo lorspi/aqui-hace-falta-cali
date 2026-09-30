@@ -82,6 +82,7 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `Shell` — el cascarón con sesión: side nav de 232 plegable a 64 (≥ 1024; Radar · Mi organización / Mi comunidad · Directorio), píldora flotante con «+», panel Pedir / Ofrecer y cajón lateral (< 1024); `BotonMenu`.
 - `AvisoCorto` — el aviso corto abajo (`rd-toast`): `AvisosProvider` + `useAviso()`; negro, centrado, icono por tipo (`neutro` · `ok` · `error` · `cargando`), acción opcional, se va solo. Convive con `components/Toast.tsx`.
 - `Dialogo` — `<dialog>` nativo con `showModal()`: título, cuerpo (un formulario), pie Cancelar + la acción que cierra (lg); bajo 640 en columna. `Opciones`: chips con radio real.
+- `DialogoAuthRapido` — diálogo modal in-situ para inicio de sesión o creación rápida de cuenta sin abandonar el contexto ni recargar la pantalla. Soporta pestañas de login/registro, recuperación de contraseña, Google OAuth y ejecución automática de acciones pendientes (compromisos de ayuda o publicación de flujos).
 - `DialogoCompromiso` — «Quiero ayudar» / «Solicitar»: filas de recursos pendientes con cantidad, «Cuándo llega». Devuelve cuántos recursos y el cuándo.
 - `DialogoReporte` — «Reportar un problema»: tres motivos (`MOTIVOS_PUBLICACION`, el directorio pasa los suyos) y «Qué viste (opcional)».
 - `Tabla` — la tabla del panel (`rd-tabla`, decisión 184): tabla desde 1280; por debajo cada fila es una tarjeta (título con su meta, estado a la derecha, datos a media fila con rótulo, controles y barras a lo ancho, acciones como pie). Columnas tipadas.
@@ -143,6 +144,8 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `panel` — el panel por uso (lógica pura): `leerModulos`, `modulosGuardados`, `activarModulo` (lo llaman los flujos al publicar; `localStorage` `rd-modulos`), `pestanasDe`, `kpisDe` (entregas por estado), `bloquesResumen`, `tramosPorEstado`, `archivarViejas`, `textoCierre`, `textoCierreRecibida`, `actasDe`, `textoActa`, `resumenActas`, `siglas`, `fechaCorta`, `pendientesDe`, `pendientesCuenta`, `quedan`, `cantidadPorEstado`. Pruebas en `tests/unit/panel.test.ts`.
 - `pedir` · `ofrecer` — el camino y la guarda de cada flujo (lógica pura): `caminoPedir`, `listoPedir`, `faltanCantidades`, `aDeclarar`; `caminoOfrecer`, `listoOfrecer`, `itemListo`, `textoEntrega`, `fechaCorta`.
 - `publicaciones` — cuentas de RaDAR (lógica pura): `movido`, `restante`, `porcentaje`, `resumen`, `estadoRecurso`, `estadoPublicacion`, `distanciaKm`, `distanciaTexto`, `cifra`, `unidad`, `iniciales`, `tituloPublicacion`, `actorPublicacion`. Pruebas en `tests/unit/publicaciones-titulo.test.ts`.
+- `session` — utilidades de sesión sincrónica en cliente (`getStoredAuthUser`, `saveStoredAuthUser`, `isUserLoggedIn`, `clearStoredAuthUser`).
+- `pendingAction` — persistencia de acciones pendientes para usuarios no autenticados (`guardarAccionPendiente`, `obtenerAccionPendiente`, `limpiarAccionPendiente`, `hayAccionPendiente`).
 
 ## Esquemas (`src/features/auth/schemas/`)
 
