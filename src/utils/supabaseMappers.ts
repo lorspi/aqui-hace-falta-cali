@@ -55,6 +55,14 @@ export function needToPublicacion(need: Need): Publicacion {
         }))
       : [],
     sourceUrl: need.sourceUrl,
+    userId: need.userId,
+    contactoNombre: need.contactName,
+    contactoTel: need.contactPhone,
+    contactoWa: Boolean(need.contactWhatsapp),
+    contactoEmail: need.contactEmail,
+    horario: need.operatingHours,
+    comoLlegar: need.comoLlegar,
+    paraQuien: need.paraQuien,
   };
 
   return pub;
@@ -122,6 +130,12 @@ export function offerToPublicacion(offer: Offer): Publicacion {
       : [],
     modoEntrega: offer.deliveryMode as any,
     radio: offer.deliveryRadius || (offer as any).coverageRadius,
+    userId: offer.userId,
+    contactoNombre: offer.contactName,
+    contactoTel: offer.contactPhone,
+    contactoWa: Boolean(offer.contactWhatsapp),
+    contactoEmail: offer.contactEmail,
+    horario: offer.operatingHours,
   };
 
   return pub;

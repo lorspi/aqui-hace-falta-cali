@@ -40,6 +40,7 @@ import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -77,8 +78,23 @@ const PestanasPanel: React.FC<{
   onCambiar: (id: string) => void;
   nombrePanel: string;
 }> = ({ pestanas, actual, onCambiar, nombrePanel }) => {
+  const { t } = useTranslation();
   const zonaRef = useRef<HTMLDivElement>(null);
   const [desborda, setDesborda] = useState(false);
+
+  const traducirNombrePestana = (id: string, def: string): string => {
+    switch (id) {
+      case 'resumen': return t('dashboardTabSummary');
+      case 'necesidades': return t('dashboardTabNeeds');
+      case 'ofertas': return t('dashboardTabOffers');
+      case 'seguimiento': return t('dashboardTabDeliveries');
+      case 'reportes': return t('dashboardTabReports');
+      case 'equipo': return t('dashboardTabTeam');
+      case 'inventario': return t('dashboardTabInventory');
+      case 'ajustes': return t('dashboardTabSettings');
+      default: return def;
+    }
+  };
 
   useEffect(() => {
     const z = zonaRef.current;
@@ -159,7 +175,7 @@ const PestanasPanel: React.FC<{
                     : 'border-transparent font-medium text-rd-ink-meta hover:border-rd-line hover:text-rd-ink'
                 }`}
               >
-                <span>{p.nombre}</span>
+                <span>{traducirNombrePestana(p.id, p.nombre)}</span>
                 {p.n ? (
                   <>
                     <span className="sr-only">, </span>
@@ -198,6 +214,7 @@ export const PanelPage: React.FC<PanelPageProps> = ({ authUser }) => (
 );
 
 const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const { t } = useTranslation();
   const [localAuth, setLocalAuth] = useState(() => {
     if (authUser === null) return null;
     if (authUser !== undefined) return authUser;
@@ -1179,14 +1196,16 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     >
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{nombrePanel()}</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">
+            {nombrePanel() === 'Mi comunidad' ? t('dashboardCommunityTitle') : t('dashboardTitle')}
+          </h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeedButton')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('publishOfferButton')}
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />

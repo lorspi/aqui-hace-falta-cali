@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Phone, Plus, Trash2, Truck, X } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Phone, Plus, Search, Trash2, Truck, X } from 'lucide-react';
 import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud } from '../../types/panel';
 import type { Foto } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
@@ -32,32 +32,108 @@ export const DialogoAsignar: React.FC<{
   equipo?: MiembroEquipo[];
   onCerrar: () => void;
   onAsignar: (id: number, vol: number) => void;
-}> = ({ solicitud: s, equipo = EQUIPO, onCerrar, onAsignar }) => (
-  <Dialogo
-    abierto={s !== null}
-    titulo={s ? `¿Quién lleva ${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}?` : ''}
-    accion="Asignar"
-    onCerrar={onCerrar}
-    onEnviar={(form) => {
-      if (!s) return;
-      const id = Number(new FormData(form).get('vol'));
-      onCerrar();
-      if (id) onAsignar(s.id, id);
-    }}
-  >
-    <p className="mb-4 text-rd-14 text-rd-ink-2">
-      A {s?.quien}
-      {s?.dist ? `, a ${s.dist}` : ''}. Le avisamos a quien elijas y queda con la entrega en su lista.
-    </p>
-    <Opciones
-      nombre="vol"
-      etiqueta="Del equipo"
-      opciones={equipo.map((e) => ({ valor: String(e.id), texto: `${e.n}, ${e.veh}` }))}
-      inicial={String(s?.vol ?? equipo[0]?.id ?? 1)}
-      columna
-    />
-  </Dialogo>
-);
+}> = ({ solicitud: s, equipo = EQUIPO, onCerrar, onAsignar }) => {
+  const [busqueda, setBusqueda] = useState('');
+  const [seleccionado, setSeleccionado] = useState<number>(() => s?.vol ?? equipo[0]?.id ?? 1);
+
+  useEffect(() => {
+    if (s) {
+      setSeleccionado(s.vol ?? equipo[0]?.id ?? 1);
+      setBusqueda('');
+    }
+  }, [s, equipo]);
+
+  const filtrados = useMemo(() => {
+    if (!busqueda.trim()) return equipo;
+    const q = busqueda.toLowerCase().trim();
+    return equipo.filter(
+      (m) =>
+        m.n.toLowerCase().includes(q) ||
+        m.rol.toLowerCase().includes(q) ||
+        (m.veh && m.veh.toLowerCase().includes(q))
+    );
+  }, [equipo, busqueda]);
+
+  return (
+    <Dialogo
+      abierto={s !== null}
+      titulo={s ? `¿Quién lleva ${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}?` : ''}
+      accion="Asignar"
+      accionActiva={filtrados.length > 0}
+      onCerrar={onCerrar}
+      onEnviar={(form) => {
+        if (!s) return;
+        const id = Number(new FormData(form).get('vol')) || seleccionado;
+        onCerrar();
+        if (id) onAsignar(s.id, id);
+      }}
+    >
+      <p className="mb-4 text-rd-14 text-rd-ink-2">
+        A {s?.quien}
+        {s?.dist ? `, a ${s.dist}` : ''}. Le avisamos a quien elijas y queda con la entrega en su lista.
+      </p>
+
+      {/* Buscador sencillo */}
+      <div className="mb-3">
+        <label htmlFor="buscar-voluntario-asignar" className="sr-only">
+          Buscar miembro del equipo
+        </label>
+        <div className="relative flex items-center">
+          <Search className="pointer-events-none absolute left-3 h-4 w-4 text-rd-ink-meta" />
+          <input
+            id="buscar-voluntario-asignar"
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar voluntario o rol..."
+            className="font-rd w-full rounded-rd-md border border-rd-line bg-rd-surface py-2 pr-8 pl-9 text-rd-13 text-rd-ink placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-2.5 p-0.5 text-rd-ink-meta hover:text-rd-ink cursor-pointer"
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Lista canónica de opciones con scroll para equipos grandes */}
+      <div
+        className="max-h-60 overflow-y-auto overscroll-contain pr-1 touch-pan-y [-webkit-overflow-scrolling:touch]"
+        onChange={(e) => {
+          const target = e.target as HTMLInputElement;
+          if (target && target.name === 'vol' && target.value) {
+            setSeleccionado(Number(target.value));
+          }
+        }}
+      >
+        {filtrados.length === 0 ? (
+          <p className="py-4 text-center text-rd-13 text-rd-ink-meta">
+            No se encontraron miembros con «{busqueda}».
+          </p>
+        ) : (
+          <Opciones
+            key={busqueda}
+            nombre="vol"
+            etiqueta={busqueda.trim() ? `Del equipo (${filtrados.length})` : 'Del equipo'}
+            opciones={filtrados.map((e) => ({
+              valor: String(e.id),
+              texto: e.veh ? `${e.n}, ${e.veh}` : e.n,
+            }))}
+            inicial={String(
+              filtrados.some((m) => m.id === seleccionado) ? seleccionado : (filtrados[0]?.id ?? 1)
+            )}
+            columna
+          />
+        )}
+      </div>
+    </Dialogo>
+  );
+};
 
 /**
  * Diálogo para editar un recurso ofrecido directamente desde «Mis ofertas».
@@ -759,6 +835,8 @@ export interface DatosPublicacionGestion {
   horario: string;
   recursos: InsumoGestion[];
   pausadaGlobal?: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 /**
@@ -841,11 +919,15 @@ export const DialogoGestionPublicacion: React.FC<{
       org: pubInicial.org,
       verificada: pubInicial.verificada,
       propia: true,
-      lat: 4.51,
-      lng: -74.115,
+      lat: pubInicial.lat ?? 3.4516,
+      lng: pubInicial.lng ?? -76.5320,
       zona: zona || pubInicial.zona,
       dir: dir || pubInicial.dir,
       descripcion: descripcion || pubInicial.descripcion,
+      contactoNombre: personaContacto || (pubInicial as any).contactoNombre,
+      contactoTel: telContacto || (pubInicial as any).contactoTel,
+      horario: horario || (pubInicial as any).horario,
+      comoLlegar: comoEntrega || (pubInicial as any).comoLlegar,
       recursos: recursos.map((r) => ({
         item: r.item,
         unidad: r.unidad,
@@ -864,7 +946,7 @@ export const DialogoGestionPublicacion: React.FC<{
       })),
     };
     return { ...base, titulo: tituloPublicacion(base) };
-  }, [pubInicial, zona, dir, descripcion, recursos, comoEntrega]);
+  }, [pubInicial, zona, dir, descripcion, recursos, comoEntrega, personaContacto, telContacto, horario]);
 
   if (!pubInicial) return null;
 
@@ -982,6 +1064,7 @@ export const DialogoGestionPublicacion: React.FC<{
             {publicacionParaTarjeta && (
               <Tarjeta
                 publicacion={publicacionParaTarjeta}
+                completa
                 onVerEnMapa={() => {
                   onCerrar();
                   onVerEnMapa?.(pubInicial.id);

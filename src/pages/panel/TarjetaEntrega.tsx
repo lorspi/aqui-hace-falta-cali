@@ -11,6 +11,8 @@ import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { TiraFotos } from '../../components/ui/VisorFotos';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { tRecurso, tUnidad } from '../../i18n/catalogTranslations';
 
 export interface ContactoEntidad {
   tel: string;
@@ -400,9 +402,12 @@ export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => 
 
 /** La tarjeta de una solicitud (lo que YO entrego) con todo resuelto desde su estado. */
 export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolicitud; estado?: React.ReactNode; arrastre?: TarjetaEntregaProps['arrastre']; menuFlotante?: boolean }> = ({ s, acciones, estado, arrastre, menuFlotante = false }) => {
+  const { language } = useTranslation();
   const { cierre, fotos } = cierreDe(s, acciones.onVerFotos);
   const lleva = quienLleva(s);
   const contacto = buscarContactoEntidad(s.quien);
+  const recursoTraducido = tRecurso(s.rec, language);
+  const unidadTraducida = tUnidad(s.u, language, s.cant);
   const badgeEstado = estado ?? (
     s.esInterna ? (
       <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
@@ -418,11 +423,11 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
   );
   return (
     <TarjetaEntrega
-      titulo={`${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`}
+      titulo={`${cifra(s.cant)} ${unidadTraducida} · ${recursoTraducido}`}
       quien={s.quien}
       cuando={s.cuando}
       dist={s.dist}
-      recurso={s.rec}
+      recurso={recursoTraducido}
       lleva={lleva}
       contacto={contacto}
       estado={badgeEstado}
@@ -452,8 +457,11 @@ export const TarjetaRecibida: React.FC<{
   menuFlotante?: boolean;
   arrastre?: TarjetaEntregaProps['arrastre'];
 }> = ({ r, estado, onConfirmar, onDistribuir, onArchivar, onVerFotos, onAceptar, onRechazar, onCancelar, onVerPublicacion, menuFlotante = false, arrastre }) => {
+  const { language, t } = useTranslation();
   const f = fotosDeRecibida(r.id);
   const contacto = buscarContactoEntidad(r.org);
+  const recursoTraducido = tRecurso(r.rec, language);
+  const unidadTraducida = tUnidad(r.u, language, r.cant);
   const acciones = (() => {
     if (r.estado === 'nueva') {
       return (
@@ -508,7 +516,7 @@ export const TarjetaRecibida: React.FC<{
       return (
         <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-line bg-rd-sunken px-2 py-0.5 text-rd-11 font-medium text-rd-ink-2">
           <CircleDashed aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-ink-3" />
-          <span>Coordinando</span>
+          <span>{t('statusInProcess')}</span>
         </span>
       );
     }
@@ -516,7 +524,7 @@ export const TarjetaRecibida: React.FC<{
       return (
         <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-amber-line bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber-ink">
           <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
-          <span>En ruta</span>
+          <span>{t('statusOnTheWay')}</span>
         </span>
       );
     }
@@ -524,7 +532,7 @@ export const TarjetaRecibida: React.FC<{
       return (
         <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
           <CircleDot aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-navy" />
-          <span>Por confirmar</span>
+          <span>{t('statusPending')}</span>
         </span>
       );
     }
@@ -575,11 +583,11 @@ export const TarjetaRecibida: React.FC<{
 
   return (
     <TarjetaEntrega
-      titulo={`${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`}
+      titulo={`${cifra(r.cant)} ${unidadTraducida} · ${recursoTraducido}`}
       quien={r.org}
       cuando={r.cuando}
       dist={r.dist}
-      recurso={r.rec}
+      recurso={recursoTraducido}
       lleva={r.vol}
       contacto={contacto}
       detalle={r.detalle}

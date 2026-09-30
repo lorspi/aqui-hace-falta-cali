@@ -60,13 +60,16 @@ export const Anillo: React.FC<{ recurso: Recurso }> = ({ recurso }) => {
   );
 };
 
+import { useTranslation } from '../../i18n/LanguageContext';
+
 /** Barra de 8 px: lo hecho en verde, lo en camino en ámbar rayado, lo vacío es lo que queda. */
 export const BarraRecurso: React.FC<{ recurso: Recurso; tipo: Publicacion['tipo'] }> = ({ recurso, tipo }) => {
+  const { tItem, tResourceStatus } = useTranslation();
   const hecho = porcentaje(recurso, 'hecho');
   const camino = porcentaje(recurso, 'camino');
   return (
     <Barra
-      etiqueta={`${recurso.item}: ${estadoRecurso(recurso, tipo)}`}
+      etiqueta={`${tItem(recurso.item)}: ${tResourceStatus(recurso, tipo)}`}
       tramos={[
         { tono: 'confirmada', porcentaje: hecho },
         { tono: 'camino', porcentaje: camino },
@@ -89,6 +92,7 @@ export interface RecursosProps {
 }
 
 export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abiertoInicial = false, soloFilas = false, mostrarTodos = false, className = 'mb-4' }) => {
+  const { t, tItem, tCategory, tResourceStatus } = useTranslation();
   const [abierto, setAbierto] = useState(abiertoInicial || soloFilas);
   const [expandirResumen, setExpandirResumen] = useState(false);
   const id = useId();
@@ -110,7 +114,7 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
         onClick={() => setAbierto((a) => !a)}
         className="font-rd flex w-full cursor-pointer items-center gap-2 rounded-t-rd-lg border-b border-rd-line bg-rd-sunken px-3 py-2 text-left text-rd-10-5 font-semibold tracking-wider text-rd-ink-meta uppercase focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy"
       >
-        <span>{esOferta ? 'Se ofrece' : 'Se solicita'}</span>
+        <span>{esOferta ? t('resourcesOffered') : t('resourcesNeeded')}</span>
         <ChevronDown aria-hidden="true" className={`ml-auto h-3.5 w-3.5 transition-transform ${abierto ? 'rotate-180' : ''}`} />
       </button>
       )}
@@ -126,8 +130,8 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
             <span key={r.item} className="flex min-w-34 flex-1 basis-34 items-start gap-2">
               <Anillo recurso={r} />
               <span className="flex min-w-0 flex-col leading-snug">
-                <b className="truncate text-rd-12 font-semibold text-rd-ink">{r.item}</b>
-                <span className={`text-rd-11 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>{estadoRecurso(r, p.tipo)}</span>
+                <b className="truncate text-rd-12 font-semibold text-rd-ink">{tItem(r.item)}</b>
+                <span className={`text-rd-11 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>{tResourceStatus(r, p.tipo)}</span>
               </span>
             </span>
           );
@@ -141,7 +145,7 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
             }}
             className="inline-flex items-center gap-1 rounded-full border border-rd-line bg-rd-sunken px-2.5 py-1 text-rd-11 font-semibold text-rd-navy hover:bg-rd-fondo transition-colors cursor-pointer"
           >
-            +{restantes} más
+            +{restantes} {t('moreResources')}
           </button>
         )}
         {tieneMuchos && expandirResumen && !mostrarTodos && (
@@ -153,7 +157,7 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
             }}
             className="w-full text-center text-rd-11 font-medium text-rd-ink-meta hover:text-rd-navy hover:underline cursor-pointer pt-1"
           >
-            Mostrar menos
+            {t('showLess')}
           </button>
         )}
       </div>
@@ -172,10 +176,10 @@ export const Recursos: React.FC<RecursosProps> = ({ publicacion: p, abierto: abi
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-baseline justify-between gap-3">
                     <span className={`text-rd-13 ${completo ? 'font-medium text-rd-ink-2' : 'font-semibold text-rd-ink'}`}>
-                      {r.item}
-                      {cat && <span className="mt-0.5 block text-rd-11 font-normal text-rd-ink-meta">{cat.nombre}</span>}
+                      {tItem(r.item)}
+                      {cat && <span className="mt-0.5 block text-rd-11 font-normal text-rd-ink-meta">{tCategory(cat.nombre)}</span>}
                     </span>
-                    <span className={`text-rd-12-5 font-semibold whitespace-nowrap tabular-nums ${completo ? 'text-rd-green' : 'text-rd-ink'}`}>{estadoRecurso(r, p.tipo)}</span>
+                    <span className={`text-rd-12-5 font-semibold whitespace-nowrap tabular-nums ${completo ? 'text-rd-green' : 'text-rd-ink'}`}>{tResourceStatus(r, p.tipo)}</span>
                   </div>
                   <BarraRecurso recurso={r} tipo={p.tipo} />
                   {r.ficha && (

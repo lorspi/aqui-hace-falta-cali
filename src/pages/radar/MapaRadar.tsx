@@ -7,6 +7,9 @@ import { BadgeCheck, Check, Hand, HeartHandshake, MapPin } from 'lucide-react';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, recursosPublicacion, resumen, tituloPublicacion } from '../../utils/publicaciones';
 import { EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { translateDistance, translateItem } from '../../i18n/catalogTranslations';
+import type { Language } from '../../i18n/translations';
 
 /**
  * El mapa de la Radar con los pines del prototipo (`mapa.js`): el núcleo dice el tipo (coral
@@ -94,9 +97,18 @@ function pinHTML(p: Publicacion): string {
  * Solo se cuelga donde hay hover (ver `pintar`): en el teléfono el pin abre la hoja, que ya
  * trae la tarjeta entera.
  */
-function tipHTML(p: Publicacion, km: number | null): string {
+function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): string {
   const zona = p.zona || p.localidad || '';
-  const dist = distanciaTexto(km);
+  const dist = translateDistance(km, lang);
+  const recs = (p.recursos || []).map((r) => translateItem(r.item, lang)).join(', ');
+  const actor = actorPublicacion(p);
+  const localizedActor =
+    actor === 'Ciudadano'
+      ? (lang === 'en' ? 'Citizen' : lang === 'pt' ? 'Cidadão' : lang === 'fr' ? 'Citoyen' : 'Ciudadano')
+      : actor === 'Comunidad'
+      ? (lang === 'en' ? 'Community' : lang === 'pt' ? 'Comunidade' : lang === 'fr' ? 'Communauté' : 'Comunidad')
+      : actor;
+
   return renderToStaticMarkup(
     <div className="font-rd flex w-55 flex-col gap-2 p-0.5">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -104,9 +116,9 @@ function tipHTML(p: Publicacion, km: number | null): string {
         <EtiquetaEstado estado={estadoPublicacion(p)} />
       </div>
       <div>
-        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recursosPublicacion(p)}</p>
+        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recs || recursosPublicacion(p)}</p>
         <p className="m-0 mt-1 flex items-center gap-1 text-rd-12 font-medium text-rd-ink-2">
-          <span className="truncate">{actorPublicacion(p)}</span>
+          <span className="truncate">{localizedActor}</span>
           {p.verificada && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
         </p>
       </div>
@@ -123,17 +135,24 @@ function tipHTML(p: Publicacion, km: number | null): string {
 }
 
 /** Cuántas de cada tipo hay en un grupo, dicho como frase: «3 necesidades, 1 oferta». */
-function textoGrupo(n: number, o: number): string {
-  return [n ? `${n} ${n === 1 ? 'necesidad' : 'necesidades'}` : '', o ? `${o} ${o === 1 ? 'oferta' : 'ofertas'}` : ''].filter(Boolean).join(', ');
+function textoGrupo(n: number, o: number, lang: Language = 'es'): string {
+  const needSingular = lang === 'en' ? 'need' : lang === 'fr' ? 'besoin' : lang === 'pt' ? 'necessidade' : 'necesidad';
+  const needPlural = lang === 'en' ? 'needs' : lang === 'fr' ? 'besoins' : lang === 'pt' ? 'necessidades' : 'necesidades';
+  const offerSingular = lang === 'en' ? 'offer' : lang === 'fr' ? 'offre' : lang === 'pt' ? 'oferta' : 'oferta';
+  const offerPlural = lang === 'en' ? 'offers' : lang === 'fr' ? 'offres' : lang === 'pt' ? 'ofertas' : 'ofertas';
+  return [n ? `${n} ${n === 1 ? needSingular : needPlural}` : '', o ? `${o} ${o === 1 ? offerSingular : offerPlural}` : ''].filter(Boolean).join(', ');
 }
 
 /** El grupo: anillo partido por color (coral lo que se pide, navy lo que se ofrece) y el
  *  conteo en el centro. `--p` es el dato que parte el anillo; la regla `.rd-grupo` vive en
  *  `index.css` junto a las del mapa. */
-function grupoHTML(n: number, o: number): string {
+function grupoHTML(n: number, o: number, lang: Language = 'es'): string {
   const total = n + o;
   const pct = total ? Math.round((n / total) * 100) : 0;
-  const nombre = `Grupo de ${total} publicaciones: ${textoGrupo(n, o)}. Acercar`;
+  const labelGroup = lang === 'en' ? 'Group of' : lang === 'fr' ? 'Groupe de' : lang === 'pt' ? 'Grupo de' : 'Grupo de';
+  const labelPubs = lang === 'en' ? 'publications' : lang === 'fr' ? 'publications' : lang === 'pt' ? 'publicações' : 'publicaciones';
+  const labelZoom = lang === 'en' ? 'Zoom in' : lang === 'fr' ? 'Zoomer' : lang === 'pt' ? 'Aproximar' : 'Acercar';
+  const nombre = `${labelGroup} ${total} ${labelPubs}: ${textoGrupo(n, o, lang)}. ${labelZoom}`;
   return renderToStaticMarkup(
     <span role="img" aria-label={nombre} title={nombre} className="rd-grupo" style={{ ['--p' as string]: `${pct}%` }}>
       <b className="font-rd flex h-7.5 w-7.5 items-center justify-center rounded-full bg-rd-surface text-rd-12-5 font-bold text-rd-ink tabular-nums">{total}</b>
@@ -236,6 +255,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   onMiUbicacion,
   className = '',
 }) => {
+  const { language } = useTranslation();
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
@@ -417,7 +437,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
       if ('cluster' in f.properties && f.properties.cluster) {
         const { n, o } = f.properties;
         const idGrupo = f.properties.cluster_id;
-        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
+        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o, language), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
         (grupo as any)._posOriginal = L.latLng(lat, lng);
         (grupo as any)._pubTipo = n > 0 && o > 0 ? 'mixto' : n > 0 ? 'necesidad' : 'oferta';
 
@@ -459,7 +479,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
       (marker as any)._pubTipo = p.tipo;
       /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
          resto y para los lectores de pantalla, que leen el `aria-label` del pin. */
-      if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p)), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
+      if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p), language), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
       marker.on('click', () => alSeleccionar.current(p.id));
       marker.addTo(c);
       pines.current.set(p.id, marker);
@@ -651,7 +671,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     }
     pintar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indice]);
+  }, [indice, language]);
   useEffect(() => {
     marcar();
     // eslint-disable-next-line react-hooks/exhaustive-deps

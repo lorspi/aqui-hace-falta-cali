@@ -15,6 +15,7 @@ import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { TituloPublicacion } from '../../components/ui/TituloPublicacion';
 import { DialogoDetallePublicacion } from '../../components/ui/DialogoDetallePublicacion';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
@@ -846,12 +847,12 @@ const FilaPublicacion: React.FC<{
   onReportar,
   onVerCoincidencias,
 }) => {
-  const { t } = useTranslation();
+  const { t, tItem, tResourceStatus, tDistance } = useTranslation();
   const est = estadoPublicacion(p);
   const menu = [
     { texto: t('viewOnMap'), icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
-    { texto: t('detailShare') || 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
-    { texto: t('detailReportIssue') || 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
+    { texto: t('shareLink'), icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
+    { texto: t('reportIssue'), icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
   ];
 
   return (
@@ -868,18 +869,18 @@ const FilaPublicacion: React.FC<{
             <EtiquetaEstado estado={est} />
             {enProceso && (
               <span className="rounded-rd-sm bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber">
-                En proceso
+                {t('statusInProcess')}
               </span>
             )}
           </div>
           <div className="flex min-w-0 items-center gap-1.5">
             <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
-              {tituloPublicacion(p)}
+              <TituloPublicacion publicacion={p} actor />
             </h2>
             {p.verificada && (
               <BadgeCheck
                 role="img"
-                aria-label="Verificada"
+                aria-label={t('verifiedOrg')}
                 className="h-4 w-4 shrink-0 text-rd-navy"
               />
             )}
@@ -889,7 +890,7 @@ const FilaPublicacion: React.FC<{
           )}
           <Donde
             lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`}
-            distancia={dist !== undefined ? distanciaTexto(dist) : undefined}
+            distancia={dist !== undefined ? tDistance(dist) : undefined}
             className="mt-0.5"
           />
           {p.descripcion && (
@@ -909,9 +910,9 @@ const FilaPublicacion: React.FC<{
               <span key={r.item} className="flex items-center gap-2.5">
                 <Anillo recurso={r} />
                 <span className="flex min-w-0 flex-col leading-tight">
-                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{tItem(r.item)}</b>
                   <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>
-                    {estadoRecurso(r, p.tipo)}
+                    {tResourceStatus(r, p.tipo)}
                   </span>
                 </span>
               </span>
@@ -920,9 +921,7 @@ const FilaPublicacion: React.FC<{
         </div>
       </div>
 
-      {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
-       *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
-       *  con marco interactivo. En `md` para mantener la escala tipográfica intacta. */}
+      {/* 3. Acciones */}
       <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
         <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
         <div className="mt-auto flex items-center gap-1">
@@ -932,7 +931,7 @@ const FilaPublicacion: React.FC<{
           <Button nivel="secundario" tamano="md" soloIcono aria-label={t('viewOnMap')} className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
+          <MenuAcciones items={menu} etiqueta={t('seeMore')} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
         </div>
       </div>
     </article>
