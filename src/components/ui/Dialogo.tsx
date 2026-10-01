@@ -1,33 +1,14 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button, type NivelBoton } from './Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
-/**
- * El diálogo del sistema de Producto (`rd-dialogo` del prototipo): un `<dialog>` nativo
- * abierto con `showModal()`, así el foco queda atrapado, Escape cierra y el fondo se oscurece
- * sin código propio. Título de 18/600, cuerpo y un pie con «Cancelar» (terciario, md) y la
- * acción que cierra el flujo. El `<dialog>` toma su nombre del título (`aria-labelledby`).
- *
- * El pie, como lo fijó Alejandro el 22 de septiembre de 2026: **la × de arriba a la derecha es
- * la salida** —y la única: nada de un «Cancelar» que repita lo que la × ya hace—, y la zona de
- * abajo es solo de acciones, ordenadas de izquierda a derecha por
- * jerarquía —primero la que mueve la aguja— con la jerarquía dicha por el color, no por el
- * tamaño: **todos los botones de esa línea miden lo mismo**. Bajo 640 la línea se vuelve
- * columna en ese mismo orden. Enmienda la 223 C1 en un punto: el pie va entero en `lg`, y por
- * eso el botón de salir es `secundario` (contorno) y no `terciario`, que en `lg` no existe.
- */
 export interface DialogoProps {
   abierto: boolean;
   titulo: string;
-  /** Texto del botón que cierra el flujo. */
   accion: string;
   nivelAccion?: NivelBoton;
-  /** La otra salida, cuando de verdad es **otra acción** y no solo salir: «Dejar como está»
-   *  frente a «Eliminar la cuenta». Sin esto no hay segundo botón: para salir está la ×
-   *  (Alejandro, 22 de septiembre de 2026). Nunca «Cancelar» ni «Cerrar»: eso lo hace la ×. */
   textoAlterno?: string;
-  /** Falso apaga la acción mientras no haya nada que enviar (por ejemplo, con todas las
-   *  casillas desmarcadas). Por defecto siempre se puede enviar. */
   accionActiva?: boolean;
   onCerrar: () => void;
   onEnviar: (form: HTMLFormElement) => void;
@@ -35,6 +16,7 @@ export interface DialogoProps {
 }
 
 export const Dialogo: React.FC<DialogoProps> = ({ abierto, titulo, accion, nivelAccion = 'primario', textoAlterno, accionActiva = true, onCerrar, onEnviar, children }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   const idTitulo = useId();
 
@@ -63,7 +45,7 @@ export const Dialogo: React.FC<DialogoProps> = ({ abierto, titulo, accion, nivel
             onEnviar(e.currentTarget);
           }}
         >
-          <button type="button" aria-label="Cerrar" onClick={onCerrar} className="absolute top-3 right-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy pointer-coarse:h-rd-tactil pointer-coarse:w-rd-tactil">
+          <button type="button" aria-label={t('detailClose')} onClick={onCerrar} className="absolute top-3 right-3 flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy pointer-coarse:h-rd-tactil pointer-coarse:w-rd-tactil">
             <X aria-hidden="true" className="h-5 w-5" />
           </button>
           <h2 id={idTitulo} className="font-rd m-0 mb-4 pr-10 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{titulo}</h2>

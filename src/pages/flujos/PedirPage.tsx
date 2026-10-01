@@ -19,6 +19,7 @@ import type { RecursoPedido } from '../../types/panel';
 import type { DatosPublicacionGestion } from '../panel/dialogos';
 import { publicacionSaleVerificada } from '../../utils/cuenta';
 import { useFlujo } from './useFlujo';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 import { createNeedWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
@@ -64,6 +65,7 @@ export interface PedirProps {
   isModal?: boolean;
   initialCityId?: string;
   onRequireAuth?: () => void;
+  authUser?: any;
 }
 
 export const PedirPage: React.FC<PedirProps> = (props) => (
@@ -86,6 +88,7 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
 }
 
 export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+  const { t, tCategory, tItem, tEvento } = useTranslation();
   const [createdNeed, setCreatedNeed] = useState<Need | undefined>(undefined);
   const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
 
@@ -418,14 +421,14 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'evento') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Qué emergencia estás atendiendo?" sub="Marcamos la de tu ciudad. Si es otra, cámbiala." />
-        <TarjetasOpcion nombre="Emergencia" opciones={Object.keys(SUGERIDOS).map((ev) => ({ id: ev, nombre: ev, icono: ICONO[ICONO_EVENTO[ev] ?? 'warning'] }))} valor={e.evento} onChange={(ev) => set({ evento: ev })} />
+        <Pregunta titulo={t('flowEmergencyTitle')} sub={t('flowEmergencySub')} />
+        <TarjetasOpcion nombre={t('flowEmergencyTitle')} opciones={Object.keys(SUGERIDOS).map((ev) => ({ id: ev, nombre: tEvento(ev), icono: ICONO[ICONO_EVENTO[ev] ?? 'warning'] }))} valor={e.evento} onChange={(ev) => set({ evento: ev })} />
       </>
     );
   } else if (sub.id === 'recursos') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Qué hace falta?" sub="Marca todo lo que necesites; las cantidades van después." />
+        <Pregunta titulo={t('flowWhatNeeded')} sub={t('flowWhatNeededSub')} />
         <ListaRecursos
           q={e.q}
           onBuscar={(q) => set({ q })}
@@ -433,7 +436,13 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           onToggle={toggle}
           abiertos={e.abiertos}
           onAbrir={(g, a) => set((p) => ({ abiertos: { ...p.abiertos, [g]: a } }))}
-          primero={{ nombre: `Sugerido para ${e.evento.toLowerCase()}`, items: SUGERIDOS[e.evento] ?? [], icono: ICONO[ICONO_EVENTO[e.evento] ?? 'warning'], sugerido: true, linea: (it) => TAXONOMIA.find((c) => c.items.includes(it))?.nombre }}
+          primero={{
+            nombre: `${t('flowSuggestedFor')} ${tEvento(e.evento).toLowerCase()}`,
+            items: SUGERIDOS[e.evento] ?? [],
+            icono: ICONO[ICONO_EVENTO[e.evento] ?? 'warning'],
+            sugerido: true,
+            linea: (it) => tCategory(TAXONOMIA.find((c) => c.items.includes(it))?.nombre ?? '')
+          }}
           vacioTexto="Prueba con otra palabra. Si no está en la lista, márcalo en el recurso que más se parezca y cuéntalo en el detalle."
         />
       </>
@@ -532,7 +541,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'donde') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Dónde llega la ayuda?" sub="Pusimos la dirección de tu cuenta. Si la ayuda va a otro punto, usa tu ubicación GPS, corrígela o mueve el punto en el mapa." />
+        <Pregunta titulo={t('flowWhereTitle')} sub={t('flowWhereSub')} />
         
         <button
           type="button"
@@ -557,7 +566,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           requerido
           onChange={(v) => { omitirAutoGeocodificacionRef.current = false; set({ dir: v }); errores.limpiar('dir'); }}
           onBlur={(v) => {
-            errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda');
+            errores.validar('dir', ['requerido'], v, t('flowFieldRequired'));
             if (v && v.trim().length >= 3) {
               geocodificarDireccion(v);
             }
@@ -579,7 +588,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'contacto') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Quién recibe la ayuda?" sub="Es a quien van a llamar cuando lleguen con la ayuda. Pusimos tu contacto; cámbialo si en el sitio atiende alguien más." />
+        <Pregunta titulo={t('flowContactTitle')} sub={t('flowContactSub')} />
         <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} errores={errores} />
         <AlgoMas titulo="Algo más sobre la necesidad">
           <Field id="pq" etiqueta="Para quién es la ayuda" tipo="select" opciones={PARA_QUIEN} placeholder="Sin especificar" valor={e.paraQuien} onChange={(v) => set({ paraQuien: v })} className="mb-3" />
@@ -591,7 +600,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'fotos') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Tienes fotos de lo que pasó?" sub="Son opcionales. Una foto o un video le muestran a otra organización qué está pasando, y con eso deciden más rápido si pueden ayudar." />
+        <Pregunta titulo={t('flowPhotosTitle')} sub={t('flowPhotosSub')} />
         <CampoFotos fotos={e.fotos} onAgregar={(nuevas, pesados) => agregarFotos(nuevas, pesados)} onQuitar={quitarFoto} error={errores.errores.fotos} />
         <div className="mt-6 border-t border-rd-line pt-5">
           <Field
@@ -610,16 +619,16 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'revisar') {
     pantalla = (
       <>
-        <Pregunta titulo="Revisar y publicar" sub="Así lo van a ver las organizaciones. Toca cualquier dato para cambiarlo." />
-        <ResumenPub titulo="Se solicita">
+        <Pregunta titulo={t('flowReviewTitle')} sub={t('flowReviewSub')} />
+        <ResumenPub titulo={t('flowRequestedHeading')}>
           {metas.map((m) => (
             <FilaMeta key={m.item} m={m} e={e} onMeta={(n) => set((p) => ({ metas: { ...p.metas, [m.item]: n } }))} onDetalle={(cambio) => detalle(m.item, cambio)} errores={errores} />
           ))}
         </ResumenPub>
-        <FilaRevisar clave="Dónde" valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
-        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
-        <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
-        <FilaRevisar clave="Enlace" valor={e.sourceUrl?.trim() || 'Sin enlace'} accion={e.sourceUrl?.trim() ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave={t('flowWhereTitle')} valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
+        <FilaRevisar clave={t('flowContactTitle')} valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave="Enlace" valor={e.sourceUrl?.trim() || 'Sin enlace'} accion={e.sourceUrl?.trim() ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
   }
@@ -642,7 +651,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   return (
     <>
-      <MarcoFlujo nombre="Pedir ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar necesidad" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('publishNeed')} fases={[t('flowWhatNeeded'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar={t('btnPublishNeed')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />

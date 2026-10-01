@@ -21,6 +21,8 @@ import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { DocumentosVerificacionSection } from '../../components/perfil/DocumentosVerificacionSection';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export interface PersonaExt extends Persona {
   ciudad?: string;
@@ -57,14 +59,25 @@ function pestanaPedida(): PestanaPerfil {
   return PESTANAS.some((p) => p.id === t) ? (t as PestanaPerfil) : 'datos';
 }
 
-export const PerfilPage: React.FC = () => (
+export interface PerfilPageProps {
+  authUser?: any;
+}
+
+export const PerfilPage: React.FC<PerfilPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Perfil />
+    <Perfil authUser={authUser} />
   </AvisosProvider>
 );
 
-const Perfil: React.FC = () => {
+const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const { t } = useTranslation();
   const avisar = useAviso();
+  const pestanas = useMemo(() => [
+    { id: 'datos' as PestanaPerfil, nombre: t('profileTabInfo') },
+    { id: 'acceso' as PestanaPerfil, nombre: t('profileTabAccess') },
+    { id: 'avisos' as PestanaPerfil, nombre: t('profileTabNotifs') },
+    { id: 'seguridad' as PestanaPerfil, nombre: t('profileTabSecurity') },
+  ], [t]);
   const [actual, setActual] = useState<PestanaPerfil>(pestanaPedida);
   const [cajon, setCajon] = useState(false);
   const [yo, setYo] = useState<PersonaExt>({
@@ -248,25 +261,43 @@ const Perfil: React.FC = () => {
   };
 
   return (
-    <Shell seccion="perfil" panelNombre={nombrePanel()} cuenta={cuentaUsuario} pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="perfil"
+      panelNombre={nombrePanel()}
+      cuenta={cuentaUsuario}
+      authUser={authUser || getStoredAuthUser()}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Configuración y perfil</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('profileTitle')}</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeedButton')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('publishOfferButton')}
               </Button>
             </span>
             <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
           </span>
         </header>
-        <Pestanas etiqueta="Pestañas del perfil" pestanas={PESTANAS} actual={actual} onCambiar={cambiarTab} className="px-4 sm:px-6 lg:px-8" />
+        <Pestanas etiqueta={t('profileTabsAria')} pestanas={pestanas} actual={actual} onCambiar={cambiarTab} className="px-4 sm:px-6 lg:px-8" />
 
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
             {/* quién: la cabecera del perfil */}
             <section aria-label="Resumen del perfil" className="flex flex-wrap items-start gap-3 rounded-rd-lg border border-rd-line bg-rd-surface p-4">
@@ -276,17 +307,17 @@ const Perfil: React.FC = () => {
                   <h2 className="font-rd m-0 text-rd-15 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{yo.nombre}</h2>
                   {yo.tipoPerfil === 'organizacion' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-rd-11 font-semibold text-blue-800 border border-blue-200">
-                      <Building className="h-3 w-3" /> Organización
+                      <Building className="h-3 w-3" /> {t('profileRoleOrg')}
                     </span>
                   )}
                   {yo.tipoPerfil === 'lider' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-rd-11 font-semibold text-amber-800 border border-amber-200">
-                      <Users className="h-3 w-3" /> Líder Comunitario
+                      <Users className="h-3 w-3" /> {t('profileRoleLeader')}
                     </span>
                   )}
                   {yo.tipoPerfil === 'voluntario' && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-rd-11 font-semibold text-emerald-800 border border-emerald-200">
-                      <User className="h-3 w-3" /> Voluntario Natural
+                      <User className="h-3 w-3" /> {t('profileRoleVolunteer')}
                     </span>
                   )}
                 </div>
@@ -296,12 +327,16 @@ const Perfil: React.FC = () => {
                   <b className="font-semibold text-rd-ink">
                     {hasOrg ? (orgData?.nombre || 'Mi Organización') : `${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}`}
                   </b>
-                  <span className="text-rd-ink-meta">En RaDAR desde {yo.desde}</span>
+                  <span className="text-rd-ink-meta">{t('profileMemberSince')} {yo.desde}</span>
                 </p>
               </div>
-              {(hasOrg || yo.tipoPerfil !== 'voluntario') && (
+              {(hasOrg || yo.tipoPerfil !== 'voluntario') ? (
                 <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(RUTAS.miOrganizacion)}>
-                  Ir al panel
+                  {t('goToDashboard')}
+                </Button>
+              ) : (
+                <Button nivel="secundario" tamano="md" className="max-sm:basis-full" onClick={() => irA(RUTAS.actividad)}>
+                  {t('goToMyActivity')}
                 </Button>
               )}
             </section>
@@ -324,22 +359,22 @@ const Perfil: React.FC = () => {
 
             {actual === 'acceso' && (
               <>
-                <Caja titulo="Correo y contraseña">
-                  <FilaDato rotulo="Correo de ingreso" nota="Con él entras a la plataforma" accion={<span className="text-rd-12 text-emerald-700 font-semibold">🟢 Autenticado</span>}>
+                <Caja titulo={t('profileEmailPassword')}>
+                  <FilaDato rotulo={t('profileLoginEmail')} nota="Con él entras a la plataforma" accion={<span className="text-rd-12 text-emerald-700 font-semibold">🟢 Autenticado</span>}>
                     {yo.correo}
                   </FilaDato>
-                  <FilaDato rotulo="Contraseña" nota="Protegida con Supabase Auth" accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
+                  <FilaDato rotulo={t('profilePassword')} nota="Protegida con Supabase Auth" accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
                     try {
                       await supabase.auth.resetPasswordForEmail(yo.correo);
                       avisar('Te enviamos un enlace para restablecer tu contraseña a tu correo', { tipo: 'ok' });
                     } catch {
                       avisar('Error enviando enlace de restablecimiento', { tipo: 'error' });
                     }
-                  }}>Cambiar contraseña</Button>}>
+                  }}>{t('profileResetPassword')}</Button>}>
                     ••••••••••
                   </FilaDato>
                 </Caja>
-                <Caja titulo="Sesión activa">
+                <Caja titulo={t('profileActiveSessions')}>
                   <div className="flex items-start gap-3 py-2">
                     <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2">
                       <Monitor className="h-4.5 w-4.5" />
@@ -359,20 +394,22 @@ const Perfil: React.FC = () => {
             {actual === 'avisos' && <Notificaciones canales={canales} onCambiar={cambiarCanal} />}
 
             {actual === 'seguridad' && (
-              <Caja titulo="Seguridad y cuenta">
+              <Caja titulo={t('profileTabSecurity')}>
                 {hasOrg && (
                   <FilaDato rotulo="Salir de la organización" nota="Dejas de administrar sus solicitudes y entregas." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('salir')}>Salir</Button>}>
                     {orgData?.nombre || 'Mi Organización'}
                   </FilaDato>
                 )}
-                <FilaDato rotulo="Cerrar sesión" nota="Cierra la sesión activa en este dispositivo." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
-                  await supabase.auth.signOut();
-                  localStorage.clear();
-                  window.location.href = '/';
-                }}>Cerrar sesión</Button>}>
+                <FilaDato rotulo={t('navLogout')} nota="Cierra la sesión activa en este dispositivo." accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
+                  clearStoredAuthUser();
+                  try {
+                    await supabase.auth.signOut();
+                  } catch {}
+                  window.location.href = '/mapa-ayudas-necesidades';
+                }}>{t('navLogout')}</Button>}>
                   {yo.correo}
                 </FilaDato>
-                <FilaDato rotulo="Eliminar tu cuenta" nota="Se borran tus datos personales." accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('eliminar')}>Eliminar la cuenta</Button>}>
+                <FilaDato rotulo={t('profileDeleteAccount')} nota={t('profileDeleteWarning')} accion={<Button nivel="secundario" tamano="sm" onClick={() => setConfirmando('eliminar')}>{t('profileDeleteAccount')}</Button>}>
                   {yo.correo}
                 </FilaDato>
               </Caja>

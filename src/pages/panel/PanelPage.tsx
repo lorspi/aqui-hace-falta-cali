@@ -26,7 +26,7 @@ import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMo
 import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
-import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
+import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
@@ -37,8 +37,12 @@ import { Barra } from '../../components/ui/Barra';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
-import { supabase } from '../../lib/supabaseClient';
-import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember } from '../../lib/supabaseService';
+import { commitmentToSolicitud, commitmentToEntregaRecibida, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
+import { uploadEvidencePhotos } from '../../utils/storageUpload';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -76,8 +80,23 @@ const PestanasPanel: React.FC<{
   onCambiar: (id: string) => void;
   nombrePanel: string;
 }> = ({ pestanas, actual, onCambiar, nombrePanel }) => {
+  const { t } = useTranslation();
   const zonaRef = useRef<HTMLDivElement>(null);
   const [desborda, setDesborda] = useState(false);
+
+  const traducirNombrePestana = (id: string, def: string): string => {
+    switch (id) {
+      case 'resumen': return t('dashboardTabSummary');
+      case 'necesidades': return t('dashboardTabNeeds');
+      case 'ofertas': return t('dashboardTabOffers');
+      case 'seguimiento': return t('dashboardTabDeliveries');
+      case 'reportes': return t('dashboardTabReports');
+      case 'equipo': return t('dashboardTabTeam');
+      case 'inventario': return t('dashboardTabInventory');
+      case 'ajustes': return t('dashboardTabSettings');
+      default: return def;
+    }
+  };
 
   useEffect(() => {
     const z = zonaRef.current;
@@ -158,7 +177,7 @@ const PestanasPanel: React.FC<{
                     : 'border-transparent font-medium text-rd-ink-meta hover:border-rd-line hover:text-rd-ink'
                 }`}
               >
-                <span>{p.nombre}</span>
+                <span>{traducirNombrePestana(p.id, p.nombre)}</span>
                 {p.n ? (
                   <>
                     <span className="sr-only">, </span>
@@ -186,15 +205,46 @@ const PestanasPanel: React.FC<{
   );
 };
 
-export const PanelPage: React.FC = () => (
+export interface PanelPageProps {
+  authUser?: any;
+}
+
+export const PanelPage: React.FC<PanelPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Panel />
+    <Panel authUser={authUser} />
   </AvisosProvider>
 );
 
-const Panel: React.FC = () => {
+const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const { t } = useTranslation();
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
   const avisar = useAviso();
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
 
   /* --- la campana --- */
@@ -209,37 +259,37 @@ const Panel: React.FC = () => {
 
   const [modulos, setModulos] = useState<ModulosCuenta>(modulosGuardados);
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
-  const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
-  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
+  const [sol, setSol] = useState<Solicitud[]>([]);
+  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>([]);
   const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-oferta-creada-recursos');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return OFERTA.recursos;
+    return [];
   });
   const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-necesidad-creada-recursos');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return NECESIDAD.recursos;
+    return [];
   });
   const [solicitudesEnviadas, setSolicitudesEnviadas] = useState<SolicitudEnviada[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-solicitudes-enviadas');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return SOLICITUDES_ENVIADAS;
+    return [];
   });
   const [ofrecimientosEnviados, setOfrecimientosEnviados] = useState<OfrecimientoEnviado[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-ofrecimientos-enviados');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return OFRECIMIENTOS_ENVIADOS;
+    return [];
   });
-  const [equipo, setEquipo] = useState<MiembroEquipo[]>(EQUIPO);
+  const [equipo, setEquipo] = useState<MiembroEquipo[]>([]);
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
@@ -429,6 +479,7 @@ const Panel: React.FC = () => {
   }, []);
 
   const [orgData, setOrgData] = useState<DatosOrg>(ORG);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRealData() {
@@ -437,6 +488,7 @@ const Panel: React.FC = () => {
         if (authData?.user) {
           const dbOrg = await fetchOrganizationByUserId(authData.user.id);
           if (dbOrg) {
+            setCurrentOrgId(dbOrg.id);
             setOrgData({
               nombre: dbOrg.org_name,
               tipo: dbOrg.organization_type || 'Organización',
@@ -457,23 +509,51 @@ const Panel: React.FC = () => {
 
             const dbCommitments = await fetchOrgCommitments(dbOrg.id, authData.user.id);
             if (dbCommitments && dbCommitments.length > 0) {
-              const mappedSol: Solicitud[] = dbCommitments.map((c: any, index: number) => ({
-                id: index + 1000,
-                dbId: c.id,
-                quien: c.resource_name || 'Solicitud de ayuda',
-                rec: c.resource_name,
-                cant: c.quantity,
-                u: c.unit,
-                estado: (c.status || 'nueva') as Solicitud['estado'],
-                cuando: c.created_at ? new Date(c.created_at).toLocaleString('es-CO') : 'Reciente',
-                vol: 1
-              }));
+              const mappedSol: Solicitud[] = dbCommitments.map((c: any) => commitmentToSolicitud(c));
+              const mappedRec: EntregaRecibida[] = dbCommitments.map((c: any) => commitmentToEntregaRecibida(c));
               setSol(mappedSol);
+              setRecibidas(mappedRec);
+            }
+
+            const dbMembers = await fetchOrganizationMembers(dbOrg.id);
+            if (dbMembers && dbMembers.length > 0) {
+              const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
+                id: idx + 1,
+                dbId: m.id,
+                n: m.profiles?.full_name || 'Miembro de equipo',
+                rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
+                rol: m.member_title || m.role_in_org || 'Operativo',
+                veh: '',
+                tel: m.profiles?.phone || '',
+                correo: m.profiles?.email || '',
+                disp: '',
+                hechas: 0
+              }));
+              setEquipo(mappedEquipo);
             }
           }
+
+          // Consultar publicaciones del usuario y globales en Supabase para el panel
+          const [{ data: userNeeds }, { data: userOffers }, { data: allNeeds }, { data: allOffers }] = await Promise.all([
+            supabase.from('needs').select('*').eq('user_id', authData.user.id),
+            supabase.from('offers').select('*').eq('user_id', authData.user.id),
+            supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
+            supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED')
+          ]);
+
+          if (userNeeds && userNeeds.length > 0) {
+            setModulos((prev) => ({ ...prev, pide: true }));
+          }
+          if (userOffers && userOffers.length > 0) {
+            setModulos((prev) => ({ ...prev, ofrece: true }));
+          }
+
+          const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
+          const mappedAllOffers = (allOffers || []).map(dbOfferToOffer).map(offerToPublicacion);
+          setTodasLasPubs([...mappedAllNeeds, ...mappedAllOffers]);
         }
       } catch (err) {
-        console.warn('Usando datos de demostración en PanelPage:', err);
+        console.warn('Error al cargar datos reales en PanelPage:', err);
       }
     }
     loadRealData();
@@ -606,7 +686,7 @@ const Panel: React.FC = () => {
     });
     avisar('Oferta cancelada', { tipo: 'ok' });
   };
-  const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+  const registrarMiembro = async (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     const nuevo: MiembroEquipo = {
       ...m,
       id: Math.max(...equipo.map((x) => x.id), 0) + 1,
@@ -614,15 +694,41 @@ const Panel: React.FC = () => {
     };
     setEquipo((prev) => [nuevo, ...prev]);
     avisar(`${nuevo.n} ya está en tu equipo`, { tipo: 'ok' });
+
+    if (currentOrgId) {
+      try {
+        const dbRes = await addOrganizationMember({
+          organizationId: currentOrgId,
+          memberTitle: m.rol,
+          roleInOrg: m.rolPlataforma === 'admin' ? 'admin' : 'operativo',
+          name: m.n,
+          phone: m.tel,
+          email: m.correo
+        });
+        if (dbRes?.id) {
+          setEquipo((prev) => prev.map((x) => (x.id === nuevo.id ? { ...x, dbId: dbRes.id } : x)));
+        }
+      } catch (e) {
+        console.warn('Error registrando miembro en Supabase:', e);
+      }
+    }
   };
   const editarMiembro = (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     setEquipo((prev) => prev.map((x) => (x.id === id ? { ...x, ...m } : x)));
     avisar(`Datos de ${m.n} actualizados.`, { tipo: 'ok' });
   };
-  const eliminarMiembro = (id: number) => {
+  const eliminarMiembro = async (id: number) => {
     const m = equipo.find((x) => x.id === id);
     setEquipo((prev) => prev.filter((x) => x.id !== id));
     avisar(`${m?.n ?? 'Ya'} salió de tu equipo`);
+
+    if ((m as any)?.dbId) {
+      try {
+        await removeOrganizationMember((m as any).dbId);
+      } catch (e) {
+        console.warn('Error eliminando miembro en Supabase:', e);
+      }
+    }
   };
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
@@ -640,7 +746,7 @@ const Panel: React.FC = () => {
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
 
   /* --- matches de necesidades y ofertas propias --- */
-  const todasLasPubs = useMemo(() => obtenerPublicaciones(), []);
+  const [todasLasPubs, setTodasLasPubs] = useState<Publicacion[]>([]);
 
   const pubNecesidadComoPublicacion: Publicacion = useMemo(() => ({
     id: pubNecesidad.id,
@@ -813,22 +919,26 @@ const Panel: React.FC = () => {
       window.print();
     }, 150);
   };
-  const marcarEnCamino = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const marcarEnCamino = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
     if (!s) return;
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
-      const quien = quienLleva(s, equipo) ?? 'Bomberos Voluntarios Usme';
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `En camino a ${s.quien} - ${f.nombre}`,
+      const quien = quienLleva(s, equipo) ?? ORG.nombre ?? 'Equipo de entrega';
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `En camino a ${s.quien} - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy en camino',
       }));
       FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
     }
+
     setSol((l) =>
       l.map((x) =>
         x.id === id
@@ -849,18 +959,33 @@ const Panel: React.FC = () => {
           : x
       )
     );
+
+    if ((s as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (s as any).dbId,
+          status: 'camino',
+          deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+        });
+      } catch (err) {
+        console.warn('Error actualizando compromiso en camino en Supabase:', err);
+      }
+    }
     avisar(`En camino. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
-  const certificar = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const certificar = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
       const quien = (s ? quienLleva(s, equipo) : null) ?? 'Bomberos Voluntarios Usme';
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `Certificación de entrega - ${f.nombre}`,
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `Certificación de entrega - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy cert.',
       }));
@@ -884,6 +1009,19 @@ const Panel: React.FC = () => {
           : x
       )
     );
+
+    if (s && (s as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (s as any).dbId,
+          status: 'confirmada',
+          deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+          confirmationStory: notas,
+        });
+      } catch (err) {
+        console.warn('Error certificando entrega en Supabase:', err);
+      }
+    }
     if (s) avisar(s.cierre?.recibe ? 'Entrega certificada. Ya la habían confirmado' : `Entrega certificada. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
   const archivar = (id: number) => {
@@ -897,16 +1035,19 @@ const Panel: React.FC = () => {
     setSol((l) => l.filter((x) => x.id !== id));
     if (s) avisar(`Compromiso cancelado. Le avisamos a ${s.quien}`);
   };
-  const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const confirmarRecibido = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const r = recibidas.find((x) => x.id === id);
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_RECIBIDA[id]) {
         FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
       }
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `Confirmación de recibido - ${f.nombre}`,
-        quien: 'Carlos Peña, Bomberos Voluntarios Usme',
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `Confirmación de recibido - Foto ${i + 1}`,
+        quien: 'Organización receptora',
         cuando: 'Hoy conf.',
       }));
       FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
@@ -929,6 +1070,19 @@ const Panel: React.FC = () => {
           : x
       )
     );
+
+    if (r && (r as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (r as any).dbId,
+          status: 'confirmada',
+          receptionPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+          confirmationStory: notas,
+        });
+      } catch (err) {
+        console.warn('Error confirmando recibido en Supabase:', err);
+      }
+    }
     if (r) avisar(`Confirmaste lo que llegó de ${r.org}`, { tipo: 'ok' });
   };
   const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
@@ -1126,17 +1280,38 @@ const Panel: React.FC = () => {
   };
 
   return (
-    <Shell seccion="panel" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientes} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="panel"
+      panelNombre={nombrePanel()}
+      cuenta={CUENTA}
+      authUser={usuarioEfectivo}
+      pendientes={pendientes}
+      avisosNuevos={sinLeer}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{nombrePanel()}</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">
+            {nombrePanel() === 'Mi comunidad' ? t('dashboardCommunityTitle') : t('dashboardTitle')}
+          </h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeedButton')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('publishOfferButton')}
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
@@ -1145,7 +1320,7 @@ const Panel: React.FC = () => {
           </span>
         </header>
         <PestanasPanel pestanas={pestanas} actual={actual} onCambiar={cambiarTab} nombrePanel={nombrePanel()} />
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
             {actual === 'necesidades' && (
@@ -1538,17 +1713,17 @@ const Panel: React.FC = () => {
         </Dialogo>
         <DialogoCierre
           abierto={marcandoEnCamino !== null}
-          titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
+          titulo={marcandoEnCamino ? `Enviar ayuda a ${marcandoEnCamino.quien}` : ''}
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}, ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Puedes registrar fotos del cargue o despacho y notas de transporte o entrega para evidenciar que la ayuda va en camino.`
               : ''
           }
-          accion="Despachar"
+          accion="Enviar"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
           nota={{
-            etiqueta: 'Detalles de despacho o transporte (vehículo, conductor, ruta)',
-            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, llegada estimada 2:30 PM...',
+            etiqueta: 'Detalles del envío o transporte (vehículo, conductor, ruta u observaciones)',
+            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, entrega directa...',
             ayuda: 'Estas notas quedarán registradas en el seguimiento y en el acta oficial de entrega.',
           }}
           onCerrar={() => setMarcandoEnCamino(null)}
@@ -1636,7 +1811,7 @@ const Panel: React.FC = () => {
               <p className="text-rd-13 text-rd-ink-2 leading-relaxed">
                 Asigna esta necesidad a tu propio equipo o brigada. Se creará una entrega en la columna{' '}
                 <strong className="text-rd-ink font-semibold">Comprometida</strong> del tablero de{' '}
-                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas despacharla y certificarla con fotos y acta oficial.
+                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas enviarla y certificarla con fotos y acta oficial.
               </p>
 
               <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3 text-rd-13">
@@ -3341,7 +3516,6 @@ function puedeMover(s: Solicitud, a: Solicitud['estado']): string | null {
   if (a === 'archivada' || s.estado === 'archivada') return 'Las completadas se archivan con el botón';
   if (a === 'confirmada') return null; // Arrastrar a Completada abre la certificación
   if (s.estado === 'confirmada') return 'Las completadas se archivan con el botón';
-  if (a === 'camino' && !s.vol) return 'Asigna primero a alguien';
   if (Math.abs(ORDEN_CICLO[a] - ORDEN_CICLO[s.estado]) > 1) return 'De a un paso';
   return null;
 }

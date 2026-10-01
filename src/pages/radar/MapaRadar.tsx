@@ -7,6 +7,9 @@ import { BadgeCheck, Check, Hand, HeartHandshake, MapPin } from 'lucide-react';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, recursosPublicacion, resumen, tituloPublicacion } from '../../utils/publicaciones';
 import { EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { translateDistance, translateItem } from '../../i18n/catalogTranslations';
+import type { Language } from '../../i18n/translations';
 
 /**
  * El mapa de la Radar con los pines del prototipo (`mapa.js`): el núcleo dice el tipo (coral
@@ -38,6 +41,7 @@ export interface MapaRadarProps {
   resaltadas?: { ids: string[]; n: number } | null;
   /** Cuando cambia, el mapa encuadra todo lo visible (al cambiar de ciudad). */
   encuadrarTodo?: { n: number } | null;
+  onMiUbicacion?: (ubicacion: Ubicacion) => void;
   className?: string;
 }
 
@@ -93,9 +97,18 @@ function pinHTML(p: Publicacion): string {
  * Solo se cuelga donde hay hover (ver `pintar`): en el teléfono el pin abre la hoja, que ya
  * trae la tarjeta entera.
  */
-function tipHTML(p: Publicacion, km: number | null): string {
+function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): string {
   const zona = p.zona || p.localidad || '';
-  const dist = distanciaTexto(km);
+  const dist = translateDistance(km, lang);
+  const recs = (p.recursos || []).map((r) => translateItem(r.item, lang)).join(', ');
+  const actor = actorPublicacion(p);
+  const localizedActor =
+    actor === 'Ciudadano'
+      ? (lang === 'en' ? 'Citizen' : lang === 'pt' ? 'Cidadão' : lang === 'fr' ? 'Citoyen' : 'Ciudadano')
+      : actor === 'Comunidad'
+      ? (lang === 'en' ? 'Community' : lang === 'pt' ? 'Comunidade' : lang === 'fr' ? 'Communauté' : 'Comunidad')
+      : actor;
+
   return renderToStaticMarkup(
     <div className="font-rd flex w-55 flex-col gap-2 p-0.5">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -103,9 +116,9 @@ function tipHTML(p: Publicacion, km: number | null): string {
         <EtiquetaEstado estado={estadoPublicacion(p)} />
       </div>
       <div>
-        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recursosPublicacion(p)}</p>
+        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recs || recursosPublicacion(p)}</p>
         <p className="m-0 mt-1 flex items-center gap-1 text-rd-12 font-medium text-rd-ink-2">
-          <span className="truncate">{actorPublicacion(p)}</span>
+          <span className="truncate">{localizedActor}</span>
           {p.verificada && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
         </p>
       </div>
@@ -122,17 +135,24 @@ function tipHTML(p: Publicacion, km: number | null): string {
 }
 
 /** Cuántas de cada tipo hay en un grupo, dicho como frase: «3 necesidades, 1 oferta». */
-function textoGrupo(n: number, o: number): string {
-  return [n ? `${n} ${n === 1 ? 'necesidad' : 'necesidades'}` : '', o ? `${o} ${o === 1 ? 'oferta' : 'ofertas'}` : ''].filter(Boolean).join(', ');
+function textoGrupo(n: number, o: number, lang: Language = 'es'): string {
+  const needSingular = lang === 'en' ? 'need' : lang === 'fr' ? 'besoin' : lang === 'pt' ? 'necessidade' : 'necesidad';
+  const needPlural = lang === 'en' ? 'needs' : lang === 'fr' ? 'besoins' : lang === 'pt' ? 'necessidades' : 'necesidades';
+  const offerSingular = lang === 'en' ? 'offer' : lang === 'fr' ? 'offre' : lang === 'pt' ? 'oferta' : 'oferta';
+  const offerPlural = lang === 'en' ? 'offers' : lang === 'fr' ? 'offres' : lang === 'pt' ? 'ofertas' : 'ofertas';
+  return [n ? `${n} ${n === 1 ? needSingular : needPlural}` : '', o ? `${o} ${o === 1 ? offerSingular : offerPlural}` : ''].filter(Boolean).join(', ');
 }
 
 /** El grupo: anillo partido por color (coral lo que se pide, navy lo que se ofrece) y el
  *  conteo en el centro. `--p` es el dato que parte el anillo; la regla `.rd-grupo` vive en
  *  `index.css` junto a las del mapa. */
-function grupoHTML(n: number, o: number): string {
+function grupoHTML(n: number, o: number, lang: Language = 'es'): string {
   const total = n + o;
   const pct = total ? Math.round((n / total) * 100) : 0;
-  const nombre = `Grupo de ${total} publicaciones: ${textoGrupo(n, o)}. Acercar`;
+  const labelGroup = lang === 'en' ? 'Group of' : lang === 'fr' ? 'Groupe de' : lang === 'pt' ? 'Grupo de' : 'Grupo de';
+  const labelPubs = lang === 'en' ? 'publications' : lang === 'fr' ? 'publications' : lang === 'pt' ? 'publicações' : 'publicaciones';
+  const labelZoom = lang === 'en' ? 'Zoom in' : lang === 'fr' ? 'Zoomer' : lang === 'pt' ? 'Aproximar' : 'Acercar';
+  const nombre = `${labelGroup} ${total} ${labelPubs}: ${textoGrupo(n, o, lang)}. ${labelZoom}`;
   return renderToStaticMarkup(
     <span role="img" aria-label={nombre} title={nombre} className="rd-grupo" style={{ ['--p' as string]: `${pct}%` }}>
       <b className="font-rd flex h-7.5 w-7.5 items-center justify-center rounded-full bg-rd-surface text-rd-12-5 font-bold text-rd-ink tabular-nums">{total}</b>
@@ -223,13 +243,29 @@ function calcularDistribucionNiveles<T>(
   return res;
 }
 
-export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, seleccionada, onSeleccionar, encuadrar, tapadoAbajo = 0, resaltadas, encuadrarTodo, className = '' }) => {
+export const MapaRadar: React.FC<MapaRadarProps> = ({
+  publicaciones,
+  ubicacion,
+  seleccionada,
+  onSeleccionar,
+  encuadrar,
+  tapadoAbajo = 0,
+  resaltadas,
+  encuadrarTodo,
+  onMiUbicacion,
+  className = '',
+}) => {
+  const { language } = useTranslation();
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
   const capaLineas = useRef<L.LayerGroup | null>(null);
   const alSeleccionar = useRef(onSeleccionar);
   alSeleccionar.current = onSeleccionar;
+  const onMiUbicacionRef = useRef(onMiUbicacion);
+  onMiUbicacionRef.current = onMiUbicacion;
+  const marcadorUbicacion = useRef<L.Marker | null>(null);
+  const botonUbicacionRef = useRef<HTMLAnchorElement | null>(null);
   /* Lo pintado: por id de publicación, y por grupo con las publicaciones que esconde. */
   const pines = useRef<Map<string, L.Marker>>(new Map());
   const grupos = useRef<{ marker: L.Marker; ids: string[] }[]>([]);
@@ -401,7 +437,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       if ('cluster' in f.properties && f.properties.cluster) {
         const { n, o } = f.properties;
         const idGrupo = f.properties.cluster_id;
-        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
+        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o, language), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
         (grupo as any)._posOriginal = L.latLng(lat, lng);
         (grupo as any)._pubTipo = n > 0 && o > 0 ? 'mixto' : n > 0 ? 'necesidad' : 'oferta';
 
@@ -443,7 +479,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       (marker as any)._pubTipo = p.tipo;
       /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
          resto y para los lectores de pantalla, que leen el `aria-label` del pin. */
-      if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p)), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
+      if (conHover) marker.bindTooltip(tipHTML(p, distanciaKm(ubicacion, p), language), { direction: 'top', offset: [0, -20], className: 'rd-tip-pin', opacity: 1 });
       marker.on('click', () => alSeleccionar.current(p.id));
       marker.addTo(c);
       pines.current.set(p.id, marker);
@@ -477,12 +513,101 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     }
   };
 
+  const irAMiUbicacion = () => {
+    const m = mapa.current;
+    if (!m) return;
+
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      alert('Tu navegador no soporta geolocalización.');
+      return;
+    }
+
+    if (botonUbicacionRef.current) {
+      botonUbicacionRef.current.classList.add('animate-pulse');
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (botonUbicacionRef.current) {
+          botonUbicacionRef.current.classList.remove('animate-pulse');
+        }
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const nuevaUbicacion: Ubicacion = {
+          lat,
+          lng,
+          zona: 'Tu ubicación',
+          simulada: false,
+        };
+
+        if (marcadorUbicacion.current) {
+          marcadorUbicacion.current.setLatLng([lat, lng]);
+        } else {
+          const userIcon = L.divIcon({
+            className: 'user-location-pin',
+            html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          });
+          marcadorUbicacion.current = L.marker([lat, lng], {
+            icon: userIcon,
+            zIndexOffset: 1000,
+          }).addTo(m);
+          marcadorUbicacion.current.bindPopup(
+            '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
+          );
+        }
+
+        m.flyTo([lat, lng], Math.max(m.getZoom(), 15), { duration: 0.5 });
+        onMiUbicacionRef.current?.(nuevaUbicacion);
+      },
+      (error) => {
+        if (botonUbicacionRef.current) {
+          botonUbicacionRef.current.classList.remove('animate-pulse');
+        }
+        console.warn('Error al obtener ubicación:', error);
+        alert('No pudimos acceder a tu ubicación. Verifica que los permisos de ubicación estén habilitados en tu navegador.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
   useEffect(() => {
     if (!nodo.current) return;
     // Centro geográfico por defecto en Colombia (Zoom 6 para ver el país si está vacio)
     const centroInicial: [number, number] = ubicacion ? [ubicacion.lat, ubicacion.lng] : [4.5709, -74.2973];
-    const m = L.map(nodo.current, { zoomControl: true, attributionControl: true }).setView(centroInicial, 6);
-    m.zoomControl.setPosition('bottomright');
+    const m = L.map(nodo.current, { zoomControl: false, attributionControl: true }).setView(centroInicial, 6);
+
+    // 1. Control de ubicación ("felchita") justo arriba del zoom
+    const LocationControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-location');
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        const a = L.DomUtil.create('a', '', container);
+        a.href = '#';
+        a.title = 'Ir a mi ubicación';
+        a.setAttribute('role', 'button');
+        a.setAttribute('aria-label', 'Ir a mi ubicación');
+        a.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+
+        L.DomEvent.on(a, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          irAMiUbicacion();
+        });
+
+        botonUbicacionRef.current = a;
+        return container;
+      },
+    });
+
+    new LocationControl().addTo(m);
+
+    // 2. Control de Zoom de Leaflet debajo del botón de ubicación
+    L.control.zoom({ position: 'bottomright' }).addTo(m);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     capaLineas.current = L.layerGroup().addTo(m);
     capa.current = L.layerGroup().addTo(m);
@@ -508,10 +633,35 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
       ro.disconnect();
       m.remove();
       mapa.current = null;
+      marcadorUbicacion.current = null;
+      botonUbicacionRef.current = null;
     };
     // El mapa se crea una vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* Si la ubicación del usuario se detecta o actualiza, sincronizar su pin en el mapa */
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !ubicacion || ubicacion.simulada) return;
+    if (marcadorUbicacion.current) {
+      marcadorUbicacion.current.setLatLng([ubicacion.lat, ubicacion.lng]);
+    } else {
+      const userIcon = L.divIcon({
+        className: 'user-location-pin',
+        html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      marcadorUbicacion.current = L.marker([ubicacion.lat, ubicacion.lng], {
+        icon: userIcon,
+        zIndexOffset: 1000,
+      }).addTo(m);
+      marcadorUbicacion.current.bindPopup(
+        '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
+      );
+    }
+  }, [ubicacion]);
 
   /* Los pines siguen a las publicaciones filtradas; encuadra si no lo ha hecho aun. */
   useEffect(() => {
@@ -521,7 +671,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({ publicaciones, ubicacion, 
     }
     pintar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indice]);
+  }, [indice, language]);
   useEffect(() => {
     marcar();
     // eslint-disable-next-line react-hooks/exhaustive-deps

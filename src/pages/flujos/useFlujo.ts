@@ -3,6 +3,7 @@ import { RUTAS } from '../../mocks/cuentasMock';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { SubPaso } from '../../types/flujo';
 import { activarModulo } from '../../utils/panel';
+import { guardarAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 
 /**
  * La mecánica común de un flujo de publicar (`flujo.js` del prototipo): el estado, el paso
@@ -78,6 +79,25 @@ export function useFlujo<E extends EstadoBase>(
     if (primero !== -1) irIndice(primero);
   };
 
+  const autoPublicadoRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || autoPublicadoRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autoPublicar') === '1') {
+      autoPublicadoRef.current = true;
+      params.delete('autoPublicar');
+      const nuevoSearch = params.toString() ? `?${params.toString()}` : '';
+      window.history.replaceState(null, '', window.location.pathname + nuevoSearch + window.location.hash);
+      limpiarAccionPendiente();
+
+      if (pasos.every((p) => listo(e, p))) {
+        publicar();
+      } else {
+        irIndice(pasos.length - 1);
+      }
+    }
+  }, [pasos, listo, e]);
+
   /* Guarda de verdad: se comprueba el camino entero, no el paso actual. */
   const publicar = async () => {
     if (!pasos.every((p) => listo(e, p))) return;
@@ -96,7 +116,15 @@ export function useFlujo<E extends EstadoBase>(
       guardarBorrador();
       const msg = err?.message || 'Error guardando en la base de datos.';
       if (msg === 'AUTH_REQUIRED' || msg.includes('AUTH_REQUIRED')) {
-        setErrorPublicar('Debes iniciar sesión para publicar. Tu formulario fue guardado en borrador.');
+        guardarAccionPendiente({
+          tipo: 'publicar_flujo',
+          flujo: modulo === 'pide' ? 'pedir' : 'ofrecer',
+          rutaRetorno: window.location.pathname,
+          autoEjecutar: true,
+          mensaje: `Tu borrador de ${modulo === 'pide' ? 'necesidad' : 'oferta'} fue guardado. Inicia sesión o regístrate para publicar.`,
+        });
+        window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+        return;
       } else {
         setErrorPublicar(msg);
       }

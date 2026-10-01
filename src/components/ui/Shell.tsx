@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, ChevronLeft, ClipboardList, Hand, HeartHandshake, House, LogIn, LogOut, MapPin, Menu, Plus, ShieldCheck, Users, X } from 'lucide-react';
 import { Avatar, Contador } from './Etiqueta';
 import { Divisor } from './Divisor';
+import { LanguageSelector } from '../LanguageSelector';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { entidadActual } from '../../utils/cuenta';
+import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**
  * El cascarón de la app con sesión (`rd-shell` del prototipo), con utilidades sobre los
@@ -49,21 +52,58 @@ const ITEM = 'font-rd flex h-9.5 shrink-0 items-center gap-3 rounded-rd-lg px-3 
 const ITEM_ACTUAL = 'bg-rd-navy-soft font-semibold text-rd-navy hover:bg-rd-navy-soft hover:text-rd-navy';
 
 export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, isModeratorOrAdmin = false, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onOpenProfileModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
+  const { t } = useTranslation();
   const [plegado, setPlegado] = useState(false);
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
 
   const [sessionUser, setSessionUser] = useState<any>(() => {
-    if (authUser) return authUser;
-    return null;
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
   });
 
-  const [hasOrg, setHasOrg] = useState<boolean>(false);
+  const [hasOrg, setHasOrg] = useState<boolean>(() => {
+    if (authUser === null) return false;
+    const u = authUser !== undefined ? authUser : getStoredAuthUser();
+    if (!u) return false;
+    const pt = (u.profile_type || u.user_metadata?.profile_type || '').toString().toLowerCase();
+    return pt === 'organizacion' || Boolean(u.org_name) || Boolean(u.organization);
+  });
+
+  // 1. Sincronizar inmediatamente si el componente padre cambia authUser (ej: tras cerrar sesión -> authUser = null)
+  useEffect(() => {
+    if (authUser === null) {
+      setSessionUser(null);
+      setHasOrg(false);
+    } else if (authUser !== undefined) {
+      setSessionUser(authUser);
+      const pt = (authUser.profile_type || authUser.user_metadata?.profile_type || '').toString().toLowerCase();
+      setHasOrg(pt === 'organizacion' || Boolean(authUser.org_name) || Boolean(authUser.organization));
+    }
+  }, [authUser]);
+
+  // 2. Escuchar evento global de sesión para reaccionar al instante ante cualquier logout/login
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setSessionUser(u);
+      if (!u) {
+        setHasOrg(false);
+      } else {
+        const pt = (u.profile_type || u.user_metadata?.profile_type || '').toString().toLowerCase();
+        setHasOrg(pt === 'organizacion' || Boolean(u.org_name) || Boolean(u.organization));
+      }
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     const checkUser = async () => {
+      if (authUser === null) return;
       try {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
@@ -110,6 +150,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             };
 
             setSessionUser(fullUser);
+            saveStoredAuthUser(fullUser);
 
             if (isAdmin || isMod) {
               if (typeof window !== 'undefined' && !localStorage.getItem('ahf_admin_user')) {
@@ -133,8 +174,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       } catch {}
 
       if (isMounted && !authUser) {
-        setSessionUser(null);
-        setHasOrg(false);
+        if (!getStoredAuthUser()) {
+          setSessionUser(null);
+          setHasOrg(false);
+        }
       }
     };
 
@@ -144,8 +187,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       if (session?.user && isMounted) {
         checkUser();
       } else if (!authUser && isMounted) {
-        setSessionUser(null);
-        setHasOrg(false);
+        if (!getStoredAuthUser()) {
+          setSessionUser(null);
+          setHasOrg(false);
+        }
       }
     });
 
@@ -156,22 +201,28 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [authUser]);
 
   const activeUser = useMemo(() => {
-    if (!authUser && !sessionUser) {
+    if (authUser === null) {
+      return null;
+    }
+    const base = authUser !== undefined ? authUser : (sessionUser || getStoredAuthUser());
+    if (!base) {
       return null;
     }
     return {
+      ...base,
       ...(sessionUser || {}),
       ...(authUser || {}),
-      id: authUser?.id || sessionUser?.id,
+      id: authUser?.id || sessionUser?.id || base.id,
       user_metadata: {
+        ...(base.user_metadata || {}),
         ...(sessionUser?.user_metadata || {}),
         ...(authUser?.user_metadata || {}),
       },
-      role: authUser?.role || sessionUser?.role || sessionUser?.user_metadata?.role,
-      profile_type: authUser?.profile_type || sessionUser?.profile_type || sessionUser?.user_metadata?.profile_type || sessionUser?.user_metadata?.profileType,
-      org_name: authUser?.org_name || sessionUser?.org_name || sessionUser?.user_metadata?.org_name || sessionUser?.organization,
-      organization: authUser?.organization || sessionUser?.organization || authUser?.org_name || sessionUser?.org_name,
-      name: authUser?.name || sessionUser?.name || authUser?.user_metadata?.full_name || sessionUser?.user_metadata?.full_name,
+      role: authUser?.role || sessionUser?.role || base.role,
+      profile_type: authUser?.profile_type || sessionUser?.profile_type || base.profile_type,
+      org_name: authUser?.org_name || sessionUser?.org_name || base.org_name || base.organization,
+      organization: authUser?.organization || sessionUser?.organization || base.organization || base.org_name,
+      name: authUser?.name || sessionUser?.name || base.name || base.full_name,
     };
   }, [authUser, sessionUser]);
 
@@ -190,17 +241,34 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [activeUser, cuenta]);
 
   const handleLogoutAction = async () => {
-    if (onLogout) {
-      onLogout();
-      return;
-    }
+    // 1. Limpiar inmediatamente el estado visual en Shell
+    setSessionUser(null);
+    setHasOrg(false);
+    clearStoredAuthUser();
+
+    // 2. Cerrar sesión en Supabase
     try {
       await supabase.auth.signOut();
-    } catch {}
-    localStorage.removeItem('ahf_auth_user');
-    localStorage.removeItem('ahf_admin_user');
-    localStorage.removeItem('ahf_admin_token');
-    window.location.href = '/';
+    } catch (e) {
+      console.error('Error al cerrar sesión en Supabase:', e);
+    }
+
+    // 3. Notificar al callback del padre si fue provisto
+    if (onLogout) {
+      try {
+        await onLogout();
+      } catch (e) {
+        console.error('Error en onLogout:', e);
+      }
+    }
+
+    // 4. Si la pantalla actual requiere autenticación, navegar al radar/mapa
+    if (['panel', 'perfil', 'actividad'].includes(seccion)) {
+      if (window.location.pathname !== '/mapa-ayudas-necesidades') {
+        window.history.pushState({}, '', '/mapa-ayudas-necesidades');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    }
   };
 
   /* El panel del «+» se cierra con Escape o tocando fuera. */
@@ -234,21 +302,29 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     }
   };
 
+  const [dbProfileType, setDbProfileType] = useState<string | null>(null);
+
   useEffect(() => {
     if (!activeUser?.id) {
       setHasOrg(false);
+      setDbProfileType(null);
       return;
     }
     let isMounted = true;
-    async function checkOrg() {
+    async function checkUserOrgAndProfile() {
       try {
-        const { data } = await supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle();
-        if (isMounted) {
-          setHasOrg(Boolean(data));
+        const [orgRes, profRes] = await Promise.all([
+          supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle(),
+          supabase.from('profiles').select('profile_type, role').eq('id', activeUser.id).maybeSingle()
+        ]);
+        if (!isMounted) return;
+        setHasOrg(Boolean(orgRes.data));
+        if (profRes.data) {
+          setDbProfileType((profRes.data.profile_type || profRes.data.role || '').toLowerCase());
         }
       } catch {}
     }
-    checkOrg();
+    checkUserOrgAndProfile();
     return () => {
       isMounted = false;
     };
@@ -264,8 +340,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     }
   } catch {}
 
-  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || adminStorageRole || '').toString().trim().toLowerCase();
-  const normProfileType = (activeUser?.profile_type || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
+  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || dbProfileType || adminStorageRole || '').toString().trim().toLowerCase();
+  const normProfileType = (dbProfileType || activeUser?.profile_type || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
   const esAdminOModerador = Boolean(
@@ -317,22 +393,22 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   );
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
-    { id: 'radar', nombre: 'Radar', href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
-    { id: 'directorio', nombre: 'Directorio', href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
+    { id: 'radar', nombre: t('navRadar'), href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
+    { id: 'directorio', nombre: t('navDirectory'), href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
   ];
 
   if (estaLogueado) {
     if (esAdminOModerador) {
       secciones.push({
         id: 'panel-admin' as Seccion,
-        nombre: 'Panel admin',
+        nombre: t('navAdmin'),
         href: rutas['panel-admin'] || '/panel-admin',
         icono: <ShieldCheck className="h-5 w-5" />
       });
       if (esComunidad) {
         secciones.push({
           id: 'panel',
-          nombre: 'Mi comunidad',
+          nombre: t('navCommunity'),
           href: rutas.panel || '/panel-v2',
           icono: <House className="h-5 w-5" />,
           n: pendientes
@@ -340,7 +416,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       } else if (esOrganizacion) {
         secciones.push({
           id: 'panel',
-          nombre: 'Mi organización',
+          nombre: t('navOrg'),
           href: rutas.panel || '/panel-v2',
           icono: <House className="h-5 w-5" />,
           n: pendientes
@@ -349,7 +425,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     } else if (esIndividual) {
       secciones.push({
         id: 'actividad',
-        nombre: 'Mi actividad',
+        nombre: t('navActivity'),
         href: rutas.actividad || '/mi-actividad',
         icono: <ClipboardList className="h-5 w-5" />,
         n: pendientes
@@ -357,7 +433,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     } else if (esComunidad) {
       secciones.push({
         id: 'panel',
-        nombre: 'Mi comunidad',
+        nombre: t('navCommunity'),
         href: rutas.panel || '/panel-v2',
         icono: <House className="h-5 w-5" />,
         n: pendientes
@@ -365,7 +441,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     } else {
       secciones.push({
         id: 'panel',
-        nombre: 'Mi organización',
+        nombre: t('navOrg'),
         href: rutas.panel || '/panel-v2',
         icono: <House className="h-5 w-5" />,
         n: pendientes
@@ -378,19 +454,19 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     if (!estaLogueado) {
       return {
         id: 'perfil' as Seccion,
-        nombre: 'Ingresar',
+        nombre: t('navEnter'),
         href: '/registro-v2?modo=login',
         icono: <LogIn className="h-6 w-6" />,
         actual: false,
         n: 0,
-        etiqueta: 'Iniciar sesión o registrarse',
+        etiqueta: t('navLoginRegister'),
       };
     }
 
     // 1. Administrador o Moderador
     if (esAdminOModerador) {
       if (seccion === 'panel' && (esOrganizacion || esComunidad)) {
-        const nombrePanelOrg = esComunidad ? 'Mi comunidad' : 'Mi organización';
+        const nombrePanelOrg = esComunidad ? t('navCommunity') : t('navOrg');
         return {
           id: 'panel' as Seccion,
           nombre: nombrePanelOrg,
@@ -403,12 +479,12 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       }
       return {
         id: 'panel-admin' as Seccion,
-        nombre: 'Panel admin',
+        nombre: t('navAdmin'),
         href: rutas['panel-admin'] || '/panel-admin',
         icono: <ShieldCheck className="h-6 w-6" />,
         actual: seccion === 'panel-admin',
         n: 0,
-        etiqueta: 'Panel admin',
+        etiqueta: t('navAdmin'),
       };
     }
 
@@ -416,12 +492,12 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     if (esIndividual) {
       return {
         id: 'actividad' as Seccion,
-        nombre: 'Mi actividad',
+        nombre: t('navActivity'),
         href: rutas.actividad || '/mi-actividad',
         icono: <ClipboardList className="h-6 w-6" />,
         actual: seccion === 'actividad',
         n: pendientes,
-        etiqueta: `Mi actividad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+        etiqueta: `${t('navActivity')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
       };
     }
 
@@ -429,26 +505,26 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     if (esComunidad) {
       return {
         id: 'panel' as Seccion,
-        nombre: 'Mi comunidad',
+        nombre: t('navCommunity'),
         href: rutas.panel || '/panel-v2',
         icono: <House className="h-6 w-6" />,
         actual: seccion === 'panel',
         n: pendientes,
-        etiqueta: `Mi comunidad${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+        etiqueta: `${t('navCommunity')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
       };
     }
 
     // 4. Organización (ONG, Fundación, etc.) por defecto
     return {
       id: 'panel' as Seccion,
-      nombre: 'Mi organización',
+      nombre: t('navOrg'),
       href: rutas.panel || '/panel-v2',
       icono: <House className="h-6 w-6" />,
       actual: seccion === 'panel',
       n: pendientes,
-      etiqueta: `Mi organización${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      etiqueta: `${t('navOrg')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
     };
-  }, [estaLogueado, esAdminOModerador, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes]);
+  }, [estaLogueado, esAdminOModerador, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes, t]);
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
     const actual = s.id === seccion;
@@ -473,7 +549,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   };
 
   return (
-    <div className={`rd-app font-rd flex min-h-dvh w-full max-w-full overflow-x-hidden gap-3 bg-rd-fondo p-3 lg:h-dvh lg:overflow-hidden text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:block max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
+    <div className={`rd-app font-rd flex h-dvh max-h-dvh w-full max-w-full overflow-hidden gap-3 bg-rd-fondo p-3 text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:flex-col max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
       {/* ---- side nav (solo ≥ 1024) ---- */}
       <nav
         aria-label="Secciones"
@@ -511,7 +587,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         </ul>
 
         {/* ---- cuenta o login/registro en parte inferior ---- */}
-        <div className="mt-auto flex shrink-0 flex-col gap-1 border-t border-rd-line pt-2">
+        <div className="mt-auto flex shrink-0 flex-col gap-1.5 border-t border-rd-line pt-2.5">
           {estaLogueado ? (
             <>
               <button
@@ -539,38 +615,60 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                   </span>
                 )}
               </button>
+
+              {/* Selector de idioma: justo abajo de los datos de la cuenta y arriba de cerrar sesión */}
+              <div className={plegado ? 'flex justify-center' : 'w-full'}>
+                <LanguageSelector
+                  iconOnly={plegado}
+                  variant="sidebar"
+                  dropUp={true}
+                  className="w-full"
+                />
+              </div>
+
               <button
                 type="button"
                 onClick={handleLogoutAction}
                 className={`${ITEM} h-9 text-rd-13 text-rd-ink-meta ${plegado ? 'justify-center px-0' : ''} cursor-pointer w-full text-left`}
               >
                 <LogOut aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
-                <span className={plegado ? 'sr-only' : ''}>Cerrar sesión</span>
+                <span className={plegado ? 'sr-only' : ''}>{t('navLogout')}</span>
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={onOpenLoginModal || (() => {
-                window.history.pushState({}, '', '/registro-v2?modo=login');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              })}
-              className={`flex items-center gap-2.5 rounded-rd-lg px-3 py-2.5 text-rd-navy font-semibold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer ${plegado ? 'justify-center px-0' : ''}`}
-              title="Iniciar sesión / Registro"
-            >
-              <LogIn aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-navy" />
-              {!plegado && (
-                <span className="truncate text-rd-13 font-bold">
-                  Iniciar sesión / Registro
-                </span>
-              )}
-            </button>
+            <>
+              {/* Selector de idioma arriba de iniciar sesión cuando no está logueado */}
+              <div className={plegado ? 'flex justify-center' : 'w-full'}>
+                <LanguageSelector
+                  iconOnly={plegado}
+                  variant="sidebar"
+                  dropUp={true}
+                  className="w-full"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenLoginModal || (() => {
+                  window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+                })}
+                className={`flex items-center gap-2.5 rounded-rd-lg px-3 py-2.5 text-rd-navy font-semibold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer ${plegado ? 'justify-center px-0' : ''}`}
+                title={t('navLoginRegister')}
+              >
+                <LogIn aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-navy" />
+                {!plegado && (
+                  <span className="truncate text-rd-13 font-bold">
+                    {t('navLoginRegister')}
+                  </span>
+                )}
+              </button>
+            </>
           )}
         </div>
       </nav>
 
       {/* ---- contenido ---- */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface max-lg:min-h-dvh max-lg:w-full max-lg:max-w-full max-lg:overflow-x-hidden max-lg:rounded-none max-lg:border-0 max-lg:pb-16">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface max-lg:h-full max-lg:w-full max-lg:rounded-none max-lg:border-0">
         {children}
       </div>
 
@@ -579,13 +677,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         aria-label="Secciones"
         className="fixed right-4 bottom-2 left-4 z-800 box-border flex h-14 items-center rounded-full border border-rd-line bg-rd-surface px-2 shadow-rd-2 lg:hidden"
       >
-        <TabItem href={rutas.radar} actual={seccion === 'radar'} nombre="Radar" icono={<MapPin className="h-6 w-6" />} />
-        <TabItem href={rutas.directorio} actual={seccion === 'directorio'} nombre="Directorio" icono={<Users className="h-6 w-6" />} />
+        <TabItem href={rutas.radar} actual={seccion === 'radar'} nombre={t('navRadar')} icono={<MapPin className="h-6 w-6" />} />
+        <TabItem href={rutas.directorio} actual={seccion === 'directorio'} nombre={t('navDirectory')} icono={<Users className="h-6 w-6" />} />
         <div ref={masRef} className="relative flex w-11 shrink-0 justify-center">
           <button
             type="button"
             onClick={() => setMasAbierto((a) => !a)}
-            aria-label="Pedir o ofrecer ayuda"
+            aria-label={`${t('publishNeed')} / ${t('offerHelp')}`}
             aria-haspopup="dialog"
             aria-expanded={masAbierto}
             className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-rd-navy text-white hover:bg-rd-navy-hover focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-rd-navy"
@@ -593,13 +691,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             <Plus aria-hidden="true" className={`h-6 w-6 transition-transform ${masAbierto ? 'rotate-45' : ''}`} />
           </button>
           {masAbierto && (
-            <div role="dialog" aria-label="Pedir o ofrecer ayuda" className="absolute bottom-full left-1/2 mb-4 flex -translate-x-1/2 gap-4 rounded-rd-xl bg-rd-ink px-4 py-3 shadow-rd-2 after:absolute after:-bottom-1.5 after:left-1/2 after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-45 after:bg-rd-ink">
-              <FichaMas nombre="Pedir ayuda" color="bg-rd-coral" icono={<Hand className="h-6 w-6" />} onClick={() => { setMasAbierto(false); onPedir?.(); }} />
-              <FichaMas nombre="Ofrecer ayuda" color="bg-rd-navy" icono={<HeartHandshake className="h-6 w-6" />} onClick={() => { setMasAbierto(false); onOfrecer?.(); }} />
+            <div role="dialog" aria-label={`${t('publishNeed')} / ${t('offerHelp')}`} className="absolute bottom-full left-1/2 mb-4 flex -translate-x-1/2 gap-4 rounded-rd-xl bg-rd-ink px-4 py-3 shadow-rd-2 after:absolute after:-bottom-1.5 after:left-1/2 after:h-3 after:w-3 after:-translate-x-1/2 after:rotate-45 after:bg-rd-ink">
+              <FichaMas nombre={t('publishNeed')} color="bg-rd-coral" icono={<Hand className="h-6 w-6" />} onClick={() => { setMasAbierto(false); onPedir?.(); }} />
+              <FichaMas nombre={t('offerHelp')} color="bg-rd-navy" icono={<HeartHandshake className="h-6 w-6" />} onClick={() => { setMasAbierto(false); onOfrecer?.(); }} />
             </div>
           )}
         </div>
-        <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre="Avisos" icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`Avisos, ${avisosNuevos} nuevos`} />
+        <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre={t('navNotices')} icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`${t('navNotices')}, ${avisosNuevos} nuevos`} />
         <TabItem
           href={tabPerfil.href}
           actual={tabPerfil.actual}
@@ -645,7 +743,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                   className={`${ITEM} h-13 rounded-rd-md text-rd-16 ${seccion === 'avisos' ? ITEM_ACTUAL : ''}`}
                 >
                   <Bell aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
-                  <span className="flex-1">Avisos</span>
+                  <span className="flex-1">{t('navNotices')}</span>
                   {avisosNuevos > 0 && <Contador n={avisosNuevos} className="ml-auto" />}
                 </a>
               </li>
@@ -677,19 +775,21 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                     </span>
                   </span>
                 </button>
-                <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6">
+                <div className="border-t border-rd-line px-4 pt-3 pb-6 sm:px-6 flex flex-col gap-2.5">
+                  <LanguageSelector variant="sidebar" dropUp={false} className="w-full" />
                   <button
                     type="button"
                     onClick={handleLogoutAction}
                     className={`${ITEM} h-12 text-rd-15 text-rd-ink-meta w-full text-left cursor-pointer`}
                   >
                     <LogOut aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-ink-3" />
-                    <span>Cerrar sesión</span>
+                    <span>{t('navLogout')}</span>
                   </button>
                 </div>
               </>
             ) : (
-              <div className="mt-auto border-t border-rd-line px-4 pt-4 pb-6 sm:px-6">
+              <div className="mt-auto border-t border-rd-line px-4 pt-4 pb-6 sm:px-6 flex flex-col gap-2.5">
+                <LanguageSelector variant="sidebar" dropUp={false} className="w-full" />
                 <button
                   type="button"
                   onClick={() => {
@@ -697,14 +797,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                     if (onOpenLoginModal) {
                       onOpenLoginModal();
                     } else {
-                      window.history.pushState({}, '', '/registro-v2?modo=login');
-                      window.dispatchEvent(new PopStateEvent('popstate'));
+                      window.dispatchEvent(new CustomEvent('ahf_open_auth'));
                     }
                   }}
                   className="flex w-full items-center justify-center gap-2.5 rounded-rd-lg px-4 py-3 text-rd-navy font-bold bg-rd-navy-soft hover:bg-rd-navy/20 transition-all cursor-pointer text-rd-15"
                 >
                   <LogIn aria-hidden="true" className="h-5.5 w-5.5 shrink-0 text-rd-navy" />
-                  <span>Iniciar sesión / Registro</span>
+                  <span>{t('navLoginRegister')}</span>
                 </button>
               </div>
             )}

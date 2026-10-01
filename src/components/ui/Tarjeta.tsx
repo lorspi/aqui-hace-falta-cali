@@ -14,6 +14,7 @@ import { Donde } from './Donde';
 import { Recursos } from './Recursos';
 import { IconoWhatsApp } from './IconoMarca';
 import { useAviso } from './AvisoCorto';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * La tarjeta de una publicación (`rd-tarjeta` del prototipo): etiquetas de tipo y estado,
@@ -62,8 +63,9 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
   onReportar,
   onVerDetalle,
 }) => {
+  const { t, tDistance } = useTranslation();
   const esOferta = p.tipo === 'oferta';
-  const dist = distanciaTexto(distanciaKm);
+  const dist = tDistance(distanciaKm);
   const estado = estadoPublicacion(p);
   const avisar = useAviso();
   /* La foto abierta en el visor (índice), o ninguna. */
@@ -79,12 +81,12 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     const url = `${window.location.origin}/mapa-ayudas-necesidades?punto=${p.id}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url).then(() => {
-        avisar('Enlace copiado al portapapeles', { tipo: 'ok' });
+        avisar(t('linkCopiedOk'), { tipo: 'ok' });
       }).catch(() => {
-        avisar('No se pudo copiar el enlace', { tipo: 'error' });
+        avisar(t('linkCopiedError'), { tipo: 'error' });
       });
     } else {
-      avisar('Portapapeles no disponible', { tipo: 'error' });
+      avisar(t('clipboardError'), { tipo: 'error' });
     }
   };
 
@@ -93,21 +95,21 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     const dir = p.dir || (p.localidad ? `${p.zona}, ${p.localidad}` : p.zona);
     if (navigator.clipboard) {
       navigator.clipboard.writeText(dir).then(() => {
-        avisar('Dirección copiada al portapapeles', { tipo: 'ok' });
+        avisar(t('addressCopiedOk'), { tipo: 'ok' });
       }).catch(() => {
-        avisar('No se pudo copiar la dirección', { tipo: 'error' });
+        avisar(t('addressCopiedError'), { tipo: 'error' });
       });
     } else {
-      avisar('Portapapeles no disponible', { tipo: 'error' });
+      avisar(t('clipboardError'), { tipo: 'error' });
     }
   };
 
   const itemsMenu: ItemMenu[] = [
     ...(onCompartir
-      ? [{ texto: 'Compartir', icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir(p.id) }]
+      ? [{ texto: t('shareLink'), icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />, onElegir: () => onCompartir(p.id) }]
       : [
           {
-            texto: 'Copiar enlace',
+            texto: t('copyLink'),
             icono: <Share2 aria-hidden="true" className="h-4.5 w-4.5" />,
             onElegir: copiarEnlace,
           },
@@ -115,7 +117,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     ...(p.dir || p.zona
       ? [
           {
-            texto: 'Copiar dirección',
+            texto: t('copyAddress'),
             icono: <Copy aria-hidden="true" className="h-4.5 w-4.5" />,
             onElegir: copiarDireccion,
           },
@@ -124,7 +126,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     ...(p.sourceUrl
       ? [
           {
-            texto: 'Abrir enlace oficial',
+            texto: t('openOfficialLink'),
             icono: <ExternalLink aria-hidden="true" className="h-4.5 w-4.5" />,
             onElegir: () => {
               window.open(sanitizeExternalUrl(p.sourceUrl!), '_blank', 'noopener,noreferrer');
@@ -135,7 +137,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     ...(!p.propia && onReportar
       ? [
           {
-            texto: 'Reportar',
+            texto: t('reportIssue'),
             icono: <Flag aria-hidden="true" className="h-4.5 w-4.5" />,
             onElegir: () => onReportar(p.id),
             tono: 'peligro' as const,
@@ -209,7 +211,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               }}
               className="mt-0.5 inline-block text-rd-11-5 font-semibold text-rd-navy hover:underline cursor-pointer"
             >
-              {expandirTexto ? 'Ver menos' : 'Ver más'}
+              {expandirTexto ? t('seeLess') : t('seeMore')}
             </button>
           )}
         </div>
@@ -226,7 +228,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
         <div className="mb-2.5 max-sm:mb-2 flex items-center justify-between gap-2 rounded-rd-md border border-rd-amber-line bg-rd-amber-soft/60 px-3 py-1.5 text-rd-12">
           <span className="flex min-w-0 items-center gap-1.5 font-medium text-rd-amber-ink truncate">
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-rd-amber-ink" />
-            <span className="truncate">Campaña / Enlace oficial</span>
+            <span className="truncate">{t('campaignOfficialLink')}</span>
           </span>
           <a
             href={sanitizeExternalUrl(p.sourceUrl)}
@@ -235,7 +237,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
             onClick={(ev) => ev.stopPropagation()}
             className="inline-flex items-center gap-1 font-semibold text-rd-navy hover:underline shrink-0 text-rd-12"
           >
-            <span>Ver enlace</span>
+            <span>{t('viewLink')}</span>
             <ExternalLink className="h-3 w-3" />
           </a>
         </div>
@@ -248,7 +250,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
         <div className="mb-2.5 max-sm:mb-2 rounded-rd-lg border border-rd-line bg-rd-sunken/40 p-3 text-rd-12.5 text-rd-ink">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="font-semibold text-rd-12 uppercase tracking-wider text-rd-ink-meta">
-              Contacto y coordinación
+              {t('contactAndCoordination')}
             </span>
             {p.paraQuien && (
               <span className="inline-flex items-center gap-1 rounded-rd-sm bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-medium text-rd-navy">
@@ -264,7 +266,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               <div className="flex items-start gap-1.5">
                 <Users className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta mt-0.5" />
                 <div>
-                  <span className="text-rd-ink-meta block text-rd-11">Responsable</span>
+                  <span className="text-rd-ink-meta block text-rd-11">{t('contactResponsible')}</span>
                   <span className="font-medium text-rd-ink">{p.contactoNombre ?? p.org}</span>
                 </div>
               </div>
@@ -275,7 +277,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               <div className="flex items-start gap-1.5">
                 <Phone className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta mt-0.5" />
                 <div>
-                  <span className="text-rd-ink-meta block text-rd-11">Teléfono / WhatsApp</span>
+                  <span className="text-rd-ink-meta block text-rd-11">{t('contactPhoneWa')}</span>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
                     <a
                       href={`tel:${p.contactoTel.replace(/\s+/g, '')}`}
@@ -290,8 +292,8 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        title="Escribir por WhatsApp"
-                        aria-label="Escribir por WhatsApp"
+                        title={t('writeWhatsApp')}
+                        aria-label={t('writeWhatsApp')}
                         className="inline-flex items-center gap-1 rounded-rd-sm bg-rd-green-soft px-1.5 py-0.5 text-rd-11 font-semibold text-rd-green hover:bg-rd-green-line/50 transition-colors"
                       >
                         <IconoWhatsApp className="h-3 w-3" />
@@ -308,7 +310,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               <div className="flex items-start gap-1.5">
                 <Clock className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta mt-0.5" />
                 <div>
-                  <span className="text-rd-ink-meta block text-rd-11">Horario</span>
+                  <span className="text-rd-ink-meta block text-rd-11">{t('contactSchedule')}</span>
                   <span className="font-medium text-rd-ink">{p.horario}</span>
                 </div>
               </div>
@@ -319,7 +321,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
               <div className="flex items-start gap-1.5">
                 <Mail className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta mt-0.5" />
                 <div>
-                  <span className="text-rd-ink-meta block text-rd-11">Correo</span>
+                  <span className="text-rd-ink-meta block text-rd-11">{t('contactEmail')}</span>
                   <a
                     href={`mailto:${p.contactoEmail}`}
                     onClick={(e) => e.stopPropagation()}
@@ -337,7 +339,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
             <div className="mt-2 border-t border-rd-line-soft pt-2 flex items-start gap-1.5 text-rd-12">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-rd-ink-meta mt-0.5" />
               <div>
-                <span className="text-rd-ink-meta block text-rd-11">Cómo llegar / Acceso</span>
+                <span className="text-rd-ink-meta block text-rd-11">{t('contactAccess')}</span>
                 <span className="text-rd-ink-2 leading-relaxed">{p.comoLlegar}</span>
               </div>
             </div>
@@ -355,11 +357,11 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
           aria-disabled={cubierta || Boolean((p as any)._resuelta) || undefined}
           title={
             (p as any)._resuelta
-              ? 'Esta publicación ya fue completada y certificada'
+              ? t('tooltipCompleted')
               : cubierta
               ? esOferta
-                ? 'Esta oferta ya se entregó completa'
-                : 'Esta necesidad ya está cubierta'
+                ? t('tooltipOfferDelivered')
+                : t('tooltipNeedCovered')
               : undefined
           }
           onClick={(ev) => {
@@ -367,7 +369,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
             onPrimaria?.(p.id);
           }}
         >
-          {textoPrimaria ?? (esOferta ? 'Solicitar' : 'Ayudar')}
+          {textoPrimaria ?? (esOferta ? t('actionRequest') : t('actionHelp'))}
         </Button>
         {/* Pie de tarjeta: las acciones a la izquierda, de mayor a menor jerarquía, y el ⋮
             al extremo derecho (Alejandro, 24 de septiembre de 2026). */}
@@ -375,8 +377,8 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
           <Button
             nivel="secundario"
             tamano="md"
-            aria-label="Ver en el mapa"
-            title="Ver en el mapa"
+            aria-label={t('viewOnMap')}
+            title={t('viewOnMap')}
             soloIcono
             className="shadow-2xs"
             onClick={(ev) => {
@@ -391,8 +393,8 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
           <Button
             nivel="secundario"
             tamano="md"
-            aria-label="Ver tarjeta completa"
-            title="Ver tarjeta completa"
+            aria-label={t('viewFullCard')}
+            title={t('viewFullCard')}
             soloIcono
             className="shadow-2xs"
             onClick={(ev) => {

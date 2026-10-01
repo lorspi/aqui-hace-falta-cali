@@ -952,7 +952,7 @@ export async function updateAdminUser(userId: string, updates: Partial<{ name: s
   const payload: Record<string, any> = {};
   if (updates.name) payload.full_name = updates.name;
   if (updates.role) payload.role = updates.role.toLowerCase();
-  
+
   const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
   if (error) throw error;
 }
@@ -1006,7 +1006,7 @@ export async function fetchUserProfile(userId: string) {
       .maybeSingle();
 
     if (profileById) return profileById;
-  } catch (e) {}
+  } catch (e) { }
 
   // 2. Buscar por correo de la sesión exclusivamente en `profiles`
   const { data: sessionData } = await supabase.auth.getSession();
@@ -1024,7 +1024,7 @@ export async function fetchUserProfile(userId: string) {
         .maybeSingle();
 
       if (profileByEmail) return profileByEmail;
-    } catch (e) {}
+    } catch (e) { }
   }
 
   return null;
@@ -1327,6 +1327,40 @@ export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]
     return result;
   } catch (err) {
     console.error('[Supabase] Exception in fetchAdminOrganizationsList:', err);
+    return [];
+  }
+}
+
+/**
+ * Obtiene las entidades (organizaciones y comunidades) mapeadas al tipo Entidad del Directorio
+ */
+export async function fetchDirectorioEntidades(): Promise<any[]> {
+  try {
+    const adminOrgs = await fetchAdminOrganizationsList();
+    if (!adminOrgs || adminOrgs.length === 0) return [];
+
+    return adminOrgs.map((o) => {
+      const isComunidad = o.category === 'COMUNIDAD';
+      return {
+        id: o.id,
+        nombre: o.name,
+        tipo: o.organizationType || (isComunidad ? 'Comunidad / Liderazgo' : 'Organización'),
+        clase: isComunidad ? 'comunidad' : 'organizacion',
+        verificada: o.isVerified,
+        ciudad: 'cali',
+        zona: o.address || 'Cali',
+        lat: o.latitude || 3.4516,
+        lng: o.longitude || -76.5320,
+        dir: o.address || 'Dirección no especificada',
+        tel: o.contactPhone || o.contactWhatsapp || '',
+        wa: Boolean(o.contactWhatsapp),
+        correo: o.contactEmail,
+        lider: o.contactName,
+        entregas: 0
+      };
+    });
+  } catch (err) {
+    console.error('Error al cargar entidades para el directorio:', err);
     return [];
   }
 }
@@ -1829,6 +1863,72 @@ export async function fetchOrganizationMembers(orgId: string): Promise<any[]> {
 }
 
 /**
+ * Agrega un nuevo integrante al equipo de la organización
+ */
+export async function addOrganizationMember(payload: {
+  organizationId: string;
+  userId?: string;
+  memberTitle?: string;
+  roleInOrg?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}): Promise<any> {
+  let targetUserId = payload.userId;
+
+  if (!targetUserId && payload.email) {
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', payload.email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existingProfile) {
+      targetUserId = existingProfile.id;
+    }
+  }
+
+  const row: any = {
+    organization_id: payload.organizationId,
+    member_title: payload.memberTitle || 'Operativo',
+    role_in_org: payload.roleInOrg || 'operativo',
+    status: 'ACTIVO',
+    created_at: new Date().toISOString()
+  };
+
+  if (targetUserId) {
+    row.user_id = targetUserId;
+  }
+
+  const { data, error } = await supabase
+    .from('organization_members')
+    .insert(row)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al agregar miembro del equipo:', error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Elimina un integrante del equipo de la organización
+ */
+export async function removeOrganizationMember(memberId: string): Promise<void> {
+  const { error } = await supabase
+    .from('organization_members')
+    .delete()
+    .eq('id', memberId);
+
+  if (error) {
+    console.error('Error al eliminar miembro del equipo:', error);
+    throw error;
+  }
+}
+
+/**
  * Obtiene las entregas y compromisos de una organización (provider o requester)
  */
 export async function fetchOrgCommitments(orgId?: string, userId?: string): Promise<any[]> {
@@ -1925,6 +2025,100 @@ export async function updateCommitmentStatus(params: {
 
   if (error) {
     console.error('Error updating commitment status:', error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Consulta los avisos y notificaciones del usuario desde Supabase
+ */
+export async function fetchUserAvisos(userId: string): Promise<any[]> {
+  if (!userId) return [];
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Error al cargar notificaciones de Supabase:', error);
+      return [];
+    }
+
+    const hoy = new Date().toDateString();
+    const ayer = new Date(Date.now() - 86400000).toDateString();
+
+    return (data || []).map((row: any) => {
+      const fecha = new Date(row.created_at || Date.now());
+      const fechaStr = fecha.toDateString();
+      const dia = fechaStr === hoy ? 'hoy' : fechaStr === ayer ? 'ayer' : 'antes';
+
+      return {
+        id: row.id,
+        tipo: row.type || 'solicitud',
+        cuando: fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        dia,
+        leido: Boolean(row.is_read),
+        quien: row.sender_name || 'Sistema',
+        titulo: row.title,
+        detalle: row.detail,
+        accion: row.action_text ? {
+          texto: row.action_text,
+          nivel: row.action_level || 'terciario',
+          al: row.action_url || '#'
+        } : null
+      };
+    });
+  } catch (err) {
+    console.error('Exception in fetchUserAvisos:', err);
+    return [];
+  }
+}
+
+export async function markAvisoAsRead(notificationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', notificationId);
+  if (error) console.warn('Error actualizando estado de notificación:', error);
+}
+
+export async function markAllAvisosAsRead(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId);
+  if (error) console.warn('Error marcando notificaciones como leídas:', error);
+}
+
+export async function createNotification(payload: {
+  userId: string;
+  type?: string;
+  title: string;
+  detail: string;
+  senderName?: string;
+  actionText?: string;
+  actionLevel?: string;
+  actionUrl?: string;
+}): Promise<any> {
+  const row = {
+    user_id: payload.userId,
+    type: payload.type || 'solicitud',
+    title: payload.title,
+    detail: payload.detail,
+    sender_name: payload.senderName || 'Sistema',
+    action_text: payload.actionText || null,
+    action_level: payload.actionLevel || 'terciario',
+    action_url: payload.actionUrl || null,
+    is_read: false,
+    created_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase.from('notifications').insert(row).select().single();
+  if (error) {
+    console.error('Error al crear notificación:', error);
     throw error;
   }
   return data;

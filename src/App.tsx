@@ -71,8 +71,10 @@ import { RadarMatchModal } from "./components/RadarMatchModal";
 import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
-
 import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
+import { getStoredAuthUser, saveStoredAuthUser, clearStoredAuthUser, isUserLoggedIn } from "./utils/session";
+import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from "./utils/pendingAction";
+import { DialogoAuthRapido } from "./components/ui/DialogoAuthRapido";
 
 interface ParsedRoute {
   cityId: string;
@@ -179,8 +181,20 @@ export default function App() {
     }
     return '/';
   });
+  const [authUser, setAuthUser] = useState<any>(() => getStoredAuthUser());
 
   useEffect(() => {
+    // 1. Preload chunks so clicking navigation links doesn't trigger the Suspense fallback spinner
+    import("./pages/directorio/DirectorioPage");
+    import("./pages/panel/PanelPage");
+    import("./pages/actividad/MiActividadPage");
+    import("./pages/avisos/AvisosPage");
+    import("./pages/perfil/PerfilPage");
+    import("./pages/radar/RadarPage");
+    import("./pages/registro/RegistroPage");
+    import("./pages/flujos/PedirPage");
+    import("./pages/flujos/OfrecerPage");
+
     const handleLocationChange = () => {
       let path = window.location.pathname;
       if (path === '/radar-v2') {
@@ -190,14 +204,50 @@ export default function App() {
       setCurrentPath(path);
     };
     window.addEventListener('popstate', handleLocationChange);
+
+    // 2. Sync auth state across whole application
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const local = getStoredAuthUser();
+        const metaName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
+        const userObj = {
+          id: session.user.id,
+          name: local?.name || metaName,
+          email: session.user.email,
+          role: local?.role || session.user.user_metadata?.role || session.user.role || 'voluntario',
+          profile_type: local?.profile_type || session.user.user_metadata?.profile_type,
+          org_name: local?.org_name || session.user.user_metadata?.org_name,
+          organization: local?.organization || session.user.user_metadata?.org_name,
+          user_metadata: session.user.user_metadata,
+        };
+        setAuthUser(userObj);
+        saveStoredAuthUser(userObj);
+      } else if (event === 'SIGNED_OUT') {
+        setAuthUser(null);
+        clearStoredAuthUser();
+      }
+    });
+
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
+      subscription.unsubscribe();
     };
   }, []);
 
   const specialRoute = getSpecialRoute(currentPath);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  let content = <MainApp />;
+  useEffect(() => {
+    const handleOpenAuth = () => {
+      setIsAuthModalOpen(true);
+    };
+    window.addEventListener('ahf_open_auth', handleOpenAuth);
+    return () => window.removeEventListener('ahf_open_auth', handleOpenAuth);
+  }, []);
+
+  const abrirModalAuth = () => setIsAuthModalOpen(true);
+
+  let content = <MainApp authUser={authUser} setAuthUser={setAuthUser} onOpenLoginModal={abrirModalAuth} />;
   if (specialRoute?.type === 'landing') {
     content = <LandingPage />;
   } else if (specialRoute?.type === 'guia') {
@@ -215,19 +265,19 @@ export default function App() {
   } else if (specialRoute?.type === 'registro-v2') {
     content = <RegistroPage />;
   } else if (specialRoute?.type === 'pedir-v2') {
-    content = <PedirPage />;
+    content = <PedirPage authUser={authUser} />;
   } else if (specialRoute?.type === 'ofrecer-v2') {
-    content = <OfrecerPage />;
+    content = <OfrecerPage authUser={authUser} />;
   } else if (specialRoute?.type === 'panel-v2') {
-    content = <PanelPage />;
+    content = <PanelPage authUser={authUser} />;
   } else if (specialRoute?.type === 'directorio-v2') {
-    content = <DirectorioPage />;
+    content = <DirectorioPage authUser={authUser} onOpenLoginModal={abrirModalAuth} />;
   } else if (specialRoute?.type === 'avisos-v2') {
-    content = <AvisosPage />;
+    content = <AvisosPage authUser={authUser} />;
   } else if (specialRoute?.type === 'perfil-v2') {
-    content = <PerfilPage />;
+    content = <PerfilPage authUser={authUser} />;
   } else if (specialRoute?.type === 'actividad') {
-    content = <MiActividadPage />;
+    content = <MiActividadPage authUser={authUser} />;
   } else if (specialRoute?.type === 'cifras') {
     content = <CifrasPage />;
   } else if (specialRoute?.type === 'social') {
@@ -239,12 +289,23 @@ export default function App() {
       <Suspense fallback={<div className="min-h-screen bg-brand-surface flex items-center justify-center"><div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" /></div>}>
         {content}
       </Suspense>
+      <DialogoAuthRapido
+        abierto={isAuthModalOpen}
+        onCerrar={() => setIsAuthModalOpen(false)}
+        onExito={(userObj) => {
+          setIsAuthModalOpen(false);
+          if (userObj) {
+            setAuthUser(userObj);
+            saveStoredAuthUser(userObj);
+          }
+        }}
+      />
       <DevEnvironmentBanner />
     </>
   );
 }
 
-function MainApp() {
+function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenLoginModal: propOnOpenLoginModal }: { authUser?: any; setAuthUser?: (u: any) => void; onOpenLoginModal?: () => void } = {}) {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const sessionUser = typeof window !== 'undefined' && localStorage.getItem('ahf_admin_token')
     ? (() => {
@@ -256,17 +317,28 @@ function MainApp() {
       })()
     : null;
 
-  const [authUser, setAuthUser] = useState<any>(() => {
+  const [internalAuthUser, setInternalAuthUser] = useState<any>(() => {
+    if (propAuthUser) return propAuthUser;
     if (sessionUser) return sessionUser;
-    const local = typeof window !== 'undefined' ? localStorage.getItem('ahf_auth_user') : null;
-    if (local) {
-      try { return JSON.parse(local); } catch {}
-    }
+    const local = getStoredAuthUser();
+    if (local) return local;
     return null;
   });
 
+  useEffect(() => {
+    if (propAuthUser !== undefined) {
+      setInternalAuthUser(propAuthUser);
+    }
+  }, [propAuthUser]);
+
+  const authUser = propAuthUser || internalAuthUser;
+
+  const setAuthUser = (u: any) => {
+    setInternalAuthUser(u);
+    if (propSetAuthUser) propSetAuthUser(u);
+  };
+
   const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
@@ -454,6 +526,23 @@ function MainApp() {
   // Selected need modals
   const [selectedNeed, setSelectedNeed] = useState<Need | null>(null);
   const [selectedForHelp, setSelectedForHelp] = useState<Need | null>(null);
+
+  const handleOpenHelp = (need: Need) => {
+    if (!isUserLoggedIn() && !authUser) {
+      guardarAccionPendiente({
+        tipo: 'compromiso',
+        publicacionId: need.id,
+        rutaRetorno: window.location.pathname + (window.location.search || ''),
+        mensaje: 'Inicia sesión o regístrate para ofrecer tu ayuda en esta necesidad.',
+        fecha: new Date().toISOString(),
+      });
+      const retorno = window.location.pathname + (window.location.search || '');
+      window.history.pushState({}, '', `/registro-v2?modo=login&retorno=${encodeURIComponent(retorno)}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+    setSelectedForHelp(need);
+  };
   const [selectedForReport, setSelectedForReport] = useState<Need | null>(null);
   const [selectedForPublicEdit, setSelectedForPublicEdit] = useState<Need | null>(null);
   const [selectedOfferForEdit, setSelectedOfferForEdit] = useState<Offer | null>(null);
@@ -597,6 +686,41 @@ function MainApp() {
   const fetchFilters = useMemo(() => ({ ...filters, viewMode: 'ALL' as const }), [filters]);
   const { needs, loading: needsLoading, refetch: refetchNeeds } = useNeeds(fetchFilters, selectedCityId);
   const { offers, loading: offersLoading, refetch: refetchOffers } = useOffers(fetchFilters, selectedCityId);
+
+  // Auto-resume compromiso or pending help if coming back from login/register
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const abrirCompromisoId = params.get('abrirCompromiso') || params.get('abrirAyuda');
+    const pending = obtenerAccionPendiente();
+    const targetId = abrirCompromisoId || (pending?.tipo === 'compromiso' ? pending.publicacionId : null);
+
+    if (targetId && (isUserLoggedIn() || authUser)) {
+      const found = needs.find((n) => n.id === targetId);
+      if (found) {
+        setSelectedForHelp(found);
+        limpiarAccionPendiente();
+        if (abrirCompromisoId) {
+          params.delete('abrirCompromiso');
+          params.delete('abrirAyuda');
+          const newSearch = params.toString() ? `?${params.toString()}` : '';
+          window.history.replaceState(null, '', window.location.pathname + newSearch);
+        }
+      } else {
+        getNeedById(targetId).then((fetchedNeed) => {
+          if (fetchedNeed) {
+            setSelectedForHelp(fetchedNeed);
+            limpiarAccionPendiente();
+            if (abrirCompromisoId) {
+              params.delete('abrirCompromiso');
+              params.delete('abrirAyuda');
+              const newSearch = params.toString() ? `?${params.toString()}` : '';
+              window.history.replaceState(null, '', window.location.pathname + newSearch);
+            }
+          }
+        }).catch((err) => console.warn('Could not auto-resume need help:', err));
+      }
+    }
+  }, [needs, authUser]);
 
   // Combined counts (needs + offers) per city for the city selector
   const combinedCounts = useMemo(() => {
@@ -1172,20 +1296,7 @@ function MainApp() {
   ).length;
   const hasDemoData = needs.some((n) => n.isDemoData);
 
-  // Lock page scrolling on mobile when in MAP view so map fits viewport 100%
-  useEffect(() => {
-    if (mobileView === 'MAP') {
-      document.body.classList.add('overflow-hidden');
-      document.documentElement.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
-      document.documentElement.classList.remove('overflow-hidden');
-    }
-    return () => {
-      document.body.classList.remove('overflow-hidden');
-      document.documentElement.classList.remove('overflow-hidden');
-    };
-  }, [mobileView]);
+
 
   return (
     <div className="h-dvh max-h-dvh w-full overflow-hidden bg-rd-surface">
@@ -1193,26 +1304,21 @@ function MainApp() {
         <RadarPage
           onOpenCreateNeedModal={() => setIsCreateModalOpen(true)}
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-          onOpenLoginModal={() => {
-            window.history.pushState({}, '', '/registro-v2?modo=login');
-            window.dispatchEvent(new PopStateEvent('popstate'));
-          }}
+          onOpenLoginModal={propOnOpenLoginModal || (() => window.dispatchEvent(new CustomEvent('ahf_open_auth')))}
           onOpenProfileModal={() => {
             window.history.pushState({}, '', '/perfil-v2');
             window.dispatchEvent(new PopStateEvent('popstate'));
           }}
           onLogout={async () => {
+            clearStoredAuthUser();
             try {
               await supabase.auth.signOut();
             } catch (e) {
               console.error("Error al cerrar sesión en Supabase:", e);
             }
-            localStorage.removeItem('ahf_admin_token');
-            localStorage.removeItem('ahf_admin_user');
-            localStorage.removeItem('ahf_auth_user');
             setAuthUser(null);
           }}
-          authUser={authUser || sessionUser}
+          authUser={authUser}
           isModeratorOrAdmin={isModeratorLoggedIn || isAdminUser}
         />
       </div>
@@ -1394,7 +1500,7 @@ function MainApp() {
                             key={item.id}
                             need={item as Need}
                             onSelect={(n) => handleSelectNeed(n)}
-                            onHelp={(n) => setSelectedForHelp(n)}
+                            onHelp={(n) => handleOpenHelp(n)}
                             onViewOnMap={(n) => handleViewOnMap(n)}
                             userLat={cityCoords.lat}
                             userLng={cityCoords.lng}
@@ -1428,7 +1534,7 @@ function MainApp() {
                     key={need.id}
                     need={need}
                     onSelect={(item) => handleSelectNeed(item)}
-                    onHelp={(item) => setSelectedForHelp(item)}
+                    onHelp={(item) => handleOpenHelp(item)}
                     onViewOnMap={(item) => handleViewOnMap(item)}
                     userLat={filters.userLat}
                     userLng={filters.userLng}
@@ -1459,7 +1565,7 @@ function MainApp() {
                       key={item.data.id}
                       need={item.data}
                       onSelect={(n) => handleSelectNeed(n)}
-                      onHelp={(n) => setSelectedForHelp(n)}
+                      onHelp={(n) => handleOpenHelp(n)}
                       onViewOnMap={(n) => handleViewOnMap(n)}
                       userLat={filters.userLat}
                       userLng={filters.userLng}
@@ -1492,7 +1598,7 @@ function MainApp() {
         need={selectedNeed}
         onClose={() => { handleSelectNeed(null); }}
         shareUrl={selectedNeed ? getNeedUrl(selectedNeed) : undefined}
-        onOpenQuieroAyudar={(need) => setSelectedForHelp(need)}
+        onOpenQuieroAyudar={(need) => handleOpenHelp(need)}
         onOpenReportModal={(need) => setSelectedForReport(need)}
         onOpenPublicEdit={(need) => setSelectedForPublicEdit(need)}
         onOpenUpdateStatusModal={(need) => setSelectedForStatusUpdate(need)}
@@ -1652,34 +1758,17 @@ function MainApp() {
           userName={(sessionUser as any)?.name}
           onOpenRegisterModal={() => { window.location.href = '/registro-v2?modo=registro'; }}
           onLogout={async () => {
+            clearStoredAuthUser();
             try {
               await supabase.auth.signOut();
             } catch (e) {
               console.error("Error al cerrar sesión en Supabase:", e);
             }
-            localStorage.removeItem('ahf_admin_token');
-            localStorage.removeItem('ahf_admin_user');
-            localStorage.removeItem('ahf_auth_user');
             setAuthUser(null);
-            window.location.href = '/';
+            window.location.href = '/mapa-ayudas-necesidades';
           }}
         />
       </div>
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onOpenRegisterModal={() => {
-          setIsLoginModalOpen(false);
-          window.location.href = '/registro-v2?modo=registro';
-        }}
-        onSuccess={(userObj) => {
-          setIsLoginModalOpen(false);
-          if (userObj) {
-            setAuthUser(userObj);
-            localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
-          }
-        }}
-      />
       <RegisterWizard
         isOpen={isRegisterModalOpen}
         initialStep={registerInitialStep}
@@ -1690,7 +1779,11 @@ function MainApp() {
         onNavigateToLogin={() => {
           setIsRegisterModalOpen(false);
           setRegisterInitialStep(1);
-          setIsLoginModalOpen(true);
+          if (propOnOpenLoginModal) {
+            propOnOpenLoginModal();
+          } else {
+            window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+          }
         }}
         onSuccess={(savedProfile) => {
           setIsRegisterModalOpen(false);

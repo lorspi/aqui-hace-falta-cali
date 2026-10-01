@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 import { Tarjeta } from './Tarjeta';
+import { useTranslation } from '../../i18n/LanguageContext';
 import type { Publicacion } from '../../types/publicacion';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 
@@ -46,6 +47,8 @@ export const DialogoDetallePublicacion: React.FC<DialogoDetallePublicacionProps>
     else if (!p && d.open) d.close();
   }, [p]);
 
+  const { t } = useTranslation();
+
   if (!p) return null;
 
   return (
@@ -53,15 +56,15 @@ export const DialogoDetallePublicacion: React.FC<DialogoDetallePublicacionProps>
       ref={ref}
       onClose={onCerrar}
       onClick={(e) => e.target === ref.current && onCerrar()}
-      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+      className="font-rd m-auto flex max-h-[90dvh] w-full max-w-lg flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
     >
-      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
-        <span className="text-rd-13 font-semibold text-rd-ink">Detalle de la publicación</span>
-        <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar detalle" onClick={onCerrar}>
+      <div className="flex flex-none items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
+        <span className="text-rd-13 font-semibold text-rd-ink">{t('postDetailTitle')}</span>
+        <Button nivel="terciario" tamano="md" soloIcono aria-label={t('closeDetail')} onClick={onCerrar}>
           <X aria-hidden="true" className="h-5 w-5" />
         </Button>
       </div>
-      <div className="p-4 sm:p-5 bg-rd-fondo/40">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] p-4 sm:p-5 bg-rd-fondo/40">
         <Tarjeta
           publicacion={p}
           distanciaKm={distanciaKm}

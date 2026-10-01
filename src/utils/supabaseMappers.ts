@@ -55,6 +55,14 @@ export function needToPublicacion(need: Need): Publicacion {
         }))
       : [],
     sourceUrl: need.sourceUrl,
+    userId: need.userId,
+    contactoNombre: need.contactName,
+    contactoTel: need.contactPhone,
+    contactoWa: Boolean(need.contactWhatsapp),
+    contactoEmail: need.contactEmail,
+    horario: need.operatingHours,
+    comoLlegar: need.comoLlegar,
+    paraQuien: need.paraQuien,
   };
 
   return pub;
@@ -122,8 +130,69 @@ export function offerToPublicacion(offer: Offer): Publicacion {
       : [],
     modoEntrega: offer.deliveryMode as any,
     radio: offer.deliveryRadius || (offer as any).coverageRadius,
+    userId: offer.userId,
+    contactoNombre: offer.contactName,
+    contactoTel: offer.contactPhone,
+    contactoWa: Boolean(offer.contactWhatsapp),
+    contactoEmail: offer.contactEmail,
+    horario: offer.operatingHours,
   };
 
   return pub;
+}
+
+/**
+ * Convierte un row de Supabase `commitments` a `Solicitud` para el Panel (Tablero y Solicitudes)
+ */
+export function commitmentToSolicitud(c: any): any {
+  const deliveryPhotosCount = Array.isArray(c.delivery_photos) ? c.delivery_photos.length : 0;
+  const receptionPhotosCount = Array.isArray(c.reception_photos) ? c.reception_photos.length : 0;
+
+  return {
+    id: c.id,
+    quien: c.requester_name || c.requester_user_id || 'Usuario registrado',
+    rec: c.resource_name || 'Ayuda',
+    cant: c.quantity || 1,
+    u: c.unit || 'unidades',
+    estado: (c.status || 'nueva') as any,
+    cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
+    vol: c.assigned_volunteer_name || null,
+    dist: c.distance_text || undefined,
+    cierre: {
+      entrega: { fotos: deliveryPhotosCount },
+      recibe: { fotos: receptionPhotosCount },
+      historia: c.confirmation_story || undefined,
+      notasCamino: c.notes_camino || undefined,
+      notasEntrega: c.notes_entrega || undefined,
+    },
+    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
+    rawCommitment: c,
+  };
+}
+
+/**
+ * Convierte un row de Supabase `commitments` a `EntregaRecibida` para el Panel
+ */
+export function commitmentToEntregaRecibida(c: any): any {
+  const deliveryPhotosCount = Array.isArray(c.delivery_photos) ? c.delivery_photos.length : 0;
+  const receptionPhotosCount = Array.isArray(c.reception_photos) ? c.reception_photos.length : 0;
+
+  return {
+    id: c.id,
+    deQuien: c.provider_org_name || c.provider_user_id || 'Organización aliada',
+    rec: c.resource_name || 'Ayuda',
+    cant: c.quantity || 1,
+    u: c.unit || 'unidades',
+    estado: (c.status || 'nueva') as any,
+    cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
+    quienEntrega: c.assigned_volunteer_name || 'Coordinación operativa',
+    cierre: {
+      entrega: { fotos: deliveryPhotosCount },
+      recibe: { fotos: receptionPhotosCount },
+      historia: c.confirmation_story || undefined,
+    },
+    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
+    rawCommitment: c,
+  };
 }
 
