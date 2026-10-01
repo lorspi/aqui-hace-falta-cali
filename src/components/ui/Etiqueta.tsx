@@ -3,37 +3,45 @@ import { Check, CircleDashed, CircleDot, Clock, Hand, HeartHandshake } from 'luc
 import type { TipoPublicacion } from '../../types/publicacion';
 import type { EstadoPublicacion } from '../../utils/publicaciones';
 
+import { useTranslation } from '../../i18n/LanguageContext';
+
 /**
  * Las dos etiquetas de una publicación (`rd-tag` y `rd-estado` del prototipo), con
  * utilidades sobre los tokens `rd-*`. La de tipo lleva el mismo icono que el pin del mapa:
  * se aprende una vez. La de estado sigue la gramática de color: verde solo para lo
  * confirmado, neutro para lo que está en proceso o sin iniciar.
  */
-export const EtiquetaTipo: React.FC<{ tipo: TipoPublicacion }> = ({ tipo }) => (
-  <span
-    className={`font-rd inline-flex items-center gap-1.25 rounded-rd-sm border py-1 pr-2.25 pl-1.75 text-rd-12 font-semibold whitespace-nowrap ${
-      tipo === 'necesidad' ? 'border-rd-coral-line bg-rd-coral-soft text-rd-coral-ink' : 'border-rd-navy-line bg-rd-navy-soft text-rd-navy'
-    }`}
-  >
-    {tipo === 'necesidad' ? <Hand aria-hidden="true" className="h-3.5 w-3.5" /> : <HeartHandshake aria-hidden="true" className="h-3.5 w-3.5" />}
-    {tipo === 'necesidad' ? 'Se necesita' : 'Se ofrece'}
-  </span>
-);
-
-const ESTADO: Record<EstadoPublicacion, { texto: string; clase: string; icono: React.ReactNode }> = {
-  cubierta: { texto: 'Cubierta', clase: 'border-rd-green-line bg-rd-green-soft text-rd-green', icono: <Check className="h-3.5 w-3.5" /> },
-  proceso: { texto: 'En proceso', clase: 'border-rd-line bg-rd-surface text-rd-ink-2', icono: <CircleDot className="h-3.5 w-3.5" /> },
-  inicial: { texto: 'Sin iniciar', clase: 'border-rd-line bg-rd-sunken text-rd-ink-2', icono: <CircleDashed className="h-3.5 w-3.5" /> },
+export const EtiquetaTipo: React.FC<{ tipo: TipoPublicacion }> = ({ tipo }) => {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={`font-rd inline-flex items-center gap-1.25 rounded-rd-sm border py-1 pr-2.25 pl-1.75 text-rd-12 font-semibold whitespace-nowrap ${
+        tipo === 'necesidad' ? 'border-rd-coral-line bg-rd-coral-soft text-rd-coral-ink' : 'border-rd-navy-line bg-rd-navy-soft text-rd-navy'
+      }`}
+    >
+      {tipo === 'necesidad' ? <Hand aria-hidden="true" className="h-3.5 w-3.5" /> : <HeartHandshake aria-hidden="true" className="h-3.5 w-3.5" />}
+      {tipo === 'necesidad' ? t('tagNeed') : t('tagOffer')}
+    </span>
+  );
 };
 
+const ESTADO_CONFIG: Record<EstadoPublicacion, { key: 'tagStatusCovered' | 'statusInProcess' | 'statusNotStarted'; clase: string; icono: React.ReactNode }> = {
+  cubierta: { key: 'tagStatusCovered', clase: 'border-rd-green-line bg-rd-green-soft text-rd-green', icono: <Check className="h-3.5 w-3.5" /> },
+  proceso: { key: 'statusInProcess', clase: 'border-rd-line bg-rd-surface text-rd-ink-2', icono: <CircleDot className="h-3.5 w-3.5" /> },
+  inicial: { key: 'statusNotStarted', clase: 'border-rd-line bg-rd-sunken text-rd-ink-2', icono: <CircleDashed className="h-3.5 w-3.5" /> },
+};
+
+const ESTADO = ESTADO_CONFIG;
+
 export const EtiquetaEstado: React.FC<{ estado: EstadoPublicacion }> = ({ estado }) => {
-  const e = ESTADO[estado];
+  const { t } = useTranslation();
+  const e = ESTADO_CONFIG[estado] ?? ESTADO_CONFIG.inicial;
   return (
     <span className={`inline-flex items-center gap-1.25 rounded-full border py-1 pr-2.25 pl-1.75 text-rd-11-5 font-semibold whitespace-nowrap ${e.clase}`}>
       <span aria-hidden="true" className="inline-flex">
         {e.icono}
       </span>
-      {e.texto}
+      {t(e.key)}
     </span>
   );
 };

@@ -13,9 +13,9 @@ import {
   Mail,
   MapPin,
   Phone,
-  ShieldCheck,
   User,
   Users,
+  X,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Combobox } from '../../components/ui/Combobox';
@@ -35,6 +35,8 @@ import { RegistroCarrusel } from './RegistroCarrusel';
 import { TEXTOS as T } from './textos';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile } from '../../lib/supabaseService';
+import { getStoredAuthUser, saveStoredAuthUser } from '../../utils/session';
+import { obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 
 /**
  * Registro (mockup/registro-v2). Réplica de `Producto/src/registro-v2.html` del prototipo de
@@ -77,9 +79,24 @@ function leerRapida(): boolean {
   return /[?&]rapida=1/.test(window.location.search);
 }
 
-export const RegistroPage: React.FC = () => {
+export interface RegistroPageProps {
+  isModal?: boolean;
+  onCerrar?: () => void;
+  onExito?: (usuario?: any) => void;
+  modoInicial?: ModoRegistro;
+}
+
+export const RegistroPage: React.FC<RegistroPageProps> = ({
+  isModal = false,
+  onCerrar,
+  onExito,
+  modoInicial,
+}) => {
   const [e, setE] = useState<EstadoRegistro>(() => {
     const init = estadoInicial(leerRapida());
+    if (modoInicial) {
+      return { ...init, modo: modoInicial };
+    }
     const params = new URLSearchParams(window.location.search);
     const m = params.get('modo') as ModoRegistro | null;
     if (m && ['registro', 'login', 'recuperar', 'recuperar_enviado', 'nueva_contrasena'].includes(m)) {
@@ -104,6 +121,7 @@ export const RegistroPage: React.FC = () => {
   const [errores, setErrores] = useState<Record<string, string>>({});
   const cuerpoRef = useRef<HTMLDivElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
+  const [accionPendiente] = useState(() => obtenerAccionPendiente());
 
   const [correoRecuperar, setCorreoRecuperar] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
@@ -219,15 +237,72 @@ export const RegistroPage: React.FC = () => {
       }
 
       const profile = await fetchUserProfile(authData.user.id);
+
+      let orgData: any = null;
+      try {
+        const { data: orgRow } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
+        if (orgRow) orgData = orgRow;
+      } catch (err) {
+        console.warn('Error fetching organization on login:', err);
+      }
+
+      const profileType = orgData
+        ? (orgData.organization_type ? 'organizacion' : 'liderazgo')
+        : (profile?.profile_type || authData.user.user_metadata?.profile_type || 'persona');
+
       const userObj = {
         id: authData.user.id,
         email: authData.user.email || email,
         name: profile?.full_name || authData.user.user_metadata?.full_name || 'Usuario',
         role: profile?.role || authData.user.user_metadata?.role || 'voluntario',
+        profile_type: profileType,
+        org_name: orgData?.org_name || profile?.organization || authData.user.user_metadata?.org_name,
+        organization: orgData || profile?.organization,
+        user_metadata: authData.user.user_metadata,
         createdAt: profile?.created_at || authData.user.created_at,
       };
 
-      localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+      saveStoredAuthUser(userObj);
+      window.dispatchEvent(new CustomEvent('ahf_auth_changed', { detail: userObj }));
+      if (profileType === 'organizacion' || profileType === 'liderazgo') {
+        guardarEntidad(profileType);
+      } else {
+        guardarEntidad('individual');
+      }
+
+      if (isModal) {
+        onExito?.(userObj);
+        onCerrar?.();
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const retornoParam = params.get('retorno');
+      const pending = obtenerAccionPendiente();
+
+      if (pending) {
+        limpiarAccionPendiente();
+        let destino = pending.rutaRetorno;
+        if (pending.tipo === 'compromiso' && pending.publicacionId) {
+          const sep = destino.includes('?') ? '&' : '?';
+          destino = `${destino}${sep}abrirCompromiso=${encodeURIComponent(pending.publicacionId)}`;
+        } else if (pending.tipo === 'publicar_flujo') {
+          const sep = destino.includes('?') ? '&' : '?';
+          destino = `${destino}${sep}autoPublicar=1`;
+        }
+        window.location.assign(destino);
+        return;
+      }
+
+      if (retornoParam) {
+        window.location.assign(retornoParam);
+        return;
+      }
+
       window.location.assign(RUTAS.mapa);
     } catch (err: any) {
       console.error('Error al iniciar sesión:', err);
@@ -378,17 +453,62 @@ export const RegistroPage: React.FC = () => {
           }, { onConflict: 'user_id' });
         }
 
+        const isOrgProfile = e.perfil === 'organizacion';
+        const isComProfile = e.perfil === 'liderazgo';
+        const profileType = isOrgProfile ? 'organizacion' : isComProfile ? 'liderazgo' : 'persona';
+        const orgName = isOrgProfile ? e.org.nombre.trim() : isComProfile ? e.com.nombre.trim() : undefined;
+
         const userObj = {
           id: authData.user.id,
           email: authData.user.email || email,
           name: metadata.full_name || 'Usuario',
           role: metadata.role || 'voluntario',
+          profile_type: profileType,
+          org_name: orgName,
+          organization: (isOrgProfile || isComProfile) ? {
+            org_name: orgName,
+            organization_type: isOrgProfile ? (e.org.tipo || 'ONG') : (e.com.tipo || 'Junta de acción comunal'),
+            contact_phone: isOrgProfile ? e.org.contacto.tel : e.com.contacto.tel,
+            contact_email: email,
+          } : undefined,
+          user_metadata: metadata,
           createdAt: new Date().toISOString(),
         };
-        localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+        saveStoredAuthUser(userObj);
+        window.dispatchEvent(new CustomEvent('ahf_auth_changed', { detail: userObj }));
       }
 
       if (e.perfil) guardarEntidad(e.perfil);
+
+      if (isModal) {
+        onExito?.(getStoredAuthUser());
+        onCerrar?.();
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const retornoParam = params.get('retorno');
+      const pending = obtenerAccionPendiente();
+
+      if (pending) {
+        limpiarAccionPendiente();
+        let destino = pending.rutaRetorno;
+        if (pending.tipo === 'compromiso' && pending.publicacionId) {
+          const sep = destino.includes('?') ? '&' : '?';
+          destino = `${destino}${sep}abrirCompromiso=${encodeURIComponent(pending.publicacionId)}`;
+        } else if (pending.tipo === 'publicar_flujo') {
+          const sep = destino.includes('?') ? '&' : '?';
+          destino = `${destino}${sep}autoPublicar=1`;
+        }
+        window.location.assign(destino);
+        return;
+      }
+
+      if (retornoParam) {
+        window.location.assign(retornoParam);
+        return;
+      }
+
       patch({ listo: true });
     } catch (err: any) {
       console.error('Error al registrar usuario en Supabase:', err);
@@ -504,6 +624,13 @@ export const RegistroPage: React.FC = () => {
   const login = (
     <>
       {portada}
+      {accionPendiente?.mensaje && (
+        <div className="mb-3 text-left">
+          <InlineNotice variante="info" titulo="Acción requerida">
+            {accionPendiente.mensaje}
+          </InlineNotice>
+        </div>
+      )}
       {conmutador}
       {errorAuth && (
         <div className="mb-3">
@@ -712,6 +839,13 @@ export const RegistroPage: React.FC = () => {
   const pantallaPerfil = (
     <>
       {portada}
+      {accionPendiente?.mensaje && (
+        <div className="mb-3 text-left">
+          <InlineNotice variante="info" titulo="Acción requerida">
+            {accionPendiente.mensaje}
+          </InlineNotice>
+        </div>
+      )}
       {conmutador}
       <h2 className="font-rd mb-3 text-rd-15 font-semibold text-rd-ink">{T.perfil.pregunta}</h2>
       <div ref={cuerpoRef} role="radiogroup" aria-label={T.perfil.pregunta} className="grid gap-2">
@@ -827,31 +961,6 @@ export const RegistroPage: React.FC = () => {
             onBlur={alSalir('o-correo', ['requerido', 'correo'], T.errores.correo)}
             error={error('o-correo')}
           />
-        </div>
-
-        {/* Documento de representación legal */}
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-rd-line bg-rd-surface p-3.5 px-4 text-rd-12 text-rd-ink-2">
-          {e.org.documentoAdjunto ? (
-            <Check className="h-5 w-5 shrink-0 text-rd-green" />
-          ) : (
-            <ShieldCheck className="h-5 w-5 shrink-0 text-rd-ink-meta" />
-          )}
-          <div className="flex-1">
-            <b className="block font-semibold text-rd-ink">
-              {T.org.docTitulo} <span className="font-normal text-rd-ink-meta">(opcional)</span>
-            </b>
-            <span>
-              {e.org.documentoAdjunto ? T.org.docAdjuntado : T.org.docSub}
-            </span>
-          </div>
-          <Button
-            type="button"
-            nivel="secundario"
-            tamano="sm"
-            onClick={() => patchOrg({ documentoAdjunto: !e.org.documentoAdjunto })}
-          >
-            {e.org.documentoAdjunto ? T.org.cambiar : T.org.adjuntar}
-          </Button>
         </div>
       </div>
     </>
@@ -1208,20 +1317,7 @@ export const RegistroPage: React.FC = () => {
             </Button>
           </>
         }
-      >
-        {esOrg && (
-          <InlineNotice
-            variante={e.org.documentoAdjunto ? 'pendiente' : 'info'}
-            icono={<ShieldCheck className="h-4 w-4" />}
-            titulo={e.org.documentoAdjunto ? 'Documento en revisión' : T.exito.sinVerificarTitulo}
-            texto={
-              e.org.documentoAdjunto
-                ? 'Revisaremos el documento para otorgar la insignia de verificación.'
-                : T.exito.sinVerificarTexto(panel)
-            }
-          />
-        )}
-      </Success>
+      />
     );
   })();
 
@@ -1256,14 +1352,41 @@ export const RegistroPage: React.FC = () => {
     </React.Fragment>
   );
 
+  if (isModal) {
+    return (
+      <div
+        className="fixed inset-0 z-1000 flex items-center justify-center bg-rd-ink/40 p-3 sm:p-6 backdrop-blur-xs animate-fade-in"
+        onClick={(ev) => ev.target === ev.currentTarget && onCerrar?.()}
+      >
+        <div className="relative flex max-h-[92dvh] w-full max-w-140 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-rd-2 text-rd-ink font-rd">
+          {onCerrar && (
+            <button
+              type="button"
+              onClick={onCerrar}
+              aria-label="Cerrar ventana de autenticación"
+              className="absolute top-4 right-4 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-rd-navy"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+          <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-5 py-8 sm:px-10">
+            <main className="mx-auto w-full max-w-110 text-center" onKeyDown={alTeclear}>
+              {contenido}
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="font-rd flex h-dvh flex-col overflow-hidden bg-rd-surface text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased">
       <div className="grid min-h-0 flex-1 grid-cols-4 gap-x-4 px-4 sm:grid-cols-8 sm:px-6 lg:grid-cols-12 lg:gap-x-6 lg:px-8">
-        <section className="relative col-span-full flex min-h-0 min-w-0 flex-col items-center overflow-y-auto pt-8 pb-6 lg:col-span-6">
+        <section className="relative col-span-full flex min-h-0 min-w-0 flex-col items-center overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] pt-8 pb-6 lg:col-span-6">
           <a href={RUTAS.inicio} aria-label={T.logoAria} className="absolute top-6 left-0 rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
             <img src="/logo-radar.svg" alt="" className="block h-7.5 w-auto" />
           </a>
-          <main className="my-auto w-full max-w-110 flex-none pt-18 text-center" onKeyDown={alTeclear}>
+          <main className="m-auto w-full max-w-110 flex-none pt-18 pb-8 text-center" onKeyDown={alTeclear}>
             {contenido}
           </main>
         </section>

@@ -24,6 +24,7 @@ import { nombrePanel } from '../../utils/cuenta';
 import { numero } from '../../utils/equivalencias';
 import { RadarPage } from '../radar/RadarPage';
 import { cifra } from '../../utils/publicaciones';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /** «Mis necesidades y Seguimiento»; con tres o más, comas y la última con «y». */
 function lista(partes: string[]): string {
@@ -111,6 +112,7 @@ export interface MarcoFlujoProps {
  *  como el modal del prototipo; bajo 1024, la pantalla entera), el progreso fijo arriba,
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
 export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, guardando = false, errorPublicar, children }) => {
+  const { t } = useTranslation();
   const cuerpo = useRef<HTMLDivElement>(null);
   const tarjeta = useRef<HTMLElement>(null);
   /* El alto que tenía la tarjeta en el último paso del formulario, para animar desde ahí. */
@@ -151,10 +153,10 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
 
   useEffect(() => {
     cuerpo.current?.scrollTo({ top: 0 });
-    const t = cuerpo.current?.querySelector<HTMLElement>('h1');
-    if (t) {
-      t.setAttribute('tabindex', '-1');
-      t.focus({ preventScroll: true });
+    const tEl = cuerpo.current?.querySelector<HTMLElement>('h1');
+    if (tEl) {
+      tEl.setAttribute('tabindex', '-1');
+      tEl.focus({ preventScroll: true });
     }
   }, [sub.id, publicado]);
 
@@ -187,20 +189,20 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
         </div>
       )}
       <section ref={tarjeta} aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
-        <button type="button" aria-label="Cerrar" onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
+        <button type="button" aria-label={t('close')} onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
         {/* La pantalla de éxito empieza siempre arriba anclada */}
         {publicado ? (
-          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto px-4 sm:px-6">
+          <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4 sm:px-6">
             {children}
           </div>
         ) : (
           <>
             <div className="flex-none px-4 pt-5 pr-14 sm:px-6 sm:pr-16">
-              <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((t, j) => ({ nombre: t.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
+              <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((tItem, j) => ({ nombre: tItem.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
-            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-5 sm:px-6">
+            <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4 pb-5 sm:px-6">
               {errorPublicar && (
                 <div className="mb-4 flex items-center gap-2 rounded-rd-md border border-red-300 bg-red-50 p-3 text-rd-13 text-red-800">
                   <CircleAlert className="h-5 w-5 shrink-0 text-red-600" />
@@ -212,16 +214,16 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
             <div className="flex flex-none items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3 sm:px-6">
               {i > 0 ? (
                 <Button nivel="terciario" tamano="md" icono={<ChevronLeft className="h-4 w-4" />} onClick={onAtras} disabled={guardando}>
-                  Volver
+                  {t('btnBack')}
                 </Button>
               ) : (
                 <span />
               )}
               <Button nivel="primario" tamano="lg" disabled={!listo || guardando} onClick={ultimo ? onPublicar : onSiguiente}>
                 {guardando ? (
-                  <span className="flex items-center gap-2"><CircleDashed className="h-4 w-4 animate-spin" /> Guardando...</span>
+                  <span className="flex items-center gap-2"><CircleDashed className="h-4 w-4 animate-spin" /> {t('commonSaving')}</span>
                 ) : (
-                  ultimo ? textoPublicar : 'Continuar'
+                  ultimo ? textoPublicar : t('btnContinue')
                 )}
               </Button>
             </div>
@@ -242,10 +244,14 @@ export const Pregunta: React.FC<{ titulo: string; sub?: React.ReactNode }> = ({ 
 );
 
 /** «(opcional)» dentro de una etiqueta. */
-export const Opt: React.FC = () => <span className="font-normal text-rd-ink-meta"> (opcional)</span>;
+export const Opt: React.FC = () => {
+  const { t } = useTranslation();
+  return <span className="font-normal text-rd-ink-meta"> ({t('optional')})</span>;
+};
 
 /* ---------- la pregunta de salida (`modal.js`) ---------- */
 export const SalidaDialogo: React.FC<{ abierto: boolean; onSeguir: () => void; onBorrador: () => void; onSalir: () => void }> = ({ abierto, onSeguir, onBorrador, onSalir }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   const titulo = useId();
   useEffect(() => {
@@ -259,18 +265,18 @@ export const SalidaDialogo: React.FC<{ abierto: boolean; onSeguir: () => void; o
       {abierto && (
         <>
           <h2 id={titulo} className="font-rd m-0 mb-2 text-rd-18 font-semibold tracking-rd-titulo">
-            ¿Sales sin publicar?
+            {t('flowExitPrompt')}
           </h2>
-          <p className="mb-5 text-rd-14 text-rd-ink-2">Lo que llevas escrito se pierde, salvo que lo guardes como borrador.</p>
+          <p className="mb-5 text-rd-14 text-rd-ink-2">{t('flowExitWarning')}</p>
           <div className="flex flex-col gap-2">
             <Button nivel="primario" tamano="md" ancho autoFocus onClick={onSeguir}>
-              Seguir editando
+              {t('flowKeepEditing')}
             </Button>
             <Button nivel="terciario" tamano="md" ancho onClick={onBorrador}>
-              Guardar borrador
+              {t('flowSaveDraft')}
             </Button>
             <Button nivel="terciario" tamano="md" ancho onClick={onSalir}>
-              Salir sin guardar
+              {t('flowExitWithoutSaving')}
             </Button>
           </div>
         </>
@@ -404,18 +410,21 @@ export const Acordeon: React.FC<{ titulo: React.ReactNode; n?: number; abierto: 
 );
 
 /** Una fila de recurso para marcar (`rd-rec`): casilla, icono, nombre y una línea menor. */
-export const FilaRecurso: React.FC<{ item: string; marcado: boolean; onToggle: () => void; linea?: string; sugerido?: boolean }> = ({ item, marcado, onToggle, linea, sugerido = false }) => (
-  <label className={`flex cursor-pointer items-start gap-3 rounded-rd-md border p-3 transition-colors focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft hover:border-rd-ink-3 ${marcado ? 'border-rd-sel ring-1 ring-rd-sel' : sugerido ? 'border-rd-line bg-rd-surface' : 'border-rd-line-soft bg-rd-surface'}`}>
-    <input type="checkbox" checked={marcado} onChange={onToggle} className="m-0 mt-1 h-4.5 w-4.5 shrink-0 cursor-pointer accent-rd-sel focus-visible:outline-none" />
-    <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
-      <IconoRecursoDe nombre={iconoDe(item)} className="h-3.75 w-3.75" />
-    </span>
-    <span className="min-w-0">
-      <span className="block text-rd-14 font-semibold text-rd-ink">{item}</span>
-      {linea && <span className="block text-rd-11-5 text-rd-ink-meta">{linea}</span>}
-    </span>
-  </label>
-);
+export const FilaRecurso: React.FC<{ item: string; marcado: boolean; onToggle: () => void; linea?: string; sugerido?: boolean }> = ({ item, marcado, onToggle, linea, sugerido = false }) => {
+  const { tItem } = useTranslation();
+  return (
+    <label className={`flex cursor-pointer items-start gap-3 rounded-rd-md border p-3 transition-colors focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft hover:border-rd-ink-3 ${marcado ? 'border-rd-sel ring-1 ring-rd-sel' : sugerido ? 'border-rd-line bg-rd-surface' : 'border-rd-line-soft bg-rd-surface'}`}>
+      <input type="checkbox" checked={marcado} onChange={onToggle} className="m-0 mt-1 h-4.5 w-4.5 shrink-0 cursor-pointer accent-rd-sel focus-visible:outline-none" />
+      <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-rd-sm border border-rd-line bg-rd-sunken text-rd-ink-2">
+        <IconoRecursoDe nombre={iconoDe(item)} className="h-3.75 w-3.75" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-rd-14 font-semibold text-rd-ink">{tItem(item)}</span>
+        {linea && <span className="block text-rd-11-5 text-rd-ink-meta">{linea}</span>}
+      </span>
+    </label>
+  );
+};
 
 /** La lista de recursos para marcar: buscador, un primer grupo especial (sugeridos para la
  *  emergencia, o lo registrado por la organización) y la taxonomía en acordeones. Una
@@ -430,17 +439,18 @@ export const ListaRecursos: React.FC<{
   primero: { nombre: string; items: string[]; icono?: React.ReactNode; sugerido: boolean; linea?: (item: string) => string | undefined };
   vacioTexto: string;
 }> = ({ q, onBuscar, sel, onToggle, abiertos, onAbrir, primero, vacioTexto }) => {
+  const { t, tCategory, tItem } = useTranslation();
   const busca = q.trim().toLowerCase();
-  const coincide = (it: string) => !busca || it.toLowerCase().includes(busca);
+  const coincide = (it: string) => !busca || it.toLowerCase().includes(busca) || tItem(it).toLowerCase().includes(busca);
   const grupos = [{ nombre: primero.nombre, items: primero.items, especial: true }, ...TAXONOMIA.map((c) => ({ nombre: c.nombre, items: c.items.filter((it) => !primero.items.includes(it)), especial: false }))];
   const hayAlgo = grupos.some((g) => g.items.filter(coincide).length);
   return (
     <>
-      <CampoBuscarEnBloque valor={q} onChange={onBuscar} placeholder="Buscar un recurso" etiqueta="Buscar un recurso" className="mb-4 shrink-0" />
+      <CampoBuscarEnBloque valor={q} onChange={onBuscar} placeholder={t('flowSearchResourcePlaceholder')} etiqueta={t('flowSearchResourcePlaceholder')} className="mb-4 shrink-0" />
       {busca && !hayAlgo && (
         <div className="flex flex-col items-center gap-1 px-4 py-6 text-center text-rd-ink-2">
           <Search aria-hidden="true" className="mb-1 h-6 w-6 text-rd-ink-3" />
-          <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">No encontramos «{q.trim()}»</h2>
+          <h2 className="font-rd m-0 text-rd-15 font-semibold text-rd-ink">{t('flowNoResourceFound')} «{q.trim()}»</h2>
           <p className="m-0 text-rd-13-5">{vacioTexto}</p>
         </div>
       )}
@@ -449,8 +459,9 @@ export const ListaRecursos: React.FC<{
         if ((busca && !items.length) || !g.items.length) return null;
         const n = g.items.filter((it) => sel.includes(it)).length;
         const abierto = busca ? true : g.nombre in abiertos ? abiertos[g.nombre] : g.especial || n > 0;
+        const nombreGrupo = g.especial ? g.nombre : tCategory(g.nombre);
         return (
-          <Acordeon key={g.nombre} titulo={g.nombre} n={n} abierto={abierto} onToggle={(a) => !busca && onAbrir(g.nombre, a)} sugerido={g.especial && primero.sugerido} icono={g.especial ? primero.icono : undefined}>
+          <Acordeon key={g.nombre} titulo={nombreGrupo} n={n} abierto={abierto} onToggle={(a) => !busca && onAbrir(g.nombre, a)} sugerido={g.especial && primero.sugerido} icono={g.especial ? primero.icono : undefined}>
             {items.map((it) => (
               <FilaRecurso key={it} item={it} marcado={sel.includes(it)} onToggle={() => onToggle(it)} linea={g.especial ? primero.linea?.(it) : undefined} sugerido={g.especial} />
             ))}
@@ -487,42 +498,45 @@ export const CamposContacto: React.FC<{
   tel: string;
   onChange: (campo: 'contacto' | 'tel', v: string) => void;
   errores: ReturnType<typeof useErrores>;
-}> = ({ contacto, tel, onChange, errores }) => (
-  <>
-    <Field
-      id="ct"
-      etiqueta="Persona de contacto"
-      valor={contacto}
-      autoComplete="name"
-      placeholder="Nombre de quien coordina en el sitio"
-      requerido
-      onChange={(v) => {
-        onChange('contacto', v);
-        errores.limpiar('ct');
-      }}
-      onBlur={(v) => errores.validar('ct', ['requerido'], v, 'Necesitamos un nombre para llamar')}
-      error={errores.errores.ct}
-      className="mb-3"
-    />
-    <Field
-      id="tel"
-      etiqueta="Celular"
-      tipo="tel"
-      valor={tel}
-      autoComplete="tel"
-      placeholder="+57 3.. ... ...."
-      requerido
-      ayuda="Se usará para llamadas y coordinación por WhatsApp."
-      onChange={(v) => {
-        onChange('tel', v);
-        errores.limpiar('tel');
-      }}
-      onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, 'Necesitamos un celular para coordinar')}
-      error={errores.errores.tel}
-      className="mb-3"
-    />
-  </>
-);
+}> = ({ contacto, tel, onChange, errores }) => {
+  const { t } = useTranslation();
+  return (
+    <>
+      <Field
+        id="ct"
+        etiqueta={t('contactResponsible')}
+        valor={contacto}
+        autoComplete="name"
+        placeholder={t('contactResponsible')}
+        requerido
+        onChange={(v) => {
+          onChange('contacto', v);
+          errores.limpiar('ct');
+        }}
+        onBlur={(v) => errores.validar('ct', ['requerido'], v, t('flowFieldRequired'))}
+        error={errores.errores.ct}
+        className="mb-3"
+      />
+      <Field
+        id="tel"
+        etiqueta={t('contactPhoneWa')}
+        tipo="tel"
+        valor={tel}
+        autoComplete="tel"
+        placeholder="+57 3.. ... ...."
+        requerido
+        ayuda={t('phoneHelp') || 'Se usará para llamadas y coordinación por WhatsApp.'}
+        onChange={(v) => {
+          onChange('tel', v);
+          errores.limpiar('tel');
+        }}
+        onBlur={(v) => errores.validar('tel', ['requerido', 'telefono'], v, t('flowFieldPhoneError'))}
+        error={errores.errores.tel}
+        className="mb-3"
+      />
+    </>
+  );
+};
 
 /** Acordeón de «Algo más» (opcional) al final de contacto. */
 export const AlgoMas: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => {
@@ -600,6 +614,7 @@ export const MiniMapa: React.FC<{ lat: number; lng: number; onMover: (lat: numbe
 /** Fotos: el input de archivo no se rellena desde el estado; la lista vive aparte y la
  *  miniatura es un `objectURL` local (nada sale del navegador en la maqueta). */
 export const CampoFotos: React.FC<{ fotos: Foto[]; onAgregar: (fotos: Foto[], pesados: number) => void; onQuitar: (i: number) => void; error?: string | null }> = ({ fotos, onAgregar, onQuitar, error }) => {
+  const { t } = useTranslation();
   const id = useId();
   const pesoLegible = (b: number) => (b >= 1024 * 1024 ? `${(Math.round((b / 1024 / 1024) * 10) / 10).toString().replace('.', ',')} MB` : `${Math.round(b / 1024)} KB`);
   return (
@@ -619,8 +634,8 @@ export const CampoFotos: React.FC<{ fotos: Foto[]; onAgregar: (fotos: Foto[], pe
           }}
         />
         <Package aria-hidden="true" className="mb-1 h-5.5 w-5.5 text-rd-ink-3" />
-        <span className="text-rd-14 font-semibold text-rd-ink">Elegir fotos o videos</span>
-        <span className="text-rd-12-5 text-rd-ink-meta">Desde la galería o la cámara</span>
+        <span className="text-rd-14 font-semibold text-rd-ink">{t('flowChoosePhotos')}</span>
+        <span className="text-rd-12-5 text-rd-ink-meta">{t('flowFromGalleryOrCamera')}</span>
       </label>
       {error && (
         <p className="mt-1.5 flex items-center gap-1.25 text-rd-12-5 text-rd-coral">
@@ -644,7 +659,7 @@ export const CampoFotos: React.FC<{ fotos: Foto[]; onAgregar: (fotos: Foto[], pe
                 <small className="block text-rd-11-5 font-normal text-rd-ink-meta">{f.peso}</small>
               </span>
               <Button nivel="terciario" tamano="sm" className="self-center" onClick={() => onQuitar(i)}>
-                Quitar
+                {t('btnRemove')}
               </Button>
             </li>
           ))}
@@ -656,13 +671,17 @@ export const CampoFotos: React.FC<{ fotos: Foto[]; onAgregar: (fotos: Foto[], pe
 
 /** Una fila de «Revisar» (`rd-contexto`): la clave, el valor y «Cambiar». Toda la fila es
  *  el botón. */
-export const FilaRevisar: React.FC<{ clave: string; valor: string; accion?: string; onClick: () => void }> = ({ clave, valor, accion = 'Cambiar', onClick }) => (
-  <button type="button" onClick={onClick} className="font-rd mb-4 flex w-full cursor-pointer flex-wrap items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface p-3 text-left text-rd-13-5 transition-colors hover:border-rd-ink-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
-    <span className="text-rd-11-5 font-medium text-rd-ink-meta">{clave}</span>
-    <span className="min-w-0 font-semibold text-rd-ink">{valor}</span>
-    <span className="ml-auto text-rd-13 font-semibold text-rd-navy underline underline-offset-2">{accion}</span>
-  </button>
-);
+export const FilaRevisar: React.FC<{ clave: string; valor: string; accion?: string; onClick: () => void }> = ({ clave, valor, accion, onClick }) => {
+  const { t } = useTranslation();
+  const textoAccion = accion || t('btnChange');
+  return (
+    <button type="button" onClick={onClick} className="font-rd mb-4 flex w-full cursor-pointer flex-wrap items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface p-3 text-left text-rd-13-5 transition-colors hover:border-rd-ink-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
+      <span className="text-rd-11-5 font-medium text-rd-ink-meta">{clave}</span>
+      <span className="min-w-0 font-semibold text-rd-ink">{valor}</span>
+      <span className="ml-auto text-rd-13 font-semibold text-rd-navy underline underline-offset-2">{textoAccion}</span>
+    </button>
+  );
+};
 
 /** El bloque «Se solicita» / «Se ofrece» de «Revisar» (`rd-resumen-pub`). */
 export const ResumenPub: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
@@ -675,17 +694,20 @@ export const ResumenPub: React.FC<{ titulo: string; children: React.ReactNode }>
 /** Una fila del resumen (`rd-meta-pub`): nombre, cifra editable, unidad y, debajo, la
  *  fórmula y el detalle. */
 export const MetaPub: React.FC<{ item: string; valor: string; unidad: string; onChange?: (v: string) => void; linea?: React.ReactNode; children?: React.ReactNode; error?: string | null; onBlur?: (v: string) => void }> = ({ item, valor, unidad, onChange, linea, children, error, onBlur }) => {
+  const { tItem, tUnit } = useTranslation();
   const { texto, alCambiar, alSalir } = useTexto(valor, onChange ?? (() => {}), onBlur);
+  const cantNum = parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0;
+  const unidadLocal = tUnit(cantNum, unidad);
   return (
   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-b border-rd-line-soft p-3 last:border-b-0">
-    <div className="min-w-0 flex-1 text-rd-13-5 font-semibold text-rd-ink">{item}</div>
+    <div className="min-w-0 flex-1 text-rd-13-5 font-semibold text-rd-ink">{tItem(item)}</div>
     <div className="flex items-center justify-end gap-2">
       {onChange ? (
-        <input type="text" inputMode="decimal" value={texto} onChange={(e) => alCambiar(e.target.value)} onBlur={(e) => alSalir(e.target.value)} aria-label={`Cantidad de ${item}, en ${unidad}`} aria-invalid={error ? true : undefined} className={`font-rd h-rd-h-sm w-24 rounded-rd-sm border bg-rd-surface px-2 text-right text-rd-13 font-semibold text-rd-ink tabular-nums focus:border-rd-navy focus:outline-none focus:ring-3 focus:ring-rd-navy-soft ${error ? 'border-rd-coral' : 'border-rd-line'}`} />
+        <input type="text" inputMode="decimal" value={texto} onChange={(e) => alCambiar(e.target.value)} onBlur={(e) => alSalir(e.target.value)} aria-label={`Cantidad de ${tItem(item)}, en ${unidadLocal}`} aria-invalid={error ? true : undefined} className={`font-rd h-rd-h-sm w-24 rounded-rd-sm border bg-rd-surface px-2 text-right text-rd-13 font-semibold text-rd-ink tabular-nums focus:border-rd-navy focus:outline-none focus:ring-3 focus:ring-rd-navy-soft ${error ? 'border-rd-coral' : 'border-rd-line'}`} />
       ) : (
         <b className="text-rd-14 tabular-nums">{valor}</b>
       )}
-      <span className="max-w-23 truncate text-rd-12-5 font-semibold text-rd-ink-2">{unidad}</span>
+      <span className="max-w-23 truncate text-rd-12-5 font-semibold text-rd-ink-2">{unidadLocal}</span>
     </div>
     {error && <p className="basis-full text-rd-12-5 text-rd-coral">{error}</p>}
     {linea && <div className="basis-full text-rd-11-5 text-rd-ink-meta wrap-anywhere">{linea}</div>}
@@ -695,11 +717,14 @@ export const MetaPub: React.FC<{ item: string; valor: string; unidad: string; on
 };
 
 /** La marca «editada» junto a una cifra que la persona cambió a mano. */
-export const MarcaEditada: React.FC = () => (
-  <span title="La cambiaste a mano. Al lado va lo que habíamos calculado." className="rounded-full border border-rd-amber-line bg-rd-amber-soft px-1.5 text-rd-10 font-semibold tracking-wide text-rd-amber-ink">
-    editada
-  </span>
-);
+export const MarcaEditada: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <span title="La cambiaste a mano. Al lado va lo que habíamos calculado." className="rounded-full border border-rd-amber-line bg-rd-amber-soft px-1.5 text-rd-10 font-semibold tracking-wide text-rd-amber-ink">
+      {t('flowEditedBadge')}
+    </span>
+  );
+};
 
 /**
  * Una acción de solo icono con su nombre en un globo. Un
@@ -741,7 +766,8 @@ export interface ExitoFlujoProps {
  *    con retorno atrás y diálogo de compromiso directo.
  */
 export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVerMapa, onPanel, onOtra, onCerrar, abre, extra }) => {
-  const t = EXITO[tipo];
+  const { t } = useTranslation();
+  const tExito = EXITO[tipo];
   const avisar = useAviso();
   const cerrarAccion = onCerrar || onVerMapa;
   const [vista, setVista] = useState<'resumen' | 'sugerencias'>('resumen');
@@ -777,7 +803,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
 
   const compartir = () => {
     const url = `${window.location.origin}${RUTAS.radar}?punto=${encodeURIComponent(pubSegura.id)}`;
-    const listo = () => avisar('Enlace copiado', { tipo: 'ok' });
+    const listo = () => avisar(t('linkCopiedOk') || 'Enlace copiado', { tipo: 'ok' });
     if (navigator.share) navigator.share({ title: `${pubSegura.titulo || 'Publicación'}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
     else listo();
@@ -817,16 +843,16 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
           className="absolute top-2 left-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:left-3 lg:h-10 lg:w-10"
         >
           <ChevronLeft aria-hidden="true" className="h-5 w-5" />
-          <span className="sr-only">Volver</span>
+          <span className="sr-only">{t('btnBack')}</span>
         </button>
         <div className="text-center">
           <span aria-hidden="true" className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rd-coral to-rd-navy text-white">
             <Radar className="h-7.5 w-7.5" />
           </span>
           <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
-            {t.sugerencias.titulo}
+            {tExito.sugerencias.titulo}
           </h1>
-          <p className="mx-auto mt-3 mb-8 max-w-120 text-rd-14 leading-normal text-rd-ink-2">{t.sugerencias.bajada}</p>
+          <p className="mx-auto mt-3 mb-8 max-w-120 text-rd-14 leading-normal text-rd-ink-2">{tExito.sugerencias.bajada}</p>
         </div>
         {listaSugerencias}
         {dialogo}
@@ -841,7 +867,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
         <Check className="h-7.5 w-7.5" />
       </span>
       <h1 tabIndex={-1} className="font-rd m-0 text-rd-24 leading-tight font-semibold tracking-rd-titulo text-rd-ink text-balance focus:outline-none sm:text-rd-28">
-        {t.titulo}
+        {tExito.titulo}
       </h1>
 
       {/* Botón de compatibles con animación de barrido de radar */}
@@ -851,7 +877,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
             <span className="absolute inset-0 bg-conic from-rd-coral/60 to-transparent animate-rd-barrido motion-reduce:hidden" />
             <Radar className="relative h-4.5 w-4.5 text-rd-ink-2" />
           </span>
-          Buscando matches…
+          {t('flowSearchingMatches')}
         </p>
       ) : coincidencias.length > 0 ? (
         <div className="mt-6 flex justify-center">
@@ -863,9 +889,9 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
 
       {/* Línea de tiempo "¿Ahora qué sigue?" */}
       <div className="mt-10">
-        <h2 className="font-rd m-0 mb-5 text-rd-18 leading-tight font-semibold tracking-rd-titulo text-rd-ink">¿Ahora qué sigue?</h2>
+        <h2 className="font-rd m-0 mb-5 text-rd-18 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('flowWhatFollows')}</h2>
         <ol className="m-0 flex list-none flex-col gap-3 p-0 max-xs:mx-auto max-xs:w-fit max-xs:text-left xs:flex-row">
-          {t.pasos.map((p, i) => (
+          {tExito.pasos.map((p, i) => (
             <li key={p.titulo} className="relative flex flex-1 items-center gap-2.5 xs:flex-col xs:gap-2 xs:text-center">
               {i > 0 && <span aria-hidden="true" className="absolute max-xs:-top-3.5 max-xs:left-2 max-xs:h-3.5 max-xs:w-px xs:top-2 xs:right-1/2 xs:-left-1/2 xs:ml-3.5 xs:h-px bg-rd-line" />}
               <span aria-hidden="true" className={`relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${p.hecho ? 'bg-rd-green text-white' : 'border border-dashed border-rd-ink-3 bg-rd-surface'}`}>
@@ -881,7 +907,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
       {onOtra && (
         <div className="mt-8 flex justify-center">
           <Button nivel="primario" tamano="lg" onClick={onOtra}>
-            {t.otra}
+            {tExito.otra}
           </Button>
         </div>
       )}
@@ -889,15 +915,15 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
       {/* Tres acciones con tooltip en globo */}
       <div className="mt-8 flex items-center justify-center gap-2">
         {cerrarAccion && (
-          <AccionExito etiqueta="Ver en el mapa" onClick={cerrarAccion}>
+          <AccionExito etiqueta={t('viewOnMap')} onClick={cerrarAccion}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </AccionExito>
         )}
-        <AccionExito etiqueta="Compartir" onClick={compartir}>
+        <AccionExito etiqueta={t('shareLink')} onClick={compartir}>
           <Share2 aria-hidden="true" className="h-4.5 w-4.5" />
         </AccionExito>
         {onPanel && (
-          <AccionExito etiqueta={`Ir a ${nombrePanel()}`} onClick={onPanel}>
+          <AccionExito etiqueta={t('goToDashboard')} onClick={onPanel}>
             <House aria-hidden="true" className="h-4.5 w-4.5" />
           </AccionExito>
         )}
@@ -925,28 +951,29 @@ export const SUGERENCIA_FUERTE = 90;
  * momento, como en producción; sin coincidencias, lo dice sin drama.
  */
 export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicacion }) => {
+  const { t } = useTranslation();
   const avisar = useAviso();
   const [buscando, setBuscando] = useState(true);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [hechas, setHechas] = useState<string[]>([]);
   const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
   useEffect(() => {
-    const t = window.setTimeout(() => setBuscando(false), 900);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setBuscando(false), 900);
+    return () => window.clearTimeout(timer);
   }, []);
   const pide = publicacion.tipo === 'necesidad';
   return (
     <section aria-label="Coincidencias" className="mx-auto mt-5 max-w-110 text-left">
       <h2 className="font-rd mb-1 flex items-center gap-2 text-rd-16 font-semibold tracking-rd-titulo text-rd-ink">
         <Zap aria-hidden="true" className="h-4.5 w-4.5 text-rd-navy" />
-        Coincidencias cerca
+        {t('flowMatchesNear')}
         {!buscando && coincidencias.length > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rd-sunken px-1.5 text-rd-11-5 font-semibold text-rd-ink-2 tabular-nums">{coincidencias.length}</span>}
       </h2>
-      <p className="mb-3 text-rd-13 text-rd-ink-2">{pide ? 'Ofertas a menos de 20 km que tienen algo de lo que te falta.' : 'Necesidades a menos de 20 km que piden algo de lo que ofreces.'}</p>
+      <p className="mb-3 text-rd-13 text-rd-ink-2">{pide ? t('radarMatchOffersNear') : t('radarMatchNeedsNear')}</p>
       {buscando ? (
         <p role="status" className="flex items-center gap-2 rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">
           <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-rd-line border-t-rd-navy" />
-          Buscando coincidencias cerca…
+          {t('flowSearchingMatches')}
         </p>
       ) : (
         <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
@@ -960,7 +987,7 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
           const cant = c.partes ? c.partes.length : (c.recursos ?? 1);
           const n = `${cant} ${cant === 1 ? 'recurso' : 'recursos'}`;
           const cuandoTxt = c.cuando ? ` · ${c.cuando.toLowerCase()}` : '';
-          avisar(p.tipo === 'necesidad' ? `Compromiso enviado a ${p.org} · ${n}${cuandoTxt}` : `Solicitud enviada a ${p.org} · ${n}`, { tipo: 'ok' });
+          avisar(p.tipo === 'necesidad' ? `${t('commitmentSentTo')} ${p.org} · ${n}${cuandoTxt}` : `${t('requestSentTo')} ${p.org} · ${n}`, { tipo: 'ok' });
         }}
       />
     </section>

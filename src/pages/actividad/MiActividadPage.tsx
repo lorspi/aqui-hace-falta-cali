@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   CheckCircle2,
@@ -19,10 +19,8 @@ import { Vacio } from '../../components/ui/Vacio';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { BotonMenu } from '../../components/ui/Shell';
-import { DialogoCierre } from '../panel/dialogos';
-import { Dialogo } from '../../components/ui/Dialogo';
+import { DialogoCierre, DialogoGestionPublicacion, type DatosPublicacionGestion } from '../panel/dialogos';
 import { DialogoDetallePublicacion } from '../../components/ui/DialogoDetallePublicacion';
-import { Field } from '../../components/ui/Field';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { Anillo } from '../../components/ui/Recursos';
 import { Donde } from '../../components/ui/Donde';
@@ -57,9 +55,15 @@ function irA(ruta: string): void {
   }
 }
 
-export const MiActividadPage: React.FC = () => (
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+
+export interface MiActividadPageProps {
+  authUser?: any;
+}
+
+export const MiActividadPage: React.FC<MiActividadPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <MiActividad />
+    <MiActividad authUser={authUser} />
   </AvisosProvider>
 );
 
@@ -68,46 +72,129 @@ const PESTANAS_ACTIVIDAD: Pestana[] = [
   { id: 'ofertas', nombre: 'Lo que ofrecí' },
 ];
 
-const MiActividad: React.FC = () => {
+function publicacionADatosGestion(p: Publicacion): DatosPublicacionGestion {
+  return {
+    id: p.id,
+    tipo: p.tipo,
+    titulo: p.titulo,
+    org: p.org || 'Tú',
+    verificada: p.verificada,
+    zona: p.zona || '',
+    dir: p.dir || '',
+    descripcion: p.descripcion || '',
+    personaContacto: (p as any).contactoNombre || (p as any).contactName || (p.org && p.org !== 'Tú' ? p.org : ''),
+    telContacto: (p as any).contactoTel || (p as any).contactPhone || (p as any).tel || '',
+    comoEntrega: (p as any).comoLlegar || (p as any).comoEntrega || '',
+    horario: (p as any).horario || '',
+    lat: p.lat,
+    lng: p.lng,
+    recursos: p.recursos.map((r) => ({
+      item: r.item,
+      total: r.total,
+      unidad: r.unidad,
+      disp: (r as any).disp,
+      pres: (r as any).pres,
+      para: (r as any).para,
+      icono: (r as any).icono,
+      pausado: (r as any).pausado ?? false,
+      confirmada: r.tramos?.find((t) => t.t === 'hecho')?.cant || 0,
+      camino: r.tramos?.find((t) => t.t === 'camino')?.cant || 0,
+    })),
+    pausadaGlobal: Boolean((p as any)._pausada),
+  };
+}
+
+function obtenerPublicacionesLocales(): Publicacion[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('rd-publicaciones-creadas');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((p) => ({ ...p, propia: true }));
+      }
+    }
+  } catch {}
+  return [];
+}
+
+function guardarPublicacionesLocales(pubs: Publicacion[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const locales = pubs.filter((p) => p.propia);
+    localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(locales));
+  } catch {}
+}
+
+const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const avisar = useAviso();
   const [tab, setTab] = useState<'necesidades' | 'ofertas'>('necesidades');
   const [cajon, setCajon] = useState(false);
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
-  const [cargando, setCargando] = useState(true);
-  const [misPubs, setMisPubs] = useState<Publicacion[]>([]);
   const [certificandoItem, setCertificandoItem] = useState<Publicacion | null>(null);
   const [detalleItem, setDetalleItem] = useState<Publicacion | null>(null);
-  const [editandoItem, setEditandoItem] = useState<Publicacion | null>(null);
-  const [editRecursos, setEditRecursos] = useState<{ item: string; total: string; unidad: string }[]>([]);
-  const [editDescripcion, setEditDescripcion] = useState('');
-  const [editZona, setEditZona] = useState('');
-  const [editDir, setEditDir] = useState('');
-  const [editContacto, setEditContacto] = useState('');
-  const [editTel, setEditTel] = useState('');
-  const [sessionUser, setSessionUser] = useState<any>(null);
+  const [gestionandoPublicacion, setGestionandoPublicacion] = useState<{
+    publicacion: DatosPublicacionGestion;
+    modoInicial: 'vista' | 'editar';
+    recursoFoco?: string;
+  } | null>(null);
 
-  // Cargar usuario actual
+  // 1. Estado de autenticación reactivo y estable (sin llamadas HTTP redundantes a getUser)
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) setSessionUser(data.user);
-    });
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
   }, []);
 
-  // Cargar publicaciones del usuario
-  const cargarActividad = useCallback(async () => {
-    setCargando(true);
-    try {
-      let userId = sessionUser?.id;
+  const sessionUser = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
 
-      if (!userId) {
-        try {
-          const saved = localStorage.getItem('ahf_auth_user');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            userId = parsed.id;
-          }
-        } catch {}
-      }
+  const effectiveUserId = sessionUser?.id ?? null;
+
+  // 2. Publicaciones iniciales: precarga síncrona de lo creado en local para evitar layout shift y flash
+  const [misPubs, setMisPubs] = useState<Publicacion[]>(() => {
+    const creadas = obtenerPublicacionesLocales();
+    if (creadas.length > 0) return creadas;
+    const u = authUser !== undefined ? authUser : getStoredAuthUser();
+    if (!u) {
+      return obtenerPublicaciones().filter((p) => p.propia);
+    }
+    return [];
+  });
+
+  // Solo mostrar el spinner si la lista está completamente vacía en el primer render
+  const [cargando, setCargando] = useState<boolean>(() => misPubs.length === 0);
+
+  // 3. Carga asíncrona estable sin ciclos ni re-ejecuciones espurias
+  const cargandoRef = useRef(false);
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
+  const cargarActividad = useCallback(async (userIdParaFiltrar?: string | null, mostrarSpinner = false) => {
+    if (cargandoRef.current) return;
+    cargandoRef.current = true;
+    if (mostrarSpinner) {
+      setCargando(true);
+    }
+    try {
+      const targetUserId = userIdParaFiltrar !== undefined ? userIdParaFiltrar : (sessionUser?.id || getStoredAuthUser()?.id);
 
       const [{ data: needsData }, { data: offersData }] = await Promise.all([
         supabase
@@ -126,36 +213,51 @@ const MiActividad: React.FC = () => {
       const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
       const todas = [...needsMapped, ...offersMapped];
 
-      // Filtrar las que pertenecen al usuario (por user_id o marcadas como propias)
-      let filtradas = todas.filter((p) => {
-        if (p.propia) return true;
-        if (userId && (p as any).userId === userId) return true;
-        return false;
+      // Recuperar publicaciones locales creadas en esta sesión
+      const locales = obtenerPublicacionesLocales();
+
+      // Filtrar las que pertenecen al usuario (por user_id o creadas localmente)
+      let filtradas = [
+        ...locales,
+        ...todas.filter((p) => {
+          if (targetUserId && p.userId === targetUserId) return true;
+          if (p.propia) return true;
+          return false;
+        }),
+      ];
+
+      // Desduplicar por ID (por si una local ya existe en Supabase con el mismo ID)
+      const idsVistos = new Set<string>();
+      filtradas = filtradas.filter((p) => {
+        if (!p.id || idsVistos.has(p.id)) return false;
+        idsVistos.add(p.id);
+        return true;
       });
 
-      // Si no hay vinculadas por ID, cargamos las creadas localmente en sesión o datos de ejemplo propios
-      if (filtradas.length === 0) {
-        const locales = obtenerPublicaciones().filter((p) => p.propia || p.id === 'oferta-usme');
-        if (locales.length > 0) {
-          filtradas = locales;
-        } else {
-          // Si el mock no tiene propias, mostramos las primeras 2 para dar contexto en desarrollo
-          filtradas = todas.slice(0, 2);
+      // Solo si el usuario NO está autenticado y no tiene publicaciones, mostrar datos de ejemplo del demo
+      if (filtradas.length === 0 && !targetUserId) {
+        const mocks = obtenerPublicaciones().filter((p) => p.propia || p.id === 'oferta-usme');
+        if (mocks.length > 0) {
+          filtradas = mocks;
         }
       }
 
       setMisPubs(filtradas);
     } catch (e) {
       console.error('Error cargando actividad:', e);
-      setMisPubs(obtenerPublicaciones().filter((p) => p.propia));
+      setMisPubs((prev) => (prev.length > 0 ? prev : obtenerPublicaciones().filter((p) => p.propia)));
     } finally {
+      cargandoRef.current = false;
       setCargando(false);
     }
-  }, [sessionUser]);
+  }, [sessionUser?.id]);
 
   useEffect(() => {
-    cargarActividad();
-  }, [cargarActividad]);
+    if (prevUserIdRef.current !== effectiveUserId) {
+      prevUserIdRef.current = effectiveUserId;
+      cargarActividad(effectiveUserId, misPubs.length === 0);
+    }
+  }, [effectiveUserId, cargarActividad, misPubs.length]);
 
   const misNecesidades = useMemo(() => misPubs.filter((p) => p.tipo === 'necesidad'), [misPubs]);
   const misOfertas = useMemo(() => misPubs.filter((p) => p.tipo === 'oferta'), [misPubs]);
@@ -164,85 +266,82 @@ const MiActividad: React.FC = () => {
 
   // Acciones sobre publicaciones
   const abrirEdicion = (p: Publicacion) => {
-    setEditandoItem(p);
-    setEditRecursos(
-      p.recursos.map((r) => ({
-        item: r.item,
-        total: String(r.total),
-        unidad: r.unidad,
-      }))
-    );
-    setEditDescripcion(p.descripcion || '');
-    setEditZona(p.zona || '');
-    setEditDir(p.dir || '');
-    setEditContacto((p as any).contactName || p.org || '');
-    setEditTel((p as any).contactPhone || (p as any).tel || '');
+    setGestionandoPublicacion({
+      publicacion: publicacionADatosGestion(p),
+      modoInicial: 'editar',
+    });
   };
 
-  const tituloCalculado = useMemo(() => {
-    if (!editandoItem) return '';
-    const tempPub: Publicacion = {
-      ...editandoItem,
-      zona: editZona.trim() || editandoItem.zona,
-      dir: editDir.trim() || editandoItem.dir,
-      org: editContacto.trim() || editandoItem.org,
-      recursos: editRecursos.map((r, idx) => ({
-        ...(editandoItem.recursos[idx] || { item: r.item, total: 1, unidad: r.unidad, tramos: [] }),
-        item: r.item,
-        total: parseFloat(r.total) || 1,
-        unidad: r.unidad,
-      })),
-    };
-    return tituloPublicacion(tempPub);
-  }, [editandoItem, editRecursos, editZona, editDir, editContacto]);
-
-  const guardarEdicion = async () => {
-    if (!editandoItem) return;
-
-    // Recursos actualizados con las nuevas cantidades
-    const recursosActualizados: Recurso[] = editandoItem.recursos.map((r, i) => {
-      const editado = editRecursos[i];
-      const nuevoTotal = editado ? parseFloat(editado.total) || r.total : r.total;
-      return {
-        ...r,
-        total: nuevoTotal,
-      };
-    });
+  const guardarGestionPublicacion = async (datos: DatosPublicacionGestion) => {
+    const pubOriginal = misPubs.find((item) => item.id === datos.id);
+    const recursosActualizados: Recurso[] = datos.recursos.map((r) => ({
+      item: r.item,
+      total: r.total,
+      unidad: r.unidad,
+      tramos: [
+        ...(r.confirmada ? [{ t: 'hecho' as const, cant: r.confirmada, quien: 'Entregas previas', cuando: 'Confirmada' }] : []),
+        ...(r.camino ? [{ t: 'camino' as const, cant: r.camino, quien: 'En ruta', cuando: 'En camino' }] : []),
+      ],
+    }));
 
     const pubActualizada: Publicacion = {
-      ...editandoItem,
-      descripcion: editDescripcion.trim(),
-      zona: editZona.trim() || editandoItem.zona,
-      dir: editDir.trim() || editandoItem.dir,
-      org: editContacto.trim() || editandoItem.org,
+      ...(pubOriginal || { id: datos.id, tipo: datos.tipo, org: datos.org, verificada: datos.verificada, lat: datos.lat ?? 3.4516, lng: datos.lng ?? -76.5320 }),
+      id: datos.id,
+      tipo: datos.tipo,
+      titulo: datos.titulo,
+      org: datos.personaContacto.trim() || datos.org || 'Tú',
+      zona: datos.zona.trim(),
+      dir: datos.dir.trim(),
+      descripcion: datos.descripcion.trim(),
       recursos: recursosActualizados,
-    };
-    pubActualizada.titulo = tituloPublicacion(pubActualizada);
+      comoLlegar: datos.comoEntrega.trim(),
+      horario: datos.horario.trim(),
+      contactoNombre: datos.personaContacto.trim(),
+      contactoTel: datos.telContacto.trim(),
+      _pausada: datos.pausadaGlobal,
+    } as any;
 
-    // Actualizar localmente de inmediato
-    setMisPubs((prev) =>
-      prev.map((item) => (item.id === editandoItem.id ? pubActualizada : item))
-    );
+    setMisPubs((prev) => {
+      const actualizadas = prev.map((item) => (item.id === datos.id ? pubActualizada : item));
+      guardarPublicacionesLocales(actualizadas);
+      return actualizadas;
+    });
 
-    // Intentar actualizar en Supabase
     try {
-      const tabla = editandoItem.tipo === 'necesidad' ? 'needs' : 'offers';
+      const tabla = datos.tipo === 'necesidad' ? 'needs' : 'offers';
       const payload: Record<string, any> = {
         title: pubActualizada.titulo,
-        description: editDescripcion.trim(),
-        address: editDir.trim() || undefined,
-        neighborhood: editZona.trim() || undefined,
-        contact_name: editContacto.trim() || undefined,
-        contact_phone: editTel.trim() || undefined,
+        description: datos.descripcion.trim(),
+        address: datos.dir.trim() || undefined,
+        neighborhood: datos.zona.trim() || undefined,
+        contact_name: datos.personaContacto.trim() || undefined,
+        contact_phone: datos.telContacto.trim() || undefined,
+        status: datos.pausadaGlobal ? 'PAUSED' : 'ACTIVE',
       };
 
-      await supabase.from(tabla).update(payload).eq('id', editandoItem.id);
+      await supabase.from(tabla).update(payload).eq('id', datos.id);
     } catch (e) {
       console.error('Error actualizando en Supabase:', e);
     }
 
-    setEditandoItem(null);
+    setGestionandoPublicacion(null);
     avisar('Cambios guardados con éxito', { tipo: 'ok' });
+  };
+
+  const eliminarGestionPublicacion = async (id: string, tipo: 'oferta' | 'necesidad') => {
+    setMisPubs((prev) => {
+      const restantes = prev.filter((p) => p.id !== id);
+      guardarPublicacionesLocales(restantes);
+      return restantes;
+    });
+    try {
+      const tabla = tipo === 'necesidad' ? 'needs' : 'offers';
+      await supabase.from(tabla).update({ verification_status: 'ARCHIVED' }).eq('id', id);
+    } catch (e) {
+      console.error('Error archivando en Supabase:', e);
+    }
+    setGestionandoPublicacion(null);
+    avisar('Publicación eliminada correctamente', { tipo: 'ok' });
   };
 
   const alternarPausa = async (p: Publicacion) => {
@@ -328,31 +427,41 @@ const MiActividad: React.FC = () => {
       seccion="actividad"
       panelNombre="Mi actividad"
       cuenta={CUENTA}
+      authUser={authUser !== undefined ? authUser : sessionUser}
       rutas={RUTAS_SHELL}
       onPedir={() => irA(RUTAS.pedir)}
       onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
       cajonAbierto={cajon}
       onCerrarCajon={() => setCajon(false)}
     >
-      <div className="flex h-full flex-col overflow-hidden bg-rd-surface">
+      <div className="flex h-full min-h-0 flex-col bg-rd-surface">
         {/* Cabecera superior */}
         <header className="border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="font-rd m-0 text-rd-20 font-bold text-rd-ink sm:text-rd-22">Mi actividad</h1>
-              <p className="m-0 mt-0.5 text-rd-13 text-rd-ink-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="font-rd m-0 truncate text-rd-20 font-bold text-rd-ink sm:text-rd-22">Mi actividad</h1>
+              <p className="m-0 mt-0.5 hidden text-rd-13 text-rd-ink-2 sm:block">
                 Consulta y gestiona las solicitudes de ayuda que has pedido o los aportes que has ofrecido.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
-              </Button>
-              <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
-              </Button>
-              <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line max-lg:hidden" />
-              <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden items-center gap-2 lg:flex">
+                <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
+                  Pedir ayuda
+                </Button>
+                <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
+                  Ofrecer ayuda
+                </Button>
+                <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
+                <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
+              </span>
               <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
             </div>
           </div>
@@ -370,7 +479,7 @@ const MiActividad: React.FC = () => {
         <main
           role="region"
           aria-label="Lista de tu actividad"
-          className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
         >
           {cargando ? (
             <div className="flex h-64 items-center justify-center gap-2 text-rd-ink-meta">
@@ -432,127 +541,17 @@ const MiActividad: React.FC = () => {
           )}
         </main>
 
-        {/* Diálogo de edición estructurada de la publicación */}
-        <Dialogo
-          abierto={editandoItem !== null}
-          titulo="Editar publicación"
-          accion="Guardar cambios"
-          textoAlterno="Cancelar"
-          onCerrar={() => setEditandoItem(null)}
-          onEnviar={guardarEdicion}
-        >
-          {editandoItem && (
-            <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
-              {/* Título institucional auto-calculado */}
-              <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <EtiquetaTipo tipo={editandoItem.tipo} />
-                  <span className="text-rd-11 font-medium text-rd-ink-meta">
-                    Título automático en el radar:
-                  </span>
-                </div>
-                <p className="font-rd m-0 text-rd-13-5 font-semibold text-rd-ink truncate">
-                  {tituloCalculado}
-                </p>
-                <span className="mt-1 block text-rd-11 text-rd-ink-meta">
-                  El título se actualiza solo a partir de tus recursos y ubicación.
-                </span>
-              </div>
-
-              {/* 1. Bloque de Recursos y Cantidades */}
-              <div className="rounded-rd-md border border-rd-line bg-rd-surface overflow-hidden">
-                <div className="border-b border-rd-line bg-rd-sunken/60 px-3 py-2 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-meta">
-                  {editandoItem.tipo === 'necesidad' ? 'Recursos solicitados y cantidades' : 'Recursos ofrecidos y cantidades'}
-                </div>
-                <div className="divide-y divide-rd-line-soft">
-                  {editRecursos.map((r, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 gap-3">
-                      <span className="text-rd-13 font-semibold text-rd-ink truncate min-w-0">
-                        {r.item}
-                      </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={r.total}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditRecursos((prev) =>
-                              prev.map((item, i) => (i === idx ? { ...item, total: val } : item))
-                            );
-                          }}
-                          aria-label={`Cantidad de ${r.item}`}
-                          className="font-rd h-9 w-24 rounded-rd-sm border border-rd-line bg-rd-surface px-2.5 text-right text-rd-13 font-semibold text-rd-ink tabular-nums focus:border-rd-navy focus:outline-none"
-                        />
-                        <span className="text-rd-12-5 font-medium text-rd-ink-2 min-w-14 truncate">
-                          {r.unidad}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2. Descripción y contexto */}
-              <div className="space-y-1">
-                <label htmlFor="edit-act-desc" className="block text-rd-13 font-semibold text-rd-ink">
-                  Descripción y detalles
-                </label>
-                <textarea
-                  id="edit-act-desc"
-                  rows={3}
-                  value={editDescripcion}
-                  onChange={(e) => setEditDescripcion(e.target.value)}
-                  className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink focus:border-rd-navy focus:outline-none"
-                  placeholder="Detalles sobre el punto de entrega, estado de la vía o especificaciones..."
-                />
-                <span className="text-rd-11 text-rd-ink-meta">
-                  Explica brevemente la situación para quienes van a coordinar contigo.
-                </span>
-              </div>
-
-              {/* 3. Ubicación y entrega */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field
-                  id="edit-act-zona"
-                  etiqueta="Barrio o sector"
-                  tipo="text"
-                  valor={editZona}
-                  onChange={setEditZona}
-                  ayuda="Ej: Bosa Centro, El Poblado"
-                />
-                <Field
-                  id="edit-act-dir"
-                  etiqueta="Dirección o punto de entrega"
-                  tipo="text"
-                  valor={editDir}
-                  onChange={setEditDir}
-                  ayuda="Ej: Cra 80 # 65-12 sur"
-                />
-              </div>
-
-              {/* 4. Contacto para coordinar */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field
-                  id="edit-act-contacto"
-                  etiqueta="Nombre de contacto"
-                  tipo="text"
-                  valor={editContacto}
-                  onChange={setEditContacto}
-                  ayuda="Persona que atiende las entregas"
-                />
-                <Field
-                  id="edit-act-tel"
-                  etiqueta="Teléfono / WhatsApp"
-                  tipo="tel"
-                  valor={editTel}
-                  onChange={setEditTel}
-                  ayuda="Para coordinar la ayuda"
-                />
-              </div>
-            </div>
-          )}
-        </Dialogo>
+        {/* Diálogo integral de gestión y edición de la publicación (idéntico al de organizaciones y comunidades) */}
+        <DialogoGestionPublicacion
+          abierto={gestionandoPublicacion !== null}
+          publicacion={gestionandoPublicacion?.publicacion ?? null}
+          modoInicial={gestionandoPublicacion?.modoInicial ?? 'editar'}
+          recursoFoco={gestionandoPublicacion?.recursoFoco}
+          onCerrar={() => setGestionandoPublicacion(null)}
+          onGuardar={guardarGestionPublicacion}
+          onEliminar={eliminarGestionPublicacion}
+          onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${encodeURIComponent(id)}&vista=mapa`)}
+        />
 
         {/* Diálogo de certificación y cierre con fotos */}
         <DialogoCierre
@@ -664,7 +663,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
   return (
     <article
       id={p.id}
-      className={`min-w-0 rounded-rd-xl border bg-rd-surface p-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:p-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_260px] xl:items-center xl:gap-8 ${
+      className={`min-w-0 rounded-rd-xl border bg-rd-surface p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs sm:p-5 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_260px] xl:items-center xl:gap-8 ${
         resuelta
           ? 'border-rd-green/40 bg-rd-green/5'
           : pausada
@@ -673,17 +672,17 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       }`}
     >
       {/* 1. Publicación, tipo, ubicación y estado */}
-      <div className="flex min-w-0 items-start gap-3.5">
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3.5">
         <Avatar iniciales={iniciales(p.org || 'Tú')} tamano="md" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
             <EtiquetaTipo tipo={p.tipo} />
             {resuelta ? (
-              <span className="rounded-rd-sm bg-rd-green-soft px-2 py-0.5 text-rd-11 font-bold text-rd-green">
+              <span className="rounded-rd-sm bg-rd-green-soft px-1.5 py-0.5 text-rd-10-5 font-bold text-rd-green sm:px-2 sm:text-rd-11">
                 ✅ Resuelta / Completada
               </span>
             ) : pausada ? (
-              <span className="rounded-rd-sm bg-rd-sunken px-2 py-0.5 text-rd-11 font-semibold text-rd-ink-meta">
+              <span className="rounded-rd-sm bg-rd-sunken px-1.5 py-0.5 text-rd-10-5 font-semibold text-rd-ink-meta sm:px-2 sm:text-rd-11">
                 ⏸ Pausada
               </span>
             ) : (
@@ -693,7 +692,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
 
           <div className="flex min-w-0 items-center gap-1.5">
             <h2
-              className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink sm:text-rd-14 cursor-pointer hover:text-rd-navy hover:underline transition-colors"
+              className="font-rd m-0 min-w-0 truncate text-rd-13 font-semibold leading-snug text-rd-ink sm:text-rd-14 cursor-pointer hover:text-rd-navy hover:underline transition-colors"
               onClick={() => onVerDetalle(p)}
               title="Ver tarjeta completa"
             >
@@ -714,16 +713,16 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
           />
 
           {p.descripcion && (
-            <p className="m-0 mt-0.5 text-rd-12 text-rd-ink-2 line-clamp-2 leading-relaxed">
+            <p className="m-0 mt-0.5 text-rd-11-5 sm:text-rd-12 text-rd-ink-2 line-clamp-1 sm:line-clamp-2 leading-relaxed">
               {p.descripcion}
             </p>
           )}
 
           {/* Banner de compromiso / entrega en camino con WhatsApp */}
           {compromisoEnCamino && !resuelta && (
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-rd-md border border-rd-green/30 bg-rd-green-soft/40 px-3 py-1.5 text-rd-12 text-rd-ink">
+            <div className="mt-1.5 flex items-center justify-between gap-2 rounded-rd-md border border-rd-green/30 bg-rd-green-soft/40 px-2.5 py-1 text-rd-11-5 sm:text-rd-12 sm:px-3 sm:py-1.5 text-rd-ink">
               <div className="flex min-w-0 items-center gap-1.5">
-                <Sparkles className="h-4 w-4 shrink-0 text-rd-green" />
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-rd-green" />
                 <span className="truncate">
                   <strong className="text-rd-green">
                     {p.tipo === 'necesidad' ? '¡Ayuda en camino!' : 'Compromiso activo:'}
@@ -748,17 +747,17 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       </div>
 
       {/* 2. Recursos con sus anillos y estados (idéntico a la fila del Radar) */}
-      <div className="flex min-w-0 flex-col gap-2 max-xl:mt-3">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex min-w-0 flex-col gap-1.5 sm:gap-2 max-xl:mt-2.5 sm:max-xl:mt-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6 sm:gap-y-3">
           {p.recursos.map((r) => {
             const completo = restante(r) === 0;
             return (
-              <span key={r.item} className="flex items-center gap-2.5">
+              <span key={r.item} className="flex items-center gap-2 sm:gap-2.5">
                 <Anillo recurso={r} />
                 <span className="flex min-w-0 flex-col leading-tight">
-                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <b className="truncate text-rd-12-5 sm:text-rd-13 font-semibold text-rd-ink">{r.item}</b>
                   <span
-                    className={`text-rd-11-5 tabular-nums ${
+                    className={`text-rd-11 sm:text-rd-11-5 tabular-nums ${
                       completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'
                     }`}
                   >
@@ -772,7 +771,7 @@ const FilaActividad: React.FC<FilaActividadProps> = ({
       </div>
 
       {/* 3. Acciones en el extremo derecho en una sola línea compacta */}
-      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch max-xl:mt-3 max-xl:border-t max-xl:border-rd-line max-xl:pt-3">
+      <div className="flex min-w-0 flex-col items-end gap-2 self-stretch max-xl:mt-2 max-xl:border-t max-xl:border-rd-line max-xl:pt-2 sm:max-xl:mt-3 sm:max-xl:pt-3">
         <div className="mt-auto flex w-full flex-nowrap items-center justify-between gap-2 xl:w-auto xl:justify-end">
           {!resuelta ? (
             <Button

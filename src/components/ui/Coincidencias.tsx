@@ -5,6 +5,8 @@ import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { cifra, distanciaTexto, iniciales, unidad } from '../../utils/publicaciones';
 import { Avatar } from './Etiqueta';
 import { Button } from './Button';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { translateItem, translateUnit, type Language } from '../../i18n/catalogTranslations';
 
 /**
  * Lo compatible en RaDAR: la experiencia «Radar Match» de la app real
@@ -20,6 +22,7 @@ import { Button } from './Button';
  *   `ResumenCoincidencias` esa fila dentro de la tarjeta, cuando hay algo compatible.
  */
 export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: string }> = ({ n, compacto = false, className = '' }) => {
+  const { t } = useTranslation();
   const color =
     n >= 80
       ? 'border-rd-green-line bg-rd-green-soft text-rd-green'
@@ -29,7 +32,7 @@ export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: stri
 
   return (
     <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-rd-11-5 font-semibold tabular-nums ${color} ${className}`}>
-      {n} %{compacto ? <span className="sr-only"> de match</span> : ' de match'}
+      {n} %{compacto ? <span className="sr-only"> {t('radarMatchPercent')}</span> : ` ${t('radarMatchPercent')}`}
     </span>
   );
 };
@@ -38,8 +41,9 @@ export const Puntaje: React.FC<{ n: number; compacto?: boolean; className?: stri
  *  manual de estilo lo admite para separar datos de una línea, pero Alejandro lo prohibió en
  *  toda la herramienta (16 de septiembre de 2026). Los dos se contradicen y manda él; queda
  *  reportado para que el manual se corrija. */
-export function loQueTiene(c: CoincidenciaPublicacion): string {
-  return c.recursos.map((r) => `${cifra(r.cantidad)} ${unidad(r.cantidad, r.unidad)} de ${r.item.toLowerCase()}`).join(', ');
+export function loQueTiene(c: CoincidenciaPublicacion, lang: Language = 'es'): string {
+  const deStr = lang === 'en' ? 'of' : lang === 'fr' ? 'de' : lang === 'pt' ? 'de' : 'de';
+  return c.recursos.map((r) => `${cifra(r.cantidad)} ${translateUnit(r.cantidad, r.unidad, lang)} ${deStr} ${translateItem(r.item, lang).toLowerCase()}`).join(', ');
 }
 
 export interface ListaCoincidenciasProps {
@@ -55,8 +59,9 @@ export interface ListaCoincidenciasProps {
 }
 
 export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicacion, coincidencias, hechas = [], onPrimaria, onVerEnMapa }) => {
+  const { t, language } = useTranslation();
   const pide = publicacion.tipo === 'necesidad';
-  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">Todavía no hay matches. La publicación ya está en el mapa y te avisamos apenas aparezca algo.</p>;
+  if (coincidencias.length === 0) return <p className="rounded-rd-lg border border-rd-line bg-rd-fondo px-4 py-5 text-rd-13 text-rd-ink-2">{t('radarMatchNoMatchesYet')}</p>;
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
       {coincidencias.map((c) => {
@@ -66,7 +71,7 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
             <div className="flex items-center gap-2">
               <Avatar iniciales={iniciales(c.org)} />
               <span className="min-w-0 truncate text-rd-13-5 font-semibold text-rd-ink">{c.org}</span>
-              {c.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-4 w-4 shrink-0 text-rd-navy" />}
+              {c.verificada && <BadgeCheck role="img" aria-label={t('radarMatchVerifiedOrg')} className="h-4 w-4 shrink-0 text-rd-navy" />}
             </div>
             <p className="mt-2 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-rd-12-5 text-rd-ink-meta tabular-nums">
               <Puntaje n={c.puntaje} />
@@ -77,16 +82,16 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
               </span>
             </p>
             <p className="m-0 text-rd-13 text-rd-ink">
-              <span className="font-medium text-rd-ink-2">{pide ? 'Ofrece' : 'Necesita'}</span> {loQueTiene(c)}
+              <span className="font-medium text-rd-ink-2">{pide ? t('tagOffer') : t('tagNeed')}</span> {loQueTiene(c, language)}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {/* Pie de tarjeta: `md` (RaDAR 223 C1); el primario nunca va en `sm`. */}
               <Button nivel="primario" tamano="md" disabled={hecha} onClick={() => onPrimaria(c.id)}>
-                {hecha ? (pide ? 'Solicitado' : 'Comprometido') : pide ? 'Solicitar' : 'Ayudar'}
+                {hecha ? (pide ? t('radarMatchStatusRequested') : t('radarMatchStatusCommitted')) : pide ? t('radarMatchActionRequest') : t('radarMatchActionCommit')}
               </Button>
               {/* El mismo botón de mapa de toda la maqueta: terciario `md`, solo icono de 18. Con
                   texto competía con «Ver en el mapa» del pie, que ahí sí cierra el flujo. */}
-              <Button nivel="terciario" tamano="md" soloIcono aria-label={`Ver ${c.org} en el mapa`} onClick={() => onVerEnMapa(c.id)}>
+              <Button nivel="terciario" tamano="md" soloIcono aria-label={`${t('radarMatchViewOrgOnMap')} - ${c.org}`} onClick={() => onVerEnMapa(c.id)}>
                 <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
               </Button>
             </div>
@@ -99,6 +104,7 @@ export const ListaCoincidencias: React.FC<ListaCoincidenciasProps> = ({ publicac
 
 /** La lista en un diálogo: «Compatibles para {quién}». */
 export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => void } & ListaCoincidenciasProps> = ({ abierto, onCerrar, ...lista }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -115,11 +121,11 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
             <div className="min-w-0 flex-1">
               <h2 id="rd-coincidencias-t" className="font-rd m-0 flex items-center gap-2 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">
                 <Handshake aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />
-                Matches {lista.recursoFoco ? `en ${lista.recursoFoco} para ` : 'para '}{lista.publicacion.org}
+                {t('radarMatchFor')} {lista.recursoFoco ? `${lista.recursoFoco} (${lista.publicacion.org})` : lista.publicacion.org}
               </h2>
-              <p className="mt-1 mb-0 text-rd-14 text-rd-ink-2">{pide ? 'Ofertas que hacen match con lo que hace falta en tu zona o a nivel nacional.' : 'Necesidades que hacen match con lo que ofreces en tu zona o a nivel nacional.'}</p>
+              <p className="mt-1 mb-0 text-rd-14 text-rd-ink-2">{pide ? t('radarMatchDialogDescNeed') : t('radarMatchDialogDescOffer')}</p>
             </div>
-            <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
+            <Button nivel="terciario" tamano="md" soloIcono aria-label={t('detailClose')} onClick={onCerrar}>
               <X aria-hidden="true" className="h-5 w-5" />
             </Button>
           </div>
@@ -148,12 +154,18 @@ export const TOPE_SUGERENCIAS_DEFECTO = 5;
  * quien mira publicó una necesidad o una oferta. Queda reportado que el manual dice
  * «sugerencia» en su tabla de vocabulario y hay que corregirlo allá.
  */
-export function textoSugerencias(n: number, total?: number, maximo: number = TOPE_SUGERENCIAS_DEFECTO): string {
+export function textoSugerencias(n: number, total?: number, maximo: number = TOPE_SUGERENCIAS_DEFECTO, lang: Language = 'es'): string {
   const conteo = total ?? n;
+  const matchWord =
+    lang === 'fr'
+      ? conteo === 1 ? 'correspondance' : 'correspondances'
+      : lang === 'pt'
+      ? conteo === 1 ? 'correspondência' : 'correspondências'
+      : conteo === 1 ? 'match' : 'matches';
   if (conteo > maximo) {
-    return `${maximo}+ matches`;
+    return `${maximo}+ ${matchWord}`;
   }
-  return `${conteo} ${conteo === 1 ? 'match' : 'matches'}`;
+  return `${conteo} ${matchWord}`;
 }
 
 /**
@@ -196,6 +208,7 @@ export const FilaSugerencias: React.FC<{
   className = '',
   maximo = TOPE_SUGERENCIAS_DEFECTO,
 }) => {
+  const { language } = useTranslation();
   const relleno = variante === 'relleno';
   const destacada = !soloIcono && variante === 'destacada';
   const esSm = !destacada && !soloIcono && tamano === 'sm';
@@ -219,7 +232,7 @@ export const FilaSugerencias: React.FC<{
   return (
     <button
       type="button"
-      aria-label={soloIcono ? textoSugerencias(n, total, maximo) : undefined}
+      aria-label={soloIcono ? textoSugerencias(n, total, maximo, language) : undefined}
       onClick={(ev) => {
         ev.stopPropagation();
         onVer();
@@ -236,7 +249,7 @@ export const FilaSugerencias: React.FC<{
       <Handshake aria-hidden="true" className={`${iconos} shrink-0 ${relleno ? 'text-white' : 'text-rd-navy'}`} />
       {!soloIcono && (
         <>
-          <span className={`relative ${esSm || esCompacta || destacada ? 'whitespace-nowrap' : 'min-w-0 flex-1'}`}>{textoSugerencias(n, total, maximo)}</span>
+          <span className={`relative ${esSm || esCompacta || destacada ? 'whitespace-nowrap' : 'min-w-0 flex-1'}`}>{textoSugerencias(n, total, maximo, language)}</span>
           <ChevronRight aria-hidden="true" className={`${iconos} shrink-0 ${relleno ? 'text-white/80' : 'text-rd-ink-meta'}`} />
         </>
       )}

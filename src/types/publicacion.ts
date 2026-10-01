@@ -45,6 +45,8 @@ export interface Publicacion {
   titulo: string;
   org: string;
   verificada: boolean;
+  /** ID del usuario que creó la publicación */
+  userId?: string;
   /** La publicó la organización con sesión. */
   propia?: boolean;
   /** Tipo de perfil del autor (para reglas de privacidad y formato). */

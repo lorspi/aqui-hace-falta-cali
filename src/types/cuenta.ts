@@ -55,7 +55,7 @@ export interface DatosOrganizacion {
   nit: string;
   web: string;
   contacto: ContactoPublico;
-  documentoAdjunto: boolean;
+  documentoAdjunto?: boolean;
 }
 
 export interface DatosComunidad {

@@ -59,7 +59,7 @@ export const Hoja: React.FC<{
 
         {pestanas}
 
-        <div className="sin-barra min-h-0 flex-1 overflow-y-auto px-4">{children}</div>
+        <div className="sin-barra min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4">{children}</div>
 
         <div className="flex items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3">{pie}</div>
       </aside>

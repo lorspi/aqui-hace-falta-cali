@@ -28,7 +28,7 @@ import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
 import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
-import { actasDe, archivarViejas, cantidadPorEstado, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
+import { actasDe, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
@@ -39,6 +39,8 @@ import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from 
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El panel de la cuenta (mockup/*): «Mi organización» del prototipo (`organizacion.html`,
@@ -76,8 +78,23 @@ const PestanasPanel: React.FC<{
   onCambiar: (id: string) => void;
   nombrePanel: string;
 }> = ({ pestanas, actual, onCambiar, nombrePanel }) => {
+  const { t } = useTranslation();
   const zonaRef = useRef<HTMLDivElement>(null);
   const [desborda, setDesborda] = useState(false);
+
+  const traducirNombrePestana = (id: string, def: string): string => {
+    switch (id) {
+      case 'resumen': return t('dashboardTabSummary');
+      case 'necesidades': return t('dashboardTabNeeds');
+      case 'ofertas': return t('dashboardTabOffers');
+      case 'seguimiento': return t('dashboardTabDeliveries');
+      case 'reportes': return t('dashboardTabReports');
+      case 'equipo': return t('dashboardTabTeam');
+      case 'inventario': return t('dashboardTabInventory');
+      case 'ajustes': return t('dashboardTabSettings');
+      default: return def;
+    }
+  };
 
   useEffect(() => {
     const z = zonaRef.current;
@@ -158,7 +175,7 @@ const PestanasPanel: React.FC<{
                     : 'border-transparent font-medium text-rd-ink-meta hover:border-rd-line hover:text-rd-ink'
                 }`}
               >
-                <span>{p.nombre}</span>
+                <span>{traducirNombrePestana(p.id, p.nombre)}</span>
                 {p.n ? (
                   <>
                     <span className="sr-only">, </span>
@@ -186,13 +203,44 @@ const PestanasPanel: React.FC<{
   );
 };
 
-export const PanelPage: React.FC = () => (
+export interface PanelPageProps {
+  authUser?: any;
+}
+
+export const PanelPage: React.FC<PanelPageProps> = ({ authUser }) => (
   <AvisosProvider>
-    <Panel />
+    <Panel authUser={authUser} />
   </AvisosProvider>
 );
 
-const Panel: React.FC = () => {
+const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const { t } = useTranslation();
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
   const avisar = useAviso();
   const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
   const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
@@ -207,7 +255,7 @@ const Panel: React.FC = () => {
     else irA(a.accion.al);
   };
 
-  const [modulos] = useState<ModulosCuenta>(modulosGuardados);
+  const [modulos, setModulos] = useState<ModulosCuenta>(modulosGuardados);
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
   const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
   const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
@@ -367,6 +415,58 @@ const Panel: React.FC = () => {
       } catch {}
       avisar('Necesidad actualizada', { tipo: 'ok' });
     }
+  };
+
+  const eliminarGestionPublicacion = async (id: string, tipo: 'oferta' | 'necesidad') => {
+    try {
+      const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (esUuid) {
+        const tabla = tipo === 'oferta' ? 'offers' : 'needs';
+        await supabase
+          .from(tabla)
+          .update({
+            verification_status: 'ARCHIVED',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+      }
+    } catch (e) {
+      console.warn('Error al archivar en Supabase:', e);
+    }
+
+    if (tipo === 'oferta') {
+      try {
+        localStorage.removeItem('rd-oferta-creada-gestion');
+        localStorage.removeItem('rd-oferta-creada-recursos');
+        desactivarModulo('ofrece');
+      } catch {}
+      setModulos((prev) => ({ ...prev, ofrece: false }));
+      setRecursosOferta([]);
+      setPubOferta((prev) => ({
+        ...prev,
+        recursos: [],
+        pausadaGlobal: true,
+      }));
+      cambiarTab('resumen');
+      avisar('Publicación de oferta eliminada', { tipo: 'ok' });
+    } else {
+      try {
+        localStorage.removeItem('rd-necesidad-creada-gestion');
+        localStorage.removeItem('rd-necesidad-creada-recursos');
+        desactivarModulo('pide');
+      } catch {}
+      setModulos((prev) => ({ ...prev, pide: false }));
+      setRecursosNecesidad([]);
+      setPubNecesidad((prev) => ({
+        ...prev,
+        recursos: [],
+        pausadaGlobal: true,
+      }));
+      cambiarTab('resumen');
+      avisar('Publicación de necesidad eliminada', { tipo: 'ok' });
+    }
+
+    setGestionandoPublicacion(null);
   };
   const [cajon, setCajon] = useState(false);
   const [pasosOcultos, setPasosOcultos] = useState(false);
@@ -768,7 +868,7 @@ const Panel: React.FC = () => {
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
-      const quien = quienLleva(s, equipo) ?? 'Bomberos Voluntarios Usme';
+      const quien = quienLleva(s, equipo) ?? ORG.nombre ?? 'Equipo de entrega';
       const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
         url: f.url,
         alt: `En camino a ${s.quien} - ${f.nombre}`,
@@ -1074,17 +1174,38 @@ const Panel: React.FC = () => {
   };
 
   return (
-    <Shell seccion="panel" panelNombre={nombrePanel()} cuenta={CUENTA} pendientes={pendientes} avisosNuevos={sinLeer} rutas={RUTAS_SHELL} onPedir={() => irA(RUTAS.pedir)} onOfrecer={() => irA(RUTAS.ofrecer)} cajonAbierto={cajon} onCerrarCajon={() => setCajon(false)}>
-      <div className="flex h-full min-h-0 flex-col max-lg:min-h-dvh">
+    <Shell
+      seccion="panel"
+      panelNombre={nombrePanel()}
+      cuenta={CUENTA}
+      authUser={usuarioEfectivo}
+      pendientes={pendientes}
+      avisosNuevos={sinLeer}
+      rutas={RUTAS_SHELL}
+      onPedir={() => irA(RUTAS.pedir)}
+      onOfrecer={() => irA(RUTAS.ofrecer)}
+      onLogout={async () => {
+        clearStoredAuthUser();
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+        window.location.href = '/mapa-ayudas-necesidades';
+      }}
+      cajonAbierto={cajon}
+      onCerrarCajon={() => setCajon(false)}
+    >
+      <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{nombrePanel()}</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">
+            {nombrePanel() === 'Mi comunidad' ? t('dashboardCommunityTitle') : t('dashboardTitle')}
+          </h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeedButton')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('publishOfferButton')}
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
@@ -1093,7 +1214,7 @@ const Panel: React.FC = () => {
           </span>
         </header>
         <PestanasPanel pestanas={pestanas} actual={actual} onCambiar={cambiarTab} nombrePanel={nombrePanel()} />
-        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+        <main id={`panel-${actual}`} role="tabpanel" aria-labelledby={`pestana-${actual}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
           <div className="grid grid-cols-4 gap-x-4 gap-y-4 sm:grid-cols-8 lg:grid-cols-12 lg:gap-x-6">
             {actual === 'resumen' && <Resumen modulos={modulos} datos={datos} pasosOcultos={pasosOcultos} onOcultarPasos={() => setPasosOcultos(true)} onAccion={accion} />}
             {actual === 'necesidades' && (
@@ -1213,6 +1334,7 @@ const Panel: React.FC = () => {
           recursoFoco={gestionandoPublicacion?.recursoFoco}
           onCerrar={() => setGestionandoPublicacion(null)}
           onGuardar={guardarGestionPublicacion}
+          onEliminar={eliminarGestionPublicacion}
           onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
         />
         <DialogoDetallePublicacionPanel
@@ -1485,17 +1607,17 @@ const Panel: React.FC = () => {
         </Dialogo>
         <DialogoCierre
           abierto={marcandoEnCamino !== null}
-          titulo={marcandoEnCamino ? `Marcar en camino la entrega a ${marcandoEnCamino.quien}` : ''}
+          titulo={marcandoEnCamino ? `Enviar ayuda a ${marcandoEnCamino.quien}` : ''}
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}, ${quienLleva(marcandoEnCamino, equipo) ?? 'Equipo asignado'}. Puedes registrar fotos del cargue o despacho y notas de transporte para evidenciar que la ayuda va en ruta.`
+              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Puedes registrar fotos del cargue o despacho y notas de transporte o entrega para evidenciar que la ayuda va en camino.`
               : ''
           }
-          accion="Despachar"
+          accion="Enviar"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
           nota={{
-            etiqueta: 'Detalles de despacho o transporte (vehículo, conductor, ruta)',
-            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, llegada estimada 2:30 PM...',
+            etiqueta: 'Detalles del envío o transporte (vehículo, conductor, ruta u observaciones)',
+            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, entrega directa...',
             ayuda: 'Estas notas quedarán registradas en el seguimiento y en el acta oficial de entrega.',
           }}
           onCerrar={() => setMarcandoEnCamino(null)}
@@ -1583,7 +1705,7 @@ const Panel: React.FC = () => {
               <p className="text-rd-13 text-rd-ink-2 leading-relaxed">
                 Asigna esta necesidad a tu propio equipo o brigada. Se creará una entrega en la columna{' '}
                 <strong className="text-rd-ink font-semibold">Comprometida</strong> del tablero de{' '}
-                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas despacharla y certificarla con fotos y acta oficial.
+                <strong className="text-rd-ink font-semibold">Ayuda que entrego</strong> para que puedas enviarla y certificarla con fotos y acta oficial.
               </p>
 
               <div className="rounded-rd-md border border-rd-line bg-rd-sunken/40 p-3 text-rd-13">
@@ -1948,6 +2070,7 @@ const PulsoOperativo: React.FC<{
 const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisDe>[1]; pasosOcultos: boolean; onOcultarPasos: () => void; onAccion: (al: string) => void }> = ({ modulos, datos, pasosOcultos, onOcultarPasos, onAccion }) => {
   const [pasosDesplegados, setPasosDesplegados] = useState(false);
   const sinModulos = !modulos.pide && !modulos.ofrece;
+  const [actividadDesplegada, setActividadDesplegada] = useState(!sinModulos);
   const pendientes = pendientesDe(modulos, datos);
   const decisiones = pendientes.filter((p) => p.grupo === 'decision');
   const operaciones = pendientes.filter((p) => p.grupo === 'operacion');
@@ -2030,16 +2153,56 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           </div>
         </Caja>
       )}
-      <Caja titulo="Actividad reciente" className="col-span-full">
-        {sinModulos ? (
-          <Vacio icono={<Clock className="h-6.5 w-6.5" />} titulo="Sin actividad todavía" texto="Aquí queda lo que pase con tus publicaciones y entregas." />
-        ) : (
-          ACTIVIDAD.map((a, i) => (
-            <div key={i} className={`flex gap-3 py-2 text-rd-13 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
-              <time className="w-16 shrink-0 text-rd-ink-meta tabular-nums">{a.cuando}</time>
-              <span className="text-rd-ink">{a.texto}</span>
+      <Caja
+        className="col-span-full border-rd-line bg-rd-surface"
+        titulo={
+          <div className="flex items-center gap-2">
+            <span>Actividad reciente</span>
+            <Conteo n={sinModulos ? 0 : ACTIVIDAD.length} />
+          </div>
+        }
+        accion={
+          <Button
+            nivel="secundario"
+            tamano="md"
+            onClick={() => setActividadDesplegada((v) => !v)}
+            iconoDespues={
+              actividadDesplegada ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )
+            }
+          >
+            {actividadDesplegada ? 'Plegar' : 'Ver actividad'}
+          </Button>
+        }
+      >
+        {actividadDesplegada ? (
+          sinModulos ? (
+            <div className="mt-2 flex items-center gap-2.5 rounded-rd-md bg-rd-fondo p-3 text-rd-13 text-rd-ink-2">
+              <Clock aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
+              <span>Sin actividad todavía. Aquí queda lo que pase con tus publicaciones y entregas.</span>
             </div>
-          ))
+          ) : (
+            <div className="mt-2 space-y-0 divide-y divide-rd-line-soft border-t border-rd-line-soft pt-1">
+              {ACTIVIDAD.map((a, i) => (
+                <div key={i} className={`flex gap-3 py-2 text-rd-13 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
+                  <time className="w-16 shrink-0 text-rd-ink-meta tabular-nums">{a.cuando}</time>
+                  <span className="text-rd-ink">{a.texto}</span>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div className="flex items-center gap-2 text-rd-12-5 text-rd-ink-meta">
+            <Clock aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-ink-3" />
+            <span>
+              {sinModulos
+                ? 'Sin actividad reciente todavía. Aquí quedará el registro de tus publicaciones y entregas.'
+                : `${ACTIVIDAD.length} eventos registrados en el historial.`}
+            </span>
+          </div>
         )}
       </Caja>
       {!pasosOcultos && listos < pasos.length && (
@@ -3247,7 +3410,6 @@ function puedeMover(s: Solicitud, a: Solicitud['estado']): string | null {
   if (a === 'archivada' || s.estado === 'archivada') return 'Las completadas se archivan con el botón';
   if (a === 'confirmada') return null; // Arrastrar a Completada abre la certificación
   if (s.estado === 'confirmada') return 'Las completadas se archivan con el botón';
-  if (a === 'camino' && !s.vol) return 'Asigna primero a alguien';
   if (Math.abs(ORDEN_CICLO[a] - ORDEN_CICLO[s.estado]) > 1) return 'De a un paso';
   return null;
 }
@@ -3717,6 +3879,8 @@ const MiEquipo: React.FC<{
       if (filtroDisp) {
         if (filtroDisp === 'tiempo_completo') {
           if (!['tiempo_completo', 'tardes', 'hoy', 'manana'].includes(m.disp)) return false;
+        } else if (filtroDisp === 'entre_semana') {
+          if (m.disp !== 'entre_semana') return false;
         } else if (filtroDisp === 'fines_de_semana') {
           if (!['fines_de_semana', 'finde'].includes(m.disp)) return false;
         } else if (filtroDisp === 'emergencias') {

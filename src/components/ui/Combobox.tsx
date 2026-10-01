@@ -56,6 +56,8 @@ export const Combobox: React.FC<ComboboxProps> = ({
   const [textoInput, setTextoInput] = useState(valor || '');
   const [estaEscribiendo, setEstaEscribiendo] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [dropUp, setDropUp] = useState(false);
+  const [maxAlturaListbox, setMaxAlturaListbox] = useState(240);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +114,57 @@ export const Combobox: React.FC<ComboboxProps> = ({
       setHighlightedIndex(-1);
     }
   }, [isOpen, pildora, opciones, valor]);
+
+  // Al abrir, calcula si cabe hacia abajo o si debe desplegarse hacia arriba para evitar recortes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
+      let el = node?.parentElement ?? null;
+      while (el && el !== document.body) {
+        if (el.tagName === 'DIALOG') return el;
+        const { overflow, overflowY, overflowX } = window.getComputedStyle(el);
+        if (/(auto|scroll|hidden|overlay)/.test(overflow + overflowY + overflowX)) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    };
+
+    const decideDirection = () => {
+      const controlEl = triggerRef.current || inputRef.current || containerRef.current;
+      if (!controlEl) return;
+      const rect = controlEl.getBoundingClientRect();
+      const scrollParent = getScrollParent(controlEl);
+
+      const boundsTop = scrollParent ? Math.max(0, scrollParent.getBoundingClientRect().top) : 0;
+      const boundsBottom = scrollParent
+        ? Math.min(window.innerHeight, scrollParent.getBoundingClientRect().bottom)
+        : window.innerHeight;
+
+      const spaceBelow = boundsBottom - rect.bottom;
+      const spaceAbove = rect.top - boundsTop;
+
+      const panelEstimatedHeight = Math.min(240, opcionesFiltradas.length * 38 + (pildora ? 60 : 16));
+      const margin = 12;
+
+      // Desplegar hacia arriba si no cabe abajo y arriba hay más espacio que abajo
+      const shouldDropUp = spaceBelow < panelEstimatedHeight + margin && spaceAbove > spaceBelow;
+      setDropUp(shouldDropUp);
+
+      const availableSpace = shouldDropUp ? spaceAbove - margin : spaceBelow - margin;
+      setMaxAlturaListbox(Math.min(240, Math.max(120, availableSpace)));
+    };
+
+    decideDirection();
+    window.addEventListener('resize', decideDirection);
+    window.addEventListener('scroll', decideDirection, true);
+    return () => {
+      window.removeEventListener('resize', decideDirection);
+      window.removeEventListener('scroll', decideDirection, true);
+    };
+  }, [isOpen, opcionesFiltradas.length, pildora]);
 
   // Cerrar al hacer click afuera
   useEffect(() => {
@@ -312,7 +365,7 @@ export const Combobox: React.FC<ComboboxProps> = ({
 
   return (
     <div
-      className={`text-left relative ${isOpen ? 'z-30' : 'z-0'} ${className}`}
+      className={`text-left relative ${isOpen ? 'z-50' : 'z-0'} ${className}`}
       ref={containerRef}
     >
       <label
@@ -364,7 +417,11 @@ export const Combobox: React.FC<ComboboxProps> = ({
             {isOpen && (
               <div
                 id={`${id}-dropdown`}
-                className="absolute left-0 right-0 top-full mt-1.5 rounded-2xl border border-rd-line bg-rd-surface shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                className={`absolute left-0 right-0 ${
+                  dropUp
+                    ? 'bottom-full mb-1.5 slide-in-from-bottom-1'
+                    : 'top-full mt-1.5 slide-in-from-top-1'
+                } rounded-2xl border border-rd-line bg-rd-surface shadow-lg z-50 overflow-hidden animate-in fade-in duration-150`}
               >
                 <div className="p-2 border-b border-rd-line bg-rd-surface">
                   <div className="relative flex items-center">
@@ -389,7 +446,8 @@ export const Combobox: React.FC<ComboboxProps> = ({
                   id={`${id}-listbox`}
                   ref={listboxRef}
                   role="listbox"
-                  className="max-h-60 overflow-y-auto py-1 focus:outline-none"
+                  style={{ maxHeight: `${Math.max(80, maxAlturaListbox - 50)}px` }}
+                  className="overflow-y-auto py-1 focus:outline-none"
                 >
                   {opcionesFiltradas.length > 0 ? (
                     opcionesFiltradas.map((opcion, index) => {
@@ -478,13 +536,18 @@ export const Combobox: React.FC<ComboboxProps> = ({
             {isOpen && (
               <div
                 id={`${id}-dropdown`}
-                className="absolute left-0 right-0 top-full mt-1.5 rounded-rd-md border border-rd-line bg-rd-surface shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+                className={`absolute left-0 right-0 ${
+                  dropUp
+                    ? 'bottom-full mb-1.5 slide-in-from-bottom-1'
+                    : 'top-full mt-1.5 slide-in-from-top-1'
+                } rounded-rd-md border border-rd-line bg-rd-surface shadow-lg z-50 overflow-hidden animate-in fade-in duration-150`}
               >
                 <ul
                   id={`${id}-listbox`}
                   ref={listboxRef}
                   role="listbox"
-                  className="max-h-56 overflow-y-auto py-1 focus:outline-none"
+                  style={{ maxHeight: `${maxAlturaListbox}px` }}
+                  className="overflow-y-auto py-1 focus:outline-none"
                 >
                   {opcionesFiltradas.length > 0 ? (
                     opcionesFiltradas.map((opcion, index) => {

@@ -22,7 +22,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
   onSelectNeed,
   onSelectOffer,
 }) => {
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [offerMatches, setOfferMatches] = useState<MatchingOfferResult[]>([]);
   const [needMatches, setNeedMatches] = useState<MatchingNeedResult[]>([]);
@@ -75,23 +75,21 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                 Radar Match
               </span>
               <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Publicado
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {t('radarMatchTagPublished')}
               </span>
             </div>
             <h2 className="text-lg font-black text-slate-900 leading-tight">
-              {isNeed ? '¡Tu solicitud fue publicada!' : '¡Tu oferta fue publicada!'}
+              {isNeed ? t('radarMatchTitleNeed') : t('radarMatchTitleOffer')}
             </h2>
             <p className="text-xs text-slate-600 leading-normal">
-              {isNeed
-                ? 'Coincidencias encontradas con ofertas de ayuda cercanas que podrían servirte:'
-                : 'Coincidencias encontradas con solicitudes de ayuda que podrías suplir:'}
+              {isNeed ? t('radarMatchDescNeed') : t('radarMatchDescOffer')}
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors shrink-0"
             id="btn-close-radar-match-modal"
-            aria-label="Cerrar"
+            aria-label={t('closeDetail')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -103,7 +101,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
             <div className="py-12 text-center space-y-3">
               <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
               <p className="text-xs font-semibold text-slate-500">
-                Buscando coincidencias con el motor Radar Match...
+                {t('radarMatchSearching')}
               </p>
             </div>
           ) : isNeed ? (
@@ -134,7 +132,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                           </div>
                         </div>
                         <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-300 shrink-0">
-                          {score}% Match
+                          {score}% {t('radarMatchPercent')}
                         </span>
                       </div>
 
@@ -143,7 +141,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                         <span className="text-slate-500 font-medium flex items-center gap-1 truncate max-w-[200px]">
                           <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{offer.neighborhood || offer.address || 'Ubicación cercana'}</span>
+                          <span>{offer.neighborhood || offer.address || t('radarMatchNearbyLocation')}</span>
                           {typeof distanceKm === 'number' && (
                             <span className="text-emerald-700 font-bold shrink-0">({distanceKm.toFixed(1)} km)</span>
                           )}
@@ -158,7 +156,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                               className="text-xs text-emerald-700 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
                             >
                               <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Contactar</span>
+                              <span>{t('radarMatchContact')}</span>
                             </a>
                           )}
                           {onSelectOffer && (
@@ -169,7 +167,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                               }}
                               className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
                             >
-                              <span>Ver</span>
+                              <span>{t('actionViewDetail')}</span>
                               <ArrowRight className="w-3 h-3" />
                             </button>
                           )}
@@ -182,9 +180,9 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
             ) : (
               <div className="py-8 px-4 text-center bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                <h4 className="font-bold text-slate-900 text-sm">¡Tu solicitud ya está en el mapa!</h4>
+                <h4 className="font-bold text-slate-900 text-sm">{t('radarMatchEmptyNeedTitle')}</h4>
                 <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                  En este momento no hay ofertas activas exactas en tu zona, pero tu petición ya es visible para toda la red de voluntariado y donantes.
+                  {t('radarMatchEmptyNeedDesc')}
                 </p>
               </div>
             )
@@ -225,7 +223,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                           </div>
                         </div>
                         <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-300 shrink-0">
-                          {score}% Match
+                          {score}% {t('radarMatchPercent')}
                         </span>
                       </div>
 
@@ -234,7 +232,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                         <span className="text-slate-500 font-medium flex items-center gap-1 truncate max-w-[200px]">
                           <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{need.neighborhood || need.address || 'Ubicación cercana'}</span>
+                          <span>{need.neighborhood || need.address || t('radarMatchNearbyLocation')}</span>
                           {typeof distanceKm === 'number' && (
                             <span className="text-emerald-700 font-bold shrink-0">({distanceKm.toFixed(1)} km)</span>
                           )}
@@ -249,7 +247,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                               className="text-xs text-emerald-700 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
                             >
                               <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Ayudar</span>
+                              <span>{t('actionHelp')}</span>
                             </a>
                           )}
                           {onSelectNeed && (
@@ -260,7 +258,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                               }}
                               className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
                             >
-                              <span>Ver</span>
+                              <span>{t('actionViewDetail')}</span>
                               <ArrowRight className="w-3 h-3" />
                             </button>
                           )}
@@ -273,9 +271,9 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
             ) : (
               <div className="py-8 px-4 text-center bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                <h4 className="font-bold text-slate-900 text-sm">¡Tu oferta ya está disponible!</h4>
+                <h4 className="font-bold text-slate-900 text-sm">{t('radarMatchEmptyOfferTitle')}</h4>
                 <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                  ¡Muchas gracias por ofrecer ayuda! Tu oferta ya está visible para la comunidad. Tan pronto una solicitud requiera tu ayuda te notificaremos.
+                  {t('radarMatchEmptyOfferDesc')}
                 </p>
               </div>
             )
@@ -289,7 +287,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
             className="btn-primary-success text-xs py-2 px-5 font-bold"
             id="btn-radar-match-done"
           >
-            Entendido
+            {t('radarMatchUnderstood')}
           </button>
         </div>
       </div>

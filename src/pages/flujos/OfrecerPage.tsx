@@ -18,6 +18,7 @@ import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias,
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 import { createOfferWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
@@ -97,6 +98,7 @@ export interface OfrecerProps {
   isModal?: boolean;
   initialCityId?: string;
   onRequireAuth?: () => void;
+  authUser?: any;
 }
 
 export const OfrecerPage: React.FC<OfrecerProps> = (props) => (
@@ -127,6 +129,7 @@ function publicacionDe(e: EstadoOfrecer): Publicacion {
 }
 
 export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+  const { t } = useTranslation();
   const [createdOffer, setCreatedOffer] = useState<Offer | undefined>(undefined);
   const [nombreOrg, setNombreOrg] = useState<string>('');
   const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
@@ -459,7 +462,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'recursos') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Qué puedes ofrecer?" sub="Lo que registraste va primero, con su cantidad. Marca solo lo que tengas disponible hoy." />
+        <Pregunta titulo={t('flowWhatOffered')} sub={t('flowWhatOfferedSub')} />
         {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3 shrink-0" />}
         {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo="Todavía no tienen recursos registrados" texto="Marca aquí lo que tengan hoy. Lo que publiques queda registrado para la próxima." className="mb-3 shrink-0" />}
         <ListaRecursos
@@ -495,8 +498,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'entrega') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Cómo se entrega?" />
-        <TarjetasOpcion nombre="Cómo se entrega" opciones={MODOS_ENTREGA.map((m) => ({ id: m.id, nombre: m.nombre, icono: ICONO_MODO[m.icono] }))} valor={e.entrega} onChange={(id) => set({ entrega: id as ModoEntrega })} />
+        <Pregunta titulo={t('flowHowDelivered')} />
+        <TarjetasOpcion nombre={t('flowHowDelivered')} opciones={MODOS_ENTREGA.map((m) => ({ id: m.id, nombre: m.nombre, icono: ICONO_MODO[m.icono] }))} valor={e.entrega} onChange={(id) => set({ entrega: id as ModoEntrega })} />
         <div className="mt-5">
           {e.entrega === 'llevamos' && (
             <>
@@ -517,7 +520,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'donde') {
     pantalla = (
       <>
-        <Pregunta titulo={e.entrega === 'llevamos' ? '¿De dónde sale?' : '¿Dónde se recoge?'} sub="Pusimos la dirección de tu cuenta. Si el recurso está en otro punto, usa tu ubicación GPS, corrígela o mueve el punto en el mapa." />
+        <Pregunta titulo={t('flowWhereTitle')} sub={t('flowWhereSub')} />
         
         <button
           type="button"
@@ -562,7 +565,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'contacto') {
     pantalla = (
       <>
-        <Pregunta titulo="¿Quién ofrece la ayuda?" sub="Es a quien van a escribir para pedirlo. Pusimos tu contacto; cámbialo si lo coordina alguien más." />
+        <Pregunta titulo={t('flowContactTitle')} sub={t('flowContactSub')} />
         <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoOfrecer>)} errores={errores} />
         <label className="mb-4 flex cursor-pointer items-center justify-between gap-3 rounded-rd-md border border-rd-line px-3 py-2.5 text-rd-13-5 text-rd-ink">
           <span>Mostrar el nombre de {nombreOrg || CUENTA_OFRECER.organizacion || 'tu organización'} en el mapa</span>
@@ -578,15 +581,15 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   } else if (sub.id === 'fotos') {
     pantalla = (
       <>
-        <Pregunta titulo="Una foto de lo que ofreces" sub="Es opcional. Ver el recurso ayuda a quien lo necesita a saber si le sirve: la presentación, el tamaño, el estado en que está." />
+        <Pregunta titulo={t('flowPhotosTitle')} sub={t('flowPhotosSub')} />
         <CampoFotos fotos={e.fotos} onAgregar={agregarFotos} onQuitar={quitarFoto} error={errores.errores.fotos} />
       </>
     );
   } else if (sub.id === 'revisar') {
     pantalla = (
       <>
-        <Pregunta titulo="Revisar y publicar" sub="Así lo van a ver las organizaciones. Toca cualquier dato para cambiarlo." />
-        <ResumenPub titulo="Se ofrece">
+        <Pregunta titulo={t('flowReviewTitle')} sub={t('flowReviewSub')} />
+        <ResumenPub titulo={t('flowOfferedHeading')}>
           {e.sel.map((it) => {
             const d = e.det[it] ?? {};
             const dt = camposTexto(camposOferta(it), d);
@@ -596,10 +599,10 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             return <MetaPub key={it} item={it} valor={e.cant[it] ? cifra(e.cant[it]) : ''} unidad={unidadOferta(it)} onChange={(t) => cantidad(it, numero(t) || 0)} linea={linea || undefined} />;
           })}
         </ResumenPub>
-        <FilaRevisar clave="Entrega" valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
-        {e.entrega !== 'remoto' && <FilaRevisar clave="Dónde" valor={e.dir} onClick={() => f.irA('donde')} />}
-        <FilaRevisar clave="Contacto" valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
-        <FilaRevisar clave="Fotos" valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? 'Cambiar' : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave={t('flowDeliveryMethod')} valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
+        {e.entrega !== 'remoto' && <FilaRevisar clave={t('flowWhereTitle')} valor={e.dir} onClick={() => f.irA('donde')} />}
+        <FilaRevisar clave={t('flowContactTitle')} valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
+        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} fotos` : 'Sin fotos'} accion={e.fotos.length ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
       </>
     );
   }
@@ -622,7 +625,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
   return (
     <>
-      <MarcoFlujo nombre="Ofrecer ayuda" fases={FASES} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar="Publicar oferta" onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('offerHelp')} fases={[t('flowWhatOffered'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar={t('btnPublishOffer')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />

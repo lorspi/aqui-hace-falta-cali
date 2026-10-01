@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BadgeCheck, ChevronLeft, ChevronRight, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
@@ -14,6 +15,7 @@ import { HojaPin } from '../../components/ui/HojaPin';
 import { Segmented } from '../../components/ui/Segmented';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { Tarjeta } from '../../components/ui/Tarjeta';
+import { TituloPublicacion } from '../../components/ui/TituloPublicacion';
 import { DialogoDetallePublicacion } from '../../components/ui/DialogoDetallePublicacion';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
@@ -33,6 +35,8 @@ import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
+import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
+import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 
 /**
@@ -108,6 +112,7 @@ const Radar: React.FC<RadarProps> = ({
   authUser,
   isModeratorOrAdmin,
 }) => {
+  const { t } = useTranslation();
   const avisar = useAviso();
   /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
      (`utils/enlace.ts`). Sin parámetros, los valores por defecto de siempre. */
@@ -348,8 +353,100 @@ const Radar: React.FC<RadarProps> = ({
     return () => window.removeEventListener('popstate', onPopState);
   }, [aplicarPuntoUrl]);
 
+  const [localAuth, setLocalAuth] = useState(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return getStoredAuthUser();
+  });
+
+  useEffect(() => {
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      setLocalAuth(u);
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+    return () => window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+  }, []);
+
+  useEffect(() => {
+    if (authUser !== undefined) {
+      setLocalAuth(authUser);
+    }
+  }, [authUser]);
+
+  const usuarioEfectivo = useMemo(() => {
+    if (authUser === null) return null;
+    if (authUser !== undefined) return authUser;
+    return localAuth ?? getStoredAuthUser();
+  }, [authUser, localAuth]);
+
+  const handleLogout = async () => {
+    setLocalAuth(null);
+    clearStoredAuthUser();
+    if (onLogout) {
+      await onLogout();
+    }
+  };
+
+  const esModOAdmin = useMemo(() => {
+    if (isModeratorOrAdmin) return true;
+    if (!usuarioEfectivo) return false;
+    const role = (usuarioEfectivo.role || '').toString().trim().toUpperCase();
+    return role === 'ADMIN' || role === 'MODERATOR' || role === 'MODERADOR' || role === 'ADMINISTRADOR';
+  }, [isModeratorOrAdmin, usuarioEfectivo]);
+
+  // Reanudar automáticamente compromiso tras registro / login
+  useEffect(() => {
+    const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
+    if (!estaAutenticado) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const idParaCompromiso = searchParams.get('abrirCompromiso');
+    const pendiente = obtenerAccionPendiente();
+    const targetId = idParaCompromiso || (pendiente?.tipo === 'compromiso' && pendiente.autoEjecutar ? pendiente.publicacionId : null);
+
+    if (targetId) {
+      const pub = todasLasPubs.find((p) => p.id === targetId);
+      if (pub) {
+        setCompromiso(pub);
+        limpiarAccionPendiente();
+        if (idParaCompromiso) {
+          searchParams.delete('abrirCompromiso');
+          const nuevoSearch = searchParams.toString() ? `?${searchParams.toString()}` : '';
+          window.history.replaceState(null, '', window.location.pathname + nuevoSearch + window.location.hash);
+        }
+      }
+    }
+  }, [todasLasPubs, usuarioEfectivo]);
+
   /* --- lo que pasa al tocar una tarjeta (`acciones.js`) --- */
-  const abrirCompromiso = (id: string) => setCompromiso(todasLasPubs.find((p) => p.id === id) ?? null);
+  const abrirCompromiso = (id: string) => {
+    const pub = todasLasPubs.find((p) => p.id === id);
+    if (!pub) return;
+
+    const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
+    if (!estaAutenticado) {
+      guardarAccionPendiente({
+        tipo: 'compromiso',
+        publicacionId: id,
+        tipoPublicacion: pub.tipo,
+        rutaRetorno: window.location.pathname + (window.location.search || ''),
+        autoEjecutar: true,
+        mensaje: pub.tipo === 'oferta'
+          ? 'Inicia sesión o regístrate para solicitar este recurso.'
+          : 'Inicia sesión o regístrate para ofrecer tu ayuda en esta necesidad.',
+      });
+
+      if (onOpenLoginModal) {
+        onOpenLoginModal();
+      } else {
+        window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+      }
+      return;
+    }
+
+    setCompromiso(pub);
+  };
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
@@ -409,27 +506,6 @@ const Radar: React.FC<RadarProps> = ({
   /* El mapa se tapará abajo según la altura de la hoja colapsada (para centrar el pin). */
   const tapadoAbajo = movil && hojaPin && !hojaPin.expandida && !hojaPin.cerrando ? 260 : 0;
 
-  const usuarioEfectivo = useMemo(() => {
-    if (authUser) return authUser;
-    if (typeof window !== 'undefined') {
-      const adminLocal = localStorage.getItem('ahf_admin_user');
-      if (adminLocal) {
-        try { return JSON.parse(adminLocal); } catch {}
-      }
-      const authLocal = localStorage.getItem('ahf_auth_user');
-      if (authLocal) {
-        try { return JSON.parse(authLocal); } catch {}
-      }
-    }
-    return null;
-  }, [authUser]);
-
-  const esModOAdmin = useMemo(() => {
-    if (isModeratorOrAdmin) return true;
-    if (!usuarioEfectivo) return false;
-    const role = (usuarioEfectivo.role || '').toString().trim().toUpperCase();
-    return role === 'ADMIN' || role === 'MODERATOR' || role === 'MODERADOR' || role === 'ADMINISTRADOR';
-  }, [isModeratorOrAdmin, usuarioEfectivo]);
 
   const cuentaUsuario = usuarioEfectivo
     ? {
@@ -454,7 +530,7 @@ const Radar: React.FC<RadarProps> = ({
       isModeratorOrAdmin={esModOAdmin}
       onOpenLoginModal={onOpenLoginModal}
       onOpenProfileModal={onOpenProfileModal}
-      onLogout={onLogout}
+      onLogout={handleLogout}
       pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
       avisosNuevos={sinLeer}
       rutas={RUTAS_SHELL}
@@ -463,17 +539,17 @@ const Radar: React.FC<RadarProps> = ({
       cajonAbierto={cajon}
       onCerrarCajon={() => setCajon(false)}
     >
-      <div className="flex h-full min-h-0 flex-col max-lg:h-dvh">
+      <div className="flex h-full min-h-0 flex-col">
         {/* ---- cabecera ---- */}
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Radar</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('navRadar')}</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}>
-                Pedir ayuda
+                {t('publishNeed')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => (onOpenCreateOfferModal ? onOpenCreateOfferModal() : irA(RUTAS.ofrecer))}>
-                Ofrecer ayuda
+                {t('offerHelp')}
               </Button>
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
@@ -481,7 +557,7 @@ const Radar: React.FC<RadarProps> = ({
             <button
               type="button"
               onClick={() => setBuscando((b) => !b)}
-              aria-label="Buscar"
+              aria-label={t('searchKeyword')}
               aria-expanded={buscando}
               className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
             >
@@ -501,17 +577,17 @@ const Radar: React.FC<RadarProps> = ({
               onChange={setTipo}
               className="shrink-0 max-lg:w-full max-lg:justify-between"
               opciones={[
-                { id: 'todo', etiqueta: 'Todo', n: conteo.todo },
-                { id: 'necesidad', etiqueta: 'Necesidades', n: conteo.necesidad, pip: 'necesidad' },
-                { id: 'oferta', etiqueta: 'Ofertas', n: conteo.oferta, pip: 'oferta' },
+                { id: 'todo', etiqueta: t('filterAll'), n: conteo.todo },
+                { id: 'necesidad', etiqueta: t('filterNeeds'), n: conteo.necesidad, pip: 'necesidad' },
+                { id: 'oferta', etiqueta: t('filterOffers'), n: conteo.oferta, pip: 'oferta' },
               ]}
             />
             {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
                 de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
                 la píldora flotante de abajo. */}
             <div role="group" aria-label="Vista" className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
-              <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-              <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+              <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta={t('mapView')} icono={<MapIcon className="h-5 w-5" />} />
+              <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta={t('listView')} icono={<List className="h-5 w-5" />} />
             </div>
             <span aria-hidden="true" className="h-6 w-px shrink-0 flex-none bg-rd-line max-lg:hidden" />
           </div>
@@ -530,7 +606,7 @@ const Radar: React.FC<RadarProps> = ({
                 <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
               </ZonaChips>
             )}
-            <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar recurso, barrio u organización" abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
+            <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder={t('searchPlaceholder')} abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
           </div>
         </div>
 
@@ -539,7 +615,7 @@ const Radar: React.FC<RadarProps> = ({
           <main
             role="region"
             aria-label="Lista de publicaciones"
-            className="min-h-0 flex-1 overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
           >
             {visibles.length === 0 ? (
               <Vacio
@@ -556,9 +632,9 @@ const Radar: React.FC<RadarProps> = ({
               <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
                 {/* Cabecera de columnas, solo desde 1280 (rótulo suelto: cada fila es una tarjeta) */}
                 <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8">
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Publicación y organización</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Recursos</span>
-                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">Acciones</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">{t('columnPostAndOrg')}</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">{t('columnResources')}</span>
+                  <span className="text-rd-11 font-semibold tracking-wider text-rd-ink-meta uppercase">{t('columnActions')}</span>
                 </div>
                 {visibles.map((p: Publicacion) => (
                   <React.Fragment key={p.id}>
@@ -601,6 +677,7 @@ const Radar: React.FC<RadarProps> = ({
                 encuadrarTodo={encuadrarCiudad}
                 tapadoAbajo={tapadoAbajo}
                 resaltadas={resaltadas}
+                onMiUbicacion={setUbicacionActual}
                 className="h-full w-full"
               />
 
@@ -670,8 +747,8 @@ const Radar: React.FC<RadarProps> = ({
             aria-label="Vista"
             className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
           >
-            <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta="Mapa" icono={<MapIcon className="h-5 w-5" />} />
-            <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta="Lista" icono={<List className="h-5 w-5" />} />
+            <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta={t('mapView')} icono={<MapIcon className="h-5 w-5" />} />
+            <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta={t('listView')} icono={<List className="h-5 w-5" />} />
           </div>
         )}
 
@@ -770,11 +847,12 @@ const FilaPublicacion: React.FC<{
   onReportar,
   onVerCoincidencias,
 }) => {
+  const { t, tItem, tResourceStatus, tDistance } = useTranslation();
   const est = estadoPublicacion(p);
   const menu = [
-    { texto: 'Ver en el mapa', icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
-    { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
-    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
+    { texto: t('viewOnMap'), icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
+    { texto: t('shareLink'), icono: <Share2 className="h-4 w-4" />, onElegir: () => onCompartir(p.id) },
+    { texto: t('reportIssue'), icono: <Flag className="h-4 w-4" />, onElegir: () => onReportar(p.id) },
   ];
 
   return (
@@ -791,18 +869,18 @@ const FilaPublicacion: React.FC<{
             <EtiquetaEstado estado={est} />
             {enProceso && (
               <span className="rounded-rd-sm bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber">
-                En proceso
+                {t('statusInProcess')}
               </span>
             )}
           </div>
           <div className="flex min-w-0 items-center gap-1.5">
             <h2 className="font-rd m-0 min-w-0 truncate text-rd-13-5 font-semibold leading-snug text-rd-ink">
-              {tituloPublicacion(p)}
+              <TituloPublicacion publicacion={p} actor />
             </h2>
             {p.verificada && (
               <BadgeCheck
                 role="img"
-                aria-label="Verificada"
+                aria-label={t('verifiedOrg')}
                 className="h-4 w-4 shrink-0 text-rd-navy"
               />
             )}
@@ -812,7 +890,7 @@ const FilaPublicacion: React.FC<{
           )}
           <Donde
             lugar={p.dir ?? `${p.zona}${p.localidad ? ` · ${p.localidad}` : ''}`}
-            distancia={dist !== undefined ? distanciaTexto(dist) : undefined}
+            distancia={dist !== undefined ? tDistance(dist) : undefined}
             className="mt-0.5"
           />
           {p.descripcion && (
@@ -832,9 +910,9 @@ const FilaPublicacion: React.FC<{
               <span key={r.item} className="flex items-center gap-2.5">
                 <Anillo recurso={r} />
                 <span className="flex min-w-0 flex-col leading-tight">
-                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{r.item}</b>
+                  <b className="truncate text-rd-13 font-semibold text-rd-ink">{tItem(r.item)}</b>
                   <span className={`text-rd-11-5 tabular-nums ${completo ? 'font-semibold text-rd-green' : 'text-rd-ink-2'}`}>
-                    {estadoRecurso(r, p.tipo)}
+                    {tResourceStatus(r, p.tipo)}
                   </span>
                 </span>
               </span>
@@ -843,19 +921,17 @@ const FilaPublicacion: React.FC<{
         </div>
       </div>
 
-      {/* 3. Acciones: el mismo trío que la fila del Directorio: Ver detalle, el mapa como icono
-       *  y ⋮, ahora con nivel secundario y sombra sutil para que se distingan como botones
-       *  con marco interactivo. En `md` para mantener la escala tipográfica intacta. */}
+      {/* 3. Acciones */}
       <div className="flex min-w-0 flex-col items-end gap-2 self-stretch">
         <ResumenCoincidencias publicacion={p} coincidencias={coincidencias} onVer={() => onVerCoincidencias?.(p.id)} compacta />
         <div className="mt-auto flex items-center gap-1">
           <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={() => onVerDetalle(p.id)}>
-            Ver detalle
+            {t('actionViewDetail')}
           </Button>
-          <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
+          <Button nivel="secundario" tamano="md" soloIcono aria-label={t('viewOnMap')} className="shadow-2xs" onClick={() => onVerEnMapa(p.id)}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
-          <MenuAcciones items={menu} etiqueta={`Más acciones de ${tituloPublicacion(p)}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
+          <MenuAcciones items={menu} etiqueta={t('seeMore')} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
         </div>
       </div>
     </article>

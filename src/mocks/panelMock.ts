@@ -236,6 +236,7 @@ export const MATRIZ_PERMISOS: Record<MiembroEquipo['rolPlataforma'], PermisosRol
 
 export const DISPONIBILIDAD: Record<MiembroEquipo['disp'], string> = {
   tiempo_completo: 'Cualquier día',
+  entre_semana: 'Entre semana',
   fines_de_semana: 'Fines de semana',
   emergencias: 'Bajo llamado',
   tardes: 'Cualquier día',

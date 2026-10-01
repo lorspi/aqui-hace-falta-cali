@@ -8,6 +8,7 @@ import {
   type ChatbotVerificationFilter,
   type ChatbotSortOption,
 } from '../utils/chatbotReportUtils';
+import type { DocumentoVerificacion } from '../types/panel';
 
 export interface AdminReport {
   id: string;
@@ -63,6 +64,7 @@ export interface AdminUser {
   volunteerConnectionType?: string;
   volunteerNotes?: string;
   preferredContactMethod?: string;
+  verificationDocuments?: DocumentoVerificacion[];
 }
 
 // ==========================================
@@ -1232,6 +1234,7 @@ export interface AdminOrganization {
   contactName?: string;
   communityCollective?: string;
   category: 'ORGANIZACION' | 'COMUNIDAD';
+  verificationDocuments?: DocumentoVerificacion[];
 }
 
 export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]> {
@@ -1288,6 +1291,7 @@ export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]
         contactName: p?.full_name || undefined,
         communityCollective: p?.moderator_community_collective || undefined,
         category: isComunidad ? 'COMUNIDAD' : 'ORGANIZACION',
+        verificationDocuments: Array.isArray(o.verification_documents) ? o.verification_documents : undefined,
       };
     });
 
