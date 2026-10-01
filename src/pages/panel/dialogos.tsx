@@ -3,7 +3,6 @@ import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Phone, Plus, Sear
 import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud } from '../../types/panel';
 import type { Foto } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
-import { EQUIPO } from '../../mocks/panelMock';
 import { DEPTOS } from '../../mocks/cuentasMock';
 import { cifra, tituloPublicacion } from '../../utils/publicaciones';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
@@ -32,13 +31,13 @@ export const DialogoAsignar: React.FC<{
   equipo?: MiembroEquipo[];
   onCerrar: () => void;
   onAsignar: (id: number, vol: number) => void;
-}> = ({ solicitud: s, equipo = EQUIPO, onCerrar, onAsignar }) => {
+}> = ({ solicitud: s, equipo = [], onCerrar, onAsignar }) => {
   const [busqueda, setBusqueda] = useState('');
-  const [seleccionado, setSeleccionado] = useState<number>(() => s?.vol ?? equipo[0]?.id ?? 1);
+  const [seleccionado, setSeleccionado] = useState<number>(() => s?.vol ?? equipo[0]?.id ?? 0);
 
   useEffect(() => {
     if (s) {
-      setSeleccionado(s.vol ?? equipo[0]?.id ?? 1);
+      setSeleccionado(s.vol ?? equipo[0]?.id ?? 0);
       setBusqueda('');
     }
   }, [s, equipo]);
@@ -113,7 +112,9 @@ export const DialogoAsignar: React.FC<{
       >
         {filtrados.length === 0 ? (
           <p className="py-4 text-center text-rd-13 text-rd-ink-meta">
-            No se encontraron miembros con «{busqueda}».
+            {busqueda.trim()
+              ? `No se encontraron miembros con «${busqueda}».`
+              : 'Aún no tienes miembros en tu equipo. Puedes agregarlos desde la sección Equipo.'}
           </p>
         ) : (
           <Opciones

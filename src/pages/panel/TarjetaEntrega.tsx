@@ -1,6 +1,5 @@
 import { Archive, Check, CheckCircle2, CircleDashed, CircleDot, Clock, Eye, MapPin, Package, Phone, Truck, Users, X } from 'lucide-react';
 import type { EntregaRecibida, MiembroEquipo, Solicitud } from '../../types/panel';
-import { EQUIPO } from '../../mocks/panelMock';
 import { ENTIDADES } from '../../mocks/directorioMock';
 import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos } from '../../mocks/fotosMock';
 import { cifra, iniciales } from '../../utils/publicaciones';
@@ -162,7 +161,7 @@ export interface AccionesSolicitud {
   onVerPublicacion?: (s: Solicitud) => void;
 }
 
-export function quienLleva(s: Solicitud, eq: MiembroEquipo[] = EQUIPO): string | null {
+export function quienLleva(s: Solicitud, eq: MiembroEquipo[] = []): string | null {
   const v = s.vol ? eq.find((x) => x.id === s.vol) : null;
   return v ? `${v.n}, ${v.veh}` : null;
 }

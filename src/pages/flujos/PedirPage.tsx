@@ -5,7 +5,7 @@ import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
 import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, NOMBRE_GRUPO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
-import { NECESIDAD, PUERTAS } from '../../mocks/panelMock';
+import { PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
@@ -233,7 +233,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       localStorage.setItem('rd-necesidad-creada-gestion', JSON.stringify(gestionNecesidad));
 
       const previosRaw = localStorage.getItem('rd-necesidad-creada-recursos');
-      const baseRecursos: RecursoPedido[] = previosRaw ? JSON.parse(previosRaw) : NECESIDAD.recursos;
+      const baseRecursos: RecursoPedido[] = previosRaw ? JSON.parse(previosRaw) : [];
       const fusionados = [...baseRecursos];
       recursosPanel.forEach((nuevo) => {
         const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());

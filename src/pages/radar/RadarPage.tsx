@@ -19,7 +19,6 @@ import { TituloPublicacion } from '../../components/ui/TituloPublicacion';
 import { DialogoDetallePublicacion } from '../../components/ui/DialogoDetallePublicacion';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
 import { Vacio } from '../../components/ui/Vacio';
-import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { PUBLICACIONES, UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
 import type { Aviso } from '../../types/aviso';
@@ -31,7 +30,7 @@ import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../..
 import { ciudadDeUbicacion } from '../../utils/lugares';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
-import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
+import { fetchUserAvisos } from '../../lib/supabaseService';
 import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
@@ -157,7 +156,7 @@ const Radar: React.FC<RadarProps> = ({
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [reporte, setReporte] = useState<string | null>(null);
   const [enProceso, setEnProceso] = useState<string[]>([]);
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [dbPubs, setDbPubs] = useState<Publicacion[]>([]);
   const [cargandoDb, setCargandoDb] = useState(true);
   const [panelDerechoMinimizado, setPanelDerechoMinimizado] = useState(false);
@@ -381,6 +380,16 @@ const Radar: React.FC<RadarProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (usuarioEfectivo?.id) {
+      fetchUserAvisos(usuarioEfectivo.id).then((items) => {
+        if (items) setAvisos(items);
+      });
+    } else {
+      setAvisos([]);
+    }
+  }, [usuarioEfectivo?.id]);
+
   const esModOAdmin = useMemo(() => {
     if (isModeratorOrAdmin) return true;
     if (!usuarioEfectivo) return false;
@@ -524,7 +533,7 @@ const Radar: React.FC<RadarProps> = ({
       onOpenLoginModal={onOpenLoginModal}
       onOpenProfileModal={onOpenProfileModal}
       onLogout={handleLogout}
-      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: [], recibidas: [] })}
       avisosNuevos={sinLeer}
       rutas={RUTAS_SHELL}
       onPedir={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}

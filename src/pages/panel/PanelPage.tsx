@@ -15,14 +15,12 @@ import { Segmented } from '../../components/ui/Segmented';
 import { Divisor } from '../../components/ui/Divisor';
 import { Vacio } from '../../components/ui/Vacio';
 import { Caja, Conteo } from '../../components/ui/Caja';
-import { IconoRecursoDe } from '../../components/ui/Recursos';
+import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { DialogoCoincidencias, FilaSugerencias } from '../../components/ui/Coincidencias';
 import { coincidenciasDe, coincideItem, type CoincidenciaPublicacion } from '../../utils/cruce';
-import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { ACTIVIDAD, DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, EQUIPO, ESTADO_RECIBIDA, ESTADO_SOLICITUD, NECESIDAD, OFERTA, OFRECIMIENTOS_ENVIADOS, ORG, PUERTAS, RECIBIDAS, ROL_PLATAFORMA, SOLICITUDES, SOLICITUDES_ENVIADAS } from '../../mocks/panelMock';
-import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
+import { DIAS_PARA_ARCHIVAR, DISPONIBILIDAD, ESTADO_RECIBIDA, ESTADO_SOLICITUD, PUERTAS, ROL_PLATAFORMA } from '../../mocks/panelMock';
 import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
@@ -38,7 +36,7 @@ import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
-import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember } from '../../lib/supabaseService';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
 import { commitmentToSolicitud, commitmentToEntregaRecibida, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
@@ -264,14 +262,30 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-oferta-creada-recursos');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((r: any) => r.n !== 'Planta eléctrica' && r.pres !== 'Carrotanque');
+        }
+      }
     } catch {}
     return [];
   });
   const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-necesidad-creada-recursos');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (r: any) =>
+              r.n !== 'Equipos de bombeo' &&
+              r.n !== 'Protección respiratoria' &&
+              !r.para?.includes('calle 91 sur') &&
+              !r.para?.includes('remueve lodo')
+          );
+        }
+      }
     } catch {}
     return [];
   });
@@ -309,69 +323,60 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const [atendiendoInternamente, setAtendiendoInternamente] = useState<RecursoPedido | null>(null);
   const [entregandoDirecta, setEntregandoDirecta] = useState<RecursoOfrecido | null>(null);
 
+  const defaultPubOfertaLimpia: DatosPublicacionGestion = {
+    id: '',
+    tipo: 'oferta',
+    titulo: '',
+    org: '',
+    verificada: false,
+    zona: '',
+    dir: '',
+    descripcion: '',
+    personaContacto: '',
+    telContacto: '',
+    comoEntrega: '',
+    horario: '',
+    recursos: [],
+    pausadaGlobal: false,
+  };
+
+  const defaultPubNecesidadLimpia: DatosPublicacionGestion = {
+    id: '',
+    tipo: 'necesidad',
+    titulo: '',
+    org: '',
+    verificada: false,
+    zona: '',
+    dir: '',
+    descripcion: '',
+    personaContacto: '',
+    telContacto: '',
+    comoEntrega: '',
+    horario: '',
+    recursos: [],
+    pausadaGlobal: false,
+  };
+
   const [pubOferta, setPubOferta] = useState<DatosPublicacionGestion>(() => {
     try {
       const guardado = localStorage.getItem('rd-oferta-creada-gestion');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (parsed.id && parsed.id !== 'oferta-usme') return parsed;
+      }
     } catch {}
-    return {
-      id: 'oferta-usme',
-      tipo: 'oferta',
-      titulo: 'Bomberos Voluntarios Usme, recursos de estación',
-      org: ORG.nombre,
-      verificada: true,
-      zona: 'Usme',
-      dir: ORG.dir,
-      descripcion: 'Recursos de la estación disponibles para la emergencia de la quebrada. Coordinamos por radio con el puesto de mando.',
-      personaContacto: ORG.enlace.split(', ')[0] || 'Carlos Peña',
-      telContacto: ORG.contacto.tel,
-      comoEntrega: 'Lo llevamos, cobertura 15 km',
-      horario: 'Lunes a domingo 8:00 a 18:00',
-      recursos: OFERTA.recursos.map((r) => ({
-        item: r.n,
-        total: r.total,
-        unidad: r.unidad,
-        disp: r.disp,
-        pres: r.pres,
-        icono: r.icono,
-        pausado: r.pausado,
-        confirmada: 0,
-        camino: 0,
-      })),
-      pausadaGlobal: false,
-    };
+    return defaultPubOfertaLimpia;
   });
 
   const [pubNecesidad, setPubNecesidad] = useState<DatosPublicacionGestion>(() => {
     try {
       const guardado = localStorage.getItem('rd-necesidad-creada-gestion');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (parsed.id && parsed.id !== 'necesidad-usme') return parsed;
+      }
     } catch {}
-    return {
-      id: 'necesidad-usme',
-      tipo: 'necesidad',
-      titulo: 'Equipos de bombeo y protección, emergencia Usme',
-      org: ORG.nombre,
-      verificada: true,
-      zona: 'Usme',
-      dir: ORG.dir,
-      descripcion: 'Equipos y dotación requeridos con urgencia para atender las inundaciones y remoción de lodo en la calle 91 sur.',
-      personaContacto: ORG.enlace.split(', ')[0] || 'Carlos Peña',
-      telContacto: ORG.contacto.tel,
-      comoEntrega: 'Recepción en Estación Usme',
-      horario: 'Atención 24 horas',
-      recursos: NECESIDAD.recursos.map((r) => ({
-        item: r.n,
-        total: r.total,
-        unidad: r.unidad,
-        para: r.para,
-        icono: r.icono,
-        pausado: r.pausado,
-        confirmada: r.confirmada,
-        camino: r.camino,
-      })),
-      pausadaGlobal: false,
-    };
+    return defaultPubNecesidadLimpia;
   });
 
   const [gestionandoPublicacion, setGestionandoPublicacion] = useState<{
@@ -478,7 +483,19 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     document.title = `${nombrePanel()}, RaDAR de ayuda`;
   }, []);
 
-  const [orgData, setOrgData] = useState<DatosOrg>(ORG);
+  const [orgData, setOrgData] = useState<DatosOrg>(() => ({
+    nombre: 'Mi Organización',
+    tipo: 'Organización',
+    nit: '',
+    dir: '',
+    contacto: { tel: '', wa: false, correo: '' },
+    enlace: '',
+    directorio: false,
+    directorioDesde: '',
+    web: '',
+    verificacion: 'revision',
+    canalesRevisados: false,
+  }));
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -534,18 +551,104 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           }
 
           // Consultar publicaciones del usuario y globales en Supabase para el panel
-          const [{ data: userNeeds }, { data: userOffers }, { data: allNeeds }, { data: allOffers }] = await Promise.all([
+          const [
+            { data: userNeeds },
+            { data: userOffers },
+            { data: allNeeds },
+            { data: allOffers },
+            userAvisosList
+          ] = await Promise.all([
             supabase.from('needs').select('*').eq('user_id', authData.user.id),
             supabase.from('offers').select('*').eq('user_id', authData.user.id),
             supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
-            supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED')
+            supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
+            fetchUserAvisos(authData.user.id)
           ]);
+
+          if (userAvisosList && userAvisosList.length > 0) {
+            setAvisos(userAvisosList);
+          }
 
           if (userNeeds && userNeeds.length > 0) {
             setModulos((prev) => ({ ...prev, pide: true }));
+            const un = userNeeds[0];
+            const mappedNeedsRecursos: RecursoPedido[] = (un.resources || []).map((r: any) => ({
+              n: r.description || r.type || 'Recurso',
+              icono: iconoDe(r.description || r.type || 'Recurso'),
+              unidad: r.unit || 'unidades',
+              total: r.requestedQuantity || 1,
+              para: un.title || 'Atención comunitaria',
+              confirmada: r.fulfilledQuantity || 0,
+              camino: 0,
+              pausado: false,
+            }));
+            setRecursosNecesidad(mappedNeedsRecursos);
+            setPubNecesidad({
+              id: un.id,
+              tipo: 'necesidad',
+              titulo: un.title || 'Necesidad registrada',
+              org: dbOrg?.org_name || un.organization_name || 'Mi Organización',
+              verificada: Boolean(dbOrg?.is_verified),
+              zona: un.neighborhood || un.city_id || '',
+              dir: un.address || '',
+              descripcion: un.description || '',
+              personaContacto: un.contact_name || '',
+              telContacto: un.contact_phone || '',
+              comoEntrega: un.como_llegar || 'Recepción en punto de acopio',
+              horario: un.operating_hours || 'Atención 24 horas',
+              recursos: mappedNeedsRecursos.map((r) => ({
+                item: r.n,
+                total: r.total,
+                unidad: r.unidad,
+                para: r.para,
+                icono: r.icono,
+                pausado: false,
+                confirmada: r.confirmada,
+                camino: 0,
+              })),
+              pausadaGlobal: un.status === 'PAUSED',
+            });
           }
+
           if (userOffers && userOffers.length > 0) {
             setModulos((prev) => ({ ...prev, ofrece: true }));
+            const uo = userOffers[0];
+            const mappedOffersRecursos: RecursoOfrecido[] = (uo.resources || []).map((r: any) => ({
+              n: r.description || r.type || 'Aporte',
+              icono: iconoDe(r.description || r.type || 'Aporte'),
+              unidad: r.unit || 'unidades',
+              total: r.quantity || 1,
+              disp: uo.offer_status === 'AVAILABLE' ? 'Inmediata' : 'Hasta agotar',
+              pres: uo.delivery_mode || 'Estándar',
+              pausado: false,
+            }));
+            setRecursosOferta(mappedOffersRecursos);
+            setPubOferta({
+              id: uo.id,
+              tipo: 'oferta',
+              titulo: uo.title || 'Oferta registrada',
+              org: dbOrg?.org_name || uo.organization_name || 'Mi Organización',
+              verificada: Boolean(dbOrg?.is_verified),
+              zona: uo.neighborhood || uo.city_id || '',
+              dir: uo.address || '',
+              descripcion: uo.description || '',
+              personaContacto: uo.contact_name || '',
+              telContacto: uo.contact_phone || '',
+              comoEntrega: uo.delivery_mode || 'A convenir',
+              horario: uo.operating_hours || 'Lunes a domingo',
+              recursos: mappedOffersRecursos.map((r) => ({
+                item: r.n,
+                total: r.total,
+                unidad: r.unidad,
+                disp: r.disp,
+                pres: r.pres,
+                icono: r.icono,
+                pausado: false,
+                confirmada: 0,
+                camino: 0,
+              })),
+              pausadaGlobal: uo.status === 'PAUSED',
+            });
           }
 
           const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
@@ -566,10 +669,12 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   }, []);
 
   const datos = {
-    oferta: { ...OFERTA, id: pubOferta.id, titulo: pubOferta.titulo, recursos: recursosOferta },
+    oferta: { id: pubOferta.id, titulo: pubOferta.titulo, recursos: recursosOferta, publicada: 'Reciente', confirmada: '' },
     sol,
-    necesidad: { ...NECESIDAD, id: pubNecesidad.id, titulo: pubNecesidad.titulo, recursos: recursosNecesidad },
+    necesidad: { id: pubNecesidad.id, titulo: pubNecesidad.titulo, recursos: recursosNecesidad, publicada: 'Reciente' },
     recibidas,
+    org: orgData,
+    equipo,
   };
   const pestanas = useMemo(() => pestanasDe(modulos, { porConfirmarRecibidas: recibidasPorConfirmar(recibidas).length, nuevas: nuevas(sol), porConfirmar: porConfirmar(sol).length }), [modulos, sol, recibidas]);
   const actual = pestanas.some((p) => p.id === tab) ? tab : 'resumen';
@@ -741,7 +846,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     setFotos({ inicial, titulo: `Entrega de ${r.org}, ${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`, grupos: [{ titulo: `Las de ${r.org}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
   };
   /* --- reportes: las actas --- */
-  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: ORG.nombre, lleva: (s) => quienLleva(s, equipo)?.split(', ')[0] ?? null }), [modulos, sol, recibidas, equipo]);
+  const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: orgData.nombre, lleva: (s) => quienLleva(s, equipo)?.split(', ')[0] ?? null }), [modulos, sol, recibidas, orgData.nombre, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
 
@@ -752,34 +857,34 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     id: pubNecesidad.id,
     tipo: 'necesidad',
     titulo: pubNecesidad.titulo,
-    org: ORG.nombre,
-    verificada: true,
-    lat: 4.51,
-    lng: -74.115,
-    zona: pubNecesidad.zona || 'Usme',
-    dir: pubNecesidad.dir || ORG.dir,
+    org: orgData.nombre,
+    verificada: orgData.verificacion === 'verificada',
+    lat: 3.4516,
+    lng: -76.5320,
+    zona: pubNecesidad.zona || 'Cali',
+    dir: pubNecesidad.dir || orgData.dir,
     descripcion: pubNecesidad.descripcion,
     recursos: recursosNecesidad.map((r) => ({
       item: r.n,
       unidad: r.unidad,
       total: r.total,
       tramos: [
-        ...(r.confirmada > 0 ? [{ t: 'hecho' as const, cant: r.confirmada, quien: ORG.nombre, cuando: 'Confirmado' }] : []),
-        ...(r.camino > 0 ? [{ t: 'camino' as const, cant: r.camino, quien: ORG.nombre, cuando: 'En camino' }] : []),
+        ...(r.confirmada > 0 ? [{ t: 'hecho' as const, cant: r.confirmada, quien: orgData.nombre, cuando: 'Confirmado' }] : []),
+        ...(r.camino > 0 ? [{ t: 'camino' as const, cant: r.camino, quien: orgData.nombre, cuando: 'En camino' }] : []),
       ],
     })),
-  }), [pubNecesidad, recursosNecesidad]);
+  }), [pubNecesidad, recursosNecesidad, orgData]);
 
   const pubOfertaComoPublicacion: Publicacion = useMemo(() => ({
     id: pubOferta.id,
     tipo: 'oferta',
     titulo: pubOferta.titulo,
-    org: ORG.nombre,
-    verificada: true,
-    lat: 4.51,
-    lng: -74.115,
-    zona: pubOferta.zona || 'Usme',
-    dir: pubOferta.dir || ORG.dir,
+    org: orgData.nombre,
+    verificada: orgData.verificacion === 'verificada',
+    lat: 3.4516,
+    lng: -76.5320,
+    zona: pubOferta.zona || 'Cali',
+    dir: pubOferta.dir || orgData.dir,
     descripcion: pubOferta.descripcion,
     recursos: recursosOferta.map((r) => ({
       item: r.n,
@@ -787,7 +892,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       total: r.total,
       tramos: [],
     })),
-  }), [pubOferta, recursosOferta]);
+  }), [pubOferta, recursosOferta, orgData]);
 
   const matchesNecesidadPorRecurso = useMemo(() => {
     const map = new Map<string, CoincidenciaPublicacion[]>();
@@ -833,7 +938,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const obtenerPublicacionDeSolicitud = (s: Solicitud): Publicacion => {
     const norm = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     const n = norm(s.quien);
-    const found = PUBLICACIONES.find((p) => {
+    const found = todasLasPubs.find((p) => {
       const org = norm(p.org);
       const tit = norm(p.titulo);
       return org.includes(n) || n.includes(org) || tit.includes(n) || n.includes(tit);
@@ -847,9 +952,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       punto: s.quien,
       org: s.quien,
       verificada: false,
-      lat: 4.52,
-      lng: -74.11,
-      zona: s.dist ? `A ${s.dist}` : 'Bogotá D. C.',
+      lat: 3.4516,
+      lng: -76.5320,
+      zona: s.dist ? `A ${s.dist}` : 'Cali, Valle del Cauca',
       dir: 'Punto de atención en territorio',
       descripcion: `Requerimiento en territorio para atención de emergencia. Solicitud gestionada y despachada a través de RaDAR.`,
       recursos: [
@@ -858,9 +963,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           unidad: s.u,
           total: s.cant,
           tramos: s.estado === 'confirmada'
-            ? [{ t: 'hecho', cant: s.cant, quien: 'Bomberos Voluntarios Usme', cuando: s.cuando }]
+            ? [{ t: 'hecho', cant: s.cant, quien: orgData.nombre, cuando: s.cuando }]
             : s.estado === 'camino' || s.estado === 'entregada'
-            ? [{ t: 'camino', cant: s.cant, quien: 'Bomberos Voluntarios Usme', cuando: s.cuando }]
+            ? [{ t: 'camino', cant: s.cant, quien: orgData.nombre, cuando: s.cuando }]
             : [],
         },
       ],
@@ -871,7 +976,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const obtenerPublicacionDeRecibida = (r: EntregaRecibida): Publicacion => {
     const norm = (str: string) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     const n = norm(r.org);
-    const found = PUBLICACIONES.find((p) => {
+    const found = todasLasPubs.find((p) => {
       const org = norm(p.org);
       const tit = norm(p.titulo);
       return org.includes(n) || n.includes(org) || tit.includes(n) || n.includes(tit);
@@ -929,7 +1034,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
-      const quien = quienLleva(s, equipo) ?? ORG.nombre ?? 'Equipo de entrega';
+      const quien = quienLleva(s, equipo) ?? orgData.nombre ?? 'Equipo de entrega';
       const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
         url,
         alt: `En camino a ${s.quien} - Foto ${i + 1}`,
@@ -982,7 +1087,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
-      const quien = (s ? quienLleva(s, equipo) : null) ?? 'Bomberos Voluntarios Usme';
+      const quien = (s ? quienLleva(s, equipo) : null) ?? orgData.nombre ?? 'Equipo de entrega';
       const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
         url,
         alt: `Certificación de entrega - Foto ${i + 1}`,
@@ -2173,7 +2278,7 @@ const PulsoOperativo: React.FC<{
   );
 };
 
-const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisDe>[1]; pasosOcultos: boolean; onOcultarPasos: () => void; onAccion: (al: string) => void }> = ({ modulos, datos, pasosOcultos, onOcultarPasos, onAccion }) => {
+const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisDe>[1] & { org?: DatosOrg; equipo?: MiembroEquipo[] }; pasosOcultos: boolean; onOcultarPasos: () => void; onAccion: (al: string) => void }> = ({ modulos, datos, pasosOcultos, onOcultarPasos, onAccion }) => {
   const [pasosDesplegados, setPasosDesplegados] = useState(false);
   const sinModulos = !modulos.pide && !modulos.ofrece;
   const [actividadDesplegada, setActividadDesplegada] = useState(!sinModulos);
@@ -2183,11 +2288,38 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
   const historias = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada' && s.cierre?.historia) : [];
   const pasos = [
     { id: 'publicar', t: 'Publica lo que puedes dar o lo que te hace falta', d: 'Es lo que te pone en el mapa.', hecho: !sinModulos, accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(RUTAS.ofrecer)}>Ofrecer ayuda</Button> },
-    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: ORG.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar</Button> },
-    { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: EQUIPO.length > 0, accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mi equipo" onClick={() => onAccion('#equipo')}>Ver</Button> },
-    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: ORG.canalesRevisados, accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mis canales" onClick={() => irA(`${RUTAS.perfil}#avisos`)}>Ver</Button> },
+    { id: 'verificar', t: 'Verifica la organización', d: 'Con la insignia, quien te lee sabe que existes y quién responde.', hecho: datos.org?.verificacion === 'verificada', accion: <Button nivel="terciario" tamano="sm" onClick={() => irA(`${RUTAS.perfil}#datos`)}>Adjuntar</Button> },
+    { id: 'equipo', t: 'Registra a quien entrega', d: 'Para poder asignar entregas y saber quién las lleva.', hecho: (datos.equipo?.length ?? 0) > 0, accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mi equipo" onClick={() => onAccion('#equipo')}>Ver</Button> },
+    { id: 'avisos', t: 'Revisa cómo te avisamos', d: 'Elige si algo te llega por WhatsApp, por correo o solo aquí.', hecho: Boolean(datos.org?.canalesRevisados), accion: <Button nivel="terciario" tamano="sm" aria-label="Ver mis canales" onClick={() => irA(`${RUTAS.perfil}#avisos`)}>Ver</Button> },
   ];
   const listos = pasos.filter((p) => p.hecho).length;
+  const actividadEventos = [
+    ...(modulos.ofrece ? datos.sol.map((s) => {
+      let accion = 'Solicitud registrada';
+      if (s.estado === 'confirmada') accion = 'Entrega confirmada';
+      else if (s.estado === 'entregada') accion = 'Entrega realizada';
+      else if (s.estado === 'camino') accion = 'En camino';
+      else if (s.estado === 'aceptada') accion = 'Solicitud aceptada';
+      else if (s.estado === 'distribuida') accion = 'Ayuda distribuida';
+      return {
+        cuando: s.cuando || 'Reciente',
+        texto: `${accion}: ${s.cant} ${s.u} de ${s.rec.toLowerCase()} para ${s.quien}`,
+      };
+    }) : []),
+    ...(modulos.pide ? datos.recibidas.map((r) => {
+      let accion = 'Ayuda registrada';
+      if (r.estado === 'confirmada') accion = 'Entrega recibida confirmada';
+      else if (r.estado === 'entregada') accion = 'Entrega por confirmar';
+      else if (r.estado === 'camino') accion = 'En camino a tu punto';
+      else if (r.estado === 'aceptada') accion = 'Ayuda comprometida';
+      else if (r.estado === 'distribuida') accion = 'Ayuda distribuida';
+      return {
+        cuando: r.cuando || 'Reciente',
+        texto: `${accion}: ${r.cant} ${r.u} de ${r.rec.toLowerCase()} de ${r.org}`,
+      };
+    }) : []),
+  ];
+
   return (
     <>
       {sinModulos && (
@@ -2264,7 +2396,7 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
         titulo={
           <div className="flex items-center gap-2">
             <span>Actividad reciente</span>
-            <Conteo n={sinModulos ? 0 : ACTIVIDAD.length} />
+            <Conteo n={actividadEventos.length} />
           </div>
         }
         accion={
@@ -2285,14 +2417,14 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
         }
       >
         {actividadDesplegada ? (
-          sinModulos ? (
+          actividadEventos.length === 0 ? (
             <div className="mt-2 flex items-center gap-2.5 rounded-rd-md bg-rd-fondo p-3 text-rd-13 text-rd-ink-2">
               <Clock aria-hidden="true" className="h-5 w-5 shrink-0 text-rd-ink-3" />
               <span>Sin actividad todavía. Aquí queda lo que pase con tus publicaciones y entregas.</span>
             </div>
           ) : (
             <div className="mt-2 space-y-0 divide-y divide-rd-line-soft border-t border-rd-line-soft pt-1">
-              {ACTIVIDAD.map((a, i) => (
+              {actividadEventos.map((a, i) => (
                 <div key={i} className={`flex gap-3 py-2 text-rd-13 ${i ? 'border-t border-rd-line-soft' : 'pt-0'}`}>
                   <time className="w-16 shrink-0 text-rd-ink-meta tabular-nums">{a.cuando}</time>
                   <span className="text-rd-ink">{a.texto}</span>
@@ -2304,9 +2436,9 @@ const Resumen: React.FC<{ modulos: ModulosCuenta; datos: Parameters<typeof kpisD
           <div className="flex items-center gap-2 text-rd-12-5 text-rd-ink-meta">
             <Clock aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-ink-3" />
             <span>
-              {sinModulos
+              {actividadEventos.length === 0
                 ? 'Sin actividad reciente todavía. Aquí quedará el registro de tus publicaciones y entregas.'
-                : `${ACTIVIDAD.length} eventos registrados en el historial.`}
+                : `${actividadEventos.length} eventos registrados en el historial.`}
             </span>
           </div>
         )}

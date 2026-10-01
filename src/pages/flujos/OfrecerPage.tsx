@@ -5,7 +5,7 @@ import { InlineNotice } from '../../components/ui/InlineNotice';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { CANALES, CUENTA_OFRECER, DISPONIBLE, ENVIOS, MODOS_ENTREGA, RADIOS, REGISTRADO, TIPOS_ORG_OFERTA, estadoInicialOfrecer } from '../../mocks/flujosMock';
-import { OFERTA, PUERTAS } from '../../mocks/panelMock';
+import { PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle } from '../../types/flujo';
 import type { RecursoOfrecido } from '../../types/panel';
@@ -274,7 +274,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       localStorage.setItem('rd-oferta-creada-gestion', JSON.stringify(gestionOferta));
 
       const previosRaw = localStorage.getItem('rd-oferta-creada-recursos');
-      const baseRecursos: RecursoOfrecido[] = previosRaw ? JSON.parse(previosRaw) : OFERTA.recursos;
+      const baseRecursos: RecursoOfrecido[] = previosRaw ? JSON.parse(previosRaw) : [];
       const fusionados = [...baseRecursos];
       recursosPanel.forEach((nuevo) => {
         const idx = fusionados.findIndex((r) => r.n.toLowerCase() === nuevo.n.toLowerCase());

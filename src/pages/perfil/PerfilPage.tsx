@@ -11,7 +11,6 @@ import { BotonMenu, Cuenta, Shell } from '../../components/ui/Shell';
 import { FilaSwitch, Switch } from '../../components/ui/Switch';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { RUTAS, RUTAS_SHELL, TIPOS_DOC } from '../../mocks/cuentasMock';
-import { INVITADOS, ORG, RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { CANALES } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import type { DatosOrg, Invitado } from '../../types/panel';
@@ -266,7 +265,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
       panelNombre={nombrePanel()}
       cuenta={cuentaUsuario}
       authUser={authUser || getStoredAuthUser()}
-      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: [], recibidas: [] })}
       rutas={RUTAS_SHELL}
       onPedir={() => irA(RUTAS.pedir)}
       onOfrecer={() => irA(RUTAS.ofrecer)}
@@ -546,16 +545,30 @@ const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, 
 
 /* ---------- Datos de la Organización ---------- */
 
+const DEFAULT_ORG: DatosOrg = {
+  nombre: 'Mi Organización',
+  tipo: 'Organización Comunitaria',
+  nit: '',
+  dir: 'Cali, Valle del Cauca',
+  contacto: { tel: '', wa: true, correo: '' },
+  enlace: '',
+  web: '',
+  verificacion: 'sin',
+  directorio: false,
+  directorioDesde: 'recientemente',
+  canalesRevisados: false,
+};
+
 const DatosOrganizacion: React.FC<{
   orgInicial?: DatosOrg | null;
   dbUserId?: string | null;
   onGuardarOrg?: (org: DatosOrg) => void;
 }> = ({ orgInicial, dbUserId, onGuardarOrg }) => {
   const avisar = useAviso();
-  const [org, setOrg] = useState<DatosOrg>(orgInicial || ORG);
-  const [directorio, setDirectorio] = useState(orgInicial?.directorio ?? ORG.directorio);
+  const [org, setOrg] = useState<DatosOrg>(orgInicial || DEFAULT_ORG);
+  const [directorio, setDirectorio] = useState(orgInicial?.directorio ?? false);
   const [editando, setEditando] = useState(false);
-  const [borrador, setBorrador] = useState<DatosOrg>(orgInicial || ORG);
+  const [borrador, setBorrador] = useState<DatosOrg>(orgInicial || DEFAULT_ORG);
 
   useEffect(() => {
     if (orgInicial) {

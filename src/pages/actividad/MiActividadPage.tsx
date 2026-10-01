@@ -27,9 +27,8 @@ import { Donde } from '../../components/ui/Donde';
 import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { Pestanas, type Pestana } from '../../components/ui/Pestanas';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
-import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { obtenerPublicaciones } from '../../mocks/publicacionesMock';
+import { fetchUserAvisos } from '../../lib/supabaseService';
 import type { Aviso } from '../../types/aviso';
 import type { Publicacion, Recurso } from '../../types/publicacion';
 import type { Foto } from '../../types/flujo';
@@ -130,7 +129,7 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const avisar = useAviso();
   const [tab, setTab] = useState<'necesidades' | 'ofertas'>('necesidades');
   const [cajon, setCajon] = useState(false);
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [certificandoItem, setCertificandoItem] = useState<Publicacion | null>(null);
   const [detalleItem, setDetalleItem] = useState<Publicacion | null>(null);
   const [gestionandoPublicacion, setGestionandoPublicacion] = useState<{
@@ -168,6 +167,16 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
   }, [authUser, localAuth]);
 
   const effectiveUserId = sessionUser?.id ?? null;
+
+  useEffect(() => {
+    if (effectiveUserId) {
+      fetchUserAvisos(effectiveUserId).then((items) => {
+        if (items) setAvisos(items);
+      });
+    } else {
+      setAvisos([]);
+    }
+  }, [effectiveUserId]);
 
   // 2. Publicaciones iniciales: precarga síncrona de lo creado en local para evitar layout shift y flash
   const [misPubs, setMisPubs] = useState<Publicacion[]>(() => {

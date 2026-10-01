@@ -9,7 +9,8 @@ import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso } from '../../utils/compromiso';
 import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
-import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMock';
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
+import { needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
 import { pingSugerencia } from '../../utils/sonido';
@@ -30,6 +31,21 @@ import { useTranslation } from '../../i18n/LanguageContext';
 function lista(partes: string[]): string {
   if (partes.length <= 1) return partes[0] ?? '';
   return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
+}
+
+async function fetchActivePublicaciones(): Promise<Publicacion[]> {
+  try {
+    const [{ data: needsData }, { data: offersData }] = await Promise.all([
+      supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED').order('created_at', { ascending: false }),
+      supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED').order('created_at', { ascending: false }),
+    ]);
+    const needsMapped = (needsData || []).map(dbNeedToNeed).map(needToPublicacion);
+    const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
+    return [...needsMapped, ...offersMapped];
+  } catch (e) {
+    console.error('Error fetching publicaciones for matches:', e);
+    return [];
+  }
 }
 
 /** Lo que la persona teclea manda mientras teclea; el valor de afuera (ya con el formato del
@@ -790,7 +806,12 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
     };
   }, [publicacion, tipo]);
 
-  const coincidencias = useMemo(() => coincidenciasDe(pubSegura, obtenerPublicaciones()), [pubSegura]);
+  const [poolPubs, setPoolPubs] = useState<Publicacion[]>([]);
+  useEffect(() => {
+    fetchActivePublicaciones().then(setPoolPubs);
+  }, []);
+
+  const coincidencias = useMemo(() => coincidenciasDe(pubSegura, poolPubs), [pubSegura, poolPubs]);
   const fuerte = coincidencias.length > 0 && coincidencias[0].puntaje >= SUGERENCIA_FUERTE;
 
   useEffect(() => {
@@ -814,7 +835,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
       publicacion={pubSegura}
       coincidencias={coincidencias}
       hechas={hechas}
-      onPrimaria={(id) => setCompromiso(obtenerPublicaciones().find((p) => p.id === id) ?? null)}
+      onPrimaria={(id) => setCompromiso(poolPubs.find((p) => p.id === id) ?? null)}
       onVerEnMapa={(id) => {
         window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`;
       }}
@@ -956,11 +977,16 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
   const [buscando, setBuscando] = useState(true);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
   const [hechas, setHechas] = useState<string[]>([]);
-  const coincidencias = useMemo(() => coincidenciasDe(publicacion, PUBLICACIONES), [publicacion]);
+  const [poolPubs, setPoolPubs] = useState<Publicacion[]>([]);
+
   useEffect(() => {
-    const timer = window.setTimeout(() => setBuscando(false), 900);
-    return () => window.clearTimeout(timer);
+    fetchActivePublicaciones().then((pubs) => {
+      setPoolPubs(pubs);
+      setBuscando(false);
+    });
   }, []);
+
+  const coincidencias = useMemo(() => coincidenciasDe(publicacion, poolPubs), [publicacion, poolPubs]);
   const pide = publicacion.tipo === 'necesidad';
   return (
     <section aria-label="Coincidencias" className="mx-auto mt-5 max-w-110 text-left">
@@ -976,7 +1002,7 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
           {t('flowSearchingMatches')}
         </p>
       ) : (
-        <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(PUBLICACIONES.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
+        <ListaCoincidencias publicacion={publicacion} coincidencias={coincidencias} hechas={hechas} onPrimaria={(id) => setCompromiso(poolPubs.find((p) => p.id === id) ?? null)} onVerEnMapa={(id) => { window.location.href = `${RUTAS.radar}?punto=${encodeURIComponent(id)}`; }} />
       )}
       <DialogoCompromiso
         publicacion={compromiso}

@@ -22,10 +22,9 @@ import { SelectorCiudad } from '../../components/ui/SelectorCiudad';
 import { BotonMenu, Shell } from '../../components/ui/Shell';
 import { FilaSwitch } from '../../components/ui/Switch';
 import { Vacio } from '../../components/ui/Vacio';
-import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
-import { fetchDirectorioEntidades } from '../../lib/supabaseService';
+import { fetchDirectorioEntidades, fetchUserAvisos } from '../../lib/supabaseService';
 import { needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../mocks/directorioMock';
 import type { Aviso } from '../../types/aviso';
@@ -129,10 +128,20 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   const [hoja, setHoja] = useState(false);
   const [buscando, setBuscando] = useState(() => inicial.consulta.texto !== '');
   const [cajon, setCajon] = useState(false);
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [reporte, setReporte] = useState<Entidad | null>(null);
   const [detalle, setDetalle] = useState<Entidad | null>(null);
   const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
+
+  useEffect(() => {
+    if (usuarioEfectivo?.id) {
+      fetchUserAvisos(usuarioEfectivo.id).then((items) => {
+        if (items) setAvisos(items);
+      });
+    } else {
+      setAvisos([]);
+    }
+  }, [usuarioEfectivo?.id]);
 
   useEffect(() => {
     document.title = 'Directorio, RaDAR de ayuda';
