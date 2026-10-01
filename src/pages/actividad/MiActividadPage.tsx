@@ -175,7 +175,7 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
     if (creadas.length > 0) return creadas;
     const u = authUser !== undefined ? authUser : getStoredAuthUser();
     if (!u) {
-      return obtenerPublicaciones().filter((p) => p.propia);
+      return [];
     }
     return [];
   });
@@ -234,18 +234,10 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
         return true;
       });
 
-      // Solo si el usuario NO está autenticado y no tiene publicaciones, mostrar datos de ejemplo del demo
-      if (filtradas.length === 0 && !targetUserId) {
-        const mocks = obtenerPublicaciones().filter((p) => p.propia || p.id === 'oferta-usme');
-        if (mocks.length > 0) {
-          filtradas = mocks;
-        }
-      }
-
       setMisPubs(filtradas);
     } catch (e) {
       console.error('Error cargando actividad:', e);
-      setMisPubs((prev) => (prev.length > 0 ? prev : obtenerPublicaciones().filter((p) => p.propia)));
+      setMisPubs([]);
     } finally {
       cargandoRef.current = false;
       setCargando(false);

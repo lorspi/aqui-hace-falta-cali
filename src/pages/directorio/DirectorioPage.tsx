@@ -24,16 +24,13 @@ import { FilaSwitch } from '../../components/ui/Switch';
 import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
 import { fetchDirectorioEntidades } from '../../lib/supabaseService';
+import { needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../mocks/directorioMock';
-import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
-import { UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
-
-const PUBLICACIONES = obtenerPublicaciones();
 import type { Aviso } from '../../types/aviso';
 import type { ClaseEntidad, ConsultaDirectorio, Entidad } from '../../types/directorio';
-import type { Publicacion } from '../../types/publicacion';
+import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { nombrePanel } from '../../utils/cuenta';
 import { chipsDe, cifrasDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, publicacionesDe, recursosDeVista, vacioDe } from '../../utils/directorio';
 import { directorioDeParams, escribirUrl, paramsActuales, paramsDeDirectorio } from '../../utils/enlace';
@@ -42,6 +39,8 @@ import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante } from '../../utils/publicaciones';
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+
+const UBICACION_BASE: Ubicacion = { lat: 3.4516, lng: -76.5320, zona: 'Cali', simulada: false };
 
 /**
  * El Directorio (mockup/*): quién está en la red (`organizaciones.html` del prototipo,
@@ -150,7 +149,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     const targetId = idParaCompromiso || (pendiente?.tipo === 'compromiso' && pendiente.autoEjecutar ? pendiente.publicacionId : null);
 
     if (targetId) {
-      const pub = obtenerPublicaciones().find((p) => p.id === targetId) || PUBLICACIONES.find((p) => p.id === targetId);
+      const pub = publicacionesBase.find((p) => p.id === targetId);
       if (pub) {
         setCompromiso(pub);
         limpiarAccionPendiente();
@@ -163,21 +162,30 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     }
   }, [usuarioEfectivo]);
 
-  const [entidadesBase, setEntidadesBase] = useState<Entidad[]>(ENTIDADES);
+  const [entidadesBase, setEntidadesBase] = useState<Entidad[]>([]);
+  const [publicacionesBase, setPublicacionesBase] = useState<Publicacion[]>([]);
 
   useEffect(() => {
-    async function cargarEntidades() {
+    async function cargarDatosDirectorio() {
       try {
-        const dbEntidades = await fetchDirectorioEntidades();
-        if (dbEntidades && dbEntidades.length > 0) {
-          const combinadas = [...dbEntidades, ...ENTIDADES.filter((mock) => !dbEntidades.some((d) => d.id === mock.id))];
-          setEntidadesBase(combinadas);
+        const [dbEntidades, { data: needsData }, { data: offersData }] = await Promise.all([
+          fetchDirectorioEntidades(),
+          supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
+          supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
+        ]);
+
+        if (dbEntidades) {
+          setEntidadesBase(dbEntidades);
         }
+
+        const needsMapped = (needsData || []).map(dbNeedToNeed).map(needToPublicacion);
+        const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
+        setPublicacionesBase([...needsMapped, ...offersMapped]);
       } catch (e) {
-        console.warn('Usando entidades por defecto en DirectorioPage:', e);
+        console.warn('Error cargando datos del directorio desde Supabase:', e);
       }
     }
-    cargarEntidades();
+    cargarDatosDirectorio();
   }, []);
 
   /* La URL dice lo que se ve, para poder compartirlo. */
@@ -186,7 +194,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   }, [q, clase]);
 
   const deVista = useMemo(() => entidadesDe(clase, entidadesBase, ENTIDAD_PROPIA), [clase, entidadesBase]);
-  const lista = useMemo(() => filtrar(deVista, PUBLICACIONES, q, UBICACION), [deVista, q]);
+  const lista = useMemo(() => filtrar(deVista, publicacionesBase, q, UBICACION_BASE), [deVista, publicacionesBase, q]);
   const pestanas = PESTANAS;
   const chips = chipsDe(q);
   const aplicados = cuantosAplicados(q);
@@ -260,7 +268,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
       authUser={usuarioEfectivo}
       onOpenLoginModal={onOpenLoginModal}
       onOpenProfileModal={onOpenProfileModal}
-      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: [], recibidas: [] })}
       avisosNuevos={avisos.filter((a) => !a.leido).length}
       rutas={RUTAS_SHELL}
       onPedir={() => irA(RUTAS.pedir)}
@@ -371,16 +379,16 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
                   <span className="text-rd-13 font-semibold text-rd-ink">Acciones</span>
                 </div>
                 {lista.map((e) => (
-                  <FilaEntidad key={e.id} entidad={e} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
+                  <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
                 ))}
               </div>
             </>
           )}
         </main>
 
-        <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
+        <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} publicacionesBase={publicacionesBase} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
         <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
-        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
+        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} publicacionesBase={publicacionesBase} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
       </div>
     </Shell>
@@ -401,11 +409,11 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
  * tabla** las tres van pegadas, porque son un grupo; en la **tarjeta** las de acción quedan a
  * la izquierda, de mayor a menor jerarquía, y el ⋮ se va al extremo derecho.
  */
-const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, onVerDetalle, onCompartir, onReportar }) => {
+const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, publicacionesBase, onVerDetalle, onCompartir, onReportar }) => {
   const com = e.clase === 'comunidad';
-  const km = distanciaKm(UBICACION, e);
-  const datos = cifrasDe(e, PUBLICACIONES);
-  const pubs = publicacionesDe(e, PUBLICACIONES);
+  const km = distanciaKm(UBICACION_BASE, e);
+  const datos = cifrasDe(e, publicacionesBase);
+  const pubs = publicacionesDe(e, publicacionesBase);
   const primerPunto = pubs[0]?.id;
   const verEnMapa = () => irA(primerPunto ? `${RUTAS.radar}?punto=${encodeURIComponent(primerPunto)}&vista=mapa` : `${RUTAS.radar}?vista=mapa`);
   const menu = [
@@ -505,18 +513,17 @@ const FilaEntidad: React.FC<{ entidad: Entidad; onVerDetalle: () => void; onComp
   );
 };
 
-const MIS_OFERTAS = PUBLICACIONES.filter((p) => (p.org === ENTIDAD_PROPIA || p.propia) && p.tipo === 'oferta');
-
 /* ---------- el diálogo de detalle de entidad ---------- */
 
 const DialogoDetalleEntidad: React.FC<{
   abierto: boolean;
   entidad: Entidad | null;
+  publicacionesBase: Publicacion[];
   onCerrar: () => void;
   onCompromiso?: (pub: Publicacion) => void;
   onCompartir?: () => void;
   onReportar?: () => void;
-}> = ({ abierto, entidad: e, onCerrar, onCompromiso, onCompartir, onReportar }) => {
+}> = ({ abierto, entidad: e, publicacionesBase, onCerrar, onCompromiso, onCompartir, onReportar }) => {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -529,9 +536,9 @@ const DialogoDetalleEntidad: React.FC<{
   if (!e) return null;
 
   const com = e.clase === 'comunidad';
-  const km = distanciaKm(UBICACION, e);
-  const publicaciones = publicacionesDe(e, PUBLICACIONES);
-  const datos = cifrasDe(e, PUBLICACIONES);
+  const km = distanciaKm(UBICACION_BASE, e);
+  const publicaciones = publicacionesDe(e, publicacionesBase);
+  const datos = cifrasDe(e, publicacionesBase);
 
   const verEnMapa = (puntoId?: string) => {
     const id = puntoId || publicaciones[0]?.id;
@@ -697,7 +704,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
 /* ---------- la hoja de filtros del directorio: la misma hoja de la Radar, con sus secciones ---------- */
 
 
-const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta: ConsultaDirectorio; entidades: Entidad[]; onCambiar: (q: ConsultaDirectorio) => void; onCerrar: () => void; resultados: number }> = ({ abierta, clase, consulta: q, entidades, onCambiar, onCerrar, resultados }) => {
+const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta: ConsultaDirectorio; entidades: Entidad[]; publicacionesBase: Publicacion[]; onCambiar: (q: ConsultaDirectorio) => void; onCerrar: () => void; resultados: number }> = ({ abierta, clase, consulta: q, entidades, publicacionesBase, onCambiar, onCerrar, resultados }) => {
   const hoja = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!abierta) return;
@@ -728,12 +735,12 @@ const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={ROTULO}>Lugar</h3>
             {/* El mismo selector que la Radar: Cerca de mí, Seleccionar todo, ciudades por departamento. */}
-            <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={UBICACION} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
+            <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={UBICACION_BASE} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
           </section>
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={ROTULO}>Qué recurso</h3>
             <div className="flex flex-wrap gap-2">
-              {recursosDeVista(entidades, PUBLICACIONES).map((r) => (
+              {recursosDeVista(entidades, publicacionesBase).map((r) => (
                 <Opcion key={r} tipo="checkbox" nombre="recurso" marcada={q.recursos.includes(r)} onChange={() => onCambiar({ ...q, recursos: alternar(q.recursos, r) })}>
                   {r}
                 </Opcion>

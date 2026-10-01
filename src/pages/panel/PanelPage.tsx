@@ -37,9 +37,9 @@ import { Barra } from '../../components/ui/Barra';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember } from '../../lib/supabaseService';
-import { commitmentToSolicitud, commitmentToEntregaRecibida } from '../../utils/supabaseMappers';
+import { commitmentToSolicitud, commitmentToEntregaRecibida, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 import { useTranslation } from '../../i18n/LanguageContext';
@@ -244,7 +244,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     return localAuth ?? getStoredAuthUser();
   }, [authUser, localAuth]);
   const avisar = useAviso();
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
 
   /* --- la campana --- */
@@ -259,37 +259,37 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
   const [modulos, setModulos] = useState<ModulosCuenta>(modulosGuardados);
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
-  const [sol, setSol] = useState<Solicitud[]>(() => archivarViejas(SOLICITUDES, new Date()));
-  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(RECIBIDAS);
+  const [sol, setSol] = useState<Solicitud[]>([]);
+  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>([]);
   const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-oferta-creada-recursos');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return OFERTA.recursos;
+    return [];
   });
   const [recursosNecesidad, setRecursosNecesidad] = useState<RecursoPedido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-necesidad-creada-recursos');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return NECESIDAD.recursos;
+    return [];
   });
   const [solicitudesEnviadas, setSolicitudesEnviadas] = useState<SolicitudEnviada[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-solicitudes-enviadas');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return SOLICITUDES_ENVIADAS;
+    return [];
   });
   const [ofrecimientosEnviados, setOfrecimientosEnviados] = useState<OfrecimientoEnviado[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-ofrecimientos-enviados');
       if (guardado) return JSON.parse(guardado);
     } catch {}
-    return OFRECIMIENTOS_ENVIADOS;
+    return [];
   });
-  const [equipo, setEquipo] = useState<MiembroEquipo[]>(EQUIPO);
+  const [equipo, setEquipo] = useState<MiembroEquipo[]>([]);
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
@@ -533,10 +533,12 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             }
           }
 
-          // Consultar publicaciones del usuario en Supabase para activar módulos en el panel
-          const [{ data: userNeeds }, { data: userOffers }] = await Promise.all([
+          // Consultar publicaciones del usuario y globales en Supabase para el panel
+          const [{ data: userNeeds }, { data: userOffers }, { data: allNeeds }, { data: allOffers }] = await Promise.all([
             supabase.from('needs').select('*').eq('user_id', authData.user.id),
-            supabase.from('offers').select('*').eq('user_id', authData.user.id)
+            supabase.from('offers').select('*').eq('user_id', authData.user.id),
+            supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
+            supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED')
           ]);
 
           if (userNeeds && userNeeds.length > 0) {
@@ -545,9 +547,13 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           if (userOffers && userOffers.length > 0) {
             setModulos((prev) => ({ ...prev, ofrece: true }));
           }
+
+          const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
+          const mappedAllOffers = (allOffers || []).map(dbOfferToOffer).map(offerToPublicacion);
+          setTodasLasPubs([...mappedAllNeeds, ...mappedAllOffers]);
         }
       } catch (err) {
-        console.warn('Usando datos de demostración en PanelPage:', err);
+        console.warn('Error al cargar datos reales en PanelPage:', err);
       }
     }
     loadRealData();
@@ -740,7 +746,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
 
   /* --- matches de necesidades y ofertas propias --- */
-  const todasLasPubs = useMemo(() => obtenerPublicaciones(), []);
+  const [todasLasPubs, setTodasLasPubs] = useState<Publicacion[]>([]);
 
   const pubNecesidadComoPublicacion: Publicacion = useMemo(() => ({
     id: pubNecesidad.id,

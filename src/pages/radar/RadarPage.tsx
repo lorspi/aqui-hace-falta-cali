@@ -176,14 +176,10 @@ const Radar: React.FC<RadarProps> = ({
       const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
       const combinadas = [...needsMapped, ...offersMapped];
 
-      if (combinadas.length > 0) {
-        setDbPubs(combinadas);
-      } else {
-        setDbPubs(obtenerPublicaciones());
-      }
+      setDbPubs(combinadas);
     } catch (err) {
       console.error('❌ Error cargando publicaciones desde Supabase:', err);
-      setDbPubs(obtenerPublicaciones());
+      setDbPubs([]);
     } finally {
       setCargandoDb(false);
     }
@@ -208,10 +204,7 @@ const Radar: React.FC<RadarProps> = ({
   }, [fetchPublicacionesSupabase]);
 
   const todasLasPubs = useMemo(() => {
-    const mockPubs = obtenerPublicaciones();
-    const source = dbPubs.length > 0
-      ? [...dbPubs, ...mockPubs.filter((p) => !dbPubs.some((dp) => dp.id === p.id))]
-      : mockPubs;
+    const source = dbPubs;
 
     // Deduplicación preventiva por id y por (título + coordenadas + tipo) para evitar pines repetidos
     const seenIds = new Set<string>();
@@ -219,7 +212,7 @@ const Radar: React.FC<RadarProps> = ({
     const deduplicadas: Publicacion[] = [];
 
     for (const p of source) {
-      if (seenIds.has(p.id)) continue;
+      if (!p.id || seenIds.has(p.id)) continue;
       seenIds.add(p.id);
 
       const latStr = typeof p.lat === 'number' ? p.lat.toFixed(4) : '';

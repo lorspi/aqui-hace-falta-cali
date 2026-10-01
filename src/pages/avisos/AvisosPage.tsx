@@ -76,7 +76,7 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
   }, [authUser, localAuth]);
 
   const avisar = useAviso();
-  const [avisos, setAvisos] = useState<Aviso[]>(AVISOS);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [cajon, setCajon] = useState(false);
 
@@ -87,9 +87,7 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
       if (usuarioEfectivo?.id) {
         try {
           const dbAvisos = await fetchUserAvisos(usuarioEfectivo.id);
-          if (dbAvisos && dbAvisos.length > 0) {
-            setAvisos(dbAvisos);
-          }
+          setAvisos(dbAvisos || []);
         } catch (err) {
           console.warn('Error al cargar avisos de Supabase en AvisosPage:', err);
         }
@@ -134,7 +132,7 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
       panelNombre={nombrePanel()}
       cuenta={CUENTA}
       authUser={usuarioEfectivo}
-      pendientes={pendientesCuenta(modulosGuardados(), { sol: SOLICITUDES, recibidas: RECIBIDAS })}
+      pendientes={pendientesCuenta(modulosGuardados(), { sol: [], recibidas: [] })}
       avisosNuevos={sinLeer}
       rutas={RUTAS_SHELL}
       onPedir={() => irA(RUTAS.pedir)}
