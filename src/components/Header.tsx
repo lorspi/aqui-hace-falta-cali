@@ -155,8 +155,8 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  if (window.location.pathname !== '/registro-v2') {
-                    window.history.pushState({}, '', '/registro-v2?modo=registro');
+                  if (window.location.pathname !== '/registro') {
+                    window.history.pushState({}, '', '/registro?modo=registro');
                     window.dispatchEvent(new PopStateEvent('popstate'));
                   }
                 }}
@@ -169,8 +169,8 @@ const UserMenu: React.FC<UserMenuProps> = ({
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  if (window.location.pathname !== '/registro-v2') {
-                    window.history.pushState({}, '', '/registro-v2?modo=login');
+                  if (window.location.pathname !== '/registro') {
+                    window.history.pushState({}, '', '/registro?modo=login');
                     window.dispatchEvent(new PopStateEvent('popstate'));
                   }
                 }}

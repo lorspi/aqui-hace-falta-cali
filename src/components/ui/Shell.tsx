@@ -394,7 +394,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
     { id: 'radar', nombre: t('navRadar'), href: rutas.radar || '/mapa-ayudas-necesidades', icono: <MapPin className="h-5 w-5" /> },
-    { id: 'directorio', nombre: t('navDirectory'), href: rutas.directorio || '/directorio-v2', icono: <Users className="h-5 w-5" /> },
+    { id: 'directorio', nombre: t('navDirectory'), href: rutas.directorio || '/directorio', icono: <Users className="h-5 w-5" /> },
   ];
 
   if (estaLogueado) {
@@ -409,7 +409,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         secciones.push({
           id: 'panel',
           nombre: t('navCommunity'),
-          href: rutas.panel || '/panel-v2',
+          href: rutas.panel || '/panel',
           icono: <House className="h-5 w-5" />,
           n: pendientes
         });
@@ -417,7 +417,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         secciones.push({
           id: 'panel',
           nombre: t('navOrg'),
-          href: rutas.panel || '/panel-v2',
+          href: rutas.panel || '/panel',
           icono: <House className="h-5 w-5" />,
           n: pendientes
         });
@@ -434,7 +434,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       secciones.push({
         id: 'panel',
         nombre: t('navCommunity'),
-        href: rutas.panel || '/panel-v2',
+        href: rutas.panel || '/panel',
         icono: <House className="h-5 w-5" />,
         n: pendientes
       });
@@ -442,7 +442,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       secciones.push({
         id: 'panel',
         nombre: t('navOrg'),
-        href: rutas.panel || '/panel-v2',
+        href: rutas.panel || '/panel',
         icono: <House className="h-5 w-5" />,
         n: pendientes
       });
@@ -455,7 +455,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       return {
         id: 'perfil' as Seccion,
         nombre: t('navEnter'),
-        href: '/registro-v2?modo=login',
+        href: '/registro?modo=login',
         icono: <LogIn className="h-6 w-6" />,
         actual: false,
         n: 0,
@@ -470,7 +470,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         return {
           id: 'panel' as Seccion,
           nombre: nombrePanelOrg,
-          href: rutas.panel || '/panel-v2',
+          href: rutas.panel || '/panel',
           icono: <House className="h-6 w-6" />,
           actual: true,
           n: pendientes,
@@ -506,7 +506,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       return {
         id: 'panel' as Seccion,
         nombre: t('navCommunity'),
-        href: rutas.panel || '/panel-v2',
+        href: rutas.panel || '/panel',
         icono: <House className="h-6 w-6" />,
         actual: seccion === 'panel',
         n: pendientes,
@@ -518,7 +518,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     return {
       id: 'panel' as Seccion,
       nombre: t('navOrg'),
-      href: rutas.panel || '/panel-v2',
+      href: rutas.panel || '/panel',
       icono: <House className="h-6 w-6" />,
       actual: seccion === 'panel',
       n: pendientes,
@@ -596,7 +596,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                   if (onOpenProfileModal) {
                     onOpenProfileModal();
                   } else {
-                    handleClickNav(e as any, rutas.perfil || '/perfil-v2');
+                    handleClickNav(e as any, rutas.perfil || '/perfil');
                   }
                 }}
                 aria-current={seccion === 'perfil' ? 'page' : undefined}
@@ -737,7 +737,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                   href={rutas.avisos}
                   onClick={(e) => {
                     onCerrarCajon?.();
-                    handleClickNav(e, rutas.avisos || '/avisos-v2');
+                    handleClickNav(e, rutas.avisos || '/avisos');
                   }}
                   aria-current={seccion === 'avisos' ? 'page' : undefined}
                   className={`${ITEM} h-13 rounded-rd-md text-rd-16 ${seccion === 'avisos' ? ITEM_ACTUAL : ''}`}
@@ -759,7 +759,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                     if (onOpenProfileModal) {
                       onOpenProfileModal();
                     } else {
-                      handleClickNav(e as any, rutas.perfil || '/perfil-v2');
+                      handleClickNav(e as any, rutas.perfil || '/perfil');
                     }
                   }}
                   aria-current={seccion === 'perfil' ? 'page' : undefined}

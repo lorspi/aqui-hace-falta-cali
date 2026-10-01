@@ -41,6 +41,7 @@ import {
   restante,
   tituloPublicacion,
 } from '../../utils/publicaciones';
+import { desactivarModulo } from '../../utils/panel';
 
 function irA(ruta: string): void {
   if (!ruta || ruta === '#') return;
@@ -225,9 +226,22 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
       // Recuperar publicaciones locales creadas en esta sesión
       const locales = obtenerPublicacionesLocales();
 
+      // Excluir locales que tengan UUID si ya fueron archivadas en Supabase (no están en `todas`)
+      const activeIds = new Set(todas.map((t) => t.id));
+      const validLocales = locales.filter((loc) => {
+        const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(loc.id);
+        if (esUuid) {
+          return activeIds.has(loc.id);
+        }
+        return true;
+      });
+      if (validLocales.length !== locales.length) {
+        guardarPublicacionesLocales(validLocales);
+      }
+
       // Filtrar las que pertenecen al usuario (por user_id o creadas localmente)
       let filtradas = [
-        ...locales,
+        ...validLocales,
         ...todas.filter((p) => {
           if (targetUserId && p.userId === targetUserId) return true;
           if (p.propia) return true;
@@ -335,9 +349,30 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
       guardarPublicacionesLocales(restantes);
       return restantes;
     });
+
+    try {
+      if (tipo === 'necesidad') {
+        localStorage.removeItem('rd-necesidad-creada-gestion');
+        localStorage.removeItem('rd-necesidad-creada-recursos');
+        localStorage.removeItem('rd-necesidad-publicacion');
+        desactivarModulo('pide');
+      } else {
+        localStorage.removeItem('rd-oferta-creada-gestion');
+        localStorage.removeItem('rd-oferta-creada-recursos');
+        localStorage.removeItem('rd-oferta-publicacion');
+        desactivarModulo('ofrece');
+      }
+    } catch {}
+
     try {
       const tabla = tipo === 'necesidad' ? 'needs' : 'offers';
-      await supabase.from(tabla).update({ verification_status: 'ARCHIVED' }).eq('id', id);
+      await supabase
+        .from(tabla)
+        .update({
+          verification_status: 'ARCHIVED',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
     } catch (e) {
       console.error('Error archivando en Supabase:', e);
     }

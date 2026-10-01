@@ -62,7 +62,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
 
           {/* Botón: Ingresar / Registrarse (Versión 2) */}
           <a
-            href="/registro-v2"
+            href="/registro"
             className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 active:scale-98 shadow-2xs hover:shadow-xs transition-all cursor-pointer font-sans"
           >
             <User className="w-4 h-4 text-slate-600" />
@@ -103,7 +103,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
                 </a>
                 <span className="w-px h-3.5 bg-slate-200/80 shrink-0" />
                 <a
-                  href="/registro-v2?modo=registro"
+                  href="/registro?modo=registro"
                   onClick={() => setIsDesktopMenuOpen(false)}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 hover:bg-emerald-50 inline-flex items-center gap-1.5 transition-colors"
                 >
@@ -209,7 +209,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onOpenChat }) => {
 
             {/* Ingresar / Registrarse en móvil */}
             <a
-              href="/registro-v2"
+              href="/registro"
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 active:scale-98 shadow-2xs transition-all font-sans"
             >

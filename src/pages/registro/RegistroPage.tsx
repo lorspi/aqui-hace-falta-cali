@@ -320,7 +320,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
     try {
       setCargandoAuth(true);
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/registro-v2?modo=nueva_contrasena`,
+        redirectTo: `${window.location.origin}/registro?modo=nueva_contrasena`,
       });
       if (resetError) throw resetError;
       patch({ modo: 'recuperar_enviado' });

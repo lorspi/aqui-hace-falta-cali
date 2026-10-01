@@ -153,8 +153,8 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
   if (path === 'terminos') return { type: 'terminos' };
   if (path === 'privacidad') return { type: 'privacidad' };
   if (path === 'registro' || path === 'registro-v2') return { type: 'registro-v2' };
-  if (path === 'pedir-v2') return { type: 'pedir-v2' };
-  if (path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
+  if (path === 'pedir' || path === 'pedir-v2') return { type: 'pedir-v2' };
+  if (path === 'ofrecer' || path === 'ofrecer-v2') return { type: 'ofrecer-v2' };
   if (path === 'panel-v2' || path === 'panel-organizacion' || path === 'panel') return { type: 'panel-v2' };
   if (path === 'directorio-v2' || path === 'directorio') return { type: 'directorio-v2' };
   if (path === 'avisos-v2' || path === 'avisos') return { type: 'avisos-v2' };
@@ -170,12 +170,27 @@ function getSpecialRoute(currentPathName?: string): { type: 'landing' } | { type
   return null;
 }
 
+function normalizeLegacyPath(pathname: string): string {
+  const map: Record<string, string> = {
+    '/radar-v2': '/mapa-ayudas-necesidades',
+    '/directorio-v2': '/directorio',
+    '/panel-v2': '/panel',
+    '/perfil-v2': '/perfil',
+    '/registro-v2': '/registro',
+    '/avisos-v2': '/avisos',
+    '/pedir-v2': '/pedir',
+    '/ofrecer-v2': '/ofrecer',
+  };
+  return map[pathname] || pathname;
+}
+
 export default function App() {
   const [currentPath, setCurrentPath] = useState(() => {
     if (typeof window !== 'undefined') {
-      if (window.location.pathname === '/radar-v2') {
-        window.history.replaceState(null, '', '/mapa-ayudas-necesidades' + (window.location.search || ''));
-        return '/mapa-ayudas-necesidades';
+      const clean = normalizeLegacyPath(window.location.pathname);
+      if (clean !== window.location.pathname) {
+        window.history.replaceState(null, '', clean + (window.location.search || ''));
+        return clean;
       }
       return window.location.pathname;
     }
@@ -197,9 +212,10 @@ export default function App() {
 
     const handleLocationChange = () => {
       let path = window.location.pathname;
-      if (path === '/radar-v2') {
-        window.history.replaceState(null, '', '/mapa-ayudas-necesidades' + (window.location.search || ''));
-        path = '/mapa-ayudas-necesidades';
+      const clean = normalizeLegacyPath(path);
+      if (clean !== path) {
+        window.history.replaceState(null, '', clean + (window.location.search || ''));
+        path = clean;
       }
       setCurrentPath(path);
     };
@@ -537,7 +553,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         fecha: new Date().toISOString(),
       });
       const retorno = window.location.pathname + (window.location.search || '');
-      window.history.pushState({}, '', `/registro-v2?modo=login&retorno=${encodeURIComponent(retorno)}`);
+      window.history.pushState({}, '', `/registro?modo=login&retorno=${encodeURIComponent(retorno)}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
       return;
     }
@@ -555,6 +571,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
       const params = new URLSearchParams(window.location.search);
       return (
+        path === 'pedir' ||
         path === 'pedir-v2' ||
         params.get('pedir') === 'true' ||
         params.get('reportar') === 'true' ||
@@ -573,6 +590,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
       const params = new URLSearchParams(window.location.search);
       return (
+        path === 'ofrecer' ||
         path === 'ofrecer-v2' ||
         params.get('ofrecer') === 'true' ||
         params.get('accion') === 'ofrecer'
@@ -1306,7 +1324,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           onOpenCreateOfferModal={() => setShowCreateOffer(true)}
           onOpenLoginModal={propOnOpenLoginModal || (() => window.dispatchEvent(new CustomEvent('ahf_open_auth')))}
           onOpenProfileModal={() => {
-            window.history.pushState({}, '', '/perfil-v2');
+            window.history.pushState({}, '', '/perfil');
             window.dispatchEvent(new PopStateEvent('popstate'));
           }}
           onLogout={async () => {
@@ -1630,7 +1648,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         isSubmitting={isSubmittingCreate}
         initialCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
         onRequireAuth={() => {
-          window.history.pushState({}, '', '/registro-v2?modo=login');
+          window.history.pushState({}, '', '/registro?modo=login');
           window.dispatchEvent(new PopStateEvent('popstate'));
         }}
       />
@@ -1676,7 +1694,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         onSuccess={handleOfferCreated}
         selectedCityId={selectedCityId !== ALL_COLOMBIA_ID ? selectedCityId : ''}
         onRequireAuth={() => {
-          window.history.pushState({}, '', '/registro-v2?modo=login');
+          window.history.pushState({}, '', '/registro?modo=login');
           window.dispatchEvent(new PopStateEvent('popstate'));
         }}
       />
@@ -1756,7 +1774,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           listCount={needs.length + offers.length}
           isLoggedIn={isModeratorLoggedIn}
           userName={(sessionUser as any)?.name}
-          onOpenRegisterModal={() => { window.location.href = '/registro-v2?modo=registro'; }}
+          onOpenRegisterModal={() => { window.location.href = '/registro?modo=registro'; }}
           onLogout={async () => {
             clearStoredAuthUser();
             try {

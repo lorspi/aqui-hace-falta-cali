@@ -104,13 +104,13 @@ export const RUTAS = {
   inicio: '/',
   mapa: '/mapa-ayudas-necesidades',
   radar: '/mapa-ayudas-necesidades',
-  pedir: '/pedir-v2',
-  ofrecer: '/ofrecer-v2',
+  pedir: '/pedir',
+  ofrecer: '/ofrecer',
   organizaciones: '/mapa-ayudas-necesidades',
-  directorio: '/directorio-v2',
-  avisos: '/avisos-v2',
-  perfil: '/perfil-v2',
-  miOrganizacion: '/panel-v2',
+  directorio: '/directorio',
+  avisos: '/avisos',
+  perfil: '/perfil',
+  miOrganizacion: '/panel',
   actividad: '/mi-actividad',
   panelAdmin: '/panel-admin',
   comoFunciona: '/guia',
@@ -131,7 +131,7 @@ export const RUTAS_SHELL = {
   directorio: RUTAS.directorio,
   avisos: RUTAS.avisos,
   perfil: RUTAS.perfil,
-  salir: '/registro-v2',
+  salir: '/registro',
 };
 
 const CONTACTO_VACIO: ContactoPublico = { tel: '', mismoWa: true, wa: '', correo: '' };

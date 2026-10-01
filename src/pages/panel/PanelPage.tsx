@@ -445,30 +445,38 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       try {
         localStorage.removeItem('rd-oferta-creada-gestion');
         localStorage.removeItem('rd-oferta-creada-recursos');
+        localStorage.removeItem('rd-oferta-publicacion');
+        const pubs = localStorage.getItem('rd-publicaciones-creadas');
+        if (pubs) {
+          const parsed = JSON.parse(pubs);
+          if (Array.isArray(parsed)) {
+            localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
+          }
+        }
         desactivarModulo('ofrece');
       } catch {}
       setModulos((prev) => ({ ...prev, ofrece: false }));
       setRecursosOferta([]);
-      setPubOferta((prev) => ({
-        ...prev,
-        recursos: [],
-        pausadaGlobal: true,
-      }));
+      setPubOferta(defaultPubOfertaLimpia);
       cambiarTab('resumen');
       avisar('Publicación de oferta eliminada', { tipo: 'ok' });
     } else {
       try {
         localStorage.removeItem('rd-necesidad-creada-gestion');
         localStorage.removeItem('rd-necesidad-creada-recursos');
+        localStorage.removeItem('rd-necesidad-publicacion');
+        const pubs = localStorage.getItem('rd-publicaciones-creadas');
+        if (pubs) {
+          const parsed = JSON.parse(pubs);
+          if (Array.isArray(parsed)) {
+            localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
+          }
+        }
         desactivarModulo('pide');
       } catch {}
       setModulos((prev) => ({ ...prev, pide: false }));
       setRecursosNecesidad([]);
-      setPubNecesidad((prev) => ({
-        ...prev,
-        recursos: [],
-        pausadaGlobal: true,
-      }));
+      setPubNecesidad(defaultPubNecesidadLimpia);
       cambiarTab('resumen');
       avisar('Publicación de necesidad eliminada', { tipo: 'ok' });
     }
@@ -558,8 +566,8 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             { data: allOffers },
             userAvisosList
           ] = await Promise.all([
-            supabase.from('needs').select('*').eq('user_id', authData.user.id),
-            supabase.from('offers').select('*').eq('user_id', authData.user.id),
+            supabase.from('needs').select('*').eq('user_id', authData.user.id).neq('verification_status', 'ARCHIVED'),
+            supabase.from('offers').select('*').eq('user_id', authData.user.id).neq('verification_status', 'ARCHIVED'),
             supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
             supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
             fetchUserAvisos(authData.user.id)
@@ -608,6 +616,16 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
               })),
               pausadaGlobal: un.status === 'PAUSED',
             });
+          } else {
+            setModulos((prev) => ({ ...prev, pide: false }));
+            setRecursosNecesidad([]);
+            setPubNecesidad(defaultPubNecesidadLimpia);
+            desactivarModulo('pide');
+            try {
+              localStorage.removeItem('rd-necesidad-creada-gestion');
+              localStorage.removeItem('rd-necesidad-creada-recursos');
+              localStorage.removeItem('rd-necesidad-publicacion');
+            } catch {}
           }
 
           if (userOffers && userOffers.length > 0) {
@@ -649,6 +667,16 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
               })),
               pausadaGlobal: uo.status === 'PAUSED',
             });
+          } else {
+            setModulos((prev) => ({ ...prev, ofrece: false }));
+            setRecursosOferta([]);
+            setPubOferta(defaultPubOfertaLimpia);
+            desactivarModulo('ofrece');
+            try {
+              localStorage.removeItem('rd-oferta-creada-gestion');
+              localStorage.removeItem('rd-oferta-creada-recursos');
+              localStorage.removeItem('rd-oferta-publicacion');
+            } catch {}
           }
 
           const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
