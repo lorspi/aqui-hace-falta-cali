@@ -24,20 +24,15 @@ import { FilterState, Need, NeedStatus, Offer, Priority } from "./types";
 import { Header } from "./components/Header";
 import { BannerDisclaimer } from "./components/BannerDisclaimer";
 import { FilterBar } from "./components/FilterBar";
-import { MapView } from "./components/MapView";
-import { NeedCard } from "./components/NeedCard";
 import { NeedDetailModal } from "./components/NeedDetailModal";
 import { QuieroAyudarModal } from "./components/QuieroAyudarModal";
 import { CreateNeedModal } from "./components/CreateNeedModal";
 import { CreateOfferModal } from "./components/CreateOfferModal";
-import { OfferCard } from "./components/OfferCard";
 import { OfferDetailModal } from "./components/OfferDetailModal";
 import { ReportModal } from "./components/ReportModal";
 import { PublicEditModal } from "./components/PublicEditModal";
 import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
-import { MobileBottomBar } from "./components/MobileBottomBar";
-import { Footer } from "./components/Footer";
 import { ChatbotTicketModal } from "./components/ChatbotTicketModal";
 // Lazy-loaded auth modals for code-splitting
 const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
@@ -67,7 +62,6 @@ import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
 import { LandingOfferActionModal } from "./components/LandingOfferActionModal";
-import { RadarMatchModal } from "./components/RadarMatchModal";
 import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
@@ -526,18 +520,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
   // Desktop expanded grid view (list takes full width, map hidden)
   const [isGridExpanded, setIsGridExpanded] = useState(false);
 
-  // Auto-scroll to highlighted card when hovering a pin on the map
-  useEffect(() => {
-    if (!hoveredItemId) return;
-    // Only on desktop — avoid scroll interference on mobile
-    if (window.innerWidth < 768) return;
-    const cardEl =
-      document.getElementById(`need-card-${hoveredItemId}`) ||
-      document.getElementById(`offer-card-${hoveredItemId}`);
-    if (cardEl) {
-      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [hoveredItemId]);
+
 
   // Selected need modals
   const [selectedNeed, setSelectedNeed] = useState<Need | null>(null);
@@ -606,15 +589,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     return false;
   });
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
-  const [radarMatchState, setRadarMatchState] = useState<{
-    isOpen: boolean;
-    type: 'NEED_PUBLISHED' | 'OFFER_PUBLISHED' | null;
-    item: Need | Offer | null;
-  }>({
-    isOpen: false,
-    type: null,
-    item: null,
-  });
+
   const [targetFocusCoords, setTargetFocusCoords] = useState<{
     lat: number;
     lng: number;
@@ -1129,15 +1104,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
 
     setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
-
-    if (createdNeed?.id) {
-      setHoveredItemId(createdNeed.id);
-      setRadarMatchState({
-        isOpen: true,
-        type: 'NEED_PUBLISHED',
-        item: createdNeed,
-      });
-    }
   };
 
   // Create Need Submit (Legacy direct creation fallback)
@@ -1196,15 +1162,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
 
     setFilters((prev) => ({ ...prev, viewMode: 'OFFERS' }));
-
-    if (createdOffer?.id) {
-      setHoveredItemId(createdOffer.id);
-      setRadarMatchState({
-        isOpen: true,
-        type: 'OFFER_PUBLISHED',
-        item: createdOffer,
-      });
-    }
   };
 
   // Report Submit
@@ -1342,274 +1299,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       </div>
 
 
-      {/* Main Content Layout — Split panel on desktop, toggle on mobile */}
-      <main className="flex-1 flex flex-col md:flex-row min-h-0 pb-16 md:pb-0" ref={mainContentRef}>
-        {/* MAP PANEL — 60% width on desktop, full width toggle on mobile */}
-        <div
-          id="mobile-map-anchor"
-          className={`w-full md:w-[60%] lg:w-[65%] md:h-full relative ${
-            mobileView === "MAP" ? "flex-1 min-h-0 h-full block" : "hidden md:block"
-          } ${isGridExpanded ? "md:hidden" : ""}`}
-        >
-          <MapView
-            needs={needs}
-            selectedNeedId={selectedNeed?.id}
-            onSelectNeed={(need) => handleSelectNeed(need)}
-            userLat={filters.userLat}
-            userLng={filters.userLng}
-            selectedCityId={selectedCityId}
-            cityChangeSource={cityChangeSource}
-            onMapCenterChanged={handleMapCenterChanged}
-            offers={offers}
-            viewMode={filters.viewMode}
-            onSelectOffer={(offer) => handleSelectOffer(offer)}
-            hoveredItemId={hoveredItemId}
-            onHoverMarker={setHoveredItemId}
-            targetFocusCoords={targetFocusCoords}
-          />
-
-
-        </div>
-
-        {/* LIST PANEL — 40% width on desktop (or full width when expanded), full width toggle on mobile */}
-        <div
-          id="mobile-list-anchor"
-          className={`w-full ${isGridExpanded ? "md:w-full" : "md:w-[40%] lg:w-[35%]"} md:h-full md:border-l md:border-slate-200 bg-white md:bg-slate-50 ${
-            mobileView === "LIST" ? "flex flex-col" : "hidden md:flex md:flex-col"
-          } ${isGridExpanded ? "md:border-l-0" : ""}`}
-        >
-          {/* Panel header */}
-          <div className={`flex items-center justify-between ${isGridExpanded ? "px-6 lg:px-8 py-3.5 bg-white border-b border-slate-200" : "px-4 py-2.5 border-b border-slate-200 bg-white"} shrink-0`}>
-            <div className={`flex items-center justify-between w-full ${isGridExpanded ? "max-w-7xl mx-auto" : ""}`}>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2.5 leading-none">
-                <span>
-                  {filters.viewMode === "OFFERS"
-                    ? `Ofertas disponibles${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                    : filters.viewMode === "ALL"
-                    ? `Necesidades y ofertas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                    : `Necesidades activas${selectedCityId !== ALL_COLOMBIA_ID ? ` en ${getCityDisplayName(selectedCityId)}` : ''}`
-                  }
-                </span>
-                <span className="bg-slate-800 text-white text-xs px-2.5 py-0.5 rounded-full font-bold leading-none">
-                  {filters.viewMode === "OFFERS" ? displayedOffers.length : filters.viewMode === "ALL" ? displayedNeeds.length + displayedOffers.length : displayedNeeds.length}
-                </span>
-              </h3>
-              {/* Expand/Collapse button — desktop only */}
-              <button
-                onClick={() => setIsGridExpanded((v) => !v)}
-                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
-                  isGridExpanded
-                    ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-                title={isGridExpanded ? "Volver a vista dividida con mapa" : "Expandir lista"}
-              >
-                {isGridExpanded ? (
-                  <>
-                    <Minimize2 className="w-4 h-4 text-slate-600" />
-                    <span>Volver al mapa</span>
-                  </>
-                ) : (
-                  <Maximize2 className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Distance sort prompt when no geolocation */}
-          {filters.sortBy === "DISTANCE" && !filters.userLat && !filters.userLng && (
-            <div className={`mx-3 mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 flex items-center gap-2 shrink-0 ${isGridExpanded ? "max-w-7xl mx-auto w-full" : ""}`}>
-              <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>Para ordenar por distancia, activa tu ubicación desde el selector de ciudad.</span>
-            </div>
-          )}
-
-          {/* Cards list — scrollable */}
-          <div className={`flex-1 overflow-y-auto ${isGridExpanded ? "p-4 sm:p-6 lg:p-8 bg-slate-100/70" : "p-3 pb-20 md:pb-3 bg-white md:bg-slate-50"} cards-scroll`}>
-            <div className={isGridExpanded ? "w-full max-w-7xl mx-auto space-y-3.5" : "space-y-3"}>
-              {isLoading ? (
-                <div className="space-y-3.5">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className={`bg-white rounded-2xl border border-slate-200 animate-pulse shadow-xs ${
-                        isGridExpanded
-                          ? "p-5 sm:p-6 h-32 flex items-center justify-between gap-6"
-                          : "p-4 space-y-3"
-                      }`}
-                    >
-                      {isGridExpanded ? (
-                        <>
-                          <div className="space-y-2.5 flex-1">
-                            <div className="flex gap-2">
-                              <div className="h-4 bg-slate-200 rounded w-28" />
-                              <div className="h-4 bg-slate-200 rounded w-24" />
-                            </div>
-                            <div className="h-6 bg-slate-200 rounded w-2/3" />
-                            <div className="h-4 bg-slate-100 rounded w-1/2" />
-                          </div>
-                          <div className="h-16 bg-slate-100 rounded-xl w-48 shrink-0 hidden lg:block" />
-                          <div className="h-10 bg-slate-200 rounded-xl w-32 shrink-0" />
-                        </>
-                      ) : (
-                        <>
-                          <div className="h-4 bg-slate-200 rounded w-1/3" />
-                          <div className="h-5 bg-slate-200 rounded w-3/4" />
-                          <div className="h-12 bg-slate-100 rounded" />
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (filters.viewMode === "NEEDS" && displayedNeeds.length === 0) ||
-                (filters.viewMode === "OFFERS" && displayedOffers.length === 0) ||
-                (filters.viewMode === "ALL" && displayedNeeds.length === 0 && displayedOffers.length === 0) ? (
-              <div className="space-y-4">
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 bg-amber-100/80 rounded-lg shrink-0">
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
-                        No se encontraron resultados
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        No hay coincidencias en los filtros seleccionados.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setFilters({
-                        search: "",
-                        categories: [],
-                        priority: "ALL",
-                        placeType: "ALL",
-                        status: "ALL",
-                        verificationStatus: "ALL",
-                        distanceKm: null,
-                        userLat: null,
-                        userLng: null,
-                        sortBy: "RECENT",
-                        viewMode: "ALL",
-                      })
-                    }
-                    className="bg-white hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200 shrink-0 transition-colors cursor-pointer w-full sm:w-auto text-center"
-                  >
-                    Limpiar filtros
-                  </button>
-                </div>
-
-                {closestItems.length > 0 && (
-                  <div className="pt-2 space-y-3">
-                    <div className="flex items-center gap-2 px-1 pt-2">
-                      <Navigation className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <h4 className="font-bold text-slate-800 text-xs">
-                        Publicaciones más cercanas a {getCityDisplayName(selectedCityId, routeInfo.departmentId)}
-                      </h4>
-                    </div>
-
-                    <div className={isGridExpanded ? "space-y-2.5" : "space-y-3"}>
-                      {closestItems.map(({ type, item, distanceKm }) => {
-                        const cityCoords = getCityCoordinates(selectedCityId, routeInfo.departmentId);
-                        return type === 'need' ? (
-                          <NeedCard
-                            key={item.id}
-                            need={item as Need}
-                            onSelect={(n) => handleSelectNeed(n)}
-                            onHelp={(n) => handleOpenHelp(n)}
-                            onViewOnMap={(n) => handleViewOnMap(n)}
-                            userLat={cityCoords.lat}
-                            userLng={cityCoords.lng}
-                            isSelected={selectedNeed?.id === item.id}
-                            isHighlighted={!isGridExpanded && hoveredItemId === item.id}
-                            onHover={isGridExpanded ? undefined : setHoveredItemId}
-                            layout={isGridExpanded ? "row" : "card"}
-                          />
-                        ) : (
-                          <OfferCard
-                            key={item.id}
-                            offer={item as Offer}
-                            onClick={() => handleSelectOffer(item as Offer)}
-                            onViewOnMap={(o) => handleViewOnMap(o)}
-                            isHighlighted={!isGridExpanded && hoveredItemId === item.id}
-                            onHover={isGridExpanded ? undefined : setHoveredItemId}
-                            distanceKm={distanceKm}
-                            layout={isGridExpanded ? "row" : "card"}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* ViewMode: NEEDS — only needs */}
-                {filters.viewMode === "NEEDS" && displayedNeeds.map((need) => (
-                  <NeedCard
-                    key={need.id}
-                    need={need}
-                    onSelect={(item) => handleSelectNeed(item)}
-                    onHelp={(item) => handleOpenHelp(item)}
-                    onViewOnMap={(item) => handleViewOnMap(item)}
-                    userLat={filters.userLat}
-                    userLng={filters.userLng}
-                    isSelected={selectedNeed?.id === need.id}
-                    isHighlighted={!isGridExpanded && hoveredItemId === need.id}
-                    onHover={isGridExpanded ? undefined : setHoveredItemId}
-                    layout={isGridExpanded ? "row" : "card"}
-                  />
-                ))}
-
-                {/* ViewMode: OFFERS — only offers */}
-                {filters.viewMode === "OFFERS" && displayedOffers.map((offer) => (
-                  <OfferCard
-                    key={offer.id}
-                    offer={offer}
-                    onClick={() => handleSelectOffer(offer)}
-                    onViewOnMap={(item) => handleViewOnMap(item)}
-                    isHighlighted={!isGridExpanded && hoveredItemId === offer.id}
-                    onHover={isGridExpanded ? undefined : setHoveredItemId}
-                    layout={isGridExpanded ? "row" : "card"}
-                  />
-                ))}
-
-                {/* ViewMode: ALL — unified feed with interleaved needs and offers */}
-                {filters.viewMode === "ALL" && displayedUnifiedItems.map((item) => (
-                  item.type === 'NEED' ? (
-                    <NeedCard
-                      key={item.data.id}
-                      need={item.data}
-                      onSelect={(n) => handleSelectNeed(n)}
-                      onHelp={(n) => handleOpenHelp(n)}
-                      onViewOnMap={(n) => handleViewOnMap(n)}
-                      userLat={filters.userLat}
-                      userLng={filters.userLng}
-                      isSelected={selectedNeed?.id === item.data.id}
-                      isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
-                      onHover={isGridExpanded ? undefined : setHoveredItemId}
-                      layout={isGridExpanded ? "row" : "card"}
-                    />
-                  ) : (
-                    <OfferCard
-                      key={item.data.id}
-                      offer={item.data}
-                      onClick={() => handleSelectOffer(item.data)}
-                      onViewOnMap={(o) => handleViewOnMap(o)}
-                      isHighlighted={!isGridExpanded && hoveredItemId === item.data.id}
-                      onHover={isGridExpanded ? undefined : setHoveredItemId}
-                      layout={isGridExpanded ? "row" : "card"}
-                    />
-                  )
-                ))}
-              </>
-            )}
-            </div>
-          </div>
-        </div>
-      </main>
 
       {/* Modals */}
       <NeedDetailModal
@@ -1733,60 +1422,11 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         }}
       />
 
-      <RadarMatchModal
-        isOpen={radarMatchState.isOpen}
-        onClose={() => setRadarMatchState((prev) => ({ ...prev, isOpen: false }))}
-        type={radarMatchState.type}
-        item={radarMatchState.item}
-        onSelectNeed={(need) => {
-          setSelectedNeed(need);
-        }}
-        onSelectOffer={(offer) => {
-          setSelectedOffer(offer);
-        }}
-      />
-
-      {/* Footer — para escritorio / web */}
-      <div className="hidden md:block">
-        <Footer />
-      </div>
-
       {/* Chatbot Modal */}
       <ChatbotTicketModal
         isOpen={isChatbotModalOpen}
         onClose={() => setIsChatbotModalOpen(false)}
       />
-
-      {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden">
-        <MobileBottomBar
-          mobileView={mobileView}
-          onSetMobileView={setMobileView}
-          onOpenCreateModal={() => setIsCreateModalOpen(true)}
-          onOpenCreateOfferModal={() => setShowCreateOffer(true)}
-          onOpenWelcomeModal={() => setIsWelcomeModalOpen(true)}
-          onOpenAdminModal={() => { window.location.href = '/panel'; }}
-          onScrollToMap={() => {
-            setFilters((f) => ({ ...f, viewMode: "NEEDS" }));
-            setMobileView("MAP");
-            window.scrollTo({ top: 0, behavior: 'instant' });
-          }}
-          listCount={needs.length + offers.length}
-          isLoggedIn={isModeratorLoggedIn}
-          userName={(sessionUser as any)?.name}
-          onOpenRegisterModal={() => { window.location.href = '/registro?modo=registro'; }}
-          onLogout={async () => {
-            clearStoredAuthUser();
-            try {
-              await supabase.auth.signOut();
-            } catch (e) {
-              console.error("Error al cerrar sesión en Supabase:", e);
-            }
-            setAuthUser(null);
-            window.location.href = '/mapa-ayudas-necesidades';
-          }}
-        />
-      </div>
       <RegisterWizard
         isOpen={isRegisterModalOpen}
         initialStep={registerInitialStep}

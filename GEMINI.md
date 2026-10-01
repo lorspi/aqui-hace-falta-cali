@@ -22,6 +22,12 @@ Fuente completa: `.kiro/steering/reuse-first.md`.
 3. **DESPLIEGUE BAJO DEMANDA:** ÚNICAMENTE se subirá el código a GitHub o se desplegará a producción en Firebase Hosting cuando el usuario lo pida explícitamente con un comando o instrucción explícita.
 
 ## 🌿 Flujo de Trabajo en Git (Git Workflow)
-1. **Ramas por Tarea:** Todo nuevo desarrollo o corrección se debe realizar en una rama dedicada (`feature/nombre-tarea`, `fix/solucion-bug`) y jamás directamente sobre `main`.
-2. **Guía Oficial:** Consultar la guía completa en [GIT_WORKFLOW.md](file:///Users/JesseLopez/offbeat/Radar%20de%20Ayuda/aqui-hace-falta-cali/GIT_WORKFLOW.md) para la coordinación en equipo con IA.
+1. **PROHIBIDO CREAR RAMAS O COMMITS AUTOMÁTICOS:** Queda estrictamente prohibido crear ramas nuevas (`git checkout -b`) o realizar commits automáticos (`git commit`) por cuenta del agente. Únicamente el usuario decide cuándo y cómo commitear o crear ramas.
+2. **Rama de Trabajo:** Trabajar directamente sobre la rama activa indicada por el usuario (rama actual: `frontend`), sin conmutar de rama salvo autorización expresa.
+3. **Guía Oficial:** Consultar la guía completa en [GIT_WORKFLOW.md](file:///Users/JesseLopez/offbeat/Radar%20de%20Ayuda/aqui-hace-falta-cali/GIT_WORKFLOW.md) para la coordinación en equipo con IA.
+
+## 🛑 Estabilidad del IDE y Prevención de Crashes
+1. **PROHIBIDO COMANDOS MULTILÍNEA EN SHELL:** Queda estrictamente prohibido ejecutar scripts multilínea inline con comillas o saltos de línea complejos (`node -e '...'` o `python3 -c '...'`) mediante `run_command`. Esto corrompe el almacén de permisos de Antigravity IDE (`permission_grant_store`) y provoca un crash fatal `SIGABRT` en el language server. Si se requiere un script auxiliar, se debe guardar primero en un archivo físico y ejecutarse desde allí.
+2. **SIN TESTING DE BROWSER / GRABACIONES DE PANTALLA:** No invocar el subagente de navegador ni grabar pantalla a menos que el usuario lo solicite explícitamente, ya que consume recursos excesivos y ralentiza la interacción.
+
 

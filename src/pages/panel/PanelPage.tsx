@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Archive, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, Eye, FileText, Funnel, Hand, HeartHandshake, ListChecks, Megaphone, Package, Pause, Phone, Play, Radar, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
 import { InlineNotice } from '../../components/ui/InlineNotice';
@@ -36,7 +36,7 @@ import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
-import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
 import { commitmentToSolicitud, commitmentToEntregaRecibida, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
@@ -203,6 +203,30 @@ const PestanasPanel: React.FC<{
   );
 };
 
+const isMockMiembro = (m: MiembroEquipo) =>
+  m.n === 'Mateo Rojas' ||
+  m.n === 'Laura Díaz' ||
+  m.n === 'Andrés Peña' ||
+  m.n === 'Sofía Mora' ||
+  Boolean(m.correo && m.correo.includes('bomberosusme.org'));
+
+const isMockSolicitud = (s: Solicitud) =>
+  s.quien === 'Albergue Bosa' ||
+  s.quien === 'Comedor Villa Gloria' ||
+  s.quien === 'Hospital de Usme' ||
+  s.quien === 'Fundación Colombia Unida' ||
+  s.quien === 'Colegio Ciudad de Bogotá' ||
+  s.quien === 'JAC El Recuerdo' ||
+  s.quien === 'JAC Vereda El Destino' ||
+  Boolean(s.cierre?.historia?.includes('140 personas evacuadas')) ||
+  Boolean(s.cierre?.historia?.includes('Villa Gloria'));
+
+const isMockRecibida = (r: EntregaRecibida) =>
+  r.org === 'Cruz Roja seccional' ||
+  r.org === 'Alcaldía local de Usme' ||
+  Boolean(r.detalle?.includes('motobombas de 3 pulgadas')) ||
+  Boolean(r.detalle?.includes('Respiradores N95'));
+
 export interface PanelPageProps {
   authUser?: any;
 }
@@ -255,17 +279,65 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     else irA(a.accion.al);
   };
 
-  const [modulos, setModulos] = useState<ModulosCuenta>(modulosGuardados);
+  const [modulos, setModulos] = useState<ModulosCuenta>(() => {
+    const mg = modulosGuardados();
+    const tieneGestionOferta = typeof window !== 'undefined' ? localStorage.getItem('rd-oferta-creada-gestion') : null;
+    const esOfertaMock = tieneGestionOferta && (tieneGestionOferta.includes('oferta-usme') || tieneGestionOferta.includes('Planta eléctrica'));
+    const tieneGestionNec = typeof window !== 'undefined' ? localStorage.getItem('rd-necesidad-creada-gestion') : null;
+    const esNecMock = tieneGestionNec && (tieneGestionNec.includes('necesidad-usme') || tieneGestionNec.includes('calle 91 sur'));
+    return {
+      pide: mg.pide && !esNecMock,
+      ofrece: mg.ofrece && !esOfertaMock,
+    };
+  });
   /* Al abrir, las confirmadas de 30 días o más pasan solas a Archivadas. */
-  const [sol, setSol] = useState<Solicitud[]>([]);
-  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>([]);
+  const [sol, setSol] = useState<Solicitud[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-panel-solicitudes');
+      if (guardado !== null) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter((s) => !isMockSolicitud(s))
+            .map((s) => {
+              if (
+                s.esInterna &&
+                (!s.quien ||
+                  /^(calle|cra|carrera|cll|kr|diagonal|transversal|av|avenida)\b/i.test(s.quien.trim()) ||
+                  /^[a-z0-9\s#\-\.]{1,8}\s+\d/i.test(s.quien.trim()))
+              ) {
+                return { ...s, quien: 'Comunidad beneficiaria' };
+              }
+              return s;
+            });
+        }
+      }
+    } catch {}
+    return [];
+  });
+  const [recibidas, setRecibidas] = useState<EntregaRecibida[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-panel-recibidas');
+      if (guardado !== null) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) return parsed.filter((r) => !isMockRecibida(r));
+      }
+    } catch {}
+    return [];
+  });
   const [recursosOferta, setRecursosOferta] = useState<RecursoOfrecido[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-oferta-creada-recursos');
       if (guardado) {
         const parsed = JSON.parse(guardado);
         if (Array.isArray(parsed)) {
-          return parsed.filter((r: any) => r.n !== 'Planta eléctrica' && r.pres !== 'Carrotanque');
+          return parsed.filter(
+            (r: any) =>
+              r.n !== 'Planta eléctrica' &&
+              r.pres !== 'Carrotanque' &&
+              !(r.n === 'Agua potable' && r.total === 900) &&
+              !(r.n === 'Alimentos' && r.total === 50)
+          );
         }
       }
     } catch {}
@@ -292,18 +364,37 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const [solicitudesEnviadas, setSolicitudesEnviadas] = useState<SolicitudEnviada[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-solicitudes-enviadas');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((s: any) => s.id !== 'sol-env-1' && s.id !== 'sol-env-2' && s.id !== 'sol-env-3');
+        }
+      }
     } catch {}
     return [];
   });
   const [ofrecimientosEnviados, setOfrecimientosEnviados] = useState<OfrecimientoEnviado[]>(() => {
     try {
       const guardado = localStorage.getItem('rd-ofrecimientos-enviados');
-      if (guardado) return JSON.parse(guardado);
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((o: any) => o.id !== 'ofr-env-1' && o.id !== 'ofr-env-2' && o.id !== 'ofr-env-3');
+        }
+      }
     } catch {}
     return [];
   });
-  const [equipo, setEquipo] = useState<MiembroEquipo[]>([]);
+  const [equipo, setEquipo] = useState<MiembroEquipo[]>(() => {
+    try {
+      const guardado = localStorage.getItem('rd-panel-equipo');
+      if (guardado !== null) {
+        const parsed = JSON.parse(guardado);
+        if (Array.isArray(parsed)) return parsed.filter((m) => !isMockMiembro(m));
+      }
+    } catch {}
+    return [];
+  });
   const [editandoOferta, setEditandoOferta] = useState<RecursoOfrecido | null>(null);
   const [editandoNecesidad, setEditandoNecesidad] = useState<RecursoPedido | null>(null);
   const [registrandoMiembro, setRegistrandoMiembro] = useState(false);
@@ -362,7 +453,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       const guardado = localStorage.getItem('rd-oferta-creada-gestion');
       if (guardado) {
         const parsed = JSON.parse(guardado);
-        if (parsed.id && parsed.id !== 'oferta-usme') return parsed;
+        if (parsed.id && parsed.id !== 'oferta-usme' && !parsed.titulo?.includes('Planta eléctrica')) return parsed;
       }
     } catch {}
     return defaultPubOfertaLimpia;
@@ -373,7 +464,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       const guardado = localStorage.getItem('rd-necesidad-creada-gestion');
       if (guardado) {
         const parsed = JSON.parse(guardado);
-        if (parsed.id && parsed.id !== 'necesidad-usme') return parsed;
+        if (parsed.id && parsed.id !== 'necesidad-usme' && !parsed.titulo?.includes('calle 91 sur')) return parsed;
       }
     } catch {}
     return defaultPubNecesidadLimpia;
@@ -424,6 +515,382 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     }
   };
 
+
+  const [cajon, setCajon] = useState(false);
+  const [pasosOcultos, setPasosOcultos] = useState(false);
+  const [tab, setTab] = useState(() => (window.location.hash || '#resumen').slice(1));
+
+  useEffect(() => {
+    document.title = `${nombrePanel()}, RaDAR de ayuda`;
+    try {
+      const gSol = localStorage.getItem('rd-panel-solicitudes');
+      if (gSol) {
+        const p = JSON.parse(gSol);
+        if (Array.isArray(p)) {
+          const clean = p.filter((s) => !isMockSolicitud(s));
+          localStorage.setItem('rd-panel-solicitudes', JSON.stringify(clean));
+        }
+      }
+      const gRec = localStorage.getItem('rd-panel-recibidas');
+      if (gRec) {
+        const p = JSON.parse(gRec);
+        if (Array.isArray(p)) {
+          const clean = p.filter((r) => !isMockRecibida(r));
+          localStorage.setItem('rd-panel-recibidas', JSON.stringify(clean));
+        }
+      }
+      const gEq = localStorage.getItem('rd-panel-equipo');
+      if (gEq) {
+        const p = JSON.parse(gEq);
+        if (Array.isArray(p)) {
+          const clean = p.filter((m) => !isMockMiembro(m));
+          localStorage.setItem('rd-panel-equipo', JSON.stringify(clean));
+        }
+      }
+      const gOfGest = localStorage.getItem('rd-oferta-creada-gestion');
+      if (gOfGest && (gOfGest.includes('oferta-usme') || gOfGest.includes('Planta eléctrica'))) {
+        localStorage.removeItem('rd-oferta-creada-gestion');
+        localStorage.removeItem('rd-oferta-creada-recursos');
+        localStorage.removeItem('rd-oferta-publicacion');
+      }
+      const gNecGest = localStorage.getItem('rd-necesidad-creada-gestion');
+      if (gNecGest && (gNecGest.includes('necesidad-usme') || gNecGest.includes('calle 91 sur'))) {
+        localStorage.removeItem('rd-necesidad-creada-gestion');
+        localStorage.removeItem('rd-necesidad-creada-recursos');
+        localStorage.removeItem('rd-necesidad-publicacion');
+      }
+      const gOfrEnv = localStorage.getItem('rd-ofrecimientos-enviados');
+      if (gOfrEnv) {
+        const p = JSON.parse(gOfrEnv);
+        if (Array.isArray(p)) {
+          const clean = p.filter((o) => o.id !== 'ofr-env-1' && o.id !== 'ofr-env-2' && o.id !== 'ofr-env-3');
+          localStorage.setItem('rd-ofrecimientos-enviados', JSON.stringify(clean));
+        }
+      }
+      const gSolEnv = localStorage.getItem('rd-solicitudes-enviadas');
+      if (gSolEnv) {
+        const p = JSON.parse(gSolEnv);
+        if (Array.isArray(p)) {
+          const clean = p.filter((s) => s.id !== 'sol-env-1' && s.id !== 'sol-env-2' && s.id !== 'sol-env-3');
+          localStorage.setItem('rd-solicitudes-enviadas', JSON.stringify(clean));
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const clean = sol.filter((s) => !isMockSolicitud(s));
+      localStorage.setItem('rd-panel-solicitudes', JSON.stringify(clean));
+    } catch {}
+  }, [sol]);
+
+  useEffect(() => {
+    try {
+      const clean = recibidas.filter((r) => !isMockRecibida(r));
+      localStorage.setItem('rd-panel-recibidas', JSON.stringify(clean));
+    } catch {}
+  }, [recibidas]);
+
+  useEffect(() => {
+    try {
+      const clean = equipo.filter((m) => !isMockMiembro(m));
+      localStorage.setItem('rd-panel-equipo', JSON.stringify(clean));
+    } catch {}
+  }, [equipo]);
+
+  const [orgData, setOrgData] = useState<DatosOrg>(() => ({
+    nombre: 'Mi Organización',
+    tipo: 'Organización',
+    nit: '',
+    dir: '',
+    contacto: { tel: '', wa: false, correo: '' },
+    enlace: '',
+    directorio: false,
+    directorioDesde: '',
+    web: '',
+    verificacion: 'revision',
+    canalesRevisados: false,
+  }));
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
+
+  const loadRealData = useCallback(async () => {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const activeUser = authData?.user || usuarioEfectivo || getStoredAuthUser();
+      if (activeUser?.id) {
+        const dbOrg = await fetchOrganizationByUserId(activeUser.id);
+        if (dbOrg) {
+          setCurrentOrgId(dbOrg.id);
+          setOrgData({
+            nombre: dbOrg.org_name,
+            tipo: dbOrg.organization_type || 'Organización',
+            nit: dbOrg.document_number || 'NIT no especificado',
+            dir: dbOrg.address || 'Dirección no especificada',
+            contacto: {
+              tel: dbOrg.contact_phone || activeUser.email || '',
+              wa: Boolean(dbOrg.contact_whatsapp),
+              correo: dbOrg.contact_email || activeUser.email || '',
+            },
+            enlace: dbOrg.contact_phone || 'Contacto principal',
+            directorio: true,
+            directorioDesde: dbOrg.created_at ? new Date(dbOrg.created_at).toLocaleDateString('es-CO') : '',
+            web: dbOrg.website_or_social || '',
+            verificacion: dbOrg.is_verified ? 'verificada' : 'revision',
+            canalesRevisados: true,
+          });
+
+          const dbMembers = await fetchOrganizationMembers(dbOrg.id);
+          if (dbMembers && dbMembers.length > 0) {
+            const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
+              id: idx + 100,
+              dbId: m.id,
+              n: m.profiles?.full_name || 'Miembro de equipo',
+              rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
+              rol: m.member_title || m.role_in_org || 'Operativo',
+              veh: '',
+              tel: m.profiles?.phone || '',
+              correo: m.profiles?.email || '',
+              disp: '',
+              hechas: 0,
+            }));
+            setEquipo((prev) => {
+              const dbMemberNames = new Set(mappedEquipo.map((m) => m.n.toLowerCase().trim()));
+              const dbMemberIds = new Set(mappedEquipo.map((m) => m.dbId).filter(Boolean));
+              const preserved = prev.filter(
+                (localM) =>
+                  !isMockMiembro(localM) &&
+                  !dbMemberIds.has(localM.dbId) &&
+                  !dbMemberNames.has(localM.n.toLowerCase().trim())
+              );
+              return [...mappedEquipo, ...preserved];
+            });
+          }
+        }
+
+        const dbCommitments = await fetchOrgCommitments(dbOrg?.id, activeUser.id);
+        if (dbCommitments && dbCommitments.length > 0) {
+          const commitmentsDespacho = dbCommitments.filter(
+            (c: any) =>
+              c.origin_type === 'INTERNAL_BRIGADE' ||
+              c.origin_type === 'DIRECT_OFFER_DISPATCH' ||
+              c.provider_user_id === activeUser.id ||
+              (dbOrg && c.provider_organization_id === dbOrg.id)
+          );
+          const commitmentsRecibidas = dbCommitments.filter(
+            (c: any) =>
+              c.requester_user_id === activeUser.id &&
+              c.origin_type !== 'INTERNAL_BRIGADE' &&
+              c.provider_user_id !== activeUser.id
+          );
+
+          const mappedSol: Solicitud[] = commitmentsDespacho.map((c: any) => commitmentToSolicitud(c));
+          const mappedRec: EntregaRecibida[] = commitmentsRecibidas.map((c: any) => commitmentToEntregaRecibida(c));
+
+          setSol((prev) => {
+            const dbIds = new Set(mappedSol.map((s) => s.dbId || String(s.id)));
+            const preserved = prev.filter((p) => !isMockSolicitud(p) && !dbIds.has(String(p.id)) && !(p as any).dbId);
+            return [...mappedSol, ...preserved];
+          });
+          setRecibidas((prev) => {
+            const dbIds = new Set(mappedRec.map((r) => r.dbId || String(r.id)));
+            const preserved = prev.filter((p) => !isMockRecibida(p) && !dbIds.has(String(p.id)) && !(p as any).dbId);
+            return [...mappedRec, ...preserved];
+          });
+        }
+
+        // Consultar publicaciones del usuario y globales en Supabase para el panel
+        const [
+          { data: userNeeds },
+          { data: userOffers },
+          { data: allNeeds },
+          { data: allOffers },
+          userAvisosList,
+        ] = await Promise.all([
+          supabase
+            .from('needs')
+            .select('*')
+            .eq('user_id', activeUser.id)
+            .neq('verification_status', 'ARCHIVED')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('offers')
+            .select('*')
+            .eq('user_id', activeUser.id)
+            .neq('verification_status', 'ARCHIVED')
+            .order('created_at', { ascending: false }),
+          supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
+          supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
+          fetchUserAvisos(activeUser.id),
+        ]);
+
+        if (userAvisosList && userAvisosList.length > 0) {
+          setAvisos(userAvisosList);
+        }
+
+        if (userNeeds && userNeeds.length > 0) {
+          setModulos((prev) => ({ ...prev, pide: true }));
+          const latestNeed = userNeeds[0];
+          const mappedNeedsRecursos: RecursoPedido[] = [];
+
+          for (const un of userNeeds) {
+            const isPaused = un.status === 'PAUSED';
+            const rList = (un.resources || []).map((r: any) => ({
+              n: r.description || r.type || 'Recurso',
+              icono: iconoDe(r.description || r.type || 'Recurso'),
+              unidad: r.unit || 'unidades',
+              total: r.requestedQuantity || 1,
+              para: un.title || 'Atención comunitaria',
+              confirmada: r.fulfilledQuantity || 0,
+              camino: 0,
+              pausado: isPaused,
+            }));
+
+            for (const nuevo of rList) {
+              const idx = mappedNeedsRecursos.findIndex((item) => item.n.toLowerCase() === nuevo.n.toLowerCase());
+              if (idx !== -1) {
+                mappedNeedsRecursos[idx] = {
+                  ...mappedNeedsRecursos[idx],
+                  total: mappedNeedsRecursos[idx].total + nuevo.total,
+                  confirmada: mappedNeedsRecursos[idx].confirmada + nuevo.confirmada,
+                  camino: mappedNeedsRecursos[idx].camino + nuevo.camino,
+                  pausado: mappedNeedsRecursos[idx].pausado && nuevo.pausado,
+                };
+              } else {
+                mappedNeedsRecursos.push(nuevo);
+              }
+            }
+          }
+
+          setRecursosNecesidad(mappedNeedsRecursos);
+          try {
+            localStorage.setItem('rd-necesidad-creada-recursos', JSON.stringify(mappedNeedsRecursos));
+          } catch {}
+
+          setPubNecesidad({
+            id: latestNeed.id,
+            tipo: 'necesidad',
+            titulo: userNeeds.length > 1 ? `${latestNeed.title || 'Necesidad registrada'} (+${userNeeds.length - 1} más)` : (latestNeed.title || 'Necesidad registrada'),
+            org: dbOrg?.org_name || latestNeed.organization_name || 'Mi Organización',
+            verificada: Boolean(dbOrg?.is_verified),
+            zona: latestNeed.neighborhood || latestNeed.city_id || '',
+            dir: latestNeed.address || '',
+            descripcion: latestNeed.description || '',
+            personaContacto: latestNeed.contact_name || '',
+            telContacto: latestNeed.contact_phone || '',
+            comoEntrega: latestNeed.como_llegar || 'Recepción en punto de acopio',
+            horario: latestNeed.operating_hours || 'Atención 24 horas',
+            recursos: mappedNeedsRecursos.map((r) => ({
+              item: r.n,
+              total: r.total,
+              unidad: r.unidad,
+              para: r.para,
+              icono: r.icono,
+              pausado: r.pausado ?? false,
+              confirmada: r.confirmada,
+              camino: r.camino,
+            })),
+            pausadaGlobal: userNeeds.every((n: any) => n.status === 'PAUSED'),
+          });
+        } else {
+          // Si no hay necesidades en BD para este usuario, no destruir datos si el usuario tiene publicaciones locales activas
+          const tieneLocal = Boolean(
+            localStorage.getItem('rd-necesidad-creada-recursos') || localStorage.getItem('rd-necesidad-creada-gestion')
+          );
+          if (!tieneLocal) {
+            setModulos((prev) => ({ ...prev, pide: false }));
+            setRecursosNecesidad([]);
+            setPubNecesidad(defaultPubNecesidadLimpia);
+            desactivarModulo('pide');
+          }
+        }
+
+        if (userOffers && userOffers.length > 0) {
+          setModulos((prev) => ({ ...prev, ofrece: true }));
+          const latestOffer = userOffers[0];
+          const mappedOffersRecursos: RecursoOfrecido[] = [];
+
+          for (const uo of userOffers) {
+            const isPaused = uo.status === 'PAUSED';
+            const rList = (uo.resources || []).map((r: any) => ({
+              n: r.description || r.type || 'Aporte',
+              icono: iconoDe(r.description || r.type || 'Aporte'),
+              unidad: r.unit || 'unidades',
+              total: r.quantity || 1,
+              disp: uo.offer_status === 'AVAILABLE' ? 'Inmediata' : 'Hasta agotar',
+              pres: uo.delivery_mode || 'Estándar',
+              pausado: isPaused,
+            }));
+
+            for (const nuevo of rList) {
+              const idx = mappedOffersRecursos.findIndex((item) => item.n.toLowerCase() === nuevo.n.toLowerCase());
+              if (idx !== -1) {
+                mappedOffersRecursos[idx] = {
+                  ...mappedOffersRecursos[idx],
+                  total: mappedOffersRecursos[idx].total + nuevo.total,
+                  pausado: mappedOffersRecursos[idx].pausado && nuevo.pausado,
+                };
+              } else {
+                mappedOffersRecursos.push(nuevo);
+              }
+            }
+          }
+
+          setRecursosOferta(mappedOffersRecursos);
+          try {
+            localStorage.setItem('rd-oferta-creada-recursos', JSON.stringify(mappedOffersRecursos));
+          } catch {}
+
+          setPubOferta({
+            id: latestOffer.id,
+            tipo: 'oferta',
+            titulo: userOffers.length > 1 ? `${latestOffer.title || 'Oferta registrada'} (+${userOffers.length - 1} más)` : (latestOffer.title || 'Oferta registrada'),
+            org: dbOrg?.org_name || latestOffer.organization_name || 'Mi Organización',
+            verificada: Boolean(dbOrg?.is_verified),
+            zona: latestOffer.neighborhood || latestOffer.city_id || '',
+            dir: latestOffer.address || '',
+            descripcion: latestOffer.description || '',
+            personaContacto: latestOffer.contact_name || '',
+            telContacto: latestOffer.contact_phone || '',
+            comoEntrega: latestOffer.delivery_mode || 'A convenir',
+            horario: latestOffer.operating_hours || 'Lunes a domingo 8:00 a 18:00',
+            recursos: mappedOffersRecursos.map((r) => ({
+              item: r.n,
+              total: r.total,
+              unidad: r.unidad,
+              disp: r.disp,
+              pres: r.pres,
+              icono: r.icono,
+              pausado: r.pausado ?? false,
+            })),
+            pausadaGlobal: userOffers.every((o: any) => o.status === 'PAUSED'),
+          });
+        } else {
+          // Si no hay ofertas en BD para este usuario, no destruir datos si el usuario tiene publicaciones locales activas
+          const tieneLocal = Boolean(
+            localStorage.getItem('rd-oferta-creada-recursos') || localStorage.getItem('rd-oferta-creada-gestion')
+          );
+          if (!tieneLocal) {
+            setModulos((prev) => ({ ...prev, ofrece: false }));
+            setRecursosOferta([]);
+            setPubOferta(defaultPubOfertaLimpia);
+            desactivarModulo('ofrece');
+          }
+        }
+
+        const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
+        const mappedAllOffers = (allOffers || []).map(dbOfferToOffer).map(offerToPublicacion);
+        setTodasLasPubs([...mappedAllNeeds, ...mappedAllOffers]);
+      }
+    } catch (err) {
+      console.warn('Error al cargar datos reales en PanelPage:', err);
+    }
+  }, [usuarioEfectivo]);
+
+  useEffect(() => {
+    loadRealData();
+  }, [loadRealData]);
+
   const eliminarGestionPublicacion = async (id: string, tipo: 'oferta' | 'necesidad') => {
     try {
       const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -441,254 +908,23 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       console.warn('Error al archivar en Supabase:', e);
     }
 
-    if (tipo === 'oferta') {
-      try {
-        localStorage.removeItem('rd-oferta-creada-gestion');
-        localStorage.removeItem('rd-oferta-creada-recursos');
-        localStorage.removeItem('rd-oferta-publicacion');
-        const pubs = localStorage.getItem('rd-publicaciones-creadas');
-        if (pubs) {
-          const parsed = JSON.parse(pubs);
-          if (Array.isArray(parsed)) {
-            localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
-          }
+    try {
+      const pubs = localStorage.getItem('rd-publicaciones-creadas');
+      if (pubs) {
+        const parsed = JSON.parse(pubs);
+        if (Array.isArray(parsed)) {
+          localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
         }
-        desactivarModulo('ofrece');
-      } catch {}
-      setModulos((prev) => ({ ...prev, ofrece: false }));
-      setRecursosOferta([]);
-      setPubOferta(defaultPubOfertaLimpia);
-      cambiarTab('resumen');
-      avisar('Publicación de oferta eliminada', { tipo: 'ok' });
-    } else {
-      try {
-        localStorage.removeItem('rd-necesidad-creada-gestion');
-        localStorage.removeItem('rd-necesidad-creada-recursos');
-        localStorage.removeItem('rd-necesidad-publicacion');
-        const pubs = localStorage.getItem('rd-publicaciones-creadas');
-        if (pubs) {
-          const parsed = JSON.parse(pubs);
-          if (Array.isArray(parsed)) {
-            localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
-          }
-        }
-        desactivarModulo('pide');
-      } catch {}
-      setModulos((prev) => ({ ...prev, pide: false }));
-      setRecursosNecesidad([]);
-      setPubNecesidad(defaultPubNecesidadLimpia);
-      cambiarTab('resumen');
-      avisar('Publicación de necesidad eliminada', { tipo: 'ok' });
-    }
+      }
+    } catch {}
 
+    // Recargar datos reales desde Supabase para verificar si aún quedan publicaciones activas
+    await loadRealData();
+
+    cambiarTab('resumen');
+    avisar(tipo === 'oferta' ? 'Publicación de oferta eliminada' : 'Publicación de necesidad eliminada', { tipo: 'ok' });
     setGestionandoPublicacion(null);
   };
-  const [cajon, setCajon] = useState(false);
-  const [pasosOcultos, setPasosOcultos] = useState(false);
-  const [tab, setTab] = useState(() => (window.location.hash || '#resumen').slice(1));
-
-  useEffect(() => {
-    document.title = `${nombrePanel()}, RaDAR de ayuda`;
-  }, []);
-
-  const [orgData, setOrgData] = useState<DatosOrg>(() => ({
-    nombre: 'Mi Organización',
-    tipo: 'Organización',
-    nit: '',
-    dir: '',
-    contacto: { tel: '', wa: false, correo: '' },
-    enlace: '',
-    directorio: false,
-    directorioDesde: '',
-    web: '',
-    verificacion: 'revision',
-    canalesRevisados: false,
-  }));
-  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadRealData() {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user) {
-          const dbOrg = await fetchOrganizationByUserId(authData.user.id);
-          if (dbOrg) {
-            setCurrentOrgId(dbOrg.id);
-            setOrgData({
-              nombre: dbOrg.org_name,
-              tipo: dbOrg.organization_type || 'Organización',
-              nit: dbOrg.document_number || 'NIT no especificado',
-              dir: dbOrg.address || 'Dirección no especificada',
-              contacto: {
-                tel: dbOrg.contact_phone || authData.user.email || '',
-                wa: Boolean(dbOrg.contact_whatsapp),
-                correo: dbOrg.contact_email || authData.user.email || ''
-              },
-              enlace: dbOrg.contact_phone || 'Contacto principal',
-              directorio: true,
-              directorioDesde: dbOrg.created_at ? new Date(dbOrg.created_at).toLocaleDateString('es-CO') : '',
-              web: dbOrg.website_or_social || '',
-              verificacion: dbOrg.is_verified ? 'verificada' : 'revision',
-              canalesRevisados: true
-            });
-
-            const dbCommitments = await fetchOrgCommitments(dbOrg.id, authData.user.id);
-            if (dbCommitments && dbCommitments.length > 0) {
-              const mappedSol: Solicitud[] = dbCommitments.map((c: any) => commitmentToSolicitud(c));
-              const mappedRec: EntregaRecibida[] = dbCommitments.map((c: any) => commitmentToEntregaRecibida(c));
-              setSol(mappedSol);
-              setRecibidas(mappedRec);
-            }
-
-            const dbMembers = await fetchOrganizationMembers(dbOrg.id);
-            if (dbMembers && dbMembers.length > 0) {
-              const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
-                id: idx + 1,
-                dbId: m.id,
-                n: m.profiles?.full_name || 'Miembro de equipo',
-                rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
-                rol: m.member_title || m.role_in_org || 'Operativo',
-                veh: '',
-                tel: m.profiles?.phone || '',
-                correo: m.profiles?.email || '',
-                disp: '',
-                hechas: 0
-              }));
-              setEquipo(mappedEquipo);
-            }
-          }
-
-          // Consultar publicaciones del usuario y globales en Supabase para el panel
-          const [
-            { data: userNeeds },
-            { data: userOffers },
-            { data: allNeeds },
-            { data: allOffers },
-            userAvisosList
-          ] = await Promise.all([
-            supabase.from('needs').select('*').eq('user_id', authData.user.id).neq('verification_status', 'ARCHIVED'),
-            supabase.from('offers').select('*').eq('user_id', authData.user.id).neq('verification_status', 'ARCHIVED'),
-            supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
-            supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
-            fetchUserAvisos(authData.user.id)
-          ]);
-
-          if (userAvisosList && userAvisosList.length > 0) {
-            setAvisos(userAvisosList);
-          }
-
-          if (userNeeds && userNeeds.length > 0) {
-            setModulos((prev) => ({ ...prev, pide: true }));
-            const un = userNeeds[0];
-            const mappedNeedsRecursos: RecursoPedido[] = (un.resources || []).map((r: any) => ({
-              n: r.description || r.type || 'Recurso',
-              icono: iconoDe(r.description || r.type || 'Recurso'),
-              unidad: r.unit || 'unidades',
-              total: r.requestedQuantity || 1,
-              para: un.title || 'Atención comunitaria',
-              confirmada: r.fulfilledQuantity || 0,
-              camino: 0,
-              pausado: false,
-            }));
-            setRecursosNecesidad(mappedNeedsRecursos);
-            setPubNecesidad({
-              id: un.id,
-              tipo: 'necesidad',
-              titulo: un.title || 'Necesidad registrada',
-              org: dbOrg?.org_name || un.organization_name || 'Mi Organización',
-              verificada: Boolean(dbOrg?.is_verified),
-              zona: un.neighborhood || un.city_id || '',
-              dir: un.address || '',
-              descripcion: un.description || '',
-              personaContacto: un.contact_name || '',
-              telContacto: un.contact_phone || '',
-              comoEntrega: un.como_llegar || 'Recepción en punto de acopio',
-              horario: un.operating_hours || 'Atención 24 horas',
-              recursos: mappedNeedsRecursos.map((r) => ({
-                item: r.n,
-                total: r.total,
-                unidad: r.unidad,
-                para: r.para,
-                icono: r.icono,
-                pausado: false,
-                confirmada: r.confirmada,
-                camino: 0,
-              })),
-              pausadaGlobal: un.status === 'PAUSED',
-            });
-          } else {
-            setModulos((prev) => ({ ...prev, pide: false }));
-            setRecursosNecesidad([]);
-            setPubNecesidad(defaultPubNecesidadLimpia);
-            desactivarModulo('pide');
-            try {
-              localStorage.removeItem('rd-necesidad-creada-gestion');
-              localStorage.removeItem('rd-necesidad-creada-recursos');
-              localStorage.removeItem('rd-necesidad-publicacion');
-            } catch {}
-          }
-
-          if (userOffers && userOffers.length > 0) {
-            setModulos((prev) => ({ ...prev, ofrece: true }));
-            const uo = userOffers[0];
-            const mappedOffersRecursos: RecursoOfrecido[] = (uo.resources || []).map((r: any) => ({
-              n: r.description || r.type || 'Aporte',
-              icono: iconoDe(r.description || r.type || 'Aporte'),
-              unidad: r.unit || 'unidades',
-              total: r.quantity || 1,
-              disp: uo.offer_status === 'AVAILABLE' ? 'Inmediata' : 'Hasta agotar',
-              pres: uo.delivery_mode || 'Estándar',
-              pausado: false,
-            }));
-            setRecursosOferta(mappedOffersRecursos);
-            setPubOferta({
-              id: uo.id,
-              tipo: 'oferta',
-              titulo: uo.title || 'Oferta registrada',
-              org: dbOrg?.org_name || uo.organization_name || 'Mi Organización',
-              verificada: Boolean(dbOrg?.is_verified),
-              zona: uo.neighborhood || uo.city_id || '',
-              dir: uo.address || '',
-              descripcion: uo.description || '',
-              personaContacto: uo.contact_name || '',
-              telContacto: uo.contact_phone || '',
-              comoEntrega: uo.delivery_mode || 'A convenir',
-              horario: uo.operating_hours || 'Lunes a domingo',
-              recursos: mappedOffersRecursos.map((r) => ({
-                item: r.n,
-                total: r.total,
-                unidad: r.unidad,
-                disp: r.disp,
-                pres: r.pres,
-                icono: r.icono,
-                pausado: false,
-                confirmada: 0,
-                camino: 0,
-              })),
-              pausadaGlobal: uo.status === 'PAUSED',
-            });
-          } else {
-            setModulos((prev) => ({ ...prev, ofrece: false }));
-            setRecursosOferta([]);
-            setPubOferta(defaultPubOfertaLimpia);
-            desactivarModulo('ofrece');
-            try {
-              localStorage.removeItem('rd-oferta-creada-gestion');
-              localStorage.removeItem('rd-oferta-creada-recursos');
-              localStorage.removeItem('rd-oferta-publicacion');
-            } catch {}
-          }
-
-          const mappedAllNeeds = (allNeeds || []).map(dbNeedToNeed).map(needToPublicacion);
-          const mappedAllOffers = (allOffers || []).map(dbOfferToOffer).map(offerToPublicacion);
-          setTodasLasPubs([...mappedAllNeeds, ...mappedAllOffers]);
-        }
-      } catch (err) {
-        console.warn('Error al cargar datos reales en PanelPage:', err);
-      }
-    }
-    loadRealData();
-  }, []);
 
   useEffect(() => {
     const alCambiar = () => setTab((window.location.hash || '#resumen').slice(1));
@@ -724,7 +960,23 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       }
     }
   };
-  const asignar = (id: number, vol: number | null) => setSol((l) => l.map((s) => (s.id === id ? { ...s, vol } : s)));
+  const asignar = async (id: number, vol: number | null) => {
+    setSol((l) => l.map((s) => (s.id === id ? { ...s, vol } : s)));
+    const s = sol.find((x) => x.id === id);
+    const volMiembro = equipo.find((m) => m.id === vol);
+    if (s && (s as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (s as any).dbId,
+          status: s.estado,
+          assignedVolunteerName: volMiembro?.n || undefined,
+          assignedVolunteerPhone: volMiembro?.tel || undefined,
+        });
+      } catch (err) {
+        console.warn('Error asignando voluntario en Supabase:', err);
+      }
+    }
+  };
   const aceptar = (id: number) => {
     mover(id, 'aceptada');
     avisar('Solicitud aceptada. Asigna quién la lleva.', { tipo: 'ok' });
@@ -1052,7 +1304,14 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       window.print();
     }, 150);
   };
-  const marcarEnCamino = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const marcarEnCamino = async (
+    id: number,
+    fotos: number,
+    fotosLista?: Foto[],
+    notas?: string,
+    medioEnvio?: 'directa' | 'transportadora',
+    empresaTransporte?: string
+  ) => {
     const s = sol.find((x) => x.id === id);
     if (!s) return;
 
@@ -1072,24 +1331,47 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
     }
 
+    const medioFinal = medioEnvio || 'directa';
+
     setSol((l) =>
       l.map((x) =>
         x.id === id
           ? {
               ...x,
               estado: 'camino',
+              medioEnvio: medioFinal,
+              empresaTransporte: empresaTransporte || x.empresaTransporte,
               notasCamino: notas || x.notasCamino,
-              ...(fotosLista?.length || fotos > 0 || notas
-                ? {
-                    cierre: {
-                      ...x.cierre,
-                      notasCamino: notas || x.cierre?.notasCamino,
-                      entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
-                    },
-                  }
-                : {}),
+              cierre: {
+                ...x.cierre,
+                medioEnvio: medioFinal,
+                empresaTransporte: empresaTransporte || x.cierre?.empresaTransporte,
+                notasCamino: notas || x.cierre?.notasCamino,
+                entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+              },
             }
           : x
+      )
+    );
+
+    // Sincronizar en recibidas si existe el par recíproco
+    setRecibidas((l) =>
+      l.map((r) =>
+        r.id === id || ((r as any).dbId && (s as any).dbId && (r as any).dbId === (s as any).dbId)
+          ? {
+              ...r,
+              estado: 'camino',
+              medioEnvio: medioFinal,
+              empresaTransporte: empresaTransporte || r.empresaTransporte,
+              notasCamino: notas || r.notasCamino,
+              cierre: {
+                ...r.cierre,
+                medioEnvio: medioFinal,
+                empresaTransporte: empresaTransporte || r.cierre?.empresaTransporte,
+                notasCamino: notas || r.cierre?.notasCamino,
+              },
+            }
+          : r
       )
     );
 
@@ -1104,7 +1386,11 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         console.warn('Error actualizando compromiso en camino en Supabase:', err);
       }
     }
-    avisar(`En camino. Le avisamos a ${s.quien}`, { tipo: 'ok' });
+    const mensajeAviso =
+      medioFinal === 'transportadora'
+        ? `En camino por transportadora. Le avisamos a ${s.quien}`
+        : `En camino. Le avisamos a ${s.quien}`;
+    avisar(mensajeAviso, { tipo: 'ok' });
   };
   const certificar = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
@@ -1137,9 +1423,28 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
                 ...x.cierre,
                 notasEntrega: notas || x.cierre?.notasEntrega,
                 entrega: { fotos: (x.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+                ...(x.esInterna ? { recibe: { fotos: 0 } } : {}),
               },
             }
           : x
+      )
+    );
+
+    // Si el donante certifica: al receptor le queda la entrega registrada con certificación del donante,
+    // y mantiene la posibilidad de confirmar por su lado para su propio registro y actas
+    setRecibidas((l) =>
+      l.map((r) =>
+        r.id === id || ((r as any).dbId && s && (s as any).dbId && (r as any).dbId === (s as any).dbId)
+          ? {
+              ...r,
+              estado: r.estado === 'confirmada' ? 'confirmada' : 'entregada',
+              cierre: {
+                ...r.cierre,
+                notasEntrega: notas || r.cierre?.notasEntrega,
+                entrega: { fotos: (r.cierre?.entrega?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+              },
+            }
+          : r
       )
     );
 
@@ -1155,7 +1460,18 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         console.warn('Error certificando entrega en Supabase:', err);
       }
     }
-    if (s) avisar(s.cierre?.recibe ? 'Entrega certificada. Ya la habían confirmado' : `Entrega certificada. Le avisamos a ${s.quien}`, { tipo: 'ok' });
+    if (s) {
+      if (s.esInterna) {
+        avisar('Entrega de brigada interna completada y certificada con éxito', { tipo: 'ok' });
+      } else {
+        avisar(
+          s.cierre?.recibe
+            ? 'Entrega certificada. Ya había sido confirmada por el receptor'
+            : `Entrega certificada de tu lado. ${s.quien} podrá confirmarla en su registro`,
+          { tipo: 'ok' }
+        );
+      }
+    }
   };
   const archivar = (id: number) => {
     const s = sol.find((x) => x.id === id);
@@ -1204,6 +1520,24 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       )
     );
 
+    // Si el receptor confirma primero: se le certifica también al donante (resuelta para ambos)
+    setSol((l) =>
+      l.map((x) =>
+        x.id === id || ((x as any).dbId && r && (r as any).dbId && (x as any).dbId === (r as any).dbId)
+          ? {
+              ...x,
+              estado: 'confirmada',
+              cerradaEl: x.cerradaEl || hoyIso,
+              cierre: {
+                ...x.cierre,
+                notasRecibe: notas || x.cierre?.notasRecibe,
+                recibe: { fotos: (x.cierre?.recibe?.fotos ?? 0) + (fotosLista?.length ?? fotos) },
+              },
+            }
+          : x
+      )
+    );
+
     if (r && (r as any).dbId) {
       try {
         await updateCommitmentStatus({
@@ -1216,9 +1550,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         console.warn('Error confirmando recibido en Supabase:', err);
       }
     }
-    if (r) avisar(`Confirmaste lo que llegó de ${r.org}`, { tipo: 'ok' });
+    if (r) avisar(`Confirmaste lo que llegó de ${r.org}. Se certificó la entrega para ambas partes.`, { tipo: 'ok' });
   };
-  const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
+  const distribuirRecibida = async (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
     const r = recibidas.find((x) => x.id === id);
     if (!r) return;
     if (fotosLista && fotosLista.length > 0) {
@@ -1251,33 +1585,127 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           : x
       )
     );
+    if (r && (r as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (r as any).dbId,
+          status: 'distribuida',
+          confirmationStory: nota,
+        });
+      } catch (e) {
+        console.warn('Error al actualizar distribución en Supabase:', e);
+      }
+    }
     avisar('Distribución certificada', { tipo: 'ok' });
   };
-  const archivarRecibida = (id: number) => {
+  const archivarRecibida = async (id: number) => {
     const r = recibidas.find((x) => x.id === id);
     setRecibidas((l) => l.map((x) => (x.id === id ? { ...x, estado: 'archivada' } : x)));
     if (r) avisar(`Entrega de ${r.org} archivada`);
+    if (r && (r as any).dbId) {
+      try {
+        await updateCommitmentStatus({ commitmentId: (r as any).dbId, status: 'archivada' });
+      } catch (e) {
+        console.warn('Error archivando en Supabase:', e);
+      }
+    }
   };
-  const aceptarRecibida = (id: number) => {
-    setRecibidas((l) => l.map((r) => (r.id === id ? { ...r, estado: 'aceptada' } : r)));
+  const aceptarRecibida = async (id: number) => {
+    const r = recibidas.find((x) => x.id === id);
+    setRecibidas((l) => l.map((item) => (item.id === id ? { ...item, estado: 'aceptada' } : item)));
     avisar('Oferta aceptada. Coordinan la entrega contigo', { tipo: 'ok' });
+    if (r && (r as any).dbId) {
+      try {
+        await updateCommitmentStatus({ commitmentId: (r as any).dbId, status: 'aceptada' });
+      } catch (e) {
+        console.warn('Error actualizando compromiso en Supabase:', e);
+      }
+    }
   };
-  const confirmarAtenderInternamente = (
+  const confirmarAtenderInternamente = async (
     r: RecursoPedido,
     cantidad: number,
     miembroId: number | null,
     notas: string
   ) => {
+    const volMiembro = equipo.find((m) => m.id === miembroId);
+    let compromisoDbId: string | undefined = undefined;
+
+    const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pubNecesidad.id || '');
+    if (esUuid) {
+      try {
+        const dbRes = await createCommitment({
+          needId: pubNecesidad.id,
+          requesterUserId: usuarioEfectivo?.id,
+          providerUserId: usuarioEfectivo?.id,
+          providerOrgId: currentOrgId || undefined,
+          originType: 'INTERNAL_BRIGADE',
+          resourceName: r.n,
+          quantity: cantidad,
+          unit: r.unidad,
+          status: 'aceptada',
+          assignedVolunteerName: volMiembro?.n,
+          assignedVolunteerPhone: volMiembro?.tel,
+        });
+        if (dbRes?.id) {
+          compromisoDbId = dbRes.id;
+        }
+
+        const { data: needDb } = await supabase
+          .from('needs')
+          .select('resources')
+          .eq('id', pubNecesidad.id)
+          .single();
+
+        if (needDb && Array.isArray(needDb.resources)) {
+          const updatedResources = needDb.resources.map((res: any) => {
+            if ((res.description || res.type || '').toLowerCase() === r.n.toLowerCase()) {
+              return {
+                ...res,
+                fulfilledQuantity: (res.fulfilledQuantity || 0) + cantidad,
+              };
+            }
+            return res;
+          });
+          await supabase
+            .from('needs')
+            .update({ resources: updatedResources, updated_at: new Date().toISOString() })
+            .eq('id', pubNecesidad.id);
+        }
+      } catch (err) {
+        console.warn('No se pudo registrar compromiso interno en Supabase, conservando registro local:', err);
+      }
+    }
+
+    const esDireccion = (str?: string) =>
+      Boolean(
+        str &&
+          (/^(calle|cra|carrera|cll|kr|diagonal|transversal|av|avenida)\b/i.test(str.trim()) ||
+            /^[a-z0-9\s#\-\.]{1,8}\s+\d/i.test(str.trim()))
+      );
+
+    const zonaLimpia =
+      pubNecesidad.zona && !esDireccion(pubNecesidad.zona) && pubNecesidad.zona.toLowerCase() !== 'cali'
+        ? pubNecesidad.zona
+        : '';
+
+    const destinatario =
+      pubNecesidad.paraQuien ||
+      (zonaLimpia ? `Comunidad de ${zonaLimpia}` : '') ||
+      pubNecesidad.titulo ||
+      'Comunidad beneficiaria';
+
     const nuevaSol: Solicitud = {
       id: Date.now(),
-      quien: pubNecesidad.zona || pubNecesidad.dir || 'Comunidad atendida',
+      dbId: compromisoDbId,
+      quien: destinatario,
       rec: r.n,
       cant: cantidad,
       u: r.unidad,
       estado: 'aceptada',
       cuando: 'Hoy (brigada interna)',
       vol: miembroId,
-      dist: 'Brigada interna',
+      dist: zonaLimpia ? `En ${zonaLimpia}` : 'Brigada interna',
       notasCamino: notas || undefined,
       notasEntrega: notas || undefined,
       esInterna: true,
@@ -1312,15 +1740,64 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     avisar('Necesidad asumida por tu brigada. La encuentras en el tablero de "Ayuda que entrego".', { tipo: 'ok' });
   };
 
-  const confirmarEntregaDirecta = (
+  const confirmarEntregaDirecta = async (
     r: RecursoOfrecido,
     cantidad: number,
     beneficiario: string,
     miembroId: number | null,
     notas: string
   ) => {
+    const volMiembro = equipo.find((m) => m.id === miembroId);
+    let compromisoDbId: string | undefined = undefined;
+
+    const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pubOferta.id || '');
+    if (esUuid) {
+      try {
+        const dbRes = await createCommitment({
+          offerId: pubOferta.id,
+          providerUserId: usuarioEfectivo?.id,
+          providerOrgId: currentOrgId || undefined,
+          originType: 'DIRECT_OFFER_DISPATCH',
+          resourceName: r.n,
+          quantity: cantidad,
+          unit: r.unidad,
+          status: 'entregada',
+          assignedVolunteerName: volMiembro?.n,
+          assignedVolunteerPhone: volMiembro?.tel,
+        });
+        if (dbRes?.id) {
+          compromisoDbId = dbRes.id;
+        }
+
+        const { data: offerDb } = await supabase
+          .from('offers')
+          .select('resources')
+          .eq('id', pubOferta.id)
+          .single();
+
+        if (offerDb && Array.isArray(offerDb.resources)) {
+          const updatedResources = offerDb.resources.map((res: any) => {
+            if ((res.description || res.type || '').toLowerCase() === r.n.toLowerCase()) {
+              return {
+                ...res,
+                quantity: Math.max(0, (res.quantity || res.requestedQuantity || 0) - cantidad),
+              };
+            }
+            return res;
+          });
+          await supabase
+            .from('offers')
+            .update({ resources: updatedResources, updated_at: new Date().toISOString() })
+            .eq('id', pubOferta.id);
+        }
+      } catch (err) {
+        console.warn('No se pudo registrar entrega directa en Supabase, conservando registro local:', err);
+      }
+    }
+
     const nuevaSol: Solicitud = {
       id: Date.now(),
+      dbId: compromisoDbId,
       quien: beneficiario,
       rec: r.n,
       cant: cantidad,
@@ -1846,33 +2323,76 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         </Dialogo>
         <DialogoCierre
           abierto={marcandoEnCamino !== null}
-          titulo={marcandoEnCamino ? `Enviar ayuda a ${marcandoEnCamino.quien}` : ''}
+          titulo={
+            marcandoEnCamino
+              ? marcandoEnCamino.esInterna
+                ? `Despachar brigada para ${marcandoEnCamino.quien}`
+                : `Enviar ayuda a ${marcandoEnCamino.quien}`
+              : ''
+          }
           texto={
             marcandoEnCamino
-              ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Puedes registrar fotos del cargue o despacho y notas de transporte o entrega para evidenciar que la ayuda va en camino.`
+              ? marcandoEnCamino.esInterna
+                ? `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Registra el vehículo o voluntario de la brigada y confirma la salida hacia el territorio.`
+                : `${cifra(marcandoEnCamino.cant)} ${marcandoEnCamino.u} de ${marcandoEnCamino.rec.toLowerCase()}${quienLleva(marcandoEnCamino, equipo) ? ` · Asignado a: ${quienLleva(marcandoEnCamino, equipo)}` : ''}. Elige si la entrega es directa o por transportadora y registra los datos de despacho.`
               : ''
           }
           accion="Enviar"
+          selectorMedio={!marcandoEnCamino?.esInterna}
+          medioDefecto="directa"
           etiquetaFotos="Fotos del cargue o salida (opcionales)"
           nota={{
             etiqueta: 'Detalles del envío o transporte (vehículo, conductor, ruta u observaciones)',
-            placeholder: 'Ej. Vehículo furgón blanco placa XYZ-123, conductor Luis, entrega directa...',
+            placeholder: 'Ej. Vehículo furgón blanco, conductor Luis, brigada directa a la comunidad...',
             ayuda: 'Estas notas quedarán registradas en el seguimiento y en el acta oficial de entrega.',
           }}
           onCerrar={() => setMarcandoEnCamino(null)}
-          onEnviar={(fotos, lista, notaTexto) => {
-            if (marcandoEnCamino) marcarEnCamino(marcandoEnCamino.id, fotos, lista, notaTexto);
+          onEnviar={(fotos, lista, notaTexto, _personas, medioEnvio, empresaTransporte) => {
+            if (marcandoEnCamino) marcarEnCamino(marcandoEnCamino.id, fotos, lista, notaTexto, medioEnvio, empresaTransporte);
             setMarcandoEnCamino(null);
           }}
         />
         <DialogoCierre
           abierto={certificando !== null}
-          titulo={certificando ? `Certificar la entrega a ${certificando.quien}` : ''}
-          texto={certificando ? `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()}. ${textoCertificar(certificando)}` : ''}
+          titulo={
+            certificando
+              ? certificando.esInterna
+                ? `Certificar entrega de brigada interna`
+                : certificando.medioEnvio === 'transportadora'
+                ? `Certificar entrega enviada a ${certificando.quien}`
+                : `Certificar la entrega a ${certificando.quien}`
+              : ''
+          }
+          texto={
+            certificando
+              ? certificando.esInterna
+                ? `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()}. ${textoCertificar(certificando)}`
+                : certificando.medioEnvio === 'transportadora'
+                ? `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()} enviadas por transportadora / encomienda. ${
+                    certificando.cierre?.recibe
+                      ? `${certificando.quien} ya confirmó la recepción; con tu certificación queda cerrada por los dos lados.`
+                      : `¿Confirmas que la ayuda enviada por transportadora ya fue recibida en destino? Al certificar queda resuelta de tu lado. ${certificando.quien} también podrá confirmarla para su propio registro.`
+                  }`
+                : `${cifra(certificando.cant)} ${certificando.u} de ${certificando.rec.toLowerCase()}. ${textoCertificar(certificando)}`
+              : ''
+          }
           accion="Certificar"
+          etiquetaFotos={
+            certificando?.medioEnvio === 'transportadora'
+              ? 'Fotos o comprobante de entrega (opcionales)'
+              : 'Fotos de la entrega (opcionales)'
+          }
           nota={{
-            etiqueta: 'Observaciones o constancia de entrega',
-            placeholder: 'Ej. Entregado a la líder comunitaria Martha en la sede comunal, insumos verificados a satisfacción...',
+            etiqueta:
+              certificando?.medioEnvio === 'transportadora'
+                ? 'Constancia o novedades de entrega'
+                : 'Observaciones o constancia de entrega',
+            placeholder:
+              certificando?.esInterna
+                ? 'Ej. Se entregó directamente a los delegados comunitarios en territorio, insumos verificados...'
+                : certificando?.medioEnvio === 'transportadora'
+                ? 'Ej. Confirmado por llamada o mensaje que el paquete llegó en buen estado a la sede...'
+                : 'Ej. Entregado a la líder comunitaria en la sede comunal, insumos verificados a satisfacción...',
             ayuda: 'Detalles de la entrega que quedarán registrados en el acta oficial bilateral.',
           }}
           onCerrar={() => setCertificando(null)}
@@ -3736,6 +4256,51 @@ const Seguimiento: React.FC<{
     });
     return map;
   });
+
+  // Si entra algo nuevo a una columna colapsada en "entrego", se expande automáticamente
+  const prevSolCountsRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const prevCounts = prevSolCountsRef.current;
+    const updates: Record<string, boolean> = {};
+    let hayCambios = false;
+
+    COLUMNAS.forEach((c) => {
+      const count = sol.filter((s) => s.estado === c.estado).length;
+      const prev = prevCounts[c.estado];
+      if (prev !== undefined && count > prev && count > 0 && colapsadasEntrego[c.estado]) {
+        updates[c.estado] = false;
+        hayCambios = true;
+      }
+      prevCounts[c.estado] = count;
+    });
+
+    if (hayCambios) {
+      setColapsadasEntrego((curr) => ({ ...curr, ...updates }));
+    }
+  }, [sol, colapsadasEntrego]);
+
+  // Si entra algo nuevo a una columna colapsada en "recibo", se expande automáticamente
+  const prevRecCountsRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const prevCounts = prevRecCountsRef.current;
+    const updates: Record<string, boolean> = {};
+    let hayCambios = false;
+
+    COLUMNAS_RECIBIDAS.forEach((c) => {
+      const count = recibidas.filter((r) => c.estados.includes(r.estado)).length;
+      const prev = prevCounts[c.id];
+      if (prev !== undefined && count > prev && count > 0 && colapsadasRecibo[c.id]) {
+        updates[c.id] = false;
+        hayCambios = true;
+      }
+      prevCounts[c.id] = count;
+    });
+
+    if (hayCambios) {
+      setColapsadasRecibo((curr) => ({ ...curr, ...updates }));
+    }
+  }, [recibidas, colapsadasRecibo]);
+
   const { onMover } = acciones;
   const avisar = useAviso();
   const [sobre, setSobre] = useState<Solicitud['estado'] | null>(null);
@@ -3747,8 +4312,14 @@ const Seguimiento: React.FC<{
     if (motivo === '') return;
     if (motivo) return avisar(motivo);
     if (ORDEN_CICLO[a] < ORDEN_CICLO[s.estado]) return setDevolviendo({ s, a });
+    // Expandir automáticamente la columna destino al mover
+    setColapsadasEntrego((prev) => ({ ...prev, [a]: false }));
     if (a === 'camino' && acciones.onEnCamino) {
       acciones.onEnCamino(s);
+      return;
+    }
+    if (a === 'confirmada') {
+      acciones.onCertificar(s);
       return;
     }
     onMover(id, a);
@@ -3950,7 +4521,7 @@ const Seguimiento: React.FC<{
                       const id = Number(data.replace('recibida:', ''));
                       const r = recibidas.find((x) => x.id === id);
                       if (!r) return;
-                      if (c.id === 'recibido' && r.estado === 'entregada') {
+                      if (c.id === 'recibido' && (r.estado === 'entregada' || r.estado === 'camino')) {
                         onConfirmarRecibido(id);
                       } else if (c.id === 'distribuido' && r.estado === 'confirmada') {
                         onDistribuirRecibida?.(r);
@@ -4000,7 +4571,7 @@ const Seguimiento: React.FC<{
                     const id = Number(data.replace('recibida:', ''));
                     const r = recibidas.find((x) => x.id === id);
                     if (!r) return;
-                    if (c.id === 'recibido' && r.estado === 'entregada') {
+                    if (c.id === 'recibido' && (r.estado === 'entregada' || r.estado === 'camino')) {
                       onConfirmarRecibido(id);
                     } else if (c.id === 'distribuido' && r.estado === 'confirmada') {
                       onDistribuirRecibida?.(r);

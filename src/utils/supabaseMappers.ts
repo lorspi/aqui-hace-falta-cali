@@ -147,25 +147,42 @@ export function offerToPublicacion(offer: Offer): Publicacion {
 export function commitmentToSolicitud(c: any): any {
   const deliveryPhotosCount = Array.isArray(c.delivery_photos) ? c.delivery_photos.length : 0;
   const receptionPhotosCount = Array.isArray(c.reception_photos) ? c.reception_photos.length : 0;
+  const numericId =
+    typeof c.id === 'number'
+      ? c.id
+      : Math.abs(String(c.id).split('').reduce((acc: number, char: string) => (acc << 5) - acc + char.charCodeAt(0), 0));
 
   return {
-    id: c.id,
-    quien: c.requester_name || c.requester_user_id || 'Usuario registrado',
+    id: numericId,
+    dbId: String(c.id),
+    quien:
+      c.origin_type === 'INTERNAL_BRIGADE'
+        ? c.target_community || (c.neighborhood ? `Comunidad de ${c.neighborhood}` : '') || 'Comunidad beneficiaria'
+        : c.requester_name || c.requester_user_id || 'Comunidad atendida',
     rec: c.resource_name || 'Ayuda',
     cant: c.quantity || 1,
     u: c.unit || 'unidades',
     estado: (c.status || 'nueva') as any,
     cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
     vol: c.assigned_volunteer_name || null,
-    dist: c.distance_text || undefined,
+    dist: c.distance_text || (c.origin_type === 'INTERNAL_BRIGADE' ? 'Brigada interna' : undefined),
+    esInterna: c.origin_type === 'INTERNAL_BRIGADE',
+    esEntregaDirecta: c.origin_type === 'DIRECT_OFFER_DISPATCH',
+    medioEnvio: c.medio_envio || 'directa',
+    empresaTransporte: c.empresa_transporte || undefined,
+    notasCamino: c.notes_camino || c.confirmation_story || undefined,
+    notasEntrega: c.notes_entrega || c.confirmation_story || undefined,
     cierre: {
       entrega: { fotos: deliveryPhotosCount },
       recibe: { fotos: receptionPhotosCount },
       historia: c.confirmation_story || undefined,
       notasCamino: c.notes_camino || undefined,
       notasEntrega: c.notes_entrega || undefined,
+      medioEnvio: c.medio_envio || 'directa',
+      empresaTransporte: c.empresa_transporte || undefined,
+      personasBeneficiadas: c.personas_beneficiadas || undefined,
     },
-    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
+    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' || c.status === 'distribuida' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
     rawCommitment: c,
   };
 }
@@ -176,22 +193,34 @@ export function commitmentToSolicitud(c: any): any {
 export function commitmentToEntregaRecibida(c: any): any {
   const deliveryPhotosCount = Array.isArray(c.delivery_photos) ? c.delivery_photos.length : 0;
   const receptionPhotosCount = Array.isArray(c.reception_photos) ? c.reception_photos.length : 0;
+  const numericId =
+    typeof c.id === 'number'
+      ? c.id
+      : Math.abs(String(c.id).split('').reduce((acc: number, char: string) => (acc << 5) - acc + char.charCodeAt(0), 0));
 
   return {
-    id: c.id,
-    deQuien: c.provider_org_name || c.provider_user_id || 'Organización aliada',
+    id: numericId,
+    dbId: String(c.id),
+    org: c.provider_org_name || c.provider_user_id || 'Organización aliada',
     rec: c.resource_name || 'Ayuda',
     cant: c.quantity || 1,
     u: c.unit || 'unidades',
     estado: (c.status || 'nueva') as any,
     cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
     quienEntrega: c.assigned_volunteer_name || 'Coordinación operativa',
+    vol: c.assigned_volunteer_name || null,
+    esInterna: c.origin_type === 'INTERNAL_BRIGADE',
+    medioEnvio: c.medio_envio || 'directa',
+    empresaTransporte: c.empresa_transporte || undefined,
     cierre: {
       entrega: { fotos: deliveryPhotosCount },
       recibe: { fotos: receptionPhotosCount },
       historia: c.confirmation_story || undefined,
+      medioEnvio: c.medio_envio || 'directa',
+      empresaTransporte: c.empresa_transporte || undefined,
+      personasBeneficiadas: c.personas_beneficiadas || undefined,
     },
-    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
+    cerradaEl: c.status === 'confirmada' || c.status === 'archivada' || c.status === 'distribuida' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
     rawCommitment: c,
   };
 }

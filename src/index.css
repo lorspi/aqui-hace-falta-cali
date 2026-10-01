@@ -701,17 +701,22 @@ body.modal-open {
 /* User location pulse animation */
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1);
   }
   100% {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
   }
 }
 
+.user-location-pin {
+  pointer-events: none !important;
+}
+
 .user-location-pin div {
+  pointer-events: none !important;
   animation: pulse-ring 2s ease-out infinite;
 }
 

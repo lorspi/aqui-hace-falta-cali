@@ -690,20 +690,21 @@ export const MapView: React.FC<MapViewProps> = ({
 
     if (userLat && userLng) {
       const userIcon = L.divIcon({
-        className: 'user-location-pin',
+        className: 'user-location-pin pointer-events-none',
         html: `
           <div style="
-            width: 20px;
-            height: 20px;
+            pointer-events: none;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background-color: #3b82f6;
-            border: 3px solid white;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
+            border: 2.5px solid white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
             animation: pulse-ring 2s ease-out infinite;
           "></div>
         `,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
       });
 
       if (userMarkerRef.current) {
@@ -711,11 +712,9 @@ export const MapView: React.FC<MapViewProps> = ({
       } else {
         userMarkerRef.current = L.marker([userLat, userLng], {
           icon: userIcon,
-          zIndexOffset: 1000,
+          interactive: false,
+          zIndexOffset: -100,
         }).addTo(map);
-        userMarkerRef.current.bindPopup(
-          '<div style="font-family: \'Hanken Grotesk\', sans-serif; text-align: center; padding: 2px;"><strong style="font-size: 12px;">📍 Tu ubicación</strong></div>'
-        );
       }
     } else if (userMarkerRef.current) {
       userMarkerRef.current.remove();

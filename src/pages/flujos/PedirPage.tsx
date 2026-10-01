@@ -172,6 +172,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     const pubFinal: Publicacion = {
       ...pub,
       id: idPub,
+      userId: user?.id,
       propia: true,
       org: org?.org_name || profile?.full_name || CUENTA_PEDIR.organizacion || 'Mi Organización',
       verificada: publicacionSaleVerificada(),

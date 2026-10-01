@@ -31,6 +31,7 @@ export interface MapaRadarProps {
   ubicacion: Ubicacion;
   seleccionada: string | null;
   onSeleccionar: (id: string) => void;
+  onDeseleccionar?: () => void;
   /** Cuando cambia, el mapa vuela a ese punto (por ejemplo, «Ver en el mapa» o la hoja).
    *  Cada pedido lleva su `n` para poder repetir el mismo punto. */
   encuadrar?: { id: string; n: number } | null;
@@ -100,7 +101,27 @@ function pinHTML(p: Publicacion): string {
 function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): string {
   const zona = p.zona || p.localidad || '';
   const dist = translateDistance(km, lang);
-  const recs = (p.recursos || []).map((r) => translateItem(r.item, lang)).join(', ');
+
+  const recursosList = (p.recursos || []).map((r) => translateItem(r.item, lang)).filter(Boolean);
+  let recs = '';
+  if (recursosList.length === 0) {
+    recs = recursosPublicacion(p);
+  } else if (recursosList.length <= 3) {
+    recs = recursosList.join(', ');
+  } else {
+    const primeros = recursosList.slice(0, 3).join(', ');
+    const restantes = recursosList.length - 3;
+    const yMas =
+      lang === 'en'
+        ? ` and ${restantes} more`
+        : lang === 'pt'
+        ? ` e mais ${restantes}`
+        : lang === 'fr'
+        ? ` et ${restantes} de plus`
+        : ` y ${restantes} más`;
+    recs = `${primeros}${yMas}`;
+  }
+
   const actor = actorPublicacion(p);
   const localizedActor =
     actor === 'Ciudadano'
@@ -116,7 +137,7 @@ function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): stri
         <EtiquetaEstado estado={estadoPublicacion(p)} />
       </div>
       <div>
-        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink">{recs || recursosPublicacion(p)}</p>
+        <p className="m-0 text-rd-13-5 font-semibold leading-snug text-rd-ink line-clamp-3">{recs}</p>
         <p className="m-0 mt-1 flex items-center gap-1 text-rd-12 font-medium text-rd-ink-2">
           <span className="truncate">{localizedActor}</span>
           {p.verificada && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
@@ -248,6 +269,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   ubicacion,
   seleccionada,
   onSeleccionar,
+  onDeseleccionar,
   encuadrar,
   tapadoAbajo = 0,
   resaltadas,
@@ -262,6 +284,8 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   const capaLineas = useRef<L.LayerGroup | null>(null);
   const alSeleccionar = useRef(onSeleccionar);
   alSeleccionar.current = onSeleccionar;
+  const alDeseleccionar = useRef(onDeseleccionar);
+  alDeseleccionar.current = onDeseleccionar;
   const onMiUbicacionRef = useRef(onMiUbicacion);
   onMiUbicacionRef.current = onMiUbicacion;
   const marcadorUbicacion = useRef<L.Marker | null>(null);
@@ -544,18 +568,16 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
           marcadorUbicacion.current.setLatLng([lat, lng]);
         } else {
           const userIcon = L.divIcon({
-            className: 'user-location-pin',
-            html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
+            className: 'user-location-pin pointer-events-none',
+            html: '<div style="pointer-events: none; width: 14px; height: 14px; border-radius: 50%; background-color: #2563eb; border: 2.5px solid #ffffff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);"></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
           });
           marcadorUbicacion.current = L.marker([lat, lng], {
             icon: userIcon,
-            zIndexOffset: 1000,
+            interactive: false,
+            zIndexOffset: -100,
           }).addTo(m);
-          marcadorUbicacion.current.bindPopup(
-            '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
-          );
         }
 
         m.flyTo([lat, lng], Math.max(m.getZoom(), 15), { duration: 0.5 });
@@ -613,6 +635,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     capa.current = L.layerGroup().addTo(m);
     mapa.current = m;
     m.on('moveend zoomend', () => pintarRef.current());
+    m.on('click', () => alDeseleccionar.current?.());
     /* El primer pintado espera un cuadro a que el contenedor mida. Se cancela al desmontar:
        en desarrollo React monta el efecto dos veces y el cuadro del primer mapa, ya quitado,
        reventaba en Leaflet (`_leaflet_pos` de un panel que no existe). */
@@ -648,18 +671,16 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
       marcadorUbicacion.current.setLatLng([ubicacion.lat, ubicacion.lng]);
     } else {
       const userIcon = L.divIcon({
-        className: 'user-location-pin',
-        html: '<div style="width: 18px; height: 18px; border-radius: 50%; background-color: #2563eb; border: 3px solid white; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0,0,0,0.3);"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
+        className: 'user-location-pin pointer-events-none',
+        html: '<div style="pointer-events: none; width: 14px; height: 14px; border-radius: 50%; background-color: #2563eb; border: 2.5px solid #ffffff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
       });
       marcadorUbicacion.current = L.marker([ubicacion.lat, ubicacion.lng], {
         icon: userIcon,
-        zIndexOffset: 1000,
+        interactive: false,
+        zIndexOffset: -100,
       }).addTo(m);
-      marcadorUbicacion.current.bindPopup(
-        '<div style="font-family: inherit; font-size: 12px; font-weight: 600; text-align: center;">📍 Tu ubicación</div>'
-      );
     }
   }, [ubicacion]);
 

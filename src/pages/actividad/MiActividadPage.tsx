@@ -241,7 +241,7 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
       // Filtrar las que pertenecen al usuario (por user_id o creadas localmente)
       let filtradas = [
-        ...validLocales,
+        ...validLocales.filter((loc) => !targetUserId || !loc.userId || loc.userId === targetUserId),
         ...todas.filter((p) => {
           if (targetUserId && p.userId === targetUserId) return true;
           if (p.propia) return true;
@@ -344,25 +344,30 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
   };
 
   const eliminarGestionPublicacion = async (id: string, tipo: 'oferta' | 'necesidad') => {
+    let restantesFinal: Publicacion[] = [];
     setMisPubs((prev) => {
       const restantes = prev.filter((p) => p.id !== id);
+      restantesFinal = restantes;
       guardarPublicacionesLocales(restantes);
       return restantes;
     });
 
-    try {
-      if (tipo === 'necesidad') {
-        localStorage.removeItem('rd-necesidad-creada-gestion');
-        localStorage.removeItem('rd-necesidad-creada-recursos');
-        localStorage.removeItem('rd-necesidad-publicacion');
-        desactivarModulo('pide');
-      } else {
-        localStorage.removeItem('rd-oferta-creada-gestion');
-        localStorage.removeItem('rd-oferta-creada-recursos');
-        localStorage.removeItem('rd-oferta-publicacion');
-        desactivarModulo('ofrece');
-      }
-    } catch {}
+    const quedanDelTipo = restantesFinal.filter((p) => p.tipo === tipo).length > 0;
+    if (!quedanDelTipo) {
+      try {
+        if (tipo === 'necesidad') {
+          localStorage.removeItem('rd-necesidad-creada-gestion');
+          localStorage.removeItem('rd-necesidad-creada-recursos');
+          localStorage.removeItem('rd-necesidad-publicacion');
+          desactivarModulo('pide');
+        } else {
+          localStorage.removeItem('rd-oferta-creada-gestion');
+          localStorage.removeItem('rd-oferta-creada-recursos');
+          localStorage.removeItem('rd-oferta-publicacion');
+          desactivarModulo('ofrece');
+        }
+      } catch {}
+    }
 
     try {
       const tabla = tipo === 'necesidad' ? 'needs' : 'offers';

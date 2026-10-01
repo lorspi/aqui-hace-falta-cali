@@ -195,14 +195,27 @@ export function pendientesDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol
   return p;
 }
 
-/** Lo que pasa al certificar, según si el otro lado ya confirmó. */
-export function textoCertificar(s: Pick<Solicitud, 'quien' | 'cierre'>): string {
+/** Lo que pasa al certificar, según si el otro lado ya confirmó o si es brigada interna. */
+export function textoCertificar(
+  s: Pick<Solicitud, 'quien' | 'cierre'> & { medioEnvio?: 'directa' | 'transportadora'; esInterna?: boolean }
+): string {
+  if (s.esInterna) {
+    return 'Al certificar con fotos y observaciones, la entrega de la brigada queda resuelta y registrada en el acta oficial.';
+  }
+  if (s.medioEnvio === 'transportadora') {
+    return s.cierre?.recibe
+      ? `${s.quien} ya confirmó la recepción; con tu certificación queda cerrada por los dos lados.`
+      : `¿Confirmas que la ayuda enviada por transportadora ya fue recibida en destino? Al certificar queda resuelta de tu lado. ${s.quien} también podrá confirmarla para su propio registro.`;
+  }
   return s.cierre?.recibe ? `${s.quien} ya la confirmó; con tu certificación queda cerrada por los dos lados.` : `Queda certificada de tu lado y le avisamos a ${s.quien} para que la confirme.`;
 }
 
 /** Cómo quedó cerrada una entrega, en una frase: quién la confirmó. Las fotos van aparte,
  *  como galería (Alejandro, 16 de septiembre de 2026), sin conteo en el texto. */
-export function textoCierre(s: Pick<Solicitud, 'quien' | 'cierre'>): string {
+export function textoCierre(s: Pick<Solicitud, 'quien' | 'cierre'> & { esInterna?: boolean }): string {
+  if (s.esInterna) {
+    return 'Completada y certificada por brigada interna';
+  }
   const c = s.cierre ?? {};
   if (c.entrega && c.recibe) return `Confirmada por ti y por ${s.quien}`;
   if (c.recibe) return `Confirmada por ${s.quien}`;
@@ -265,6 +278,8 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
           notasCamino: nc,
           notasEntrega: ne,
           notasRecibe: nr,
+          medioEnvio: s.medioEnvio || s.cierre?.medioEnvio,
+          empresaTransporte: s.empresaTransporte || s.cierre?.empresaTransporte,
           origen: { tipo: 'solicitud', id: s.id },
         });
       });
@@ -292,6 +307,8 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
           notasCamino: nc,
           notasEntrega: ne,
           notasRecibe: nr,
+          medioEnvio: r.medioEnvio || r.cierre?.medioEnvio,
+          empresaTransporte: r.empresaTransporte || r.cierre?.empresaTransporte,
           origen: { tipo: 'recibida', id: r.id },
         });
       });
@@ -322,6 +339,7 @@ export function textoActa(a: Acta): string {
     `Recibió: ${a.recibio}`,
     `Qué: ${a.cant} ${a.u} de ${a.rec.toLowerCase()}`,
     a.lleva ? `La llevó: ${a.lleva}` : '',
+    a.medioEnvio ? `Medio de envío: ${a.medioEnvio === 'transportadora' ? (a.empresaTransporte ? `Por transportadora (${a.empresaTransporte})` : 'Por transportadora / encomienda') : 'Entrega directa'}` : '',
     `Cierre: ${a.confirmacion}`,
     a.notasCamino ? `Detalles de despacho / en camino: ${a.notasCamino}` : '',
     a.notasEntrega ? `Observaciones de entrega: ${a.notasEntrega}` : '',

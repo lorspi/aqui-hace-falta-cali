@@ -203,7 +203,11 @@ export function accionesDe(s: Solicitud, a: AccionesSolicitud): React.ReactNode 
         </>
       );
     case 'camino':
-      return (
+      return s.medioEnvio === 'transportadora' ? (
+        <Button nivel="primario" tamano="md" onClick={() => a.onCertificar(s)}>
+          Certificar
+        </Button>
+      ) : (
         <Button nivel="primario" tamano="md" onClick={() => a.onMover(s.id, 'entregada')}>
           Entregar
         </Button>
@@ -390,7 +394,7 @@ export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => 
   if (s.estado !== 'confirmada' && s.estado !== 'archivada') return { cierre: null, fotos: fotosNodo };
   return {
     cierre: (
-      <span className={`mt-2 flex items-start gap-1 text-rd-11-5 font-semibold ${s.cierre?.entrega && s.cierre.recibe ? 'text-rd-green' : 'text-rd-ink-2'}`}>
+      <span className={`mt-2 flex items-start gap-1 text-rd-11-5 font-semibold ${s.esInterna || (s.cierre?.entrega && s.cierre?.recibe) ? 'text-rd-green' : 'text-rd-ink-2'}`}>
         <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
         <span>{textoCierre(s)}</span>
       </span>
@@ -412,6 +416,11 @@ export const TarjetaSolicitud: React.FC<{ s: Solicitud; acciones: AccionesSolici
       <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
         <CheckCircle2 aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-navy" />
         <span>Brigada interna</span>
+      </span>
+    ) : s.medioEnvio === 'transportadora' ? (
+      <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-amber-line bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-amber-ink">
+        <Package aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
+        <span>Por transportadora</span>
       </span>
     ) : s.esEntregaDirecta ? (
       <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-green-line bg-rd-green-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-green">
@@ -478,10 +487,10 @@ export const TarjetaRecibida: React.FC<{
         </>
       );
     }
-    if (r.estado === 'entregada') {
+    if (r.estado === 'camino' || r.estado === 'entregada') {
       return (
         <Button nivel="primario" tamano="md" onClick={() => onConfirmar(r.id)}>
-          Confirmar
+          {r.estado === 'camino' ? 'Confirmar recibido' : 'Confirmar'}
         </Button>
       );
     }
@@ -522,8 +531,17 @@ export const TarjetaRecibida: React.FC<{
     if (r.estado === 'camino') {
       return (
         <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-amber-line bg-rd-amber-soft px-2 py-0.5 text-rd-11 font-medium text-rd-amber-ink">
-          <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
-          <span>{t('statusOnTheWay')}</span>
+          {r.medioEnvio === 'transportadora' ? (
+            <>
+              <Package aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
+              <span>Por transportadora</span>
+            </>
+          ) : (
+            <>
+              <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-amber-ink" />
+              <span>{t('statusOnTheWay')}</span>
+            </>
+          )}
         </span>
       );
     }
@@ -531,7 +549,7 @@ export const TarjetaRecibida: React.FC<{
       return (
         <span className="inline-flex items-center gap-1 rounded-rd-full border border-rd-navy-line bg-rd-navy-soft px-2 py-0.5 text-rd-11 font-semibold text-rd-navy">
           <CircleDot aria-hidden="true" className="h-3 w-3 shrink-0 text-rd-navy" />
-          <span>{t('statusPending')}</span>
+          <span>{r.cierre?.entrega ? 'Certificada por donante' : t('statusPending')}</span>
         </span>
       );
     }
@@ -539,11 +557,19 @@ export const TarjetaRecibida: React.FC<{
   })();
 
   const cierre = (() => {
+    if (r.cierre?.entrega && !r.cierre?.recibe && r.estado !== 'confirmada') {
+      return (
+        <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-amber-ink">
+          <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-amber-ink" />
+          <span>Certificada por {r.org}. Falta tu confirmación</span>
+        </span>
+      );
+    }
     if (r.estado === 'confirmada') {
       return (
         <span className="mt-2 flex items-start gap-1 text-rd-11-5 font-semibold text-rd-green">
           <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rd-green" />
-          <span>Recibido en acopio</span>
+          <span>{r.cierre?.entrega ? `Confirmada por ti y por ${r.org}` : 'Confirmada por ti'}</span>
         </span>
       );
     }

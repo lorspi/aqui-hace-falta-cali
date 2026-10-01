@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Phone, Plus, Search, Trash2, Truck, X } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Edit3, Eye, MapPin, Package, Phone, Plus, Search, Trash2, Truck, X } from 'lucide-react';
 import type { MiembroEquipo, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud } from '../../types/panel';
 import type { Foto } from '../../types/flujo';
 import type { Publicacion } from '../../types/publicacion';
@@ -693,7 +693,7 @@ export const DialogoMiembro: React.FC<DialogoMiembroProps> = ({
 
 export const DialogoRegistrarMiembro = DialogoMiembro;
 
-export const DialogoCierre: React.FC<{
+export interface DialogoCierreProps {
   abierto: boolean;
   titulo: string;
   texto: string;
@@ -701,20 +701,58 @@ export const DialogoCierre: React.FC<{
   etiquetaFotos?: string;
   nota?: { etiqueta: string; placeholder?: string; ayuda?: string };
   beneficiarios?: { etiqueta?: string; placeholder?: string; ayuda?: string; sugerencias?: number[] };
+  selectorMedio?: boolean;
+  medioDefecto?: 'directa' | 'transportadora';
   onCerrar: () => void;
-  onEnviar: (fotos: number, fotosLista?: Foto[], notaTexto?: string, personasBeneficiadas?: number) => void;
-}> = ({ abierto, titulo, texto, accion, etiquetaFotos, nota, beneficiarios, onCerrar, onEnviar }) => {
+  onEnviar: (
+    fotos: number,
+    fotosLista?: Foto[],
+    notaTexto?: string,
+    personasBeneficiadas?: number,
+    medioEnvio?: 'directa' | 'transportadora',
+    empresaTransporte?: string
+  ) => void;
+}
+
+export const DialogoCierre: React.FC<DialogoCierreProps> = ({
+  abierto,
+  titulo,
+  texto,
+  accion,
+  etiquetaFotos,
+  nota,
+  beneficiarios,
+  selectorMedio,
+  medioDefecto = 'directa',
+  onCerrar,
+  onEnviar,
+}) => {
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [pesados, setPesados] = useState(0);
   const [textoNota, setTextoNota] = useState('');
   const [numBeneficiarios, setNumBeneficiarios] = useState('');
+  const [medio, setMedio] = useState<'directa' | 'transportadora'>(medioDefecto);
+  const [empresa, setEmpresa] = useState('');
+
+  useEffect(() => {
+    if (abierto) {
+      setMedio(medioDefecto);
+      setEmpresa('');
+    }
+  }, [abierto, medioDefecto]);
+
   const cerrar = () => {
     setFotos([]);
     setPesados(0);
     setTextoNota('');
     setNumBeneficiarios('');
+    setMedio(medioDefecto);
+    setEmpresa('');
     onCerrar();
   };
+
+  const esTransportadora = selectorMedio && medio === 'transportadora';
+
   return (
     <Dialogo
       abierto={abierto}
@@ -727,24 +765,83 @@ export const DialogoCierre: React.FC<{
         const valNota = textoNota.trim();
         const parsed = parseInt(numBeneficiarios, 10);
         const valBeneficiarios = !isNaN(parsed) && parsed > 0 ? parsed : undefined;
-        setFotos([]);
-        setPesados(0);
-        setTextoNota('');
-        setNumBeneficiarios('');
-        onEnviar(n, lista, valNota || undefined, valBeneficiarios);
+        const valMedio = selectorMedio ? medio : undefined;
+        const valEmpresa = empresa.trim() || undefined;
+        cerrar();
+        onEnviar(n, lista, valNota || undefined, valBeneficiarios, valMedio, valEmpresa);
       }}
     >
       <p className="mb-4 text-rd-14 text-rd-ink-2">{texto}</p>
+
+      {selectorMedio && (
+        <div className="mb-4">
+          <label className="mb-2 block text-rd-13 font-semibold text-rd-ink">
+            Medio de entrega o despacho
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMedio('directa')}
+              className={`flex items-center justify-center gap-2 rounded-rd-md border px-3 py-2.5 text-center transition-all cursor-pointer ${
+                medio === 'directa'
+                  ? 'border-rd-navy bg-rd-navy-surface text-rd-navy font-semibold ring-1 ring-rd-navy shadow-2xs'
+                  : 'border-rd-line bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink'
+              }`}
+            >
+              <Truck className={`h-4 w-4 shrink-0 ${medio === 'directa' ? 'text-rd-navy' : 'text-rd-ink-meta'}`} />
+              <span className="text-rd-13">Entrega directa</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMedio('transportadora')}
+              className={`flex items-center justify-center gap-2 rounded-rd-md border px-3 py-2.5 text-center transition-all cursor-pointer ${
+                medio === 'transportadora'
+                  ? 'border-rd-navy bg-rd-navy-surface text-rd-navy font-semibold ring-1 ring-rd-navy shadow-2xs'
+                  : 'border-rd-line bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink'
+              }`}
+            >
+              <Package className={`h-4 w-4 shrink-0 ${medio === 'transportadora' ? 'text-rd-navy' : 'text-rd-ink-meta'}`} />
+              <span className="text-rd-13">Por transportadora</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {esTransportadora && (
+        <div className="mb-4">
+          <div className="mb-1 flex items-baseline justify-between">
+            <label htmlFor="empresa-transporte-input" className="block text-rd-13 font-semibold text-rd-ink">
+              Empresa transportadora o mensajería
+            </label>
+            <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
+          </div>
+          <input
+            id="empresa-transporte-input"
+            type="text"
+            value={empresa}
+            onChange={(e) => setEmpresa(e.target.value)}
+            placeholder="Ej. Empresa de encomiendas, envíos, transporte..."
+            className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
+          />
+        </div>
+      )}
+
       {nota && (
         <div className="mb-4">
           <div className="mb-1 flex items-baseline justify-between">
-            <label className="block text-rd-13 font-semibold text-rd-ink">{nota.etiqueta}</label>
+            <label className="block text-rd-13 font-semibold text-rd-ink">
+              {esTransportadora ? 'Número de guía u observaciones del despacho' : nota.etiqueta}
+            </label>
             <span className="text-rd-11-5 text-rd-ink-meta">(opcional)</span>
           </div>
           <textarea
             value={textoNota}
             onChange={(e) => setTextoNota(e.target.value)}
-            placeholder={nota.placeholder}
+            placeholder={
+              esTransportadora
+                ? 'Ej. Número de guía o remesa, observaciones del despacho...'
+                : nota.placeholder
+            }
             rows={3}
             className="w-full rounded-rd-md border border-rd-line bg-rd-surface px-3 py-2 text-rd-13 text-rd-ink transition-colors placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-1 focus:ring-rd-navy"
           />
@@ -794,7 +891,11 @@ export const DialogoCierre: React.FC<{
           </div>
         </div>
       )}
-      <p className="mb-2 text-rd-13 font-semibold text-rd-ink">{etiquetaFotos ?? 'Fotos de la entrega (opcionales)'}</p>
+      <p className="mb-2 text-rd-13 font-semibold text-rd-ink">
+        {esTransportadora
+          ? 'Fotos del paquete embalado o guía (opcionales)'
+          : (etiquetaFotos ?? 'Fotos de la entrega (opcionales)')}
+      </p>
       <CampoFotos
         fotos={fotos}
         onAgregar={(nuevas, p) => {
@@ -834,6 +935,7 @@ export interface DatosPublicacionGestion {
   telContacto: string;
   comoEntrega: string;
   horario: string;
+  paraQuien?: string;
   recursos: InsumoGestion[];
   pausadaGlobal?: boolean;
   lat?: number;

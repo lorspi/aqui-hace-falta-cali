@@ -277,7 +277,7 @@ const Radar: React.FC<RadarProps> = ({
       setEncuadrar(id);
       return;
     }
-    listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }, []);
   const verEnMapa = (id: string) => {
     setSeleccionada(id);
@@ -295,6 +295,44 @@ const Radar: React.FC<RadarProps> = ({
       setSeleccionada(null);
     }, 300);
   }, []);
+
+  /* Al hacer clic en otra parte (otra tarjeta, fondo de la lista, cabecera, etc.), se quita el resalto */
+  useEffect(() => {
+    if (!seleccionada) return;
+
+    const alHacerClickFuera = (ev: MouseEvent | PointerEvent) => {
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+
+      // Si el click fue en un pin del mapa o cluster de Leaflet, dejamos que su propio handler actúe
+      if (
+        target.closest('.custom-map-pin') ||
+        target.closest('.custom-cluster-icon') ||
+        target.closest('.leaflet-marker-icon') ||
+        target.closest('.leaflet-popup')
+      ) {
+        return;
+      }
+
+      // Si el click fue DENTRO de la tarjeta actualmente seleccionada, no deseleccionar
+      const tarjetaActual = listaRef.current?.querySelector(`[data-punto="${seleccionada}"]`);
+      if (tarjetaActual && tarjetaActual.contains(target)) {
+        return;
+      }
+
+      // En cualquier otra tarjeta, fondo, o cualquier otra parte, quitar el resalto
+      setSeleccionada(null);
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener('pointerdown', alHacerClickFuera);
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('pointerdown', alHacerClickFuera);
+    };
+  }, [seleccionada]);
   const limpiar = () => {
     setTipo('todo');
     setFiltros(filtrosVacios());
@@ -325,7 +363,7 @@ const Radar: React.FC<RadarProps> = ({
     if (esMovil()) {
       setHojaPin({ id, expandida: false });
     } else {
-      requestAnimationFrame(() => listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+      requestAnimationFrame(() => listaRef.current?.querySelector<HTMLElement>(`[data-punto="${id}"]`)?.scrollIntoView({ block: 'start', behavior: 'auto' }));
     }
   }, [todasLasPubs, tipo, filtros.ciudades]);
 
@@ -643,6 +681,7 @@ const Radar: React.FC<RadarProps> = ({
                     {/* hasta 1279: la tarjeta en grid responsivo (1 col en móvil, 2 en tablet) */}
                     <Tarjeta
                       publicacion={p}
+                      seleccionada={seleccionada === p.id}
                       distanciaKm={distancias.get(p.id)}
                       coincidencias={coincidencias.get(p.id)}
                       enProceso={enProceso.includes(p.id)}
@@ -653,6 +692,7 @@ const Radar: React.FC<RadarProps> = ({
                     {/* desde 1280: la misma información en fila estructurada a lo ancho de la pantalla */}
                     <FilaPublicacion
                       publicacion={p}
+                      seleccionada={seleccionada === p.id}
                       distanciaKm={distancias.get(p.id)}
                       coincidencias={coincidencias.get(p.id)}
                       enProceso={enProceso.includes(p.id)}
@@ -675,6 +715,7 @@ const Radar: React.FC<RadarProps> = ({
                 ubicacion={ubicacionActual}
                 seleccionada={seleccionada}
                 onSeleccionar={seleccionarDesdeMapa}
+                onDeseleccionar={() => setSeleccionada(null)}
                 encuadrar={encuadrar}
                 encuadrarTodo={encuadrarCiudad}
                 tapadoAbajo={tapadoAbajo}
@@ -726,6 +767,7 @@ const Radar: React.FC<RadarProps> = ({
                         <Tarjeta
                           key={p.id}
                           publicacion={p}
+                          seleccionada={seleccionada === p.id}
                           distanciaKm={distancias.get(p.id)}
                           coincidencias={coincidencias.get(p.id)}
                           enProceso={enProceso.includes(p.id)}
@@ -830,6 +872,7 @@ const VistaBtn: React.FC<{ actual: boolean; onClick: () => void; etiqueta: strin
  *  manda la tarjeta. */
 const FilaPublicacion: React.FC<{
   publicacion: Publicacion;
+  seleccionada?: boolean;
   distanciaKm?: number;
   coincidencias?: CoincidenciaPublicacion[];
   enProceso?: boolean;
@@ -840,6 +883,7 @@ const FilaPublicacion: React.FC<{
   onVerCoincidencias?: (id: string) => void;
 }> = ({
   publicacion: p,
+  seleccionada = false,
   distanciaKm: dist,
   coincidencias,
   enProceso,
@@ -860,7 +904,11 @@ const FilaPublicacion: React.FC<{
   return (
     <article
       id={p.id}
-      className="hidden min-w-0 rounded-rd-xl border border-rd-line bg-rd-surface px-5 py-4 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8"
+      className={`hidden min-w-0 rounded-rd-xl border bg-rd-surface px-5 py-4 transition duration-200 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,5fr)_220px] xl:items-center xl:gap-8 ${
+        seleccionada
+          ? 'border-rd-navy ring-2 ring-rd-navy/35 shadow-rd-2'
+          : 'border-rd-line hover:border-rd-navy-line hover:shadow-xs'
+      }`}
     >
       {/* 1. Publicación, tipo y ubicación */}
       <div className="flex min-w-0 items-start gap-3.5">

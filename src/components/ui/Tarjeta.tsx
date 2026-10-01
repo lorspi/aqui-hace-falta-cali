@@ -43,6 +43,8 @@ export interface TarjetaProps {
   completa?: boolean;
   /** La persona ya se comprometió o solicitó en esta sesión: pasa a «En proceso». */
   enProceso?: boolean;
+  /** Si la publicación está actualmente seleccionada en el mapa */
+  seleccionada?: boolean;
   /** Para que quien la use la esconda en un ancho. */
   className?: string;
 }
@@ -54,6 +56,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
   enHoja = false,
   enProceso = false,
   completa = false,
+  seleccionada = false,
   textoPrimaria,
   className = '',
   onVerEnMapa,
@@ -152,23 +155,19 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
        navy-line y sombra leve). Las acciones son sus botones. */
     <article
       data-punto={p.id}
-      className={`${
+      className={`scroll-mt-2 ${
         enHoja
           ? 'relative flex min-h-full flex-col bg-rd-surface'
-          : 'relative flex flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-3.5 sm:p-3.5 max-sm:p-3 transition duration-200 hover:border-rd-navy-line hover:shadow-xs'
+          : `relative flex flex-col rounded-rd-xl border p-3.5 sm:p-3.5 max-sm:p-3 transition-all duration-300 ${
+              seleccionada
+                ? 'border-rd-navy ring-2 ring-rd-navy/35 bg-rd-surface shadow-rd-2'
+                : 'border-rd-line bg-rd-surface hover:border-rd-navy-line hover:shadow-xs'
+            }`
       } ${className}`}
     >
       <div className="mb-2.5 max-sm:mb-2 flex items-center justify-between gap-2">
         <EtiquetaTipo tipo={p.tipo} />
-        <div className="flex items-center gap-1.5">
-          {!completa && p.contactoWa && (
-            <span className="inline-flex items-center gap-1 rounded-rd-sm bg-rd-green-soft px-1.5 py-0.5 text-rd-11 font-medium text-rd-green">
-              <IconoWhatsApp className="h-3 w-3 shrink-0" />
-              <span>WhatsApp</span>
-            </span>
-          )}
-          <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
-        </div>
+        <EtiquetaEstado estado={enProceso && estado === 'inicial' ? 'proceso' : estado} />
       </div>
 
       <div className="mb-2 max-sm:mb-1.5">

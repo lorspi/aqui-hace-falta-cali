@@ -207,6 +207,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     const pubFinal: Publicacion = {
       ...pub,
       id: idPub,
+      userId: user?.id,
       propia: true,
       org: org?.org_name || nombreOrg || profile?.full_name || CUENTA_OFRECER.organizacion || 'Mi Organización',
       verificada: publicacionSaleVerificada(),

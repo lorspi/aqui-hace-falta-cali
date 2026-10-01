@@ -30,10 +30,15 @@ export interface Cierre {
   notasEntrega?: string;
   /** Observaciones registradas al confirmar la recepción. */
   notasRecibe?: string;
+  /** Medio de envío registrado: directa o por transportadora */
+  medioEnvio?: 'directa' | 'transportadora';
+  /** Nombre de la transportadora o empresa de encomienda (si aplica) */
+  empresaTransporte?: string;
 }
 
 export interface Solicitud {
   id: number;
+  dbId?: string;
   quien: string;
   rec: string;
   cant: number;
@@ -62,6 +67,10 @@ export interface Solicitud {
   esEntregaDirecta?: boolean;
   /** Marca si la necesidad fue asumida internamente por la brigada de la organización */
   esInterna?: boolean;
+  /** Medio de envío: directa (personal/brigada) o por transportadora/encomienda */
+  medioEnvio?: 'directa' | 'transportadora';
+  /** Empresa transportadora o mensajería (opcional) */
+  empresaTransporte?: string;
 }
 
 /** Un recurso de MI oferta publicada. Sin `entregado` ni `quedan`: se cuentan desde las
@@ -104,6 +113,7 @@ export interface NecesidadPublicada {
 /** Lo que otra organización nos trae para nuestra necesidad, en el mismo ciclo. */
 export interface EntregaRecibida {
   id: number;
+  dbId?: string;
   org: string;
   rec: string;
   cant: number;
@@ -126,6 +136,10 @@ export interface EntregaRecibida {
   cerradaEl?: string;
   /** Marca si la necesidad fue asumida internamente por la misma organización / brigada */
   esInterna?: boolean;
+  /** Medio de envío: directa o por transportadora */
+  medioEnvio?: 'directa' | 'transportadora';
+  /** Empresa transportadora o mensajería (opcional) */
+  empresaTransporte?: string;
 }
 
 /** Estado de una solicitud directa que el líder comunitario envió a la oferta de un donante. */
@@ -196,6 +210,7 @@ export type DisponibilidadMiembro = 'tiempo_completo' | 'entre_semana' | 'fines_
 
 export interface MiembroEquipo {
   id: number;
+  dbId?: string;
   n: string;
   rolPlataforma: RolPlataforma;
   rol: string;
@@ -329,6 +344,8 @@ export interface Acta {
   notasCamino?: string;
   notasEntrega?: string;
   notasRecibe?: string;
+  medioEnvio?: 'directa' | 'transportadora';
+  empresaTransporte?: string;
   /** La entrega de la que sale, para abrir sus fotos. */
   origen: { tipo: 'solicitud' | 'recibida'; id: number };
 }
