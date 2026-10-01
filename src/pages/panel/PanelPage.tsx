@@ -26,7 +26,7 @@ import { PUBLICACIONES, obtenerPublicaciones } from '../../mocks/publicacionesMo
 import type { Aviso } from '../../types/aviso';
 import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
-import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, Solicitud, SolicitudEnviada } from '../../types/panel';
+import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
@@ -38,7 +38,9 @@ import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase } from '../../lib/supabaseClient';
-import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus } from '../../lib/supabaseService';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember } from '../../lib/supabaseService';
+import { commitmentToSolicitud, commitmentToEntregaRecibida } from '../../utils/supabaseMappers';
+import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 import { useTranslation } from '../../i18n/LanguageContext';
 
@@ -477,6 +479,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   }, []);
 
   const [orgData, setOrgData] = useState<DatosOrg>(ORG);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRealData() {
@@ -485,6 +488,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         if (authData?.user) {
           const dbOrg = await fetchOrganizationByUserId(authData.user.id);
           if (dbOrg) {
+            setCurrentOrgId(dbOrg.id);
             setOrgData({
               nombre: dbOrg.org_name,
               tipo: dbOrg.organization_type || 'Organización',
@@ -505,19 +509,41 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
             const dbCommitments = await fetchOrgCommitments(dbOrg.id, authData.user.id);
             if (dbCommitments && dbCommitments.length > 0) {
-              const mappedSol: Solicitud[] = dbCommitments.map((c: any, index: number) => ({
-                id: index + 1000,
-                dbId: c.id,
-                quien: c.resource_name || 'Solicitud de ayuda',
-                rec: c.resource_name,
-                cant: c.quantity,
-                u: c.unit,
-                estado: (c.status || 'nueva') as Solicitud['estado'],
-                cuando: c.created_at ? new Date(c.created_at).toLocaleString('es-CO') : 'Reciente',
-                vol: 1
-              }));
+              const mappedSol: Solicitud[] = dbCommitments.map((c: any) => commitmentToSolicitud(c));
+              const mappedRec: EntregaRecibida[] = dbCommitments.map((c: any) => commitmentToEntregaRecibida(c));
               setSol(mappedSol);
+              setRecibidas(mappedRec);
             }
+
+            const dbMembers = await fetchOrganizationMembers(dbOrg.id);
+            if (dbMembers && dbMembers.length > 0) {
+              const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
+                id: idx + 1,
+                dbId: m.id,
+                n: m.profiles?.full_name || 'Miembro de equipo',
+                rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
+                rol: m.member_title || m.role_in_org || 'Operativo',
+                veh: '',
+                tel: m.profiles?.phone || '',
+                correo: m.profiles?.email || '',
+                disp: '',
+                hechas: 0
+              }));
+              setEquipo(mappedEquipo);
+            }
+          }
+
+          // Consultar publicaciones del usuario en Supabase para activar módulos en el panel
+          const [{ data: userNeeds }, { data: userOffers }] = await Promise.all([
+            supabase.from('needs').select('*').eq('user_id', authData.user.id),
+            supabase.from('offers').select('*').eq('user_id', authData.user.id)
+          ]);
+
+          if (userNeeds && userNeeds.length > 0) {
+            setModulos((prev) => ({ ...prev, pide: true }));
+          }
+          if (userOffers && userOffers.length > 0) {
+            setModulos((prev) => ({ ...prev, ofrece: true }));
           }
         }
       } catch (err) {
@@ -654,7 +680,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     });
     avisar('Oferta cancelada', { tipo: 'ok' });
   };
-  const registrarMiembro = (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+  const registrarMiembro = async (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     const nuevo: MiembroEquipo = {
       ...m,
       id: Math.max(...equipo.map((x) => x.id), 0) + 1,
@@ -662,15 +688,41 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     };
     setEquipo((prev) => [nuevo, ...prev]);
     avisar(`${nuevo.n} ya está en tu equipo`, { tipo: 'ok' });
+
+    if (currentOrgId) {
+      try {
+        const dbRes = await addOrganizationMember({
+          organizationId: currentOrgId,
+          memberTitle: m.rol,
+          roleInOrg: m.rolPlataforma === 'admin' ? 'admin' : 'operativo',
+          name: m.n,
+          phone: m.tel,
+          email: m.correo
+        });
+        if (dbRes?.id) {
+          setEquipo((prev) => prev.map((x) => (x.id === nuevo.id ? { ...x, dbId: dbRes.id } : x)));
+        }
+      } catch (e) {
+        console.warn('Error registrando miembro en Supabase:', e);
+      }
+    }
   };
   const editarMiembro = (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
     setEquipo((prev) => prev.map((x) => (x.id === id ? { ...x, ...m } : x)));
     avisar(`Datos de ${m.n} actualizados.`, { tipo: 'ok' });
   };
-  const eliminarMiembro = (id: number) => {
+  const eliminarMiembro = async (id: number) => {
     const m = equipo.find((x) => x.id === id);
     setEquipo((prev) => prev.filter((x) => x.id !== id));
     avisar(`${m?.n ?? 'Ya'} salió de tu equipo`);
+
+    if ((m as any)?.dbId) {
+      try {
+        await removeOrganizationMember((m as any).dbId);
+      } catch (e) {
+        console.warn('Error eliminando miembro en Supabase:', e);
+      }
+    }
   };
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
@@ -861,22 +913,26 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       window.print();
     }, 150);
   };
-  const marcarEnCamino = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const marcarEnCamino = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
     if (!s) return;
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
       const quien = quienLleva(s, equipo) ?? ORG.nombre ?? 'Equipo de entrega';
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `En camino a ${s.quien} - ${f.nombre}`,
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `En camino a ${s.quien} - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy en camino',
       }));
       FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
     }
+
     setSol((l) =>
       l.map((x) =>
         x.id === id
@@ -897,18 +953,33 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           : x
       )
     );
+
+    if ((s as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (s as any).dbId,
+          status: 'camino',
+          deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+        });
+      } catch (err) {
+        console.warn('Error actualizando compromiso en camino en Supabase:', err);
+      }
+    }
     avisar(`En camino. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
-  const certificar = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const certificar = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const s = sol.find((x) => x.id === id);
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_ENTREGA[id]) {
         FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
       }
       const quien = (s ? quienLleva(s, equipo) : null) ?? 'Bomberos Voluntarios Usme';
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `Certificación de entrega - ${f.nombre}`,
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `Certificación de entrega - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy cert.',
       }));
@@ -932,6 +1003,19 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           : x
       )
     );
+
+    if (s && (s as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (s as any).dbId,
+          status: 'confirmada',
+          deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+          confirmationStory: notas,
+        });
+      } catch (err) {
+        console.warn('Error certificando entrega en Supabase:', err);
+      }
+    }
     if (s) avisar(s.cierre?.recibe ? 'Entrega certificada. Ya la habían confirmado' : `Entrega certificada. Le avisamos a ${s.quien}`, { tipo: 'ok' });
   };
   const archivar = (id: number) => {
@@ -945,16 +1029,19 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     setSol((l) => l.filter((x) => x.id !== id));
     if (s) avisar(`Compromiso cancelado. Le avisamos a ${s.quien}`);
   };
-  const confirmarRecibido = (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
+  const confirmarRecibido = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const r = recibidas.find((x) => x.id === id);
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
       if (!FOTOS_RECIBIDA[id]) {
         FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
       }
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `Confirmación de recibido - ${f.nombre}`,
-        quien: 'Carlos Peña, Bomberos Voluntarios Usme',
+      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+        url,
+        alt: `Confirmación de recibido - Foto ${i + 1}`,
+        quien: 'Organización receptora',
         cuando: 'Hoy conf.',
       }));
       FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
@@ -977,6 +1064,19 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           : x
       )
     );
+
+    if (r && (r as any).dbId) {
+      try {
+        await updateCommitmentStatus({
+          commitmentId: (r as any).dbId,
+          status: 'confirmada',
+          receptionPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+          confirmationStory: notas,
+        });
+      } catch (err) {
+        console.warn('Error confirmando recibido en Supabase:', err);
+      }
+    }
     if (r) avisar(`Confirmaste lo que llegó de ${r.org}`, { tipo: 'ok' });
   };
   const distribuirRecibida = (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {

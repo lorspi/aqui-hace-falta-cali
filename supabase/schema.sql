@@ -537,3 +537,34 @@ CREATE POLICY "Permitir edicion publica de miembros" ON public.organization_memb
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commitments TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.organization_members TO service_role;
+
+-- ---------------------------------------------------------------------
+-- 17. TABLA: notifications (Notificaciones y avisos del usuario en vivo)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type VARCHAR(50) DEFAULT 'solicitud',
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  sender_name TEXT,
+  action_text TEXT,
+  action_level VARCHAR(20) DEFAULT 'terciario',
+  action_url TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir lectura publica de notificaciones" ON public.notifications;
+CREATE POLICY "Permitir lectura publica de notificaciones" ON public.notifications FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Permitir insercion publica de notificaciones" ON public.notifications;
+CREATE POLICY "Permitir insercion publica de notificaciones" ON public.notifications FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Permitir edicion publica de notificaciones" ON public.notifications;
+CREATE POLICY "Permitir edicion publica de notificaciones" ON public.notifications FOR UPDATE USING (true);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.notifications TO service_role;

@@ -9,6 +9,7 @@ import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchUserAvisos, markAvisoAsRead, markAllAvisosAsRead } from '../../lib/supabaseService';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import type { Aviso } from '../../types/aviso';
 import { nombrePanel } from '../../utils/cuenta';
@@ -81,17 +82,46 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
   useEffect(() => {
     document.title = 'Avisos, RaDAR de ayuda';
-  }, []);
+
+    async function cargarAvisosReal() {
+      if (usuarioEfectivo?.id) {
+        try {
+          const dbAvisos = await fetchUserAvisos(usuarioEfectivo.id);
+          if (dbAvisos && dbAvisos.length > 0) {
+            setAvisos(dbAvisos);
+          }
+        } catch (err) {
+          console.warn('Error al cargar avisos de Supabase en AvisosPage:', err);
+        }
+      }
+    }
+    cargarAvisosReal();
+  }, [usuarioEfectivo?.id]);
 
   const sinLeer = avisos.filter((a) => !a.leido).length;
   const lista = filtro === 'nuevos' ? avisos.filter((a) => !a.leido) : avisos;
 
-  const leerTodos = () => {
+  const leerTodos = async () => {
     setAvisos((l) => l.map((a) => ({ ...a, leido: true })));
     avisar('Todos leídos', { tipo: 'ok' });
+    if (usuarioEfectivo?.id) {
+      try {
+        await markAllAvisosAsRead(usuarioEfectivo.id);
+      } catch (err) {
+        console.warn('Error marcando todos los avisos como leídos:', err);
+      }
+    }
   };
-  const accionDeAviso = (a: Aviso) => {
+
+  const accionDeAviso = async (a: Aviso) => {
     setAvisos((l) => l.map((x) => (x.id === a.id ? { ...x, leido: true } : x)));
+    if (usuarioEfectivo?.id && typeof a.id === 'string') {
+      try {
+        await markAvisoAsRead(a.id);
+      } catch (err) {
+        console.warn('Error marcando aviso como leído:', err);
+      }
+    }
     if (!a.accion) return;
     if (a.accion.al === 'confirmar') avisar(`Confirmaste lo que llegó de ${a.quien}`, { tipo: 'ok' });
     else if (a.accion.al === 'revalidar') avisar('Tu necesidad sigue arriba en el mapa', { tipo: 'ok' });

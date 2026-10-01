@@ -25,6 +25,7 @@ import { Vacio } from '../../components/ui/Vacio';
 import { AVISOS } from '../../mocks/avisosMock';
 import { CUENTA_SESION as CUENTA, RUTAS, RUTAS_SHELL } from '../../mocks/cuentasMock';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchDirectorioEntidades } from '../../lib/supabaseService';
 import { ENTIDADES, ENTIDAD_PROPIA } from '../../mocks/directorioMock';
 import { RECIBIDAS, SOLICITUDES } from '../../mocks/panelMock';
 import { UBICACION, obtenerPublicaciones } from '../../mocks/publicacionesMock';
@@ -162,12 +163,29 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     }
   }, [usuarioEfectivo]);
 
+  const [entidadesBase, setEntidadesBase] = useState<Entidad[]>(ENTIDADES);
+
+  useEffect(() => {
+    async function cargarEntidades() {
+      try {
+        const dbEntidades = await fetchDirectorioEntidades();
+        if (dbEntidades && dbEntidades.length > 0) {
+          const combinadas = [...dbEntidades, ...ENTIDADES.filter((mock) => !dbEntidades.some((d) => d.id === mock.id))];
+          setEntidadesBase(combinadas);
+        }
+      } catch (e) {
+        console.warn('Usando entidades por defecto en DirectorioPage:', e);
+      }
+    }
+    cargarEntidades();
+  }, []);
+
   /* La URL dice lo que se ve, para poder compartirlo. */
   useEffect(() => {
     escribirUrl(paramsDeDirectorio({ consulta: q, clase }));
   }, [q, clase]);
 
-  const deVista = useMemo(() => entidadesDe(clase, ENTIDADES, ENTIDAD_PROPIA), [clase]);
+  const deVista = useMemo(() => entidadesDe(clase, entidadesBase, ENTIDAD_PROPIA), [clase, entidadesBase]);
   const lista = useMemo(() => filtrar(deVista, PUBLICACIONES, q, UBICACION), [deVista, q]);
   const pestanas = PESTANAS;
   const chips = chipsDe(q);
