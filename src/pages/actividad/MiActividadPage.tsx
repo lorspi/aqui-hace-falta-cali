@@ -359,12 +359,10 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
           localStorage.removeItem('rd-necesidad-creada-gestion');
           localStorage.removeItem('rd-necesidad-creada-recursos');
           localStorage.removeItem('rd-necesidad-publicacion');
-          desactivarModulo('pide');
         } else {
           localStorage.removeItem('rd-oferta-creada-gestion');
           localStorage.removeItem('rd-oferta-creada-recursos');
           localStorage.removeItem('rd-oferta-publicacion');
-          desactivarModulo('ofrece');
         }
       } catch {}
     }

@@ -43,14 +43,11 @@ export function activarModulo(modulo: keyof ModulosCuenta): void {
   }
 }
 
-/** Desactivar el módulo al eliminar una publicación. */
-export function desactivarModulo(modulo: keyof ModulosCuenta): void {
-  try {
-    const actual = leerModulos('', localStorage.getItem(CLAVE));
-    localStorage.setItem(CLAVE, JSON.stringify({ ...actual, [modulo]: false }));
-  } catch {
-    /* sin almacenamiento */
-  }
+/** Desactivar módulo: una vez que una cuenta desbloqueó un tab mediante una acción,
+ *  el tab permanece siempre visible (camino de solo ida). Esta función se mantiene
+ *  por compatibilidad pero no revierte el estado a falso. */
+export function desactivarModulo(_modulo: keyof ModulosCuenta): void {
+  /* No-op intencional: los tabs desbloqueados no se ocultan al eliminar publicaciones */
 }
 
 /** Las pestañas: lo que se pide antes que lo que se ofrece, Seguimiento unificado para

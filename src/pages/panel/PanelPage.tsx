@@ -26,7 +26,7 @@ import type { ModulosCuenta } from '../../types/cuenta';
 import type { Foto } from '../../types/flujo';
 import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
-import { actasDe, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
+import { actasDe, activarModulo, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
 import { nombrePanel } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
@@ -768,6 +768,8 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           { data: allNeeds },
           { data: allOffers },
           userAvisosList,
+          { count: countHistorialNeeds },
+          { count: countHistorialOffers },
         ] = await Promise.all([
           supabase
             .from('needs')
@@ -784,14 +786,28 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           supabase.from('needs').select('*').neq('verification_status', 'ARCHIVED'),
           supabase.from('offers').select('*').neq('verification_status', 'ARCHIVED'),
           fetchUserAvisos(activeUser.id),
+          supabase.from('needs').select('*', { count: 'exact', head: true }).eq('user_id', activeUser.id),
+          supabase.from('offers').select('*', { count: 'exact', head: true }).eq('user_id', activeUser.id),
         ]);
 
         if (userAvisosList && userAvisosList.length > 0) {
           setAvisos(userAvisosList);
         }
 
-        if (userNeeds && userNeeds.length > 0) {
+        // Regla de permanencia: una vez que una cuenta hizo una acción (publicar necesidad/oferta,
+        // solicitar ayuda a otra org o enviar un ofrecimiento a una comunidad), el tab nunca se apaga.
+        const tieneAccionPide =
+          (userNeeds && userNeeds.length > 0) ||
+          (countHistorialNeeds !== null && (countHistorialNeeds ?? 0) > 0) ||
+          (dbCommitments && dbCommitments.some((c: any) => c.requester_user_id === activeUser.id || c.origin_type === 'DIRECT_OFFER_REQUEST')) ||
+          modulosGuardados().pide;
+
+        if (tieneAccionPide) {
           setModulos((prev) => ({ ...prev, pide: true }));
+          activarModulo('pide');
+        }
+
+        if (userNeeds && userNeeds.length > 0) {
           const latestNeed = userNeeds[0];
           const mappedNeedsRecursos: RecursoPedido[] = [];
 
@@ -855,7 +871,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             pausadaGlobal: userNeeds.every((n: any) => n.status === 'PAUSED'),
           });
         } else {
-          // Si no hay necesidades en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
+          // Si no hay necesidades activas en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
           let tieneLocal = false;
           try {
             const pubsRaw = localStorage.getItem('rd-publicaciones-creadas');
@@ -870,10 +886,8 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           } catch {}
 
           if (!tieneLocal) {
-            setModulos((prev) => ({ ...prev, pide: false }));
             setRecursosNecesidad([]);
             setPubNecesidad(defaultPubNecesidadLimpia);
-            desactivarModulo('pide');
             try {
               localStorage.removeItem('rd-necesidad-creada-recursos');
               localStorage.removeItem('rd-necesidad-creada-gestion');
@@ -882,8 +896,18 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           }
         }
 
-        if (userOffers && userOffers.length > 0) {
+        const tieneAccionOfrece =
+          (userOffers && userOffers.length > 0) ||
+          (countHistorialOffers !== null && (countHistorialOffers ?? 0) > 0) ||
+          (dbCommitments && dbCommitments.some((c: any) => c.provider_user_id === activeUser.id || (dbOrg && c.provider_organization_id === dbOrg.id) || c.origin_type === 'DIRECT_NEED_RESPONSE')) ||
+          modulosGuardados().ofrece;
+
+        if (tieneAccionOfrece) {
           setModulos((prev) => ({ ...prev, ofrece: true }));
+          activarModulo('ofrece');
+        }
+
+        if (userOffers && userOffers.length > 0) {
           const latestOffer = userOffers[0];
           const mappedOffersRecursos: RecursoOfrecido[] = [];
 
@@ -943,7 +967,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             pausadaGlobal: userOffers.every((o: any) => o.status === 'PAUSED'),
           });
         } else {
-          // Si no hay ofertas en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
+          // Si no hay ofertas activas en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
           let tieneLocal = false;
           try {
             const pubsRaw = localStorage.getItem('rd-publicaciones-creadas');
@@ -958,10 +982,8 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           } catch {}
 
           if (!tieneLocal) {
-            setModulos((prev) => ({ ...prev, ofrece: false }));
             setRecursosOferta([]);
             setPubOferta(defaultPubOfertaLimpia);
-            desactivarModulo('ofrece');
             try {
               localStorage.removeItem('rd-oferta-creada-recursos');
               localStorage.removeItem('rd-oferta-creada-gestion');
@@ -1030,7 +1052,6 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     // Recargar datos reales desde Supabase para verificar si aún quedan publicaciones activas
     await loadRealData();
 
-    cambiarTab('resumen');
     avisar(tipo === 'oferta' ? 'Publicación de oferta eliminada' : 'Publicación de necesidad eliminada', { tipo: 'ok' });
     setGestionandoPublicacion(null);
   };
@@ -3240,7 +3261,19 @@ const MisNecesidades: React.FC<{
   return (
     <>
       <Caja titulo="Mis necesidades" plana>
-        <Tabla
+        {recursos.length === 0 ? (
+          <Vacio
+            icono={<Hand className="h-6 w-6 text-rd-ink-2" />}
+            titulo="Sin necesidades publicadas en este momento"
+            texto="Publica lo que tu comunidad u organización necesita recibir para que la ayuda llegue a través del mapa."
+            accion={
+              <Button nivel="primario" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
+                Publicar necesidad
+              </Button>
+            }
+          />
+        ) : (
+          <Tabla
           etiqueta="Mis necesidades"
           filas={recursos}
           clave={(r) => r.n}
@@ -3340,6 +3373,7 @@ const MisNecesidades: React.FC<{
             },
           ]}
         />
+        )}
       </Caja>
 
       <Caja
@@ -3907,7 +3941,19 @@ const MisOfertas: React.FC<{
   return (
     <>
       <Caja titulo="Mis ofertas" plana>
-        <Tabla
+        {recursos.length === 0 ? (
+          <Vacio
+            icono={<HeartHandshake className="h-6 w-6 text-rd-ink-2" />}
+            titulo="Sin ofertas de ayuda publicadas en este momento"
+            texto="Registra los recursos, víveres o servicios que tienes disponibles para brindar a la comunidad a través del mapa."
+            accion={
+              <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
+                Publicar oferta
+              </Button>
+            }
+          />
+        ) : (
+          <Tabla
           etiqueta="Mis ofertas"
           filas={recursos}
           clave={(r) => r.n}
@@ -4017,6 +4063,7 @@ const MisOfertas: React.FC<{
             },
           ]}
         />
+        )}
       </Caja>
 
       <Caja

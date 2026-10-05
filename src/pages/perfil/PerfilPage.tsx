@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Clock, Hand, HeartHandshake, Monitor, Smartphone, ShieldCheck, User, Building, Users } from 'lucide-react';
+import { BadgeCheck, Clock, Hand, HeartHandshake, Monitor, Smartphone, ShieldCheck, User, Building, Users, Sparkles } from 'lucide-react';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { Button } from '../../components/ui/Button';
 import { Caja, FilaDato } from '../../components/ui/Caja';
@@ -541,26 +541,49 @@ const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: 
 
 const Notificaciones: React.FC<{ canales: CanalAviso[]; onCambiar: (id: string, k: 'wa' | 'correo', v: boolean) => void }> = ({ canales, onCambiar }) => (
   <Caja titulo="Canales de notificación">
-    <p className="m-0 mb-3 text-rd-12-5 text-rd-ink-2">En RaDAR se muestran siempre. Elige por cuál medio deseas recibirlas además.</p>
-    <div className="hidden grid-cols-12 gap-3 border-b border-rd-line pb-2 text-rd-13 font-semibold text-rd-ink sm:grid">
-      <span className="col-span-8">Aviso</span>
-      <span className="col-span-2 text-center">WhatsApp</span>
-      <span className="col-span-2 text-center">Correo</span>
-    </div>
-    {canales.map((c) => (
-      <div key={c.id} className="grid grid-cols-2 items-center gap-x-3 gap-y-2 border-b border-rd-line-soft py-3 last:border-b-0 last:pb-0 sm:grid-cols-12">
-        <div className="col-span-2 min-w-0 sm:col-span-8">
-          <b className="block text-rd-13-5 font-semibold text-rd-ink">{c.titulo}</b>
-          <span className="text-rd-12-5 text-rd-ink-2">{c.detalle}</span>
+    <div className="relative">
+      {/* Contenido base de la tabla: atenuado y no interactivo mientras se implementa la pasarela */}
+      <div aria-hidden="true" className="pointer-events-none select-none opacity-40 blur-xs transition-opacity">
+        <p className="m-0 mb-3 text-rd-12-5 text-rd-ink-2">En RaDAR se muestran siempre. Elige por cuál medio deseas recibirlas además.</p>
+        <div className="hidden grid-cols-12 gap-3 border-b border-rd-line pb-2 text-rd-13 font-semibold text-rd-ink sm:grid">
+          <span className="col-span-8">Aviso</span>
+          <span className="col-span-2 text-center">WhatsApp</span>
+          <span className="col-span-2 text-center">Correo</span>
         </div>
-        {(['wa', 'correo'] as const).map((k) => (
-          <label key={k} className="flex cursor-pointer items-center gap-2 text-rd-12-5 text-rd-ink-2 sm:col-span-2 sm:justify-center">
-            <Switch encendido={c[k]} onCambiar={(v) => onCambiar(c.id, k, v)} etiqueta={`${k === 'wa' ? 'WhatsApp' : 'Correo'}: ${c.titulo}`} />
-            <span className="sm:hidden">{k === 'wa' ? 'WhatsApp' : 'Correo'}</span>
-          </label>
+        {canales.map((c) => (
+          <div key={c.id} className="grid grid-cols-2 items-center gap-x-3 gap-y-2 border-b border-rd-line-soft py-3 last:border-b-0 last:pb-0 sm:grid-cols-12">
+            <div className="col-span-2 min-w-0 sm:col-span-8">
+              <b className="block text-rd-13-5 font-semibold text-rd-ink">{c.titulo}</b>
+              <span className="text-rd-12-5 text-rd-ink-2">{c.detalle}</span>
+            </div>
+            {(['wa', 'correo'] as const).map((k) => (
+              <label key={k} className="flex cursor-pointer items-center gap-2 text-rd-12-5 text-rd-ink-2 sm:col-span-2 sm:justify-center">
+                <Switch encendido={c[k]} onCambiar={(v) => onCambiar(c.id, k, v)} etiqueta={`${k === 'wa' ? 'WhatsApp' : 'Correo'}: ${c.titulo}`} />
+                <span className="sm:hidden">{k === 'wa' ? 'WhatsApp' : 'Correo'}</span>
+              </label>
+            ))}
+          </div>
         ))}
       </div>
-    ))}
+
+      {/* Overlay translúcido con estilo glassmorphism y tarjeta central */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center p-3 sm:p-6">
+        <div className="w-full max-w-md rounded-rd-lg border border-rd-navy-line/70 bg-rd-surface/90 p-5 text-center shadow-lg backdrop-blur-md max-sm:p-4">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-rd-navy-soft text-rd-navy">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <span className="inline-flex items-center gap-1.25 rounded-full border border-rd-navy-line bg-rd-navy-soft px-2.5 py-0.5 text-rd-11-5 font-semibold text-rd-navy">
+            ✨ Próximamente
+          </span>
+          <h3 className="mt-2.5 mb-1.5 text-rd-15 font-semibold text-rd-ink">
+            Integración con WhatsApp y Correo en desarrollo
+          </h3>
+          <p className="m-0 text-rd-12-5 leading-relaxed text-rd-ink-2">
+            Estamos trabajando en la conexión directa para que las alertas te lleguen a tu celular y correo. Mientras tanto, todas las notificaciones se muestran en tiempo real en la campana del RaDAR.
+          </p>
+        </div>
+      </div>
+    </div>
   </Caja>
 );
 
