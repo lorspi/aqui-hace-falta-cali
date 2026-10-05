@@ -184,6 +184,19 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
             mismoWa: true,
           });
 
+          if (profile?.notification_channels) {
+            if (typeof profile.notification_channels === 'object') {
+              const nc = profile.notification_channels;
+              setCanales((prev) =>
+                prev.map((c) => ({
+                  ...c,
+                  wa: nc.whatsapp !== undefined ? Boolean(nc.whatsapp) : c.wa,
+                  correo: nc.email !== undefined ? Boolean(nc.email) : c.correo,
+                }))
+              );
+            }
+          }
+
           if (org) {
             setHasOrg(true);
             setOrgData({
@@ -256,6 +269,14 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
     const actualizados = canales.map((x) => (x.id === id ? nuevo : x));
     setCanales(actualizados);
     localStorage.setItem('ahf_user_notification_channels', JSON.stringify(actualizados));
+    if (dbUserId) {
+      const channelObj = {
+        whatsapp: actualizados.some((x) => x.wa),
+        email: actualizados.some((x) => x.correo),
+        sms: false,
+      };
+      updateUserProfile(dbUserId, { notificationChannels: channelObj } as any).catch(console.error);
+    }
     avisar('Preferencia de notificación guardada', { tipo: 'ok' });
   };
 

@@ -1063,6 +1063,7 @@ export async function updateUserProfile(userId: string, updates: {
   if (updates.communityType !== undefined) rowUpdates.community_type = updates.communityType;
   if (updates.profileType !== undefined) rowUpdates.profile_type = updates.profileType;
   if (updates.role !== undefined) rowUpdates.role = updates.role;
+  if ((updates as any).notificationChannels !== undefined) rowUpdates.notification_channels = (updates as any).notificationChannels;
 
   const { data, error } = await supabase
     .from('profiles')
@@ -1900,23 +1901,12 @@ export async function addOrganizationMember(payload: {
     }
   }
 
-  // Si no hay targetUserId en la BD (ej. colaborador de campo sin cuenta registrada aún),
-  // devolvemos un registro local sintético para que la UI y el almacenamiento local lo conserven
-  if (!targetUserId) {
-    return {
-      id: `local-mem-${Date.now()}`,
-      organization_id: payload.organizationId,
-      member_title: payload.memberTitle || 'Operativo',
-      role_in_org: payload.roleInOrg || 'operativo',
-      status: 'ACTIVO',
-      created_at: new Date().toISOString(),
-      is_local: true,
-    };
-  }
-
   const row: any = {
     organization_id: payload.organizationId,
-    user_id: targetUserId,
+    user_id: targetUserId || null,
+    name: payload.name || null,
+    phone: payload.phone || null,
+    email: payload.email || null,
     member_title: payload.memberTitle || 'Operativo',
     role_in_org: payload.roleInOrg || 'operativo',
     status: 'ACTIVO',
@@ -1934,6 +1924,10 @@ export async function addOrganizationMember(payload: {
     return {
       id: `local-mem-${Date.now()}`,
       organization_id: payload.organizationId,
+      user_id: targetUserId || null,
+      name: payload.name || null,
+      phone: payload.phone || null,
+      email: payload.email || null,
       member_title: payload.memberTitle || 'Operativo',
       role_in_org: payload.roleInOrg || 'operativo',
       status: 'ACTIVO',
@@ -2002,6 +1996,9 @@ export async function createCommitment(payload: {
   assignedVolunteerName?: string;
   assignedVolunteerPhone?: string;
   status?: string;
+  medioEnvio?: string;
+  empresaTransporte?: string;
+  numeroGuia?: string;
 }): Promise<any> {
   const row = {
     need_id: payload.needId || null,
@@ -2016,6 +2013,9 @@ export async function createCommitment(payload: {
     status: payload.status || 'nueva',
     assigned_volunteer_name: payload.assignedVolunteerName || null,
     assigned_volunteer_phone: payload.assignedVolunteerPhone || null,
+    medio_envio: payload.medioEnvio || 'directa',
+    empresa_transporte: payload.empresaTransporte || null,
+    numero_guia: payload.numeroGuia || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -2039,6 +2039,12 @@ export async function updateCommitmentStatus(params: {
   receptionPhotos?: string[];
   assignedVolunteerName?: string;
   assignedVolunteerPhone?: string;
+  medioEnvio?: string;
+  empresaTransporte?: string;
+  numeroGuia?: string;
+  notasCamino?: string;
+  notasEntrega?: string;
+  personasBeneficiadas?: number;
 }): Promise<any> {
   const updates: any = {
     status: params.status,
@@ -2050,6 +2056,18 @@ export async function updateCommitmentStatus(params: {
   if (params.receptionPhotos !== undefined) updates.reception_photos = params.receptionPhotos;
   if (params.assignedVolunteerName !== undefined) updates.assigned_volunteer_name = params.assignedVolunteerName;
   if (params.assignedVolunteerPhone !== undefined) updates.assigned_volunteer_phone = params.assignedVolunteerPhone;
+  if (params.medioEnvio !== undefined) updates.medio_envio = params.medioEnvio;
+  if (params.empresaTransporte !== undefined) updates.empresa_transporte = params.empresaTransporte;
+  if (params.numeroGuia !== undefined) updates.numero_guia = params.numeroGuia;
+  if (params.notasCamino !== undefined) {
+    updates.notas_camino = params.notasCamino;
+    updates.notes_camino = params.notasCamino;
+  }
+  if (params.notasEntrega !== undefined) {
+    updates.notas_entrega = params.notasEntrega;
+    updates.notes_entrega = params.notasEntrega;
+  }
+  if (params.personasBeneficiadas !== undefined) updates.personas_beneficiadas = params.personasBeneficiadas;
 
   const { data, error } = await supabase
     .from('commitments')

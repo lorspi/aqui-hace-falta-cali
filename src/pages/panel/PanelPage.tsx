@@ -645,12 +645,12 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
               id: idx + 100,
               dbId: m.id,
-              n: m.profiles?.full_name || 'Miembro de equipo',
+              n: m.profiles?.full_name || m.name || 'Miembro de equipo',
               rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
               rol: m.member_title || m.role_in_org || 'Operativo',
               veh: '',
-              tel: m.profiles?.phone || '',
-              correo: m.profiles?.email || '',
+              tel: m.profiles?.phone || m.phone || '',
+              correo: m.profiles?.email || m.email || '',
               disp: '',
               hechas: 0,
             }));
@@ -1381,6 +1381,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           commitmentId: (s as any).dbId,
           status: 'camino',
           deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
+          medioEnvio: medioFinal,
+          empresaTransporte: empresaTransporte || (s as any).empresaTransporte,
+          notasCamino: notas,
         });
       } catch (err) {
         console.warn('Error actualizando compromiso en camino en Supabase:', err);
@@ -1455,6 +1458,8 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           status: 'confirmada',
           deliveryPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
           confirmationStory: notas,
+          notasEntrega: notas,
+          personasBeneficiadas: (s as any).personasBeneficiadas || (s as any).cierre?.personasBeneficiadas,
         });
       } catch (err) {
         console.warn('Error certificando entrega en Supabase:', err);
@@ -1591,6 +1596,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           commitmentId: (r as any).dbId,
           status: 'distribuida',
           confirmationStory: nota,
+          personasBeneficiadas: personasBeneficiadas,
         });
       } catch (e) {
         console.warn('Error al actualizar distribución en Supabase:', e);
