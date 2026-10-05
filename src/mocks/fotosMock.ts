@@ -31,7 +31,7 @@ export interface FotosEntrega {
 }
 
 /** Por id de solicitud (lo que YO entrego). Las cuentas coinciden con `cierre` en `panelMock`. */
-export const FOTOS_ENTREGA: Record<number, FotosEntrega> = {
+export const FOTOS_ENTREGA: Record<string | number, FotosEntrega> = {
   1: {
     entrega: [
       { url: `${RUTA}brigadistas-camion.jpg`, alt: 'El carrotanque llegando al albergue', quien: 'Andrés Peña, Bomberos Voluntarios Usme', cuando: '12 sep, 9:35 a. m.' },
@@ -56,23 +56,196 @@ export const FOTOS_ENTREGA: Record<number, FotosEntrega> = {
 };
 
 /** Por id de entrega recibida (lo que ME entregan). Aquí «entrega» es la otra organización. */
-export const FOTOS_RECIBIDA: Record<number, FotosEntrega> = {
+export const FOTOS_RECIBIDA: Record<string | number, FotosEntrega> = {
   102: {
     entrega: [{ url: `${RUTA}voluntarios-accion.jpg`, alt: 'Cajas de respiradores en el vehículo de la alcaldía', quien: 'Alcaldía local de Usme', cuando: '11 sep, 9:50 a. m.' }],
     recibe: [{ url: `${RUTA}brigadistas-camion.jpg`, alt: 'Los respiradores ya en la estación', quien: 'Carlos Peña, Bomberos Voluntarios Usme', cuando: '11 sep, 10:00 a. m.' }],
   },
 };
 
+const STORAGE_KEY_ENTREGA = 'rd-fotos-entrega';
+const STORAGE_KEY_RECIBIDA = 'rd-fotos-recibida';
+
+/**
+ * Carga fotos persistidas en localStorage y las integra a los almacenes en memoria
+ */
+function cargarFotosPersistidas() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const rawE = localStorage.getItem(STORAGE_KEY_ENTREGA);
+    if (rawE) {
+      const parsed = JSON.parse(rawE);
+      Object.assign(FOTOS_ENTREGA, parsed);
+    }
+  } catch {}
+  try {
+    const rawR = localStorage.getItem(STORAGE_KEY_RECIBIDA);
+    if (rawR) {
+      const parsed = JSON.parse(rawR);
+      Object.assign(FOTOS_RECIBIDA, parsed);
+    }
+  } catch {}
+}
+
+// Carga automática inicial
+cargarFotosPersistidas();
+
+export function persistirFotosEntrega(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY_ENTREGA, JSON.stringify(FOTOS_ENTREGA));
+  } catch (err) {
+    console.warn('Error guardando fotos de entrega en localStorage:', err);
+  }
+}
+
+export function persistirFotosRecibida(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY_RECIBIDA, JSON.stringify(FOTOS_RECIBIDA));
+  } catch (err) {
+    console.warn('Error guardando fotos de recibida en localStorage:', err);
+  }
+}
+
+/**
+ * Registra fotos de entrega asociándolas al id numérico y opcionalmente a su dbId UUID
+ */
+export function agregarFotosEntrega(
+  id: number | string,
+  fotos: FotoPublicada[],
+  lado: 'entrega' | 'recibe' = 'entrega',
+  dbId?: string
+): void {
+  if (!fotos || fotos.length === 0) return;
+  const ids = [String(id)];
+  if (dbId && String(dbId) !== String(id)) ids.push(String(dbId));
+
+  for (const clave of ids) {
+    if (!FOTOS_ENTREGA[clave]) {
+      FOTOS_ENTREGA[clave] = { entrega: [], recibe: [] };
+    }
+    const actuales = FOTOS_ENTREGA[clave][lado] || [];
+    const urlsExistentes = new Set(actuales.map((f) => f.url));
+    const nuevas = fotos.filter((f) => f.url && !urlsExistentes.has(f.url));
+    if (nuevas.length > 0) {
+      FOTOS_ENTREGA[clave][lado] = [...nuevas, ...actuales];
+    }
+  }
+
+  persistirFotosEntrega();
+}
+
+/**
+ * Registra fotos de recibida asociándolas al id numérico y opcionalmente a su dbId UUID
+ */
+export function agregarFotosRecibida(
+  id: number | string,
+  fotos: FotoPublicada[],
+  lado: 'entrega' | 'recibe' = 'recibe',
+  dbId?: string
+): void {
+  if (!fotos || fotos.length === 0) return;
+  const ids = [String(id)];
+  if (dbId && String(dbId) !== String(id)) ids.push(String(dbId));
+
+  for (const clave of ids) {
+    if (!FOTOS_RECIBIDA[clave]) {
+      FOTOS_RECIBIDA[clave] = { entrega: [], recibe: [] };
+    }
+    const actuales = FOTOS_RECIBIDA[clave][lado] || [];
+    const urlsExistentes = new Set(actuales.map((f) => f.url));
+    const nuevas = fotos.filter((f) => f.url && !urlsExistentes.has(f.url));
+    if (nuevas.length > 0) {
+      FOTOS_RECIBIDA[clave][lado] = [...nuevas, ...actuales];
+    }
+  }
+
+  persistirFotosRecibida();
+}
+
+/**
+ * Hidrata el almacén de fotos con los registros persistidos en Supabase `commitments`
+ */
+export function hidratarFotosDesdeCommitments(commitments: any[]): void {
+  if (!Array.isArray(commitments) || commitments.length === 0) return;
+
+  for (const c of commitments) {
+    if (!c) continue;
+    const numericId =
+      typeof c.id === 'number'
+        ? c.id
+        : Math.abs(String(c.id).split('').reduce((acc: number, char: string) => (acc << 5) - acc + char.charCodeAt(0), 0));
+    const uuid = String(c.id);
+
+    const quienEntrego = c.provider_org_name || c.provider_name || 'Organización donante';
+    const quienRecibio = c.requester_name || c.target_community || 'Comunidad atendida';
+    const cuandoTxt = c.updated_at
+      ? new Date(c.updated_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+      : 'Certificada';
+
+    // 1. Fotos de entrega
+    if (Array.isArray(c.delivery_photos) && c.delivery_photos.length > 0) {
+      const valid = c.delivery_photos.filter((u: any) => typeof u === 'string' && u && !u.startsWith('blob:'));
+      if (valid.length > 0) {
+        const fotosPublicadas: FotoPublicada[] = valid.map((url: string, i: number) => ({
+          url,
+          alt: `Soporte de entrega - Registro ${i + 1}`,
+          quien: quienEntrego,
+          cuando: cuandoTxt,
+        }));
+        agregarFotosEntrega(numericId, fotosPublicadas, 'entrega', uuid);
+        agregarFotosRecibida(numericId, fotosPublicadas, 'entrega', uuid);
+      }
+    }
+
+    // 2. Fotos de recepción
+    if (Array.isArray(c.reception_photos) && c.reception_photos.length > 0) {
+      const valid = c.reception_photos.filter((u: any) => typeof u === 'string' && u && !u.startsWith('blob:'));
+      if (valid.length > 0) {
+        const fotosPublicadas: FotoPublicada[] = valid.map((url: string, i: number) => ({
+          url,
+          alt: `Constancia de recibido - Registro ${i + 1}`,
+          quien: quienRecibio,
+          cuando: cuandoTxt,
+        }));
+        agregarFotosRecibida(numericId, fotosPublicadas, 'recibe', uuid);
+        agregarFotosEntrega(numericId, fotosPublicadas, 'recibe', uuid);
+      }
+    }
+  }
+}
+
 export function fotosDePublicacion(id: string): FotoPublicada[] {
   return FOTOS_PUBLICACION[id] ?? [];
 }
 
-export function fotosDeEntrega(id: number): FotosEntrega {
-  return FOTOS_ENTREGA[id] ?? { entrega: [], recibe: [] };
+export function fotosDeEntrega(id: number | string, dbId?: string): FotosEntrega {
+  const fId = FOTOS_ENTREGA[String(id)] || FOTOS_ENTREGA[id as any];
+  if (fId && (fId.entrega.length > 0 || fId.recibe.length > 0)) {
+    return fId;
+  }
+  if (dbId) {
+    const fDb = FOTOS_ENTREGA[String(dbId)] || FOTOS_ENTREGA[dbId as any];
+    if (fDb && (fDb.entrega.length > 0 || fDb.recibe.length > 0)) {
+      return fDb;
+    }
+  }
+  return fId ?? { entrega: [], recibe: [] };
 }
 
-export function fotosDeRecibida(id: number): FotosEntrega {
-  return FOTOS_RECIBIDA[id] ?? { entrega: [], recibe: [] };
+export function fotosDeRecibida(id: number | string, dbId?: string): FotosEntrega {
+  const fId = FOTOS_RECIBIDA[String(id)] || FOTOS_RECIBIDA[id as any];
+  if (fId && (fId.entrega.length > 0 || fId.recibe.length > 0)) {
+    return fId;
+  }
+  if (dbId) {
+    const fDb = FOTOS_RECIBIDA[String(dbId)] || FOTOS_RECIBIDA[dbId as any];
+    if (fDb && (fDb.entrega.length > 0 || fDb.recibe.length > 0)) {
+      return fDb;
+    }
+  }
+  return fId ?? { entrega: [], recibe: [] };
 }
 
 /** Cuántas fotos tiene una entrega, sumando los dos lados. */

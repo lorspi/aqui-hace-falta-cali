@@ -1961,21 +1961,31 @@ export async function removeOrganizationMember(memberId: string): Promise<void> 
  * Obtiene las entregas y compromisos de una organización (provider o requester)
  */
 export async function fetchOrgCommitments(orgId?: string, userId?: string): Promise<any[]> {
-  let query = supabase.from('commitments').select('*');
+  const buildQuery = (selectCols: string) => {
+    let q = supabase.from('commitments').select(selectCols);
+    if (orgId && userId) {
+      q = q.or(`provider_organization_id.eq.${orgId},provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
+    } else if (orgId) {
+      q = q.eq('provider_organization_id', orgId);
+    } else if (userId) {
+      q = q.or(`provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
+    }
+    return q.order('created_at', { ascending: false });
+  };
 
-  if (orgId && userId) {
-    query = query.or(`provider_organization_id.eq.${orgId},provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
-  } else if (orgId) {
-    query = query.eq('provider_organization_id', orgId);
-  } else if (userId) {
-    query = query.or(`provider_user_id.eq.${userId},requester_user_id.eq.${userId}`);
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
+  const { data, error } = await buildQuery(`
+    *,
+    needs ( id, title, organization_name, contact_name, contact_phone, contact_whatsapp, neighborhood, address ),
+    offers ( id, title, organization_name, contact_name, contact_phone, contact_whatsapp, neighborhood, address )
+  `);
 
   if (error) {
-    console.error('Error fetching commitments:', error);
-    return [];
+    const { data: fallback, error: fallbackError } = await buildQuery('*');
+    if (fallbackError) {
+      console.error('Error fetching commitments:', fallbackError);
+      return [];
+    }
+    return fallback || [];
   }
   return data || [];
 }

@@ -10,6 +10,7 @@ import { ROTULO_GRUPO } from '../../components/ui/tipografia';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
+import { registrarCompromisoPublicacion } from '../../utils/compromisoHandler';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
 import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { CajaDatos } from '../../components/ui/CajaDatos';
@@ -253,6 +254,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   const enviarCompromiso = (p: Publicacion, c: Compromiso) => {
     setCompromiso(null);
     avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+    registrarCompromisoPublicacion(p, c, usuarioEfectivo || getStoredAuthUser()).catch(console.warn);
   };
 
   /* --- la campana --- */

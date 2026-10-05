@@ -1,5 +1,6 @@
 import type { Need, Offer, HelpCategory } from '../types';
 import type { Publicacion, Recurso } from '../types/publicacion';
+import type { SolicitudEnviada, OfrecimientoEnviado, EstadoSolicitudEnviada, EstadoOfrecimientoEnviado } from '../types/panel';
 import { CATEGORY_LABELS } from './formatters';
 
 /**
@@ -222,6 +223,81 @@ export function commitmentToEntregaRecibida(c: any): any {
     },
     cerradaEl: c.status === 'confirmada' || c.status === 'archivada' || c.status === 'distribuida' ? (c.updated_at ? c.updated_at.split('T')[0] : undefined) : undefined,
     rawCommitment: c,
+  };
+}
+
+/**
+ * Convierte un row de Supabase `commitments` a `SolicitudEnviada` para el Panel
+ */
+export function commitmentToSolicitudEnviada(c: any): SolicitudEnviada {
+  const numericId =
+    typeof c.id === 'number'
+      ? c.id
+      : Math.abs(String(c.id).split('').reduce((acc: number, char: string) => (acc << 5) - acc + char.charCodeAt(0), 0));
+
+  let estado: EstadoSolicitudEnviada = 'en_revision';
+  if (['aceptada', 'camino', 'entregada', 'confirmada', 'distribuida'].includes(c.status)) {
+    estado = 'aceptada';
+  } else if (['rechazada', 'declinada'].includes(c.status)) {
+    estado = 'declinada';
+  } else if (c.status === 'cancelada') {
+    estado = 'cancelada';
+  }
+
+  const donanteNombre = c.offers?.organization_name || c.offers?.title || c.provider_org_name || 'Organización donante';
+  const donanteTel = c.offers?.contact_phone || c.provider_phone;
+  const donanteWa = c.offers?.contact_whatsapp !== undefined ? Boolean(c.offers.contact_whatsapp) : Boolean(c.provider_wa);
+
+  return {
+    id: numericId,
+    dbId: String(c.id),
+    publicacionId: c.offer_id || undefined,
+    donante: donanteNombre,
+    donanteTipo: 'Organización',
+    rec: c.resource_name || 'Ayuda',
+    cant: c.quantity || 1,
+    u: c.unit || 'unidades',
+    cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
+    estado,
+    contacto: donanteTel ? { tel: donanteTel, wa: donanteWa } : undefined,
+  };
+}
+
+/**
+ * Convierte un row de Supabase `commitments` a `OfrecimientoEnviado` para el Panel
+ */
+export function commitmentToOfrecimientoEnviado(c: any): OfrecimientoEnviado {
+  const numericId =
+    typeof c.id === 'number'
+      ? c.id
+      : Math.abs(String(c.id).split('').reduce((acc: number, char: string) => (acc << 5) - acc + char.charCodeAt(0), 0));
+
+  let estado: EstadoOfrecimientoEnviado = 'pendiente';
+  if (['aceptada', 'aceptado', 'camino', 'entregada', 'confirmada', 'distribuida'].includes(c.status)) {
+    estado = 'aceptado';
+  } else if (['rechazada', 'rechazado', 'declinada', 'declinado'].includes(c.status)) {
+    estado = 'declinado';
+  } else if (c.status === 'cancelada' || c.status === 'cancelado') {
+    estado = 'cancelado';
+  }
+
+  const comunidadNombre = c.needs?.organization_name || c.needs?.contact_name || c.needs?.title || c.target_community || 'Comunidad atendida';
+  const comunidadLugar = c.needs?.neighborhood || c.needs?.address || c.neighborhood;
+  const comunidadTel = c.needs?.contact_phone;
+  const comunidadWa = c.needs?.contact_whatsapp !== undefined ? Boolean(c.needs.contact_whatsapp) : false;
+
+  return {
+    id: numericId,
+    dbId: String(c.id),
+    necesidadId: c.need_id || undefined,
+    comunidad: comunidadNombre,
+    lugar: comunidadLugar,
+    rec: c.resource_name || 'Ayuda',
+    cant: c.quantity || 1,
+    u: c.unit || 'unidades',
+    cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
+    estado,
+    contacto: comunidadTel ? { nombre: comunidadNombre, tel: comunidadTel, wa: comunidadWa } : undefined,
   };
 }
 

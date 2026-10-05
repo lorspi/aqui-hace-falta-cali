@@ -280,7 +280,7 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
           notasRecibe: nr,
           medioEnvio: s.medioEnvio || s.cierre?.medioEnvio,
           empresaTransporte: s.empresaTransporte || s.cierre?.empresaTransporte,
-          origen: { tipo: 'solicitud', id: s.id },
+          origen: { tipo: 'solicitud', id: s.id, dbId: s.dbId },
         });
       });
   }
@@ -309,7 +309,7 @@ export function actasDe(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: Entr
           notasRecibe: nr,
           medioEnvio: r.medioEnvio || r.cierre?.medioEnvio,
           empresaTransporte: r.empresaTransporte || r.cierre?.empresaTransporte,
-          origen: { tipo: 'recibida', id: r.id },
+          origen: { tipo: 'recibida', id: r.id, dbId: (r as any).dbId },
         });
       });
   }

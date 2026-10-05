@@ -7,6 +7,7 @@ import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
 import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
+import { registrarCompromisoPublicacion } from '../../utils/compromisoHandler';
 import { DialogoReporte } from '../../components/ui/DialogoReporte';
 import { Avatar, EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { Donde } from '../../components/ui/Donde';
@@ -491,6 +492,7 @@ const Radar: React.FC<RadarProps> = ({
     setCompromiso(null);
     setEnProceso((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
     avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+    registrarCompromisoPublicacion(p, c, usuarioEfectivo || getStoredAuthUser()).catch(console.warn);
   };
   const compartir = (id: string) => {
     const url = enlaceDe(id);

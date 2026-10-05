@@ -148,6 +148,7 @@ export type EstadoSolicitudEnviada = 'en_revision' | 'aceptada' | 'declinada' | 
 /** Una solicitud directa que la comunidad u organización hizo sobre la oferta de un tercero. */
 export interface SolicitudEnviada {
   id: number | string;
+  dbId?: string;
   publicacionId?: string;
   donante: string;
   donanteTipo?: string;
@@ -169,6 +170,7 @@ export type EstadoOfrecimientoEnviado = 'pendiente' | 'aceptado' | 'declinado' |
 /** Un ofrecimiento directo de ayuda que la organización envió a una necesidad comunitaria en el Radar. */
 export interface OfrecimientoEnviado {
   id: number | string;
+  dbId?: string;
   necesidadId?: string;
   comunidad: string;
   lugar?: string;
@@ -347,7 +349,7 @@ export interface Acta {
   medioEnvio?: 'directa' | 'transportadora';
   empresaTransporte?: string;
   /** La entrega de la que sale, para abrir sus fotos. */
-  origen: { tipo: 'solicitud' | 'recibida'; id: number };
+  origen: { tipo: 'solicitud' | 'recibida'; id: number | string; dbId?: string };
 }
 
 /**

@@ -11,6 +11,8 @@ import { useAviso } from '../../components/ui/AvisoCorto';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
 import { needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
+import { registrarCompromisoPublicacion } from '../../utils/compromisoHandler';
+import { getStoredAuthUser } from '../../utils/session';
 import type { Publicacion } from '../../types/publicacion';
 import { coincidenciasDe } from '../../utils/cruce';
 import { pingSugerencia } from '../../utils/sonido';
@@ -850,6 +852,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
         setCompromiso(null);
         setHechas((h) => [...h, p.id]);
         avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+        registrarCompromisoPublicacion(p, c, getStoredAuthUser()).catch(console.warn);
       }}
     />
   );
@@ -1014,6 +1017,7 @@ export const Coincidencias: React.FC<{ publicacion: Publicacion }> = ({ publicac
           const n = `${cant} ${cant === 1 ? 'recurso' : 'recursos'}`;
           const cuandoTxt = c.cuando ? ` · ${c.cuando.toLowerCase()}` : '';
           avisar(p.tipo === 'necesidad' ? `${t('commitmentSentTo')} ${p.org} · ${n}${cuandoTxt}` : `${t('requestSentTo')} ${p.org} · ${n}`, { tipo: 'ok' });
+          registrarCompromisoPublicacion(p, c, getStoredAuthUser()).catch(console.warn);
         }}
       />
     </section>

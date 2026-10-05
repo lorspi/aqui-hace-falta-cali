@@ -146,6 +146,10 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `publicaciones` — cuentas de RaDAR (lógica pura): `movido`, `restante`, `porcentaje`, `resumen`, `estadoRecurso`, `estadoPublicacion`, `distanciaKm`, `distanciaTexto`, `cifra`, `unidad`, `iniciales`, `tituloPublicacion`, `actorPublicacion`. Pruebas en `tests/unit/publicaciones-titulo.test.ts`.
 - `session` — utilidades de sesión sincrónica en cliente (`getStoredAuthUser`, `saveStoredAuthUser`, `isUserLoggedIn`, `clearStoredAuthUser`).
 - `pendingAction` — persistencia de acciones pendientes para usuarios no autenticados (`guardarAccionPendiente`, `obtenerAccionPendiente`, `limpiarAccionPendiente`, `hayAccionPendiente`).
+- `compromisoHandler` — persistencia unificada de solicitudes y compromisos de ayuda (`registrarCompromisoPublicacion`): guarda inmediatamente en `localStorage` (`rd-solicitudes-enviadas` o `rd-ofrecimientos-enviados`), sincroniza con `commitments` de Supabase si hay sesión y activa módulos del panel.
+- `supabaseMappers` — mappers de entidades Supabase a tipos del frontend (`commitmentToSolicitud`, `commitmentToEntregaRecibida`, `commitmentToSolicitudEnviada`, `commitmentToOfrecimientoEnviado`, `needToPublicacion`, `offerToPublicacion`).
+- `storageUpload` — subida y procesamiento de fotos de evidencia (`uploadEvidencePhotos`, `compressBlobToDataUrl`): intenta subida a bucket `evidence` de Supabase Storage con fallback automático y garantizado a DataURL JPEG comprimido (máx 1200px) para evitar pérdida o URLs blob efímeras al dar refresh.
+- `fotosMock` — almacén de fotos y soporte visual (`FOTOS_ENTREGA`, `FOTOS_RECIBIDA`, `fotosDeEntrega`, `fotosDeRecibida`, `agregarFotosEntrega`, `agregarFotosRecibida`, `hidratarFotosDesdeCommitments`, `cuentaFotos`, `listaFotos`): persistencia en `localStorage` (`rd-fotos-entrega`, `rd-fotos-recibida`), indexación dual por ID numérico y UUID (`dbId`) de Supabase, e hidratación desde `commitments`.
 
 ## Internacionalización (`src/i18n/`)
 

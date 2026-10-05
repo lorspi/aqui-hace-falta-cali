@@ -5,7 +5,7 @@ import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
 import { TiraFotos, VisorFotos, type GrupoFotos } from '../../components/ui/VisorFotos';
-import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos, FOTOS_ENTREGA, FOTOS_RECIBIDA } from '../../mocks/fotosMock';
+import { cuentaFotos, fotosDeEntrega, fotosDeRecibida, listaFotos, FOTOS_ENTREGA, FOTOS_RECIBIDA, agregarFotosEntrega, agregarFotosRecibida, hidratarFotosDesdeCommitments } from '../../mocks/fotosMock';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { CampanaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
@@ -37,7 +37,7 @@ import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from 
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
-import { commitmentToSolicitud, commitmentToEntregaRecibida, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
+import { commitmentToSolicitud, commitmentToEntregaRecibida, commitmentToSolicitudEnviada, commitmentToOfrecimientoEnviado, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 import { useTranslation } from '../../i18n/LanguageContext';
@@ -599,6 +599,20 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     } catch {}
   }, [equipo]);
 
+  useEffect(() => {
+    try {
+      const clean = solicitudesEnviadas.filter((s: any) => s.id !== 'sol-env-1' && s.id !== 'sol-env-2' && s.id !== 'sol-env-3');
+      localStorage.setItem('rd-solicitudes-enviadas', JSON.stringify(clean));
+    } catch {}
+  }, [solicitudesEnviadas]);
+
+  useEffect(() => {
+    try {
+      const clean = ofrecimientosEnviados.filter((o: any) => o.id !== 'ofr-env-1' && o.id !== 'ofr-env-2' && o.id !== 'ofr-env-3');
+      localStorage.setItem('rd-ofrecimientos-enviados', JSON.stringify(clean));
+    } catch {}
+  }, [ofrecimientosEnviados]);
+
   const [orgData, setOrgData] = useState<DatosOrg>(() => ({
     nombre: 'Mi Organización',
     tipo: 'Organización',
@@ -670,17 +684,21 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
         const dbCommitments = await fetchOrgCommitments(dbOrg?.id, activeUser.id);
         if (dbCommitments && dbCommitments.length > 0) {
+          hidratarFotosDesdeCommitments(dbCommitments);
           const commitmentsDespacho = dbCommitments.filter(
             (c: any) =>
-              c.origin_type === 'INTERNAL_BRIGADE' ||
-              c.origin_type === 'DIRECT_OFFER_DISPATCH' ||
-              c.provider_user_id === activeUser.id ||
-              (dbOrg && c.provider_organization_id === dbOrg.id)
+              (c.origin_type === 'INTERNAL_BRIGADE' ||
+                c.origin_type === 'DIRECT_OFFER_DISPATCH' ||
+                (c.origin_type === 'DIRECT_OFFER_REQUEST' && c.provider_user_id === activeUser.id) ||
+                (dbOrg && c.provider_organization_id === dbOrg.id)) &&
+              c.origin_type !== 'DIRECT_NEED_RESPONSE' &&
+              (c.origin_type !== 'DIRECT_OFFER_REQUEST' || c.provider_user_id === activeUser.id)
           );
           const commitmentsRecibidas = dbCommitments.filter(
             (c: any) =>
               c.requester_user_id === activeUser.id &&
               c.origin_type !== 'INTERNAL_BRIGADE' &&
+              c.origin_type !== 'DIRECT_OFFER_REQUEST' &&
               c.provider_user_id !== activeUser.id
           );
 
@@ -697,6 +715,50 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             const preserved = prev.filter((p) => !isMockRecibida(p) && !dbIds.has(String(p.id)) && !(p as any).dbId);
             return [...mappedRec, ...preserved];
           });
+
+          // Mapear solicitudes enviadas a organizaciones (DIRECT_OFFER_REQUEST)
+          const dbSolEnv = dbCommitments.filter(
+            (c: any) =>
+              c.origin_type === 'DIRECT_OFFER_REQUEST' &&
+              (c.requester_user_id === activeUser.id || (!c.provider_user_id && !dbOrg))
+          );
+          if (dbSolEnv.length > 0) {
+            const mappedSolEnv: SolicitudEnviada[] = dbSolEnv.map((c: any) => commitmentToSolicitudEnviada(c));
+            setSolicitudesEnviadas((prev) => {
+              const dbIds = new Set(mappedSolEnv.map((s) => (s as any).dbId || String(s.id)));
+              const preserved = prev.filter(
+                (p) =>
+                  !dbIds.has(String(p.id)) &&
+                  !(p as any).dbId &&
+                  p.id !== 'sol-env-1' &&
+                  p.id !== 'sol-env-2' &&
+                  p.id !== 'sol-env-3'
+              );
+              return [...mappedSolEnv, ...preserved];
+            });
+          }
+
+          // Mapear ofrecimientos enviados a comunidades (DIRECT_NEED_RESPONSE)
+          const dbOfrEnv = dbCommitments.filter(
+            (c: any) =>
+              c.origin_type === 'DIRECT_NEED_RESPONSE' &&
+              (c.provider_user_id === activeUser.id || (dbOrg && c.provider_organization_id === dbOrg.id))
+          );
+          if (dbOfrEnv.length > 0) {
+            const mappedOfrEnv: OfrecimientoEnviado[] = dbOfrEnv.map((c: any) => commitmentToOfrecimientoEnviado(c));
+            setOfrecimientosEnviados((prev) => {
+              const dbIds = new Set(mappedOfrEnv.map((o) => (o as any).dbId || String(o.id)));
+              const preserved = prev.filter(
+                (p) =>
+                  !dbIds.has(String(p.id)) &&
+                  !(p as any).dbId &&
+                  p.id !== 'ofr-env-1' &&
+                  p.id !== 'ofr-env-2' &&
+                  p.id !== 'ofr-env-3'
+              );
+              return [...mappedOfrEnv, ...preserved];
+            });
+          }
         }
 
         // Consultar publicaciones del usuario y globales en Supabase para el panel
@@ -1048,13 +1110,17 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     if (s) setCancelandoSolicitudEnviada(s);
   };
   const confirmarCancelarSolicitudEnviada = (id: number | string, motivo?: string) => {
+    const s = solicitudesEnviadas.find((x) => x.id === id);
     setSolicitudesEnviadas((prev) => {
-      const act = prev.map((s) => (s.id === id ? { ...s, estado: 'cancelada' as const, motivoCancelacion: motivo || undefined } : s));
+      const act = prev.map((item) => (item.id === id ? { ...item, estado: 'cancelada' as const, motivoCancelacion: motivo || undefined } : item));
       try {
         localStorage.setItem('rd-solicitudes-enviadas', JSON.stringify(act));
       } catch {}
       return act;
     });
+    if ((s as any)?.dbId) {
+      updateCommitmentStatus({ commitmentId: (s as any).dbId, status: 'cancelada' }).catch(console.warn);
+    }
     avisar('Solicitud cancelada', { tipo: 'ok' });
   };
   const cancelarOfrecimientoEnviado = (id: number | string) => {
@@ -1062,13 +1128,17 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     if (o) setCancelandoOfrecimientoEnviado(o);
   };
   const confirmarCancelarOfrecimientoEnviado = (id: number | string, motivo?: string) => {
+    const o = ofrecimientosEnviados.find((x) => x.id === id);
     setOfrecimientosEnviados((prev) => {
-      const act = prev.map((o) => (o.id === id ? { ...o, estado: 'cancelado' as const, motivoCancelacion: motivo || undefined } : o));
+      const act = prev.map((item) => (item.id === id ? { ...item, estado: 'cancelado' as const, motivoCancelacion: motivo || undefined } : item));
       try {
         localStorage.setItem('rd-ofrecimientos-enviados', JSON.stringify(act));
       } catch {}
       return act;
     });
+    if ((o as any)?.dbId) {
+      updateCommitmentStatus({ commitmentId: (o as any).dbId, status: 'cancelada' }).catch(console.warn);
+    }
     avisar('Oferta cancelada', { tipo: 'ok' });
   };
   const registrarMiembro = async (m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
@@ -1118,11 +1188,11 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   /* Las fotos de una entrega, por lado: las ven las dos organizaciones de esa entrega. */
   const [fotos, setFotos] = useState<{ titulo: string; grupos: GrupoFotos[]; inicial: number } | null>(null);
   const verFotosEntrega = (s: Solicitud, inicial = 0) => {
-    const f = fotosDeEntrega(s.id);
+    const f = fotosDeEntrega(s.id, (s as any).dbId);
     setFotos({ inicial, titulo: `Entrega a ${s.quien}, ${cifra(s.cant)} ${s.u} de ${s.rec.toLowerCase()}`, grupos: [{ titulo: 'Las de quien entregó', fotos: f.entrega }, { titulo: `Las de ${s.quien}`, fotos: f.recibe }] });
   };
   const verFotosRecibida = (r: EntregaRecibida, inicial = 0) => {
-    const f = fotosDeRecibida(r.id);
+    const f = fotosDeRecibida(r.id, (r as any).dbId);
     setFotos({ inicial, titulo: `Entrega de ${r.org}, ${cifra(r.cant)} ${r.u} de ${r.rec.toLowerCase()}`, grupos: [{ titulo: `Las de ${r.org}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
   };
   /* --- reportes: las actas --- */
@@ -1291,11 +1361,21 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
   const verFotosActa = (a: Acta, inicial = 0) => {
     if (a.origen.tipo === 'solicitud') {
-      const s = sol.find((x) => x.id === a.origen.id);
-      if (s) verFotosEntrega(s, inicial);
+      const s = sol.find((x) => x.id === a.origen.id || ((x as any).dbId && a.origen.dbId && (x as any).dbId === a.origen.dbId));
+      if (s) {
+        verFotosEntrega(s, inicial);
+      } else {
+        const f = fotosDeEntrega(a.origen.id, a.origen.dbId);
+        setFotos({ inicial, titulo: `Acta ${a.codigo} · ${a.rec}`, grupos: [{ titulo: 'Las de quien entregó', fotos: f.entrega }, { titulo: `Las de ${a.recibio}`, fotos: f.recibe }] });
+      }
     } else {
-      const r = recibidas.find((x) => x.id === a.origen.id);
-      if (r) verFotosRecibida(r, inicial);
+      const r = recibidas.find((x) => x.id === a.origen.id || ((x as any).dbId && a.origen.dbId && (x as any).dbId === a.origen.dbId));
+      if (r) {
+        verFotosRecibida(r, inicial);
+      } else {
+        const f = fotosDeRecibida(a.origen.id, a.origen.dbId);
+        setFotos({ inicial, titulo: `Acta ${a.codigo} · ${a.rec}`, grupos: [{ titulo: `Las de ${a.entrego}`, fotos: f.entrega }, { titulo: 'Las tuyas', fotos: f.recibe }] });
+      }
     }
   };
   const descargarActa = (a: Acta) => {
@@ -1318,17 +1398,14 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
       publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
-      if (!FOTOS_ENTREGA[id]) {
-        FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
-      }
       const quien = quienLleva(s, equipo) ?? orgData.nombre ?? 'Equipo de entrega';
-      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+      const nuevasFotos: FotoPublicada[] = publicPhotoUrls.map((url, i) => ({
         url,
         alt: `En camino a ${s.quien} - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy en camino',
       }));
-      FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
+      agregarFotosEntrega(id, nuevasFotos, 'entrega', (s as any).dbId);
     }
 
     const medioFinal = medioEnvio || 'directa';
@@ -1401,17 +1478,15 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
       publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
-      if (!FOTOS_ENTREGA[id]) {
-        FOTOS_ENTREGA[id] = { entrega: [], recibe: [] };
-      }
       const quien = (s ? quienLleva(s, equipo) : null) ?? orgData.nombre ?? 'Equipo de entrega';
-      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+      const nuevasFotos: FotoPublicada[] = publicPhotoUrls.map((url, i) => ({
         url,
         alt: `Certificación de entrega - Foto ${i + 1}`,
         quien,
         cuando: 'Hoy cert.',
       }));
-      FOTOS_ENTREGA[id].entrega = [...nuevasFotos, ...FOTOS_ENTREGA[id].entrega];
+      agregarFotosEntrega(id, nuevasFotos, 'entrega', (s as any).dbId);
+      agregarFotosRecibida(id, nuevasFotos, 'entrega', (s as any).dbId);
     }
     const hoyIso = new Date().toISOString().slice(0, 10);
     setSol((l) =>
@@ -1495,16 +1570,14 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
       publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
-      if (!FOTOS_RECIBIDA[id]) {
-        FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
-      }
-      const nuevasFotos: FotoPublicada[] = (publicPhotoUrls.length > 0 ? publicPhotoUrls : fotosLista.map((f) => f.url)).map((url, i) => ({
+      const nuevasFotos: FotoPublicada[] = publicPhotoUrls.map((url, i) => ({
         url,
         alt: `Confirmación de recibido - Foto ${i + 1}`,
         quien: 'Organización receptora',
         cuando: 'Hoy conf.',
       }));
-      FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
+      agregarFotosRecibida(id, nuevasFotos, 'recibe', (r as any).dbId);
+      agregarFotosEntrega(id, nuevasFotos, 'recibe', (r as any).dbId);
     }
     const hoyIso = new Date().toISOString().slice(0, 10);
     setRecibidas((l) =>
@@ -1560,17 +1633,19 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const distribuirRecibida = async (id: number, fotos: number, fotosLista?: Foto[], nota?: string, personasBeneficiadas?: number) => {
     const r = recibidas.find((x) => x.id === id);
     if (!r) return;
+
+    let publicPhotoUrls: string[] = [];
     if (fotosLista && fotosLista.length > 0) {
-      if (!FOTOS_RECIBIDA[id]) {
-        FOTOS_RECIBIDA[id] = { entrega: [], recibe: [] };
-      }
-      const nuevasFotos: FotoPublicada[] = fotosLista.map((f) => ({
-        url: f.url,
-        alt: `Distribución en comunidad - ${f.nombre}`,
-        quien: 'JAC / Comunidad receptora',
+      publicPhotoUrls = await uploadEvidencePhotos(fotosLista, 'commitments');
+      const quien = orgData.nombre ?? 'JAC / Comunidad receptora';
+      const nuevasFotos: FotoPublicada[] = publicPhotoUrls.map((url, i) => ({
+        url,
+        alt: `Distribución en comunidad - Foto ${i + 1}`,
+        quien,
         cuando: 'Hoy dist.',
       }));
-      FOTOS_RECIBIDA[id].recibe = [...nuevasFotos, ...FOTOS_RECIBIDA[id].recibe];
+      agregarFotosRecibida(id, nuevasFotos, 'recibe', (r as any).dbId);
+      agregarFotosEntrega(id, nuevasFotos, 'recibe', (r as any).dbId);
     }
     setRecibidas((l) =>
       l.map((x) =>
@@ -1595,6 +1670,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         await updateCommitmentStatus({
           commitmentId: (r as any).dbId,
           status: 'distribuida',
+          receptionPhotos: publicPhotoUrls.length > 0 ? publicPhotoUrls : undefined,
           confirmationStory: nota,
           personasBeneficiadas: personasBeneficiadas,
         });
@@ -3357,7 +3433,7 @@ const MisNecesidades: React.FC<{
 
 /* ---------- reportes: las actas de entrega ---------- */
 
-const fotosDeActa = (a: Acta) => listaFotos(a.origen.tipo === 'solicitud' ? fotosDeEntrega(a.origen.id) : fotosDeRecibida(a.origen.id));
+const fotosDeActa = (a: Acta) => listaFotos(a.origen.tipo === 'solicitud' ? fotosDeEntrega(a.origen.id, a.origen.dbId) : fotosDeRecibida(a.origen.id, a.origen.dbId));
 
 /** Una acta por entrega confirmada, de las dos caras. La tabla desde 1280; tarjeta por debajo.
  *  Ver acta abre el acta completa; el menú de opciones permite descargar en PDF. */

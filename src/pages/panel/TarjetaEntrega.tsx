@@ -389,7 +389,7 @@ export function menuDeRecibida(
 
 /** El cierre de una entrega confirmada o archivada: quién confirmó, y las fotos como galería. */
 export function cierreDe(s: Solicitud, onVerFotos: (s: Solicitud, i: number) => void): { cierre: React.ReactNode; fotos: React.ReactNode } {
-  const f = fotosDeEntrega(s.id);
+  const f = fotosDeEntrega(s.id, s.dbId);
   const fotosNodo = cuentaFotos(f) > 0 ? <TiraFotos fotos={listaFotos(f)} max={4} tamano="md" onAbrir={(i) => onVerFotos(s, i)} className="mt-2" /> : null;
   if (s.estado !== 'confirmada' && s.estado !== 'archivada') return { cierre: null, fotos: fotosNodo };
   return {
@@ -466,7 +466,7 @@ export const TarjetaRecibida: React.FC<{
   arrastre?: TarjetaEntregaProps['arrastre'];
 }> = ({ r, estado, onConfirmar, onDistribuir, onArchivar, onVerFotos, onAceptar, onRechazar, onCancelar, onVerPublicacion, menuFlotante = false, arrastre }) => {
   const { language, t } = useTranslation();
-  const f = fotosDeRecibida(r.id);
+  const f = fotosDeRecibida(r.id, (r as any).dbId);
   const contacto = buscarContactoEntidad(r.org);
   const recursoTraducido = tRecurso(r.rec, language);
   const unidadTraducida = tUnidad(r.u, language, r.cant);
