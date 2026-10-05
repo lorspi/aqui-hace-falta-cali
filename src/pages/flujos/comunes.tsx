@@ -575,7 +575,12 @@ export const AlgoMas: React.FC<{ titulo: string; children: React.ReactNode }> = 
   );
 };
 
-export const MiniMapa: React.FC<{ lat: number; lng: number; onMover: (lat: number, lng: number) => void }> = ({ lat, lng, onMover }) => {
+export const MiniMapa: React.FC<{
+  lat: number;
+  lng: number;
+  onMover: (lat: number, lng: number) => void;
+  tipo?: 'necesidad' | 'oferta';
+}> = ({ lat, lng, onMover, tipo = 'necesidad' }) => {
   const nodo = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<L.Map | null>(null);
   const pinRef = useRef<L.Marker | null>(null);
@@ -590,7 +595,30 @@ export const MiniMapa: React.FC<{ lat: number; lng: number; onMover: (lat: numbe
     const m = L.map(nodo.current, { zoomControl: true, attributionControl: false }).setView([safeLat, safeLng], 15);
     m.zoomControl?.setPosition('topright');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
-    const pin = L.marker([safeLat, safeLng], { draggable: true, title: 'El punto donde llega la ayuda; arrástralo si es otro' }).addTo(m);
+
+    const pinColor = tipo === 'oferta' ? '#1d4ed8' : '#e11d48';
+    const pinShadow = tipo === 'oferta' ? 'rgba(29, 78, 216, 0.45)' : 'rgba(225, 29, 72, 0.45)';
+
+    const pinIcon = L.divIcon({
+      className: '!bg-transparent !border-0',
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;cursor:grab;filter:drop-shadow(0 4px 6px ${pinShadow});">
+          <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 0C7.611 0 0 7.611 0 17C0 28.5 17 42 17 42C17 42 34 28.5 34 17C34 7.611 26.389 0 17 0Z" fill="${pinColor}"/>
+            <circle cx="17" cy="16" r="7" fill="white"/>
+            <circle cx="17" cy="16" r="3.5" fill="${pinColor}"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [34, 42],
+      iconAnchor: [17, 42],
+    });
+
+    const pin = L.marker([safeLat, safeLng], {
+      icon: pinIcon,
+      draggable: true,
+      title: 'El punto donde llega la ayuda; arrástralo si es otro'
+    }).addTo(m);
     
     pin.on('dragend', () => {
       const p = pin.getLatLng();

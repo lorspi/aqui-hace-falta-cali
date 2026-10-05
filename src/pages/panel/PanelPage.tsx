@@ -855,15 +855,30 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             pausadaGlobal: userNeeds.every((n: any) => n.status === 'PAUSED'),
           });
         } else {
-          // Si no hay necesidades en BD para este usuario, no destruir datos si el usuario tiene publicaciones locales activas
-          const tieneLocal = Boolean(
-            localStorage.getItem('rd-necesidad-creada-recursos') || localStorage.getItem('rd-necesidad-creada-gestion')
-          );
+          // Si no hay necesidades en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
+          let tieneLocal = false;
+          try {
+            const pubsRaw = localStorage.getItem('rd-publicaciones-creadas');
+            if (pubsRaw) {
+              const parsed = JSON.parse(pubsRaw);
+              if (Array.isArray(parsed)) {
+                tieneLocal = parsed.some(
+                  (p: any) => p.tipo === 'necesidad' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)
+                );
+              }
+            }
+          } catch {}
+
           if (!tieneLocal) {
             setModulos((prev) => ({ ...prev, pide: false }));
             setRecursosNecesidad([]);
             setPubNecesidad(defaultPubNecesidadLimpia);
             desactivarModulo('pide');
+            try {
+              localStorage.removeItem('rd-necesidad-creada-recursos');
+              localStorage.removeItem('rd-necesidad-creada-gestion');
+              localStorage.removeItem('rd-necesidad-publicacion');
+            } catch {}
           }
         }
 
@@ -928,15 +943,30 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             pausadaGlobal: userOffers.every((o: any) => o.status === 'PAUSED'),
           });
         } else {
-          // Si no hay ofertas en BD para este usuario, no destruir datos si el usuario tiene publicaciones locales activas
-          const tieneLocal = Boolean(
-            localStorage.getItem('rd-oferta-creada-recursos') || localStorage.getItem('rd-oferta-creada-gestion')
-          );
+          // Si no hay ofertas en BD para este usuario, verificar si tiene publicaciones locales reales pendientes sin sincronizar
+          let tieneLocal = false;
+          try {
+            const pubsRaw = localStorage.getItem('rd-publicaciones-creadas');
+            if (pubsRaw) {
+              const parsed = JSON.parse(pubsRaw);
+              if (Array.isArray(parsed)) {
+                tieneLocal = parsed.some(
+                  (p: any) => p.tipo === 'oferta' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)
+                );
+              }
+            }
+          } catch {}
+
           if (!tieneLocal) {
             setModulos((prev) => ({ ...prev, ofrece: false }));
             setRecursosOferta([]);
             setPubOferta(defaultPubOfertaLimpia);
             desactivarModulo('ofrece');
+            try {
+              localStorage.removeItem('rd-oferta-creada-recursos');
+              localStorage.removeItem('rd-oferta-creada-gestion');
+              localStorage.removeItem('rd-oferta-publicacion');
+            } catch {}
           }
         }
 
@@ -977,6 +1007,23 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         if (Array.isArray(parsed)) {
           localStorage.setItem('rd-publicaciones-creadas', JSON.stringify(parsed.filter((p: any) => p.id !== id)));
         }
+      }
+    } catch {}
+
+    // Limpieza reactiva inmediata de los almacenamientos locales y del estado del tipo eliminado
+    try {
+      if (tipo === 'necesidad') {
+        localStorage.removeItem('rd-necesidad-creada-gestion');
+        localStorage.removeItem('rd-necesidad-creada-recursos');
+        localStorage.removeItem('rd-necesidad-publicacion');
+        setRecursosNecesidad([]);
+        setPubNecesidad(defaultPubNecesidadLimpia);
+      } else {
+        localStorage.removeItem('rd-oferta-creada-gestion');
+        localStorage.removeItem('rd-oferta-creada-recursos');
+        localStorage.removeItem('rd-oferta-publicacion');
+        setRecursosOferta([]);
+        setPubOferta(defaultPubOfertaLimpia);
       }
     } catch {}
 
@@ -2796,9 +2843,14 @@ const PulsoOperativo: React.FC<{
   if (comprometidasPide > 0) partesMovimiento.push(`${comprometidasPide} comprometidas`);
   const detalleMovimiento = partesMovimiento.length > 0 ? partesMovimiento.join(', ') : 'Sin entregas en ruta en este momento';
 
-  // 3. Entregas completadas
-  const confOfrece = modulos.ofrece ? datos.sol.filter((s) => s.estado === 'confirmada').length : 0;
-  const confPide = modulos.pide ? datos.recibidas.filter((r) => r.estado === 'confirmada').length : 0;
+  // 3. Entregas completadas (confirmadas + archivadas + distribuidas de éxito)
+  const esCompletadaSol = (s: Solicitud) =>
+    (s.estado === 'confirmada' || s.estado === 'archivada') && !s.motivoCancelacion;
+  const esCompletadaRec = (r: EntregaRecibida) =>
+    (r.estado === 'confirmada' || r.estado === 'distribuida' || r.estado === 'archivada') && !r.motivoCancelacion;
+
+  const confOfrece = modulos.ofrece ? datos.sol.filter(esCompletadaSol).length : 0;
+  const confPide = modulos.pide ? datos.recibidas.filter(esCompletadaRec).length : 0;
   const totalCompletadas = confOfrece + confPide;
   const detalleCompletadas = totalCompletadas > 0 ? 'Cerradas y confirmadas con éxito' : 'Aún no hay entregas finalizadas';
 

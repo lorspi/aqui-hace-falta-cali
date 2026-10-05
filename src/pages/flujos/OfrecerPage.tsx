@@ -560,7 +560,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             <span>{textoGeocodificacion}</span>
           </div>
         )}
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} />
+        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} tipo="oferta" />
       </>
     );
   } else if (sub.id === 'contacto') {

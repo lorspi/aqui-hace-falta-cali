@@ -582,7 +582,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             <span>{textoGeocodificacion}</span>
           </div>
         )}
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} />
+        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} tipo="necesidad" />
         <Field id="cl" etiqueta={<>Cómo llegar<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder="Por ejemplo: subiendo por la estación, casa esquinera azul, la vía solo sirve para moto…" onChange={(v) => set({ comoLlegar: v })} className="mt-3" />
       </>
     );
