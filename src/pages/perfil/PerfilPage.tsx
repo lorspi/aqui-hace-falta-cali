@@ -643,7 +643,6 @@ const DatosOrganizacion: React.FC<{
           contact_phone: borrador.contacto.tel,
           contact_email: borrador.contacto.correo,
           website_or_social: borrador.web || borrador.enlace,
-          updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
         avisar('Datos de la organización guardados en Supabase', { tipo: 'ok' });
       } catch (err) {
@@ -755,7 +754,6 @@ const DatosComunidad: React.FC<{
           contact_phone: borrador.contacto.tel,
           contact_email: borrador.contacto.correo,
           website_or_social: borrador.web || borrador.enlace,
-          updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
         avisar('Datos de la comunidad guardados en Supabase', { tipo: 'ok' });
       } catch {

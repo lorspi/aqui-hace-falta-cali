@@ -113,7 +113,7 @@ export function offerToPublicacion(offer: Offer): Publicacion {
     titulo: offer.title || 'Oferta de ayuda',
     org: offer.organizationName || '',
     perfil: esIndividual ? 'individual' : 'organizacion',
-    verificada: Boolean(offer.organizationName),
+    verificada: offer.verificationStatus === 'VERIFIED' || Boolean(offer.organizationName),
     lat: offer.latitude,
     lng: offer.longitude,
     ciudad: offer.cityId,

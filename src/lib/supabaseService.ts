@@ -1376,7 +1376,7 @@ export async function updateOrganizationVerification(
   if (!orgId.startsWith('prof-')) {
     const { error } = await supabase
       .from('organizations')
-      .update({ is_verified: isVerified, updated_at: new Date().toISOString() })
+      .update({ is_verified: isVerified })
       .eq('id', orgId);
     if (error) throw error;
   }

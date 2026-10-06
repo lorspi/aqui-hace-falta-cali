@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { showConfirm, showAlert } from "./ConfirmDialog";
 import {
@@ -50,10 +50,14 @@ import { geocodeAddress } from "../utils/geocoding";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
 import { CustomSelect } from "./CustomSelect";
-import { PublicEditOfferModal } from "./PublicEditOfferModal";
 import { PublicEditModal } from "./PublicEditModal";
-import { NeedDetailModal } from "./NeedDetailModal";
-import { OfferDetailModal } from "./OfferDetailModal";
+import { PublicEditOfferModal } from "./PublicEditOfferModal";
+import { DialogoDetallePublicacion } from "./ui/DialogoDetallePublicacion";
+import { DialogoCoincidencias } from "./ui/Coincidencias";
+import { AvisosProvider } from "./ui/AvisoCorto";
+import { needToPublicacion, offerToPublicacion } from "../utils/supabaseMappers";
+import { coincidenciasDe, type CoincidenciaPublicacion } from "../utils/cruce";
+import type { Publicacion } from "../types/publicacion";
 import { ChatbotReportsList } from "./ChatbotReportsList";
 import { Avatar } from "./ui/Etiqueta";
 import { iniciales } from "../utils/publicaciones";
@@ -242,6 +246,12 @@ export const AdminPanelPage: React.FC = () => {
   const [viewingOffer, setViewingOffer] = useState<Offer | null>(null);
   const [editingNeedViaModal, setEditingNeedViaModal] = useState<Need | null>(null);
   const [editingOfferViaModal, setEditingOfferViaModal] = useState<Offer | null>(null);
+  const [verCoincidencias, setVerCoincidencias] = useState<{
+    id: string;
+    publicacion: Publicacion;
+    origenNeed?: Need | null;
+    origenOffer?: Offer | null;
+  } | null>(null);
 
   // Fetch Needs & Offers from Supabase
   const { needs, refetch: refetchNeeds } = useNeeds(
@@ -252,6 +262,24 @@ export const AdminPanelPage: React.FC = () => {
     { search: '', categories: [], priority: 'ALL', placeType: 'ALL', status: 'ALL', verificationStatus: 'ALL', distanceKm: null, userLat: null, userLng: null, sortBy: 'RECENT', viewMode: 'OFFERS', includeArchived: true },
     'ALL_COLOMBIA'
   );
+
+  // Publicaciones combinadas de necesidades y ofertas para cálculo de coincidencias (Radar Match)
+  const todasLasPubs = useMemo<Publicacion[]>(() => {
+    const pubNeeds = needs.filter((n) => n.verificationStatus !== 'ARCHIVED').map(needToPublicacion);
+    const pubOffers = offers.filter((o) => o.verificationStatus !== 'ARCHIVED').map(offerToPublicacion);
+    return [...pubNeeds, ...pubOffers];
+  }, [needs, offers]);
+
+  const publicacionDetalle = useMemo<Publicacion | null>(() => {
+    if (viewingNeed) return needToPublicacion(viewingNeed);
+    if (viewingOffer) return offerToPublicacion(viewingOffer);
+    return null;
+  }, [viewingNeed, viewingOffer]);
+
+  const coincidenciasDetalle = useMemo<CoincidenciaPublicacion[]>(() => {
+    if (!publicacionDetalle) return [];
+    return coincidenciasDe(publicacionDetalle, todasLasPubs);
+  }, [publicacionDetalle, todasLasPubs]);
 
   const pendingNeeds = needs.filter((n) => n.verificationStatus === "PENDING_VERIFICATION");
   const pendingOffers = offers.filter((o) => o.verificationStatus === "PENDING_VERIFICATION");
@@ -786,33 +814,16 @@ export const AdminPanelPage: React.FC = () => {
       count: pendingNeeds.length + pendingOffers.length + pendingVolunteers.length,
     },
     {
-      id: 'ORGANIZATIONS',
-      label: 'Org & Comunidades',
-      icon: <Building2 className="w-4 h-4 shrink-0" />,
-      count: organizationsList.filter((o) => !o.isVerified).length,
-    },
-    {
-      id: 'REPORTS',
-      label: 'Reportes',
-      icon: <Flag className="w-4 h-4 shrink-0" />,
-      count: pendingReports.length,
-    },
-    {
-      id: 'CHATBOT',
-      label: 'Chatbot',
-      icon: <MessageSquare className="w-4 h-4 shrink-0" />,
-      count: chatbotPendingCount,
-    },
-    {
       id: 'ALL',
       label: 'Publicaciones',
       icon: <List className="w-4 h-4 shrink-0" />,
       count: needs.length + offers.length,
     },
     {
-      id: 'AUDIT',
-      label: 'Auditoría',
-      icon: <FileText className="w-4 h-4 shrink-0" />,
+      id: 'ORGANIZATIONS',
+      label: 'Org & Comunidades',
+      icon: <Building2 className="w-4 h-4 shrink-0" />,
+      count: organizationsList.filter((o) => !o.isVerified).length,
     },
     ...(currentUser?.role === 'ADMIN'
       ? [
@@ -824,6 +835,23 @@ export const AdminPanelPage: React.FC = () => {
           },
         ]
       : []),
+    {
+      id: 'CHATBOT',
+      label: 'Chatbot',
+      icon: <MessageSquare className="w-4 h-4 shrink-0" />,
+      count: chatbotPendingCount,
+    },
+    {
+      id: 'REPORTS',
+      label: 'Reportes',
+      icon: <Flag className="w-4 h-4 shrink-0" />,
+      count: pendingReports.length,
+    },
+    {
+      id: 'AUDIT',
+      label: 'Auditoría',
+      icon: <FileText className="w-4 h-4 shrink-0" />,
+    },
   ];
 
   const currentTabConfig = adminNavItems.find((item) => item.id === activeTab) || adminNavItems[0];
@@ -2606,23 +2634,111 @@ export const AdminPanelPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Modals */}
-      {viewingNeed && (
-        <NeedDetailModal
-          need={viewingNeed}
-          onClose={() => setViewingNeed(null)}
-          onOpenQuieroAyudar={() => {}}
-          onOpenReportModal={() => {}}
-          onOpenUpdateStatusModal={() => {}}
-        />
+      {/* Modal de Detalle de Publicación canónico de RaDAR v2 (idéntico al radar y lista) */}
+      {publicacionDetalle && (
+        <AvisosProvider>
+          <DialogoDetallePublicacion
+            publicacion={publicacionDetalle}
+            coincidencias={coincidenciasDetalle}
+            textoPrimaria={
+              viewingNeed
+                ? viewingNeed.verificationStatus === 'PENDING_VERIFICATION'
+                  ? 'Aprobar en mapa'
+                  : viewingNeed.verificationStatus === 'ARCHIVED'
+                  ? 'Restaurar en mapa'
+                  : 'Editar publicación'
+                : viewingOffer
+                ? viewingOffer.verificationStatus === 'PENDING_VERIFICATION'
+                  ? 'Aprobar en mapa'
+                  : viewingOffer.verificationStatus === 'ARCHIVED'
+                  ? 'Restaurar en mapa'
+                  : 'Editar publicación'
+                : undefined
+            }
+            onCerrar={() => {
+              setViewingNeed(null);
+              setViewingOffer(null);
+            }}
+            onPrimaria={() => {
+              if (viewingNeed) {
+                const item = viewingNeed;
+                setViewingNeed(null);
+                if (item.verificationStatus === 'PENDING_VERIFICATION') {
+                  handleVerifyNeed(item.id, 'verify');
+                } else if (item.verificationStatus === 'ARCHIVED') {
+                  handleRestoreNeedItem(item.id, item.title);
+                } else {
+                  setEditingNeedViaModal(item);
+                }
+              } else if (viewingOffer) {
+                const item = viewingOffer;
+                setViewingOffer(null);
+                if (item.verificationStatus === 'PENDING_VERIFICATION') {
+                  handleVerifyOffer(item.id, 'verify');
+                } else if (item.verificationStatus === 'ARCHIVED') {
+                  handleRestoreOfferItem(item.id, item.title);
+                } else {
+                  setEditingOfferViaModal(item);
+                }
+              }
+            }}
+            onVerEnMapa={(id) => {
+              window.open(`/radar-v2?punto=${encodeURIComponent(id)}&vista=mapa`, '_blank');
+            }}
+            onVerCoincidencias={(id) => {
+              setVerCoincidencias({
+                id,
+                publicacion: publicacionDetalle,
+                origenNeed: viewingNeed,
+                origenOffer: viewingOffer,
+              });
+              setViewingNeed(null);
+              setViewingOffer(null);
+            }}
+            onCompartir={(id) => {
+              const url = `${window.location.origin}/radar-v2?punto=${encodeURIComponent(id)}`;
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+                showAlert('Enlace copiado al portapapeles', { title: 'Compartir', variant: 'success' });
+              }
+            }}
+          />
+        </AvisosProvider>
       )}
 
-      {viewingOffer && (
-        <OfferDetailModal
-          offer={viewingOffer}
-          isOpen={!!viewingOffer}
-          onClose={() => setViewingOffer(null)}
-        />
+      {/* Modal de Coincidencias / Radar Match desde el panel de admin */}
+      {verCoincidencias && (
+        <AvisosProvider>
+          <DialogoCoincidencias
+            abierto={Boolean(verCoincidencias)}
+            publicacion={verCoincidencias.publicacion}
+            coincidencias={coincidenciasDe(verCoincidencias.publicacion, todasLasPubs)}
+            onCerrar={() => {
+              if (verCoincidencias.origenNeed) {
+                setViewingNeed(verCoincidencias.origenNeed);
+              } else if (verCoincidencias.origenOffer) {
+                setViewingOffer(verCoincidencias.origenOffer);
+              }
+              setVerCoincidencias(null);
+            }}
+            onPrimaria={(id) => {
+              setVerCoincidencias(null);
+              const targetNeed = needs.find((n) => n.id === id);
+              if (targetNeed) {
+                setViewingNeed(targetNeed);
+                return;
+              }
+              const targetOffer = offers.find((o) => o.id === id);
+              if (targetOffer) {
+                setViewingOffer(targetOffer);
+                return;
+              }
+            }}
+            onVerEnMapa={(id) => {
+              window.open(`/radar-v2?punto=${encodeURIComponent(id)}&vista=mapa`, '_blank');
+            }}
+          />
+        </AvisosProvider>
       )}
 
       {editingNeedViaModal && (
