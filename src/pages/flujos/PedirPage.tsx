@@ -161,6 +161,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       userId: user?.id,
       evidenceUrl: photoUrls.join(','),
       sourceUrl: estado.sourceUrl?.trim() || undefined,
+      verificationStatus: (org?.is_verified || profile?.is_verified) ? 'VERIFIED' : 'PENDING_VERIFICATION',
+      verifiedBy: (org?.is_verified || profile?.is_verified) ? (org?.org_name || profile?.full_name || 'Entidad verificada') : undefined,
     };
 
     const inserted = await createNeedWithItems(needPayload, itemsPayload);

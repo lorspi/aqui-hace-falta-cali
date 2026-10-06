@@ -1369,8 +1369,10 @@ export async function fetchDirectorioEntidades(): Promise<any[]> {
 export async function updateOrganizationVerification(
   orgId: string,
   userId?: string,
-  isVerified: boolean = true
-): Promise<void> {
+  isVerified: boolean = true,
+  orgName?: string,
+  verifiedBy?: string
+): Promise<{ approvedNeedsCount: number; approvedOffersCount: number }> {
   if (!orgId.startsWith('prof-')) {
     const { error } = await supabase
       .from('organizations')
@@ -1386,6 +1388,56 @@ export async function updateOrganizationVerification(
       .eq('id', userId);
     if (profError) throw profError;
   }
+
+  let approvedNeedsCount = 0;
+  let approvedOffersCount = 0;
+
+  // Si se aprueba/verifica la entidad, aprobar en cascada todas sus publicaciones pendientes
+  if (isVerified) {
+    const updatePayload = {
+      verification_status: 'VERIFIED',
+      verified_by: verifiedBy || 'Super Admin',
+      updated_at: new Date().toISOString(),
+    };
+
+    if (userId) {
+      const { data: updatedNeeds } = await supabase
+        .from('needs')
+        .update(updatePayload)
+        .eq('user_id', userId)
+        .eq('verification_status', 'PENDING_VERIFICATION')
+        .select('id');
+      if (updatedNeeds) approvedNeedsCount += updatedNeeds.length;
+
+      const { data: updatedOffers } = await supabase
+        .from('offers')
+        .update(updatePayload)
+        .eq('user_id', userId)
+        .eq('verification_status', 'PENDING_VERIFICATION')
+        .select('id');
+      if (updatedOffers) approvedOffersCount += updatedOffers.length;
+    }
+
+    if (orgName && orgName.trim()) {
+      const { data: orgNeeds } = await supabase
+        .from('needs')
+        .update(updatePayload)
+        .ilike('organization_name', orgName.trim())
+        .eq('verification_status', 'PENDING_VERIFICATION')
+        .select('id');
+      if (orgNeeds) approvedNeedsCount += orgNeeds.length;
+
+      const { data: orgOffers } = await supabase
+        .from('offers')
+        .update(updatePayload)
+        .ilike('organization_name', orgName.trim())
+        .eq('verification_status', 'PENDING_VERIFICATION')
+        .select('id');
+      if (orgOffers) approvedOffersCount += orgOffers.length;
+    }
+  }
+
+  return { approvedNeedsCount, approvedOffersCount };
 }
 
 
@@ -1687,6 +1739,25 @@ export async function createNeedWithItems(needPayload: any, itemsPayload: any[])
   }
 
   // 2. Insertar cabecera de Necesidad
+  // Determinar estado de verificación (auto-aprobación si el autor ya está verificado)
+  let initialVerStatus = needPayload.verificationStatus || needPayload.verification_status;
+  let initialVerifiedBy = needPayload.verifiedBy || needPayload.verified_by;
+  if (!initialVerStatus) {
+    if (userId) {
+      const [profRes, orgRes] = await Promise.all([
+        supabase.from('profiles').select('is_verified, full_name').eq('id', userId).maybeSingle(),
+        supabase.from('organizations').select('is_verified, org_name').eq('user_id', userId).maybeSingle(),
+      ]);
+      if (profRes.data?.is_verified || orgRes.data?.is_verified) {
+        initialVerStatus = 'VERIFIED';
+        initialVerifiedBy = orgRes.data?.org_name || profRes.data?.full_name || 'Entidad verificada';
+      }
+    }
+  }
+  if (!initialVerStatus) {
+    initialVerStatus = 'PENDING_VERIFICATION';
+  }
+
   const needRow = {
     user_id: userId,
     city_id: needPayload.cityId || needPayload.city_id || 'cali',
@@ -1701,7 +1772,8 @@ export async function createNeedWithItems(needPayload: any, itemsPayload: any[])
     longitude: needPayload.longitude || -76.5320,
     priority: needPayload.priority || 'MEDIUM',
     status: needPayload.status || 'OPEN',
-    verification_status: 'PENDING_VERIFICATION',
+    verification_status: initialVerStatus,
+    verified_by: initialVerifiedBy || null,
     contact_name: needPayload.contactName,
     contact_phone: needPayload.contactPhone,
     contact_whatsapp: needPayload.contactWhatsapp,
@@ -1763,6 +1835,25 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
     throw new Error('AUTH_REQUIRED');
   }
 
+  // Determinar estado de verificación (auto-aprobación si el autor ya está verificado)
+  let initialVerStatus = offerPayload.verificationStatus || offerPayload.verification_status;
+  let initialVerifiedBy = offerPayload.verifiedBy || offerPayload.verified_by;
+  if (!initialVerStatus) {
+    if (userId) {
+      const [profRes, orgRes] = await Promise.all([
+        supabase.from('profiles').select('is_verified, full_name').eq('id', userId).maybeSingle(),
+        supabase.from('organizations').select('is_verified, org_name').eq('user_id', userId).maybeSingle(),
+      ]);
+      if (profRes.data?.is_verified || orgRes.data?.is_verified) {
+        initialVerStatus = 'VERIFIED';
+        initialVerifiedBy = orgRes.data?.org_name || profRes.data?.full_name || 'Entidad verificada';
+      }
+    }
+  }
+  if (!initialVerStatus) {
+    initialVerStatus = 'PENDING_VERIFICATION';
+  }
+
   // 2. Insertar cabecera de Oferta
   const offerRow = {
     user_id: userId,
@@ -1774,7 +1865,8 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
     latitude: offerPayload.latitude || 3.4516,
     longitude: offerPayload.longitude || -76.5320,
     offer_status: 'AVAILABLE',
-    verification_status: 'PENDING_VERIFICATION',
+    verification_status: initialVerStatus,
+    verified_by: initialVerifiedBy || null,
     contact_name: offerPayload.contactName,
     contact_phone: offerPayload.contactPhone,
     contact_whatsapp: offerPayload.contactWhatsapp,

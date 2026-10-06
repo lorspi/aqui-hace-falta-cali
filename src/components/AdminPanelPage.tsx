@@ -31,6 +31,11 @@ import {
   Globe,
   Phone,
   Mail,
+  Eye,
+  EyeOff,
+  ArrowUpDown,
+  Calendar,
+  Archive,
 } from "lucide-react";
 import { Need, Offer, Priority, VerificationStatus } from "../types";
 import {
@@ -203,6 +208,9 @@ export const AdminPanelPage: React.FC = () => {
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<string>("ALL");
   const [adminVerificationFilter, setAdminVerificationFilter] = useState<string>("ALL");
   const [adminTypeFilter, setAdminTypeFilter] = useState<string>("ALL");
+  const [adminAuthorTypeFilter, setAdminAuthorTypeFilter] = useState<string>("ALL");
+  const [adminAgeFilter, setAdminAgeFilter] = useState<string>("ALL");
+  const [adminSortOrder, setAdminSortOrder] = useState<"RECENT" | "OLDEST">("RECENT");
 
   // Reports tab filters
   const [reportStatusFilter, setReportStatusFilter] = useState<string>("ALL");
@@ -416,46 +424,83 @@ export const AdminPanelPage: React.FC = () => {
   };
 
   const handleArchiveNeedItem = async (id: string, title: string) => {
-    if (!(await showConfirm(`¿Archivar la necesidad "${title}"?`, { title: 'Archivar necesidad' }))) return;
+    if (!(await showConfirm(`¿Ocultar del mapa la necesidad "${title}"? Dejará de ser visible para los ciudadanos en el mapa y la lista pública.`, { title: 'Ocultar del mapa' }))) return;
     try {
       await updateNeed(id, { verificationStatus: 'ARCHIVED' });
       await addNeedUpdateNote({
         needId: id,
         previousStatus: 'NEED_HELP_NOW',
         newStatus: 'CLOSED',
-        description: 'Archivada por el equipo de moderación.',
+        description: 'Ocultada del mapa por el equipo de moderación.',
         updatedBy: currentUser?.name ? `[MOD] ${currentUser.name}` : '[MOD] Moderador',
       });
       await logAudit(
         'ARCHIVE_NEED',
         currentUser?.email || 'moderador@lorspi.com',
-        `Necesidad ID ${id} ("${title}") fue archivada.`,
+        `Necesidad ID ${id} ("${title}") fue ocultada del mapa (archivada).`,
         id
       );
       refetchNeeds();
       loadData();
-      showAlert('Necesidad archivada exitosamente.', { title: 'Éxito', variant: 'success' });
+      showAlert('Necesidad ocultada del mapa.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
-      showAlert(err.message || 'Error al archivar', { title: 'Error', variant: 'error' });
+      showAlert(err.message || 'Error al ocultar', { title: 'Error', variant: 'error' });
     }
   };
 
   const handleArchiveOfferItem = async (id: string, title: string) => {
-    if (!(await showConfirm(`¿Archivar la oferta "${title}"?`, { title: 'Archivar oferta' }))) return;
+    if (!(await showConfirm(`¿Ocultar del mapa la oferta "${title}"? Dejará de ser visible para los ciudadanos en el mapa y la lista pública.`, { title: 'Ocultar del mapa' }))) return;
     try {
       await updateOffer(id, { verificationStatus: 'ARCHIVED' });
       await logAudit(
         'ARCHIVE_OFFER',
         currentUser?.email || 'moderador@lorspi.com',
-        `Oferta ID ${id} ("${title}") fue archivada.`,
+        `Oferta ID ${id} ("${title}") fue ocultada del mapa (archivada).`,
         undefined,
         id
       );
       refetchOffers();
       loadData();
-      showAlert('Oferta archivada exitosamente.', { title: 'Éxito', variant: 'success' });
+      showAlert('Oferta ocultada del mapa.', { title: 'Éxito', variant: 'success' });
     } catch (err: any) {
-      showAlert(err.message || 'Error al archivar', { title: 'Error', variant: 'error' });
+      showAlert(err.message || 'Error al ocultar', { title: 'Error', variant: 'error' });
+    }
+  };
+
+  const handleRestoreNeedItem = async (id: string, title: string) => {
+    if (!(await showConfirm(`¿Restaurar la necesidad "${title}" en el mapa? Volverá a ser visible para todos los ciudadanos.`, { title: 'Restaurar en mapa' }))) return;
+    try {
+      await updateNeed(id, { verificationStatus: 'VERIFIED' });
+      await logAudit(
+        'RESTORE_NEED',
+        currentUser?.email || 'moderador@lorspi.com',
+        `Necesidad ID ${id} ("${title}") fue restaurada al mapa (verificada).`,
+        id
+      );
+      refetchNeeds();
+      loadData();
+      showAlert('Necesidad restaurada exitosamente en el mapa.', { title: 'Éxito', variant: 'success' });
+    } catch (err: any) {
+      showAlert(err.message || 'Error al restaurar', { title: 'Error', variant: 'error' });
+    }
+  };
+
+  const handleRestoreOfferItem = async (id: string, title: string) => {
+    if (!(await showConfirm(`¿Restaurar la oferta "${title}" en el mapa? Volverá a ser visible para todos los ciudadanos.`, { title: 'Restaurar en mapa' }))) return;
+    try {
+      await updateOffer(id, { verificationStatus: 'VERIFIED' });
+      await logAudit(
+        'RESTORE_OFFER',
+        currentUser?.email || 'moderador@lorspi.com',
+        `Oferta ID ${id} ("${title}") fue restaurada al mapa (verificada).`,
+        undefined,
+        id
+      );
+      refetchOffers();
+      loadData();
+      showAlert('Oferta restaurada exitosamente en el mapa.', { title: 'Éxito', variant: 'success' });
+    } catch (err: any) {
+      showAlert(err.message || 'Error al restaurar', { title: 'Error', variant: 'error' });
     }
   };
 
@@ -533,16 +578,36 @@ export const AdminPanelPage: React.FC = () => {
     setIsSavingUserStatus(true);
     try {
       await updateUserModerationStatus(userId, status);
+      let totalCascade = 0;
+      if (status === 'APPROVED') {
+        const updatePayload = {
+          verification_status: 'VERIFIED',
+          verified_by: currentUser?.name || 'Super Admin',
+          updated_at: new Date().toISOString(),
+        };
+        await supabase.from('profiles').update({ is_verified: true, updated_at: new Date().toISOString() }).eq('id', userId);
+        const [{ data: nData }, { data: oData }] = await Promise.all([
+          supabase.from('needs').update(updatePayload).eq('user_id', userId).eq('verification_status', 'PENDING_VERIFICATION').select('id'),
+          supabase.from('offers').update(updatePayload).eq('user_id', userId).eq('verification_status', 'PENDING_VERIFICATION').select('id'),
+        ]);
+        totalCascade = (nData?.length || 0) + (oData?.length || 0);
+        refetchNeeds();
+        refetchOffers();
+        loadData();
+      }
       await logAudit(
         'UPDATE_USER_MODERATION_STATUS',
         currentUser?.email || 'admin@lorspi.com',
-        `Estado de moderación del usuario ID ${userId} actualizado a ${status}.`
+        `Estado de moderación del usuario ID ${userId} actualizado a ${status}.${totalCascade > 0 ? ` Se auto-aprobaron ${totalCascade} publicaciones pendientes.` : ''}`
       );
       // Refrescar lista y modal abierto
       const updated = await fetchUsersList();
       setUsersList(updated);
       setViewingUser((prev) => (prev ? { ...prev, moderationStatus: status } : prev));
-      showAlert('Estado de moderación actualizado.', { title: 'Éxito', variant: 'success' });
+      showAlert(
+        `Estado de moderación actualizado a ${status}.${totalCascade > 0 ? ` Se publicaron ${totalCascade} publicaciones pendientes en el mapa.` : ''}`,
+        { title: 'Éxito', variant: 'success' }
+      );
     } catch (err: any) {
       showAlert(err.message || 'Error al actualizar el estado', { title: 'Error', variant: 'error' });
     } finally {
@@ -561,20 +626,33 @@ export const AdminPanelPage: React.FC = () => {
 
     setIsSavingOrgStatus(true);
     try {
-      await updateOrganizationVerification(org.id, org.userId, nextStatus);
+      const { approvedNeedsCount, approvedOffersCount } = await updateOrganizationVerification(
+        org.id,
+        org.userId,
+        nextStatus,
+        org.name,
+        currentUser?.name || 'Super Admin'
+      );
+      const totalCascade = approvedNeedsCount + approvedOffersCount;
       await logAudit(
         nextStatus ? 'VERIFY_ORGANIZATION' : 'UNVERIFY_ORGANIZATION',
         currentUser?.email || 'admin@lorspi.com',
-        `Entidad "${org.name}" (ID: ${org.id}) marcada como ${nextStatus ? 'VERIFICADA' : 'NO VERIFICADA'}.`
+        `Entidad "${org.name}" (ID: ${org.id}) marcada como ${nextStatus ? 'VERIFICADA' : 'NO VERIFICADA'}.${totalCascade > 0 ? ` Se auto-aprobaron ${totalCascade} publicaciones pendientes.` : ''}`
       );
       // Refrescar lista y modal abierto si coincide
       const updated = await fetchAdminOrganizationsList();
       setOrganizationsList(updated);
+      refetchNeeds();
+      refetchOffers();
+      loadData();
       if (viewingOrg && viewingOrg.id === org.id) {
         setViewingOrg({ ...viewingOrg, isVerified: nextStatus });
       }
+      const cascadeMsg = totalCascade > 0
+        ? ` Se aprobaron y publicaron en el mapa ${totalCascade} ${totalCascade === 1 ? 'publicación que estaba' : 'publicaciones que estaban'} en espera.`
+        : '';
       showAlert(
-        nextStatus ? `"${org.name}" ha sido verificada exitosamente.` : `Se revocó la verificación de "${org.name}".`,
+        nextStatus ? `"${org.name}" ha sido verificada exitosamente.${cascadeMsg}` : `Se revocó la verificación de "${org.name}".`,
         { title: 'Éxito', variant: 'success' }
       );
     } catch (err: any) {
@@ -1715,41 +1793,104 @@ export const AdminPanelPage: React.FC = () => {
         {/* TAB 3: ALL NEEDS & OFFERS */}
         {activeTab === 'ALL' && (
           <div className="space-y-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
-              <h3 className="font-bold text-rd-ink text-rd-14">
-                Gestión Global ({needs.length} Necesidades, {offers.length} Ofertas)
-              </h3>
+            <div className="flex flex-col gap-3.5 bg-rd-surface p-4 rounded-rd-xl border border-rd-line shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <h3 className="font-bold text-rd-ink text-rd-14">
+                  Gestión Global ({needs.length} Necesidades, {offers.length} Ofertas)
+                </h3>
+                {(adminSearch || adminPriorityFilter !== 'ALL' || adminVerificationFilter !== 'ALL' || adminTypeFilter !== 'ALL' || adminAuthorTypeFilter !== 'ALL' || adminAgeFilter !== 'ALL' || adminSortOrder !== 'RECENT') && (
+                  <button
+                    onClick={() => {
+                      setAdminSearch('');
+                      setAdminPriorityFilter('ALL');
+                      setAdminVerificationFilter('ALL');
+                      setAdminTypeFilter('ALL');
+                      setAdminAuthorTypeFilter('ALL');
+                      setAdminAgeFilter('ALL');
+                      setAdminSortOrder('RECENT');
+                    }}
+                    className="text-rd-12 text-rd-coral font-semibold hover:underline cursor-pointer self-start sm:self-auto"
+                  >
+                    Restablecer todos los filtros
+                  </button>
+                )}
+              </div>
               
-              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-                <div className="relative flex-1 sm:w-60 min-w-[200px]">
+              {/* Barra de Filtros en 2 filas limpias y responsivas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {/* Buscador */}
+                <div className="relative">
                   <Search className="w-3.5 h-3.5 text-rd-ink-3 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={adminSearch}
                     onChange={(e) => setAdminSearch(e.target.value)}
-                    placeholder="Filtrar por título o barrio..."
+                    placeholder="Buscar título o barrio..."
                     className="w-full pl-9 pr-3 py-1.5 bg-rd-fondo border border-rd-line rounded-rd-md text-rd-12 text-rd-ink placeholder:text-rd-ink-meta focus:border-rd-navy focus:outline-none focus:ring-2 focus:ring-rd-navy-soft transition-all"
                   />
                 </div>
 
-                {/* Filter 1: Type */}
+                {/* Filtro 1: Tipo de publicación */}
                 <CustomSelect
                   value={adminTypeFilter}
                   onChange={setAdminTypeFilter}
-                  className="w-52"
+                  className="w-full"
                   icon={<List className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
-                    { value: 'ALL', label: 'Todas (necesidades + ofertas)' },
+                    { value: 'ALL', label: 'Todas las publicaciones' },
                     { value: 'NEEDS', label: 'Solo necesidades' },
                     { value: 'OFFERS', label: 'Solo ofertas' },
                   ]}
                 />
 
-                {/* Filter 2: Priority */}
+                {/* Filtro 2: Tipo de actor / autor */}
+                <CustomSelect
+                  value={adminAuthorTypeFilter}
+                  onChange={setAdminAuthorTypeFilter}
+                  className="w-full"
+                  icon={<Building2 className="w-3.5 h-3.5 text-rd-ink-3" />}
+                  options={[
+                    { value: 'ALL', label: 'Todos los autores' },
+                    { value: 'ORGANIZACION', label: '🏢 Organizaciones' },
+                    { value: 'COMUNIDAD', label: '👥 Comunidades / JAC' },
+                    { value: 'CIUDADANO', label: '👤 Ciudadanos' },
+                  ]}
+                />
+
+                {/* Filtro 3: Antigüedad / Vigencia */}
+                <CustomSelect
+                  value={adminAgeFilter}
+                  onChange={setAdminAgeFilter}
+                  className="w-full"
+                  icon={<Clock className="w-3.5 h-3.5 text-rd-ink-3" />}
+                  options={[
+                    { value: 'ALL', label: 'Cualquier antigüedad' },
+                    { value: 'LAST_7_DAYS', label: 'Últimos 7 días' },
+                    { value: 'OLDER_THAN_15_DAYS', label: '⏳ Más de 15 días' },
+                    { value: 'OLDER_THAN_30_DAYS', label: '⚠️ Más de 30 días' },
+                  ]}
+                />
+              </div>
+
+              {/* Fila secundaria de controles: Orden, Prioridad, Verificación */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 border-t border-rd-line/40">
+                {/* Filtro 4: Orden cronológico */}
+                <CustomSelect
+                  value={adminSortOrder}
+                  onChange={(val) => setAdminSortOrder(val as 'RECENT' | 'OLDEST')}
+                  className="w-full"
+                  icon={<ArrowUpDown className="w-3.5 h-3.5 text-rd-ink-3" />}
+                  options={[
+                    { value: 'RECENT', label: '📅 Más recientes primero' },
+                    { value: 'OLDEST', label: '⏳ Más antiguas primero' },
+                  ]}
+                />
+
+                {/* Filtro 5: Prioridad */}
                 <CustomSelect
                   value={adminPriorityFilter}
                   onChange={setAdminPriorityFilter}
-                  className="w-44"
+                  className="w-full"
                   icon={<AlertTriangle className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
                     { value: 'ALL', label: 'Todas las prioridades' },
@@ -1760,38 +1901,37 @@ export const AdminPanelPage: React.FC = () => {
                   ]}
                 />
 
-                {/* Filter 3: Verification */}
+                {/* Filtro 6: Estado de verificación y visibilidad */}
                 <CustomSelect
                   value={adminVerificationFilter}
                   onChange={setAdminVerificationFilter}
-                  className="w-48"
+                  className="w-full"
                   icon={<ShieldCheck className="w-3.5 h-3.5 text-rd-ink-3" />}
                   options={[
-                    { value: 'ALL', label: 'Todas las verificaciones' },
-                    { value: 'VERIFIED', label: '✓ Verificadas' },
-                    { value: 'PENDING_VERIFICATION', label: '◷ Pendientes' },
-                    { value: 'REPORTED', label: '⚠️ Reportadas' },
-                    { value: 'ARCHIVED', label: '📁 Archivadas' },
+                    { value: 'ALL', label: 'Todas las visibilidades' },
+                    { value: 'VERIFIED', label: '🟢 En el mapa (Visibles)' },
+                    { value: 'PENDING_VERIFICATION', label: '🟡 Fuera del mapa (En espera)' },
+                    { value: 'ARCHIVED_BY_AUTHOR', label: '📁 Fuera del mapa (Retiradas por entidad)' },
+                    { value: 'ARCHIVED_BY_ADMIN', label: '🚫 Fuera del mapa (Ocultadas por admin)' },
+                    { value: 'ARCHIVED_BY_REPORT', label: '⚠️ Fuera del mapa (Por reporte)' },
+                    { value: 'REPORTED', label: '🚩 En revisión (Reportes pendientes)' },
                   ]}
                 />
-
-                {(adminSearch || adminPriorityFilter !== 'ALL' || adminVerificationFilter !== 'ALL' || adminTypeFilter !== 'ALL') && (
-                  <button
-                    onClick={() => {
-                      setAdminSearch('');
-                      setAdminPriorityFilter('ALL');
-                      setAdminVerificationFilter('ALL');
-                      setAdminTypeFilter('ALL');
-                    }}
-                    className="text-rd-12 text-rd-coral font-semibold hover:underline ml-1 cursor-pointer"
-                  >
-                    Limpiar filtros
-                  </button>
-                )}
               </div>
             </div>
 
             {(() => {
+              type AuthorType = 'ORGANIZACION' | 'COMUNIDAD' | 'CIUDADANO';
+              type DiagnosisReasonType = 'VISIBLE' | 'PENDING' | 'ARCHIVED_BY_AUTHOR' | 'ARCHIVED_BY_ADMIN' | 'ARCHIVED_BY_REPORT' | 'REPORTED';
+
+              type VisibilityDiagnosis = {
+                statusLabel: string;
+                statusBadgeCls: string;
+                statusIcon: React.ReactNode;
+                detailText?: string;
+                reasonType: DiagnosisReasonType;
+              };
+
               type CombinedItem = {
                 id: string;
                 type: 'NEED' | 'OFFER';
@@ -1802,51 +1942,251 @@ export const AdminPanelPage: React.FC = () => {
                 priority?: Priority;
                 verificationStatus: VerificationStatus;
                 updatedAt: string;
+                createdAt: string;
+                authorType: AuthorType;
+                authorName: string;
+                ageDays: number;
+                diagnosis: VisibilityDiagnosis;
               };
 
-              const needItems: CombinedItem[] = (adminTypeFilter === 'OFFERS' ? [] : needs).map((n) => ({
-                id: n.id,
-                type: 'NEED' as const,
-                item: n,
-                title: n.title,
-                neighborhood: n.neighborhood,
-                address: n.address,
-                priority: n.priority,
-                verificationStatus: n.verificationStatus,
-                updatedAt: n.updatedAt,
-              }));
-
-              const offerItems: CombinedItem[] = (adminTypeFilter === 'NEEDS' ? [] : offers).map((o) => ({
-                id: o.id,
-                type: 'OFFER' as const,
-                item: o,
-                title: o.title,
-                neighborhood: o.neighborhood,
-                address: o.address,
-                priority: undefined,
-                verificationStatus: o.verificationStatus,
-                updatedAt: o.updatedAt,
-              }));
-
-              const filteredItems = [...needItems, ...offerItems].filter((item) => {
-                if (adminSearch) {
-                  const q = adminSearch.toLowerCase();
-                  if (
-                    !item.title.toLowerCase().includes(q) &&
-                    !item.neighborhood.toLowerCase().includes(q) &&
-                    !item.address.toLowerCase().includes(q)
-                  )
-                    return false;
+              const getVisibilityDiagnosis = (
+                item: Need | Offer,
+                isNeed: boolean,
+                verStatus: VerificationStatus,
+                authorType: AuthorType
+              ): VisibilityDiagnosis => {
+                if (verStatus === 'VERIFIED') {
+                  return {
+                    statusLabel: 'En el mapa • Visible',
+                    statusBadgeCls: 'bg-rd-green-soft text-rd-green border-rd-green-line',
+                    statusIcon: <CheckCircle className="w-3 h-3 text-rd-green" />,
+                    detailText: 'Aprobada y visible en el mapa para los ciudadanos',
+                    reasonType: 'VISIBLE',
+                  };
                 }
-                if (adminPriorityFilter !== 'ALL' && item.priority !== adminPriorityFilter) return false;
-                if (adminVerificationFilter !== 'ALL' && item.verificationStatus !== adminVerificationFilter) return false;
-                return true;
-              }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+                if (verStatus === 'PENDING_VERIFICATION') {
+                  return {
+                    statusLabel: 'Fuera del mapa • En espera de aprobación',
+                    statusBadgeCls: 'bg-rd-amber-soft text-rd-amber-ink border-rd-amber-line',
+                    statusIcon: <Clock className="w-3 h-3 text-rd-amber" />,
+                    detailText: 'Fuera del mapa: requiere revisión y aprobación del equipo para publicarse',
+                    reasonType: 'PENDING',
+                  };
+                }
+
+                if (verStatus === 'ARCHIVED') {
+                  const itemId = item.id;
+                  const matchingLog = auditLogs.find((l) =>
+                    (isNeed && (l.needId === itemId || l.details?.includes(itemId))) ||
+                    (!isNeed && (l.offerId === itemId || l.details?.includes(itemId)))
+                  );
+
+                  const isReportResolved = matchingLog?.details?.toLowerCase().includes('reporte') || matchingLog?.action === 'RESOLVE_REPORT';
+                  const isModeratorArchived = matchingLog && (matchingLog.action === 'ARCHIVE_NEED' || matchingLog.action === 'ARCHIVE_OFFER');
+
+                  if (isReportResolved) {
+                    return {
+                      statusLabel: 'Fuera del mapa • Archivada por reporte',
+                      statusBadgeCls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+                      statusIcon: <Flag className="w-3 h-3 text-rd-coral" />,
+                      detailText: `Fuera del mapa: archivada tras resolver reporte ciudadano (${matchingLog?.adminEmail || 'Moderación'})`,
+                      reasonType: 'ARCHIVED_BY_REPORT',
+                    };
+                  }
+
+                  if (isModeratorArchived) {
+                    return {
+                      statusLabel: 'Fuera del mapa • Ocultada por moderación',
+                      statusBadgeCls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+                      statusIcon: <EyeOff className="w-3 h-3 text-rd-coral" />,
+                      detailText: `Fuera del mapa: ocultada por moderación (${matchingLog.adminEmail || 'Admin'})`,
+                      reasonType: 'ARCHIVED_BY_ADMIN',
+                    };
+                  }
+
+                  const actorLabel = authorType === 'ORGANIZACION' ? 'la organización' : authorType === 'COMUNIDAD' ? 'la comunidad' : 'el ciudadano';
+                  return {
+                    statusLabel: 'Fuera del mapa • Retirada por la entidad',
+                    statusBadgeCls: 'bg-rd-fondo text-rd-ink-2 border-rd-line',
+                    statusIcon: <Archive className="w-3 h-3 text-rd-ink-meta" />,
+                    detailText: `Fuera del mapa: eliminada o retirada por ${actorLabel} desde su panel`,
+                    reasonType: 'ARCHIVED_BY_AUTHOR',
+                  };
+                }
+
+                if (verStatus === 'REPORTED') {
+                  return {
+                    statusLabel: 'En revisión • Reportes pendientes',
+                    statusBadgeCls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+                    statusIcon: <AlertTriangle className="w-3 h-3 text-rd-coral" />,
+                    detailText: 'Tiene reportes ciudadanos pendientes de resolución',
+                    reasonType: 'REPORTED',
+                  };
+                }
+
+                return {
+                  statusLabel: 'Fuera del mapa • Rechazada',
+                  statusBadgeCls: 'bg-rd-coral-soft text-rd-coral border-rd-coral-line',
+                  statusIcon: <X className="w-3 h-3 text-rd-coral" />,
+                  detailText: 'Rechazada por el equipo de moderación',
+                  reasonType: 'ARCHIVED_BY_ADMIN',
+                };
+              };
+
+              const getAuthorInfo = (item: Need | Offer, isNeed: boolean): { authorType: AuthorType; authorName: string } => {
+                if (isNeed) {
+                  const need = item as Need;
+                  const reqType = (need.requesterType || '').toUpperCase();
+                  const orgName = (need.organizationName || '').trim();
+
+                  const matchedOrg = organizationsList.find(
+                    (o) =>
+                      (orgName && o.name.toLowerCase() === orgName.toLowerCase()) ||
+                      (need.userId && o.userId === need.userId)
+                  );
+
+                  if (matchedOrg) {
+                    return {
+                      authorType: matchedOrg.category === 'COMUNIDAD' ? 'COMUNIDAD' : 'ORGANIZACION',
+                      authorName: matchedOrg.name,
+                    };
+                  }
+
+                  if (reqType === 'COMUNIDAD' || /junta|jac|comunidad|colectivo|albergue/i.test(orgName)) {
+                    return { authorType: 'COMUNIDAD', authorName: orgName || need.contactName || 'Comunidad' };
+                  }
+
+                  if (['ORGANIZACION', 'FUNDACION', 'EMPRESA'].includes(reqType) || orgName) {
+                    return { authorType: 'ORGANIZACION', authorName: orgName || 'Organización' };
+                  }
+
+                  return { authorType: 'CIUDADANO', authorName: need.contactName || 'Ciudadano' };
+                } else {
+                  const offer = item as Offer;
+                  const orgName = (offer.organizationName || '').trim();
+
+                  const matchedOrg = organizationsList.find(
+                    (o) =>
+                      (orgName && o.name.toLowerCase() === orgName.toLowerCase()) ||
+                      (offer.userId && o.userId === offer.userId)
+                  );
+
+                  if (matchedOrg) {
+                    return {
+                      authorType: matchedOrg.category === 'COMUNIDAD' ? 'COMUNIDAD' : 'ORGANIZACION',
+                      authorName: matchedOrg.name,
+                    };
+                  }
+
+                  if (/junta|jac|comunidad|colectivo|albergue/i.test(orgName)) {
+                    return { authorType: 'COMUNIDAD', authorName: orgName || offer.contactName || 'Comunidad' };
+                  }
+
+                  if (orgName) {
+                    return { authorType: 'ORGANIZACION', authorName: orgName };
+                  }
+
+                  return { authorType: 'CIUDADANO', authorName: offer.contactName || 'Ciudadano' };
+                }
+              };
+
+              const calcAgeDays = (dateStr: string) => {
+                const itemDate = new Date(dateStr).getTime();
+                if (isNaN(itemDate)) return 0;
+                return Math.max(0, Math.floor((Date.now() - itemDate) / (1000 * 60 * 60 * 24)));
+              };
+
+              const needItems: CombinedItem[] = (adminTypeFilter === 'OFFERS' ? [] : needs).map((n) => {
+                const author = getAuthorInfo(n, true);
+                const ageDays = calcAgeDays(n.updatedAt || n.createdAt);
+                const diagnosis = getVisibilityDiagnosis(n, true, n.verificationStatus, author.authorType);
+                return {
+                  id: n.id,
+                  type: 'NEED' as const,
+                  item: n,
+                  title: n.title,
+                  neighborhood: n.neighborhood,
+                  address: n.address,
+                  priority: n.priority,
+                  verificationStatus: n.verificationStatus,
+                  updatedAt: n.updatedAt,
+                  createdAt: n.createdAt,
+                  authorType: author.authorType,
+                  authorName: author.authorName,
+                  ageDays,
+                  diagnosis,
+                };
+              });
+
+              const offerItems: CombinedItem[] = (adminTypeFilter === 'NEEDS' ? [] : offers).map((o) => {
+                const author = getAuthorInfo(o, false);
+                const ageDays = calcAgeDays(o.updatedAt || o.createdAt);
+                const diagnosis = getVisibilityDiagnosis(o, false, o.verificationStatus, author.authorType);
+                return {
+                  id: o.id,
+                  type: 'OFFER' as const,
+                  item: o,
+                  title: o.title,
+                  neighborhood: o.neighborhood,
+                  address: o.address,
+                  priority: undefined,
+                  verificationStatus: o.verificationStatus,
+                  updatedAt: o.updatedAt,
+                  createdAt: o.createdAt,
+                  authorType: author.authorType,
+                  authorName: author.authorName,
+                  ageDays,
+                  diagnosis,
+                };
+              });
+
+              const filteredItems = [...needItems, ...offerItems]
+                .filter((item) => {
+                  if (adminSearch) {
+                    const q = adminSearch.toLowerCase();
+                    if (
+                      !item.title.toLowerCase().includes(q) &&
+                      !item.neighborhood.toLowerCase().includes(q) &&
+                      !item.address.toLowerCase().includes(q) &&
+                      !item.authorName.toLowerCase().includes(q)
+                    )
+                      return false;
+                  }
+                  if (adminPriorityFilter !== 'ALL' && item.priority !== adminPriorityFilter) return false;
+                  if (adminAuthorTypeFilter !== 'ALL' && item.authorType !== adminAuthorTypeFilter) return false;
+
+                  if (adminVerificationFilter !== 'ALL') {
+                    if (adminVerificationFilter === 'VERIFIED' && item.diagnosis.reasonType !== 'VISIBLE') return false;
+                    if (adminVerificationFilter === 'PENDING_VERIFICATION' && item.diagnosis.reasonType !== 'PENDING') return false;
+                    if (adminVerificationFilter === 'REPORTED' && item.diagnosis.reasonType !== 'REPORTED') return false;
+                    if (adminVerificationFilter === 'ARCHIVED_BY_AUTHOR' && item.diagnosis.reasonType !== 'ARCHIVED_BY_AUTHOR') return false;
+                    if (adminVerificationFilter === 'ARCHIVED_BY_ADMIN' && item.diagnosis.reasonType !== 'ARCHIVED_BY_ADMIN') return false;
+                    if (adminVerificationFilter === 'ARCHIVED_BY_REPORT' && item.diagnosis.reasonType !== 'ARCHIVED_BY_REPORT') return false;
+                    if (adminVerificationFilter === 'ARCHIVED' && item.verificationStatus !== 'ARCHIVED') return false;
+                  }
+
+                  if (adminAgeFilter === 'LAST_7_DAYS' && item.ageDays > 7) return false;
+                  if (adminAgeFilter === 'OLDER_THAN_15_DAYS' && item.ageDays < 15) return false;
+                  if (adminAgeFilter === 'OLDER_THAN_30_DAYS' && item.ageDays < 30) return false;
+
+                  return true;
+                })
+                .sort((a, b) => {
+                  const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+                  const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+                  return adminSortOrder === 'OLDEST' ? timeA - timeB : timeB - timeA;
+                });
 
               return (
                 <div className="space-y-3">
-                  <div className="text-rd-12 text-rd-ink-meta font-medium">
-                    Mostrando <strong>{filteredItems.length}</strong> publicaciones de {needs.length + offers.length} totales
+                  <div className="flex items-center justify-between text-rd-12 text-rd-ink-meta font-medium">
+                    <span>
+                      Mostrando <strong>{filteredItems.length}</strong> publicaciones de {needs.length + offers.length} totales
+                    </span>
+                    <span className="text-rd-11">
+                      Orden: {adminSortOrder === 'OLDEST' ? '⏳ Más antiguas primero' : '📅 Más recientes primero'}
+                    </span>
                   </div>
 
                   <div className="space-y-3">
@@ -1855,84 +2195,206 @@ export const AdminPanelPage: React.FC = () => {
                         No se encontraron publicaciones con los filtros seleccionados.
                       </div>
                     ) : (
-                      filteredItems.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border border-rd-line flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-rd-ink-3/40 shadow-xs"
-                        >
-                          <div className="space-y-1.5 min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {entry.type === 'NEED' ? (
-                                <span className="bg-rd-coral-soft text-rd-coral border border-rd-coral-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
-                                  Necesidad
+                      filteredItems.map((entry) => {
+                        const isHidden = entry.verificationStatus === 'ARCHIVED';
+                        const isPending = entry.verificationStatus === 'PENDING_VERIFICATION';
+                        const isStale = entry.ageDays >= 15;
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className={`bg-rd-surface rounded-rd-xl p-4 md:p-4.5 border transition-colors shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                              isHidden
+                                ? 'border-rd-line/60 bg-rd-fondo/40 opacity-80 hover:opacity-100'
+                                : 'border-rd-line hover:border-rd-ink-3/40'
+                            }`}
+                          >
+                            <div className="space-y-2 min-w-0 flex-1">
+                              {/* Badges de clasificación y estado */}
+                              <div className="flex flex-wrap items-center gap-2">
+                                {entry.type === 'NEED' ? (
+                                  <span className="bg-rd-coral-soft text-rd-coral border border-rd-coral-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
+                                    Necesidad
+                                  </span>
+                                ) : (
+                                  <span className="bg-rd-navy-soft text-rd-navy border border-rd-navy-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
+                                    Oferta
+                                  </span>
+                                )}
+
+                                {/* Badge de Actor */}
+                                {entry.authorType === 'ORGANIZACION' ? (
+                                  <span className="bg-rd-navy-soft text-rd-navy border border-rd-navy-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10 flex items-center gap-1">
+                                    <Building2 className="w-3 h-3" />
+                                    <span>Org: {entry.authorName}</span>
+                                  </span>
+                                ) : entry.authorType === 'COMUNIDAD' ? (
+                                  <span className="bg-purple-50 text-purple-700 border border-purple-200 font-bold px-2 py-0.5 rounded-rd-sm text-rd-10 flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    <span>Comunidad: {entry.authorName}</span>
+                                  </span>
+                                ) : (
+                                  <span className="bg-rd-fondo text-rd-ink-2 border border-rd-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10 flex items-center gap-1">
+                                    <span>👤 Ciudadano: {entry.authorName}</span>
+                                  </span>
+                                )}
+
+                                <AdminPriorityPill priority={entry.priority} />
+
+                                {/* Badge de Diagnóstico de Visibilidad */}
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-rd-sm text-rd-10 font-bold border ${entry.diagnosis.statusBadgeCls}`}>
+                                  {entry.diagnosis.statusIcon}
+                                  <span>{entry.diagnosis.statusLabel}</span>
                                 </span>
-                              ) : (
-                                <span className="bg-rd-navy-soft text-rd-navy border border-rd-navy-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10">
-                                  Oferta
+
+                                {/* Badge de alerta si lleva más de 15 días sin renovación */}
+                                {isStale && (
+                                  <span
+                                    className="bg-rd-amber-soft text-rd-amber-ink border border-rd-amber-line font-bold px-2 py-0.5 rounded-rd-sm text-rd-10 flex items-center gap-1"
+                                    title={`Lleva ${entry.ageDays} días desde su última confirmación`}
+                                  >
+                                    <Clock className="w-3 h-3 text-rd-amber" />
+                                    <span>+{entry.ageDays}d sin renovar</span>
+                                  </span>
+                                )}
+
+                                <span className="text-rd-11-5 text-rd-ink-meta flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
+                                  {entry.neighborhood ? `${entry.neighborhood}, ` : ''}{entry.address || 'Ubicación registrada'}
                                 </span>
+
+                                <span className="text-rd-11 text-rd-ink-meta flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-rd-ink-3" />
+                                  {formatTimeAgo(entry.updatedAt || entry.createdAt, 'es')}
+                                </span>
+                              </div>
+
+                              <div>
+                                <h4 className="font-semibold text-rd-ink text-rd-14 leading-snug">{entry.title}</h4>
+                                {entry.item.description && (
+                                  <p className="text-rd-12 text-rd-ink-2 line-clamp-1 mt-0.5">{entry.item.description}</p>
+                                )}
+                              </div>
+
+                              {/* Línea explicativa del diagnóstico de visibilidad */}
+                              {entry.diagnosis.detailText && (
+                                <div className="flex items-center gap-1.5 text-rd-11 text-rd-ink-meta bg-rd-fondo/60 px-2.5 py-1 rounded-rd-md border border-rd-line/40 w-fit">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rd-ink-3 shrink-0" />
+                                  <span>{entry.diagnosis.detailText}</span>
+                                </div>
                               )}
-                              <AdminPriorityPill priority={entry.priority} />
-                              <AdminVerificationPill status={entry.verificationStatus} />
-                              <span className="text-rd-11-5 text-rd-ink-meta flex items-center gap-1">
-                                <MapPin className="w-3.5 h-3.5 text-rd-ink-3" />
-                                {entry.neighborhood ? `${entry.neighborhood}, ` : ''}{entry.address || 'Ubicación registrada'}
-                              </span>
-                              <span className="text-rd-11 text-rd-ink-meta flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-rd-ink-3" />
-                                {formatTimeAgo(entry.updatedAt, 'es')}
-                              </span>
                             </div>
 
-                            <h4 className="font-semibold text-rd-ink text-rd-14 leading-snug">{entry.title}</h4>
-                            {entry.item.description && (
-                              <p className="text-rd-12 text-rd-ink-2 line-clamp-1">{entry.item.description}</p>
-                            )}
-                          </div>
+                            {/* Botones de acción contextuales según el estado real */}
+                            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                              {/* 1. Si está PENDIENTE: NO está en el mapa -> botones Aprobar o Rechazar */}
+                              {isPending && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (entry.type === 'NEED') {
+                                        handleVerifyNeed(entry.id, 'verify');
+                                      } else {
+                                        handleVerifyOffer(entry.id, 'verify');
+                                      }
+                                    }}
+                                    className="bg-rd-green-soft hover:bg-rd-green-soft/80 text-rd-green border border-rd-green-line font-semibold text-rd-12 h-8 px-3 rounded-rd-md transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                    title="Aprobar para publicar en el mapa"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Aprobar en mapa</span>
+                                  </button>
 
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (entry.type === 'NEED') {
-                                  setEditingNeedViaModal(entry.item as Need);
-                                } else {
-                                  setEditingOfferViaModal(entry.item as Offer);
-                                }
-                              }}
-                              className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span>Editar</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (entry.type === 'NEED') {
-                                  setViewingNeed(entry.item as Need);
-                                } else {
-                                  setViewingOffer(entry.item as Offer);
-                                }
-                              }}
-                              className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
-                            >
-                              Ver detalle
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (entry.type === 'NEED') {
-                                  handleArchiveNeedItem(entry.id, entry.title);
-                                } else {
-                                  handleArchiveOfferItem(entry.id, entry.title);
-                                }
-                              }}
-                              className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
-                            >
-                              Archivar
-                            </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!(await showConfirm(`¿Rechazar esta ${entry.type === 'NEED' ? 'necesidad' : 'oferta'}? No se publicará en el mapa y quedará archivada.`, { title: 'Rechazar publicación' }))) return;
+                                      if (entry.type === 'NEED') {
+                                        handleVerifyNeed(entry.id, 'archive');
+                                      } else {
+                                        handleVerifyOffer(entry.id, 'archive');
+                                      }
+                                    }}
+                                    className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-2.5 rounded-rd-md border border-rd-line transition-colors cursor-pointer flex items-center gap-1.5"
+                                    title="Rechazar y archivar sin publicar en el mapa"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Rechazar</span>
+                                  </button>
+                                </>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (entry.type === 'NEED') {
+                                    setEditingNeedViaModal(entry.item as Need);
+                                  } else {
+                                    setEditingOfferViaModal(entry.item as Offer);
+                                  }
+                                }}
+                                className="bg-rd-navy hover:bg-rd-navy-hover text-white font-semibold text-rd-12 h-8 px-3 rounded-rd-md flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+                              
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (entry.type === 'NEED') {
+                                    setViewingNeed(entry.item as Need);
+                                  } else {
+                                    setViewingOffer(entry.item as Offer);
+                                  }
+                                }}
+                                className="bg-rd-surface hover:bg-rd-fondo text-rd-ink font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer"
+                              >
+                                Ver detalle
+                              </button>
+
+                              {/* 2. Si está ARCHIVADA/RETIRADA: NO está en el mapa -> opción de Restaurar */}
+                              {isHidden && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (entry.type === 'NEED') {
+                                      handleRestoreNeedItem(entry.id, entry.title);
+                                    } else {
+                                      handleRestoreOfferItem(entry.id, entry.title);
+                                    }
+                                  }}
+                                  className="bg-rd-green-soft hover:bg-rd-green-soft/80 text-rd-green border border-rd-green-line font-medium text-rd-12 h-8 px-3 rounded-rd-md transition-colors cursor-pointer flex items-center gap-1.5"
+                                  title="Restaurar visibilidad en el mapa público"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Restaurar en mapa</span>
+                                </button>
+                              )}
+
+                              {/* 3. Si está VISIBLE en el mapa -> opción de Ocultar del mapa */}
+                              {!isHidden && !isPending && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (entry.type === 'NEED') {
+                                      handleArchiveNeedItem(entry.id, entry.title);
+                                    } else {
+                                      handleArchiveOfferItem(entry.id, entry.title);
+                                    }
+                                  }}
+                                  className="bg-rd-surface hover:bg-rd-coral-soft/50 text-rd-ink-meta hover:text-rd-coral font-medium text-rd-12 h-8 px-3 rounded-rd-md border border-rd-line transition-colors cursor-pointer flex items-center gap-1.5"
+                                  title="Ocultar del mapa público de la plataforma"
+                                >
+                                  <EyeOff className="w-3.5 h-3.5" />
+                                  <span>Ocultar del mapa</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>

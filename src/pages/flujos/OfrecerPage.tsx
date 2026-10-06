@@ -196,6 +196,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       shippingCost: estado.envio,
       userId: user?.id,
       evidenceUrl: photoUrls.join(','),
+      verificationStatus: (org?.is_verified || profile?.is_verified) ? 'VERIFIED' : 'PENDING_VERIFICATION',
+      verifiedBy: (org?.is_verified || profile?.is_verified) ? (org?.org_name || profile?.full_name || 'Entidad verificada') : undefined,
     };
 
     const inserted = await createOfferWithItems(offerPayload, itemsPayload);
