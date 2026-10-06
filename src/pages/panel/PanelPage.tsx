@@ -36,7 +36,7 @@ import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
 import { HojaFiltrosEquipo } from './HojaFiltrosEquipo';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient';
-import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
+import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, updateOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
 import { commitmentToSolicitud, commitmentToEntregaRecibida, commitmentToSolicitudEnviada, commitmentToOfrecimientoEnviado, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
@@ -659,14 +659,15 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
               id: idx + 100,
               dbId: m.id,
-              n: m.profiles?.full_name || m.name || 'Miembro de equipo',
+              n: m.name || m.profiles?.full_name || 'Miembro de equipo',
               rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
               rol: m.member_title || m.role_in_org || 'Operativo',
-              veh: '',
-              tel: m.profiles?.phone || m.phone || '',
-              correo: m.profiles?.email || m.email || '',
-              disp: '',
+              veh: m.veh || '',
+              tel: m.phone || m.profiles?.phone || '',
+              correo: m.email || m.profiles?.email || '',
+              disp: m.disp || '',
               hechas: 0,
+              ubicacion: m.ubicacion || '',
             }));
             setEquipo((prev) => {
               const dbMemberNames = new Set(mappedEquipo.map((m) => m.n.toLowerCase().trim()));
@@ -1226,7 +1227,10 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           roleInOrg: m.rolPlataforma === 'admin' ? 'admin' : 'operativo',
           name: m.n,
           phone: m.tel,
-          email: m.correo
+          email: m.correo,
+          veh: m.veh,
+          disp: m.disp,
+          ubicacion: m.ubicacion,
         });
         if (dbRes?.id) {
           setEquipo((prev) => prev.map((x) => (x.id === nuevo.id ? { ...x, dbId: dbRes.id } : x)));
@@ -1236,9 +1240,27 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       }
     }
   };
-  const editarMiembro = (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+  const editarMiembro = async (id: number, m: Omit<MiembroEquipo, 'id' | 'hechas'>) => {
+    const target = equipo.find((x) => x.id === id);
     setEquipo((prev) => prev.map((x) => (x.id === id ? { ...x, ...m } : x)));
     avisar(`Datos de ${m.n} actualizados.`, { tipo: 'ok' });
+
+    if ((target as any)?.dbId) {
+      try {
+        await updateOrganizationMember((target as any).dbId, {
+          name: m.n,
+          email: m.correo,
+          phone: m.tel,
+          veh: m.veh,
+          disp: m.disp,
+          ubicacion: m.ubicacion,
+          memberTitle: m.rol,
+          roleInOrg: m.rolPlataforma === 'admin' ? 'admin' : 'operativo',
+        });
+      } catch (e) {
+        console.warn('Error actualizando miembro en Supabase:', e);
+      }
+    }
   };
   const eliminarMiembro = async (id: number) => {
     const m = equipo.find((x) => x.id === id);

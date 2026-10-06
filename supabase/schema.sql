@@ -373,6 +373,11 @@ BEGIN
     city = EXCLUDED.city,
     updated_at = NOW();
 
+  -- Vincular automáticamente miembros agregados previamente por su correo
+  UPDATE public.organization_members 
+  SET user_id = NEW.id 
+  WHERE LOWER(email) = LOWER(NEW.email) AND user_id IS NULL;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -506,13 +511,17 @@ CREATE INDEX IF NOT EXISTS idx_commitments_created_at ON public.commitments(crea
 CREATE TABLE IF NOT EXISTS public.organization_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  veh TEXT,
+  disp TEXT,
+  ubicacion TEXT,
   role_in_org VARCHAR(50) DEFAULT 'operativo',
   member_title TEXT,
   status VARCHAR(50) DEFAULT 'ACTIVO',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  CONSTRAINT unique_org_member UNIQUE(organization_id, user_id)
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_org_members_org ON public.organization_members(organization_id);
@@ -534,6 +543,8 @@ DROP POLICY IF EXISTS "Permitir insercion publica de miembros" ON public.organiz
 CREATE POLICY "Permitir insercion publica de miembros" ON public.organization_members FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Permitir edicion publica de miembros" ON public.organization_members;
 CREATE POLICY "Permitir edicion publica de miembros" ON public.organization_members FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Permitir eliminacion de miembros" ON public.organization_members;
+CREATE POLICY "Permitir eliminacion de miembros" ON public.organization_members FOR DELETE USING (true);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.commitments TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.organization_members TO service_role;

@@ -5,6 +5,7 @@ import { Divisor } from './Divisor';
 import { LanguageSelector } from '../LanguageSelector';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { entidadActual } from '../../utils/cuenta';
 import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
@@ -121,15 +122,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             console.warn('Error al consultar perfil en Shell:', e);
           }
 
-          // Consultar si pertenece a una organización en DB
+          // Consultar si pertenece a una organización en DB (dueño o miembro)
           let orgData: any = null;
           try {
-            const { data: o } = await supabase
-              .from('organizations')
-              .select('id, name')
-              .eq('user_id', user.id)
-              .maybeSingle();
-            orgData = o;
+            orgData = await fetchOrganizationByUserId(user.id);
           } catch {}
 
           if (isMounted) {
@@ -314,11 +310,11 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     async function checkUserOrgAndProfile() {
       try {
         const [orgRes, profRes] = await Promise.all([
-          supabase.from('organizations').select('id').eq('user_id', activeUser.id).maybeSingle(),
+          fetchOrganizationByUserId(activeUser.id),
           supabase.from('profiles').select('profile_type, role').eq('id', activeUser.id).maybeSingle()
         ]);
         if (!isMounted) return;
-        setHasOrg(Boolean(orgRes.data));
+        setHasOrg(Boolean(orgRes));
         if (profRes.data) {
           setDbProfileType((profRes.data.profile_type || profRes.data.role || '').toLowerCase());
         }

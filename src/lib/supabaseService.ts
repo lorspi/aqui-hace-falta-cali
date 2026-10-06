@@ -1913,20 +1913,36 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
 }
 
 /**
- * Obtiene la organización asociada a un usuario
+ * Obtiene la organización asociada a un usuario (como dueño o como miembro del equipo en organization_members)
  */
 export async function fetchOrganizationByUserId(userId: string): Promise<any | null> {
-  const { data, error } = await supabase
+  if (!userId) return null;
+
+  // 1. Buscar si el usuario es dueño de la organización
+  const { data: ownerOrg, error: ownerError } = await supabase
     .from('organizations')
     .select('*')
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error) {
-    console.error('Error fetching organization:', error);
-    return null;
+  if (ownerOrg) {
+    return ownerOrg;
   }
-  return data;
+
+  // 2. Buscar si el usuario es miembro de una organización con rol 'admin' o 'operativo'
+  const { data: memberOrg, error: memberError } = await supabase
+    .from('organization_members')
+    .select('organization_id, role_in_org, organizations(*)')
+    .eq('user_id', userId)
+    .in('role_in_org', ['admin', 'operativo', 'coordinador'])
+    .limit(1)
+    .maybeSingle();
+
+  if (memberOrg && memberOrg.organizations) {
+    return memberOrg.organizations;
+  }
+
+  return null;
 }
 
 /**
@@ -1966,6 +1982,9 @@ export async function addOrganizationMember(payload: {
   name?: string;
   phone?: string;
   email?: string;
+  veh?: string;
+  disp?: string;
+  ubicacion?: string;
 }): Promise<any> {
   let targetUserId = payload.userId;
 
@@ -1999,6 +2018,9 @@ export async function addOrganizationMember(payload: {
     name: payload.name || null,
     phone: payload.phone || null,
     email: payload.email || null,
+    veh: payload.veh || null,
+    disp: payload.disp || null,
+    ubicacion: payload.ubicacion || null,
     member_title: payload.memberTitle || 'Operativo',
     role_in_org: payload.roleInOrg || 'operativo',
     status: 'ACTIVO',
@@ -2020,12 +2042,59 @@ export async function addOrganizationMember(payload: {
       name: payload.name || null,
       phone: payload.phone || null,
       email: payload.email || null,
+      veh: payload.veh || null,
+      disp: payload.disp || null,
+      ubicacion: payload.ubicacion || null,
       member_title: payload.memberTitle || 'Operativo',
       role_in_org: payload.roleInOrg || 'operativo',
       status: 'ACTIVO',
       created_at: new Date().toISOString(),
       is_local: true,
     };
+  }
+  return data;
+}
+
+/**
+ * Actualiza los datos de un integrante del equipo en Supabase
+ */
+export async function updateOrganizationMember(
+  memberId: string,
+  payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    veh?: string;
+    disp?: string;
+    ubicacion?: string;
+    memberTitle?: string;
+    roleInOrg?: string;
+  }
+): Promise<any> {
+  if (typeof memberId === 'string' && memberId.startsWith('local-mem-')) {
+    return null;
+  }
+
+  const updates: any = {};
+  if (payload.name !== undefined) updates.name = payload.name;
+  if (payload.email !== undefined) updates.email = payload.email;
+  if (payload.phone !== undefined) updates.phone = payload.phone;
+  if (payload.veh !== undefined) updates.veh = payload.veh;
+  if (payload.disp !== undefined) updates.disp = payload.disp;
+  if (payload.ubicacion !== undefined) updates.ubicacion = payload.ubicacion;
+  if (payload.memberTitle !== undefined) updates.member_title = payload.memberTitle;
+  if (payload.roleInOrg !== undefined) updates.role_in_org = payload.roleInOrg;
+
+  const { data, error } = await supabase
+    .from('organization_members')
+    .update(updates)
+    .eq('id', memberId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error al actualizar miembro del equipo en Supabase:', error);
+    throw error;
   }
   return data;
 }
