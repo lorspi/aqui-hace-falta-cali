@@ -18,9 +18,10 @@ import { useConsulta } from '../useConsulta';
  *
  * Ahora el puente sigue igual, y debajo:
  * - A la izquierda, los tres pasos, uno debajo de otro. Los une una línea a pulso que se llena en
- *   el color de su paso mientras se lee: coral el que reporta (la necesidad), navy el que conecta
- *   (la oferta), verde el que monitorea (lo entregado), los mismos colores que esas cosas tienen en
- *   la sección 2 y en la herramienta.
+ *   el color de su paso mientras se lee: rojo el que reporta (la necesidad), azul el que conecta
+ *   (la oferta) y el amarillo de la landing el que monitorea (lo entregado). Hasta el 7 de octubre
+ *   de 2026 este último era verde; ese día la landing quedó en amarillo, azul y rojo (Alejandro:
+ *   «Usa como colores el amarillo azul y rojo, pero mantén este amarillo»).
  * - A la derecha, el lienzo (`LienzoEncuentro`), contando con el scroll cómo se encuentran una
  *   necesidad y una oferta.
  * No se fija la página como en la sección 2: dos recorridos fijados seguidos cansan. Aquí se quedan
@@ -37,6 +38,20 @@ import { useConsulta } from '../useConsulta';
  * siguiente»). La primera versión medía el avance por el bloque entero respecto de la mitad de la
  * ventana, y el texto se iba antes de que su línea terminara. El lienzo se centra a la misma
  * altura.
+ *
+ * EL RELEVO
+ * Al soltarse, un paso subía pegado al siguiente, y parecía que el que entraba lo empujaba
+ * (Alejandro, 7 de octubre de 2026: «parece que la sección que sale es porque la empuja la otra,
+ * eso hace que no se vea tan limpio. debe verse más organico y suavizado»). Ahora:
+ * - Entre un paso y el siguiente hay aire (`rd-aire-encuentro`, el relleno de arriba de cada paso
+ *   desde el segundo), así nunca van pegados.
+ * - El que se va sube al 60 % de la velocidad del scroll (`SUBE_A`) y se apaga en el 28 % del
+ *   alto de la ventana (`SE_APAGA_EN`): se despega despacio y se desvanece, no sale empujado.
+ * - El que llega se enciende mientras se acerca a su sitio, en el 40 % del alto
+ *   (`SE_ENCIENDE_EN`), con una curva suave en los dos extremos.
+ * Reemplaza el 40 % de opacidad fijo que llevaban los pasos que no se leían. Lo escribe el mismo
+ * cuadro de animación que mide el avance; con movimiento reducido el que se va no se corre, solo
+ * se apaga.
  *
  * EL CIERRE
  * La sección se va cuando termina la última línea, no antes (Alejandro, 7 de octubre de 2026: «en
@@ -57,10 +72,12 @@ import { useConsulta } from '../useConsulta';
  *
  * El texto de los pasos es el de siempre, de las traducciones.
  */
+/* El número del nodo va en tinta sobre el rojo y el azul, y en el fondo de la página sobre el
+   amarillo: en claro el amarillo baja a ámbar tinta, y la tinta no se leía encima. */
 const COLORES = [
-  { linea: 'stroke-rd-coral', nodo: 'border-rd-coral bg-rd-coral', rotulo: 'text-rd-coral' },
-  { linea: 'stroke-rd-navy-claro', nodo: 'border-rd-navy-claro bg-rd-navy-claro', rotulo: 'text-rd-navy-claro' },
-  { linea: 'stroke-rd-green-claro', nodo: 'border-rd-green-claro bg-rd-green-claro', rotulo: 'text-rd-green-claro' },
+  { linea: 'stroke-rd-coral', nodo: 'border-rd-coral bg-rd-coral text-rd-ink', rotulo: 'text-rd-coral' },
+  { linea: 'stroke-rd-navy-claro', nodo: 'border-rd-navy-claro bg-rd-navy-claro text-rd-ink', rotulo: 'text-rd-navy-claro' },
+  { linea: 'stroke-rd-ayuda', nodo: 'border-rd-ayuda bg-rd-ayuda text-rd-noche', rotulo: 'text-rd-ayuda' },
 ];
 
 const CONSULTA_ANCHO = '(min-width: 1280px)';
@@ -70,6 +87,17 @@ const CONSULTA_REDUCIDO = '(prefers-reduced-motion: reduce)';
 const ALTO_HEADER = 64;
 /* La parte del recorrido de un paso en la que se llena su línea; el resto se queda llena. */
 const LLENO_EN = 0.85;
+/* El relevo entre pasos (ver EL RELEVO), en fracciones del alto de la ventana: en cuánto se apaga
+   el que sale, en cuánto se enciende el que entra, y a qué parte de la velocidad del scroll sube el
+   que sale. */
+const SE_APAGA_EN = 0.28;
+const SE_ENCIENDE_EN = 0.4;
+const SUBE_A = 0.6;
+/* Una curva suave entre 0 y 1: arranca y llega despacio. */
+const suave = (x: number) => {
+  const t = Math.min(1, Math.max(0, x));
+  return t * t * (3 - 2 * t);
+};
 
 /* La línea de cada paso: vertical, con un temblor a pulso de ±1,5 px. Va en un SVG estirado al
    alto del texto del paso (`preserveAspectRatio="none"`) con el trazo de grosor fijo, así el
@@ -90,7 +118,6 @@ export const LandingComoFunciona: React.FC = () => {
   const lienzo = useRef<HTMLDivElement>(null);
   const cola = useRef<HTMLDivElement>(null);
   const [progreso, setProgreso] = useState(0);
-  const [activo, setActivo] = useState(0);
   /* Con el lienzo fijo (desde 1280) los pasos siguen al scroll; sin él se ven todos completos. */
   const fijo = useConsulta(CONSULTA_ANCHO, true);
 
@@ -122,25 +149,56 @@ export const LandingComoFunciona: React.FC = () => {
       const tope = `${Math.round(Math.max(ALTO_HEADER + 16, centro - el.offsetHeight / 2))}px`;
       if (el.style.top !== tope) el.style.top = tope;
     };
+    /* Lo que este efecto escribe a mano, borrado: por debajo de 1280 los pasos no se fijan, y lo
+       escrito se quedaba si la ventana se achicaba sin recargar. */
+    const limpiar = () => {
+      ol.querySelectorAll<HTMLElement>('[data-paso]').forEach((texto) => {
+        texto.style.top = '';
+        texto.style.opacity = '';
+        texto.style.transform = '';
+      });
+      if (lienzo.current) lienzo.current.style.top = '';
+      if (cola.current) cola.current.style.height = '';
+    };
     const medir = () => {
       raf = 0;
-      if (!ancho.matches) return;
+      if (!ancho.matches) {
+        limpiar();
+        return;
+      }
       centrar(lienzo.current);
       let e = 0;
-      let leyendo = 0;
-      Array.from(ol.children).forEach((paso, i) => {
+      const pasos = Array.from(ol.children);
+      pasos.forEach((paso, i) => {
         const texto = paso.querySelector<HTMLElement>('[data-paso]');
         if (!texto) return;
         centrar(texto);
-        /* Fijo desde que el borde de arriba del paso llega al tope de su texto hasta que el de abajo
-           llega al pie del texto: ese es el recorrido en que se lee. */
+        /* Fijo desde que el borde de arriba del paso (pasado su aire, ver EL RELEVO) llega al tope
+           de su texto hasta que el de abajo llega al pie del texto: ese es el recorrido en que se
+           lee. */
         const r = paso.getBoundingClientRect();
-        const recorrido = Math.max(1, r.height - texto.offsetHeight);
-        const leido = (parseFloat(texto.style.top) - r.top) / recorrido;
-        if (leido >= 0) {
-          e = i + Math.min(1, leido / LLENO_EN);
-          leyendo = i;
-        }
+        const aire = parseFloat(getComputedStyle(paso).paddingTop) || 0;
+        const tope = parseFloat(texto.style.top);
+        const recorrido = Math.max(1, r.height - aire - texto.offsetHeight);
+        const leido = (tope - r.top - aire) / recorrido;
+        if (leido >= 0) e = i + Math.min(1, leido / LLENO_EN);
+
+        /* EL RELEVO: dónde está el texto respecto de su sitio fijo (sin contar lo que se le
+           mueve aquí): por debajo, todavía no llega; por encima, ya se suelta. El que llega se
+           enciende al acercarse; el que se va sube más despacio que el scroll y se apaga. El
+           último no se apaga: sube con la sección (ver EL CIERRE). */
+        const natural = r.top + aire;
+        const fin = r.bottom - texto.offsetHeight;
+        const desvio = natural > tope ? natural - tope : fin < tope ? fin - tope : 0;
+        const alto = window.innerHeight;
+        const ultimo = i === pasos.length - 1;
+        /* El primero no se enciende al llegar: está ahí desde que asoma, debajo del puente. */
+        const opacidad = desvio > 0 ? (i === 0 ? 1 : 1 - suave(desvio / (alto * SE_ENCIENDE_EN))) : ultimo ? 1 : 1 - suave(-desvio / (alto * SE_APAGA_EN));
+        const corrido = desvio < 0 && !ultimo && !reducido?.matches ? -desvio * (1 - SUBE_A) : 0;
+        const o = opacidad.toFixed(3);
+        const tr = corrido ? `translateY(${corrido.toFixed(1)}px)` : '';
+        if (texto.style.opacity !== o) texto.style.opacity = o;
+        if (texto.style.transform !== tr) texto.style.transform = tr;
       });
       /* El cierre (ver EL CIERRE): el aire que hace falta al final para que el lienzo, que es más
          alto que el texto, no se vaya antes que el último paso. */
@@ -152,7 +210,6 @@ export const LandingComoFunciona: React.FC = () => {
       }
       if (reducido?.matches) e = e <= 0 ? 0 : Math.min(3, Math.floor(e) + 1);
       setProgreso((antes) => (Math.abs(antes - e) > 0.001 ? e : antes));
-      setActivo(leyendo);
     };
     const pedir = () => {
       if (!raf) raf = requestAnimationFrame(medir);
@@ -175,21 +232,22 @@ export const LandingComoFunciona: React.FC = () => {
 
   return (
     <>
-      {/* El puente: enmarca lo que viene y no vende nada. */}
-      <Seccion separacion="apretada">
+      {/* El puente va dentro de la sección, encima de los pasos: enmarca lo que viene y no vende
+          nada. Hasta el 7 de octubre de 2026 era una sección aparte, y entre su párrafo y el primer
+          paso quedaban 236 px (Alejandro: «Los títulos de cada sección estén mas cerca del
+          contenido de su sección porque se ven muy distantes»). */}
+      <Seccion id="como-funciona">
         <div className="mx-auto max-w-2xl text-center">
           <Titular>
             {t('landingHowTitleBefore')}RaDAR{t('landingHowTitleAfter')}
           </Titular>
-          <Parrafo className="mx-auto mt-5">
+          <Parrafo className="mx-auto mt-4">
             Tres pasos: alguien dice qué le hace falta, RaDAR lo cruza con quien lo tiene, y la
             entrega queda registrada.
           </Parrafo>
         </div>
-      </Seccion>
 
-      <Seccion id="como-funciona">
-        <div className="grid grid-cols-1 items-start gap-10 xl:grid-cols-2 xl:gap-20">
+        <div className="mt-12 grid grid-cols-1 items-start gap-10 sm:mt-14 xl:grid-cols-2 xl:gap-20">
           <div>
           <ol ref={lista} className="m-0 list-none p-0">
             {pasos.map((p, i) => {
@@ -197,17 +255,15 @@ export const LandingComoFunciona: React.FC = () => {
               const alcanzado = !fijo || progreso > i;
               return (
                 /* El paso: su texto y, debajo, el aire que el scroll recorre mientras el texto se
-                   queda fijo (el espaciador del final, solo desde 1280). En pantallas anchas el paso
-                   que no se está leyendo baja al 40 %; en las demás todos se ven enteros. */
-                <li key={p.n} className="pb-16 xl:pb-0">
-                  <div
-                    data-paso=""
-                    className={`relative pl-16 transition-opacity duration-300 xl:sticky ${i === activo ? 'xl:opacity-100' : 'xl:opacity-40'}`}
-                  >
+                   queda fijo (el espaciador del final, solo desde 1280). Desde el segundo, arriba,
+                   el aire del relevo (ver EL RELEVO). La opacidad y el corrimiento del texto los
+                   escribe el efecto de arriba; por debajo de 1280 todos se ven enteros. */
+                <li key={p.n} className={`pb-16 xl:pb-0 ${i > 0 ? 'xl:pt-rd-aire-encuentro' : ''}`}>
+                  <div data-paso="" className="relative pl-16 will-change-transform xl:sticky">
                     {/* El nodo del paso, en su color desde que se llega a él. */}
                     <span
                       className={`font-rd absolute top-0 left-0 flex h-10 w-10 items-center justify-center rounded-full border text-rd-13-5 font-semibold tabular-nums transition-colors duration-300 ${
-                        alcanzado ? `${COLORES[i].nodo} text-rd-ink` : 'border-rd-noche-linea text-rd-noche-meta'
+                        alcanzado ? COLORES[i].nodo : 'border-rd-noche-linea text-rd-noche-meta'
                       }`}
                     >
                       {String(p.n).padStart(2, '0')}

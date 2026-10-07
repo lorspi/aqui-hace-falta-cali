@@ -44,6 +44,68 @@ export const curva = (p0: Punto, p1: Punto, p2: Punto, p3: Punto, n: number, alt
   return pts;
 };
 
+/* ======================================================================
+   LA LÍNEA CONTINUA (7 de octubre de 2026)
+   Alejandro: «una ilustración de una sola linea, o sea una sola linea hace toda la ilustración
+   completa como si "no se despegara el lapiz del papel". y me gustaría que los otros elementos que
+   son de "dibujo" en la landing funcionenes igual». Las piezas de abajo arman ese trazo: una curva
+   suave que pasa por unos puntos de paso (`pasarPor`), con espirales donde el dibujo da vueltas
+   (`espiral`: los anillos y las curvas de nivel en una sola línea), y un temblor parejo a lo largo
+   de toda la línea (`temblar`), que no depende de cuántos puntos tenga cada tramo.
+   ====================================================================== */
+
+/** Una curva suave (Catmull–Rom) que pasa por todos los puntos, `porTramo` puntos entre cada par.
+ *  Un punto repetido deja un quiebre: así se marcan las puntas. */
+export const pasarPor = (pts: Punto[], porTramo = 14): Punto[] => {
+  const out: Punto[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let k = 0; k < porTramo; k++) {
+      const t = k / porTramo;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const eje = (a: number, b: number, c: number, d: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push({ x: eje(p0.x, p1.x, p2.x, p3.x), y: eje(p0.y, p1.y, p2.y, p3.y) });
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+};
+
+/** Una espiral de `c` hacia afuera (o hacia adentro si `r1` < `r0`), de `vueltas` vueltas desde el
+ *  ángulo `desde` (grados, en el sentido del reloj), achatada en `ry` / `rx`. */
+export const espiral = (c: Punto, r0: number, r1: number, vueltas: number, desde = 0, achate = 1, porVuelta = 48): Punto[] => {
+  const n = Math.max(2, Math.round(vueltas * porVuelta));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = i / n;
+    const a = ((desde + t * vueltas * 360) * Math.PI) / 180;
+    const r = r0 + (r1 - r0) * t;
+    return { x: c.x + r * Math.cos(a), y: c.y + r * achate * Math.sin(a) };
+  });
+};
+
+/** El temblor a pulso a lo largo de una línea: dos ondas perpendiculares medidas por la distancia
+ *  recorrida (una larga de unos 140 px y una corta de unos 38), así tiembla igual en un tramo largo
+ *  que en uno corto. `alto` es el desvío de la larga. */
+export const temblar = (pts: Punto[], alto: number, al: () => number): Punto[] => {
+  const fases = [al() * Math.PI * 2, al() * Math.PI * 2];
+  let s = 0;
+  return pts.map((p, i) => {
+    const a = pts[Math.max(0, i - 1)];
+    const b = pts[Math.min(pts.length - 1, i + 1)];
+    if (i > 0) s += Math.hypot(p.x - a.x, p.y - a.y);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const largo = Math.hypot(dx, dy) || 1;
+    const desvio = alto * Math.sin((s / 140) * Math.PI * 2 + fases[0]) + alto * 0.35 * Math.sin((s / 38) * Math.PI * 2 + fases[1]);
+    return { x: p.x - (dy / largo) * desvio, y: p.y + (dx / largo) * desvio };
+  });
+};
+
 /** Un óvalo a pulso: el radio sube y baja con tres ondas. `fuerza` las agranda. */
 export const ovalo = (c: Punto, rx: number, ry: number, al: () => number, n = 90, fuerza = 1): Punto[] => {
   const ondas = [2, 3, 5].map((k) => ({ k, alto: (0.015 + al() * 0.025) * fuerza, fase: al() * Math.PI * 2 }));

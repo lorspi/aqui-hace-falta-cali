@@ -1,14 +1,15 @@
 import React, { useId } from 'react';
 import { Check, MapPin } from 'lucide-react';
-import { azar, curva, ovalo, trazar, type Punto } from '../trazoAMano';
+import { azar, curva, espiral, ovalo, pasarPor, temblar, trazar, type Punto } from '../trazoAMano';
 
 /**
  * El lienzo de «El encuentro», la sección 3 (Alejandro, 6 de octubre de 2026: «como hacemos para
  * que la sección 3 quede chimba como la 1 y 2?», y sobre la propuesta: «desarrolla el encuentro a
  * ver qué»). Cuenta lo que dice el titular del hero —«el punto de encuentro de las ayudas»— con la
  * gramática que ya tiene la landing: gotas líquidas como la del cursor, anillos de radar, trazo a
- * pulso, grano y los colores que la sección 2 dejó dichos (coral pide, navy ofrece, verde
- * entregado).
+ * pulso, grano y los colores de la landing: rojo pide, azul ofrece y el amarillo de la landing
+ * para lo entregado (Alejandro, 7 de octubre de 2026: «Usa como colores el amarillo azul y rojo,
+ * pero mantén este amarillo»; hasta ese día lo entregado era verde).
  *
  * Es una función del avance (`progreso`, de 0 a 3, un tramo por paso): no guarda estado ni
  * escucha nada. `LandingComoFunciona` le pasa el avance del scroll en escritorio, y en el teléfono
@@ -20,7 +21,7 @@ import { azar, curva, ovalo, trazar, type Punto } from '../trazoAMano';
  *   entre las dos —una línea a pulso que se dibuja— y las dos gotas corren por ella hasta
  *   encontrarse en la mitad y fundirse en una, como la gota del cursor (el mismo filtro de
  *   metabolas: desenfoque, onda y umbral).
- * - 03, Monitorea: la gota unida se vuelve verde, crece un poco, un círculo a pulso la sella, se
+ * - 03, Monitorea: la gota unida se vuelve amarilla, crece un poco, un círculo a pulso la sella, se
  *   dibuja un visto encima y asoma la tarjeta de la entrega confirmada.
  *
  * Las tarjetas son islas de la herramienta, como las maquetas: superficie blanca y tintas de la
@@ -32,27 +33,49 @@ import { azar, curva, ovalo, trazar, type Punto } from '../trazoAMano';
  * gotas pasan por uno. El lienzo es decorativo (`aria-hidden`): los pasos los cuenta el texto.
  */
 
-const LADO = 600;
+/* El lienzo es apaisado (10:7) desde el 7 de octubre de 2026: cuadrado medía 632 de alto al lado
+   de un paso de 280, y sin el marco de la tarjeta se leía descuadrado (Alejandro: «se descuadro la
+   alineación entre el mapa y los textos»). Así mide 440 y su centro y el del texto caen juntos. */
+const ANCHO = 600;
+const ALTO = 420;
 type P = Punto;
 
 /* La necesidad, la oferta y los dos puntos de control de la ruta entre ellas. */
-const A: P = { x: 165, y: 405 };
-const B: P = { x: 445, y: 185 };
-const C1: P = { x: 215, y: 250 };
-const C2: P = { x: 385, y: 360 };
+const A: P = { x: 150, y: 290 };
+const B: P = { x: 455, y: 118 };
+const C1: P = { x: 222, y: 168 };
+const C2: P = { x: 380, y: 250 };
 
 /* El azar con semilla y el trazo a pulso viven en `trazoAMano`. */
 const al = azar(23);
 
-/* El mapa: dos vías que cruzan el lienzo, una quebrada y las curvas de nivel de un cerro, todo en
-   la línea de la página, apenas visible. */
-const MAPA = [
-  trazar(curva({ x: -20, y: 120 }, { x: 180, y: 160 }, { x: 380, y: 60 }, { x: 620, y: 110 }, 60, 3, al)),
-  trazar(curva({ x: 70, y: 620 }, { x: 120, y: 420 }, { x: 60, y: 260 }, { x: 140, y: -20 }, 60, 3, al)),
-  trazar(curva({ x: -20, y: 520 }, { x: 200, y: 560 }, { x: 420, y: 470 }, { x: 620, y: 540 }, 60, 4, al)),
-  ...[0, 1, 2, 3].map((i) => trazar(ovalo({ x: 500, y: 470 }, 40 + i * 28, 30 + i * 21, al), true)),
-  ...[0, 1].map((i) => trazar(ovalo({ x: 110, y: 90 }, 26 + i * 22, 18 + i * 16, al), true)),
-];
+/* El mapa, en una sola línea (Alejandro, 7 de octubre de 2026: «las lineas del mapa son sueltas y
+   eso genera que haya como elementos sueltos que dejan como un sinsabor... busquemos que con este
+   estilo se llenen esos espacios de las ilustraciones pero de manera linda, armónica y
+   complementaria»). Nace en la cima de un cerro arriba a la izquierda y sale de él en espiral, que
+   son sus curvas de nivel; sigue como una vía por arriba, baja por la izquierda, cruza por abajo
+   como una quebrada, sube por la derecha y entra en espiral al cerro de abajo a la derecha, donde
+   termina. Rodea el lienzo y deja el centro a la ruta y a las gotas. Va en la línea de la página,
+   apenas visible, y se dibuja mientras se lee el primer paso. */
+const CERRO_1: P = { x: 92, y: 80 };
+const CERRO_2: P = { x: 505, y: 318 };
+const MAPA = trazar(
+  temblar(
+    pasarPor(
+      [
+        ...espiral(CERRO_1, 5, 62, 3.2, 258, 0.72, 36),
+        { x: 192, y: 47 }, { x: 242, y: 40 }, { x: 290, y: 46 }, { x: 318, y: 64 }, { x: 300, y: 92 }, { x: 250, y: 104 },
+        { x: 168, y: 136 }, { x: 92, y: 190 }, { x: 50, y: 258 }, { x: 42, y: 328 }, { x: 72, y: 384 }, { x: 142, y: 402 },
+        { x: 232, y: 398 }, { x: 318, y: 388 }, { x: 410, y: 400 }, { x: 512, y: 406 }, { x: 576, y: 386 }, { x: 594, y: 322 },
+        { x: 588, y: 262 }, { x: 568, y: 226 }, { x: 544, y: 228 },
+        ...espiral(CERRO_2, 80, 6, 3, -70, 0.72, 36),
+      ],
+      6,
+    ),
+    1.6,
+    al,
+  ),
+);
 
 /* La ruta entre la necesidad y la oferta, y por dónde van las gotas. */
 const RUTA = curva(A, C1, C2, B, 160, 2.5, al);
@@ -61,7 +84,7 @@ const enRuta = (t: number) => RUTA[Math.round(Math.min(1, Math.max(0, t)) * (RUT
 const ENCUENTRO = enRuta(0.5);
 
 /* El sello: un círculo a pulso alrededor del encuentro y un visto dibujado encima. */
-const SELLO = trazar(ovalo(ENCUENTRO, 56, 54, al, 120), true);
+const SELLO = trazar(ovalo(ENCUENTRO, 50, 48, al, 120), true);
 const VISTO = trazar([
   { x: ENCUENTRO.x - 13, y: ENCUENTRO.y + 1 },
   { x: ENCUENTRO.x - 4, y: ENCUENTRO.y + 10 },
@@ -118,29 +141,35 @@ export const LienzoEncuentro: React.FC<{ progreso: number }> = ({ progreso: e })
   const id = useId();
   const gota = `encuentro-gota-${id}`;
 
+  /* El mapa se dibuja entero en la primera mitad del primer paso, antes de que nazca la gota. */
+  const mapa = tramo(e, 0, 0.5);
   const nace = tramo(e, 0.05, 0.35);
   const naceB = tramo(e, 1.05, 1.35);
   const ruta = tramo(e, 1.35, 1.7);
   const viaje = tramo(e, 1.65, 2.0);
-  const verde = tramo(e, 2.0, 2.3);
+  const entrega = tramo(e, 2.0, 2.3);
   const sello = tramo(e, 2.2, 2.6);
   const visto = tramo(e, 2.45, 2.7);
 
   const posA = enRuta(0.5 * viaje);
   const posB = enRuta(1 - 0.5 * viaje);
-  const crece = 1 + 0.35 * verde;
-  /* Al virar a verde, cada gota mezcla su color con el verde de lo entregado. */
-  const color = (token: string) => `color-mix(in oklab, var(--color-rd-green-claro) ${(verde * 100).toFixed(0)}%, var(${token}))`;
+  const crece = 1 + 0.35 * entrega;
+  /* Al entregarse, cada gota mezcla su color con el amarillo de lo entregado. */
+  const color = (token: string) => `color-mix(in oklab, var(--color-rd-ayuda) ${(entrega * 100).toFixed(0)}%, var(${token}))`;
 
   const tarjeta = (aparece: number, sale = 0) => {
     const v = aparece * (1 - sale);
     return { opacity: v, transform: `translateY(${((1 - aparece) * 8).toFixed(1)}px)`, visibility: v < 0.01 ? ('hidden' as const) : undefined };
   };
 
+  /* El mapa va directo sobre la página, sin fondo ni marco (Alejandro, 7 de octubre de 2026: «me
+     gustó el mapa de la sección 3 sin color de fondo y sin stroke»): lo vio así un rato, blanco
+     sobre la página blanca, y se quedó en los dos modos. Hasta ese día era una tarjeta en la
+     superficie elevada con su grano; ahora el grano es el de la página. El recorte del lienzo se
+     queda: la línea del mapa pasa por sus bordes. */
   return (
-    <div aria-hidden="true" className="@container relative aspect-square w-full overflow-hidden rounded-rd-xl bg-rd-noche-2">
-      <span className="rd-grano pointer-events-none absolute inset-0" />
-      <svg viewBox={`0 0 ${LADO} ${LADO}`} className="absolute inset-0 h-full w-full">
+    <div aria-hidden="true" className="@container relative aspect-10/7 w-full overflow-hidden rounded-rd-xl">
+      <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} className="absolute inset-0 h-full w-full">
         <defs>
           {/* Las gotas: desenfoque, onda, alisado y umbral, como la gota del cursor. */}
           <filter id={gota} x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
@@ -152,12 +181,17 @@ export const LienzoEncuentro: React.FC<{ progreso: number }> = ({ progreso: e })
           </filter>
         </defs>
 
-        {/* El mapa. */}
-        <g className="fill-none stroke-rd-noche-linea" strokeWidth={1.5}>
-          {MAPA.map((d, i) => (
-            <path key={i} d={d} />
-          ))}
-        </g>
+        {/* El mapa, una sola línea que se dibuja al empezar a leer el primer paso. */}
+        <path
+          d={MAPA}
+          pathLength={1}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - mapa}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="fill-none stroke-rd-noche-linea"
+        />
 
         {/* La ruta que traza RaDAR entre la necesidad y la oferta. */}
         <path
@@ -168,13 +202,13 @@ export const LienzoEncuentro: React.FC<{ progreso: number }> = ({ progreso: e })
           strokeLinecap="round"
           className="fill-none stroke-rd-noche-tinta"
           strokeWidth={1.75}
-          opacity={0.55 * (1 - 0.6 * verde)}
+          opacity={0.55 * (1 - 0.6 * entrega)}
         />
 
-        {/* Los radares: los de cada gota mientras espera, y los verdes del encuentro. */}
+        {/* Los radares: los de cada gota mientras espera, y los amarillos del encuentro. */}
         <Ondas centro={A} clase="stroke-rd-coral" opacidad={nace * (1 - viaje)} giro={0} />
         <Ondas centro={B} clase="stroke-rd-navy-claro" opacidad={naceB * (1 - viaje)} giro={120} />
-        <Ondas centro={ENCUENTRO} clase="stroke-rd-green-claro" opacidad={verde} giro={240} />
+        <Ondas centro={ENCUENTRO} clase="stroke-rd-ayuda" opacidad={entrega} giro={240} />
 
         {/* Las dos gotas, fundidas por el filtro cuando se encuentran. */}
         <g filter={`url(#${gota})`}>
@@ -182,9 +216,10 @@ export const LienzoEncuentro: React.FC<{ progreso: number }> = ({ progreso: e })
           <circle cx={posB.x} cy={posB.y} r={RADIO * naceB * crece} style={{ fill: color('--color-rd-navy-claro') }} />
         </g>
 
-        {/* El sello y el visto de la entrega. */}
-        <path d={SELLO} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - sello} className="fill-none stroke-rd-green-claro" strokeWidth={2} strokeLinecap="round" />
-        <path d={VISTO} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - visto} className="fill-none stroke-rd-surface" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
+        {/* El sello y el visto de la entrega. El visto va en el fondo de la página y no en blanco:
+            sobre el amarillo, el blanco no se leía. */}
+        <path d={SELLO} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - sello} className="fill-none stroke-rd-ayuda" strokeWidth={2} strokeLinecap="round" />
+        <path d={VISTO} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - visto} className="fill-none stroke-rd-noche" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
 
       {/* Las tarjetas, islas de la herramienta. */}
@@ -210,7 +245,7 @@ const Tarjeta: React.FC<{ tono: 'necesidad' | 'oferta' | 'entrega'; rotulo: stri
 }) => (
   <div className="font-rd flex max-w-56 items-start gap-2.5 rounded-rd-lg border border-rd-line bg-rd-surface px-3 py-2.5 shadow-rd-2">
     {tono === 'entrega' ? (
-      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-rd-green text-rd-surface">
+      <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-rd-ayuda text-rd-noche">
         <Check className="h-3 w-3" />
       </span>
     ) : (

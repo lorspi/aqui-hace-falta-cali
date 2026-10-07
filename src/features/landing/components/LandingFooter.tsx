@@ -7,9 +7,9 @@ import { useTranslation } from '../../../i18n/LanguageContext';
  * «fondo negro 1E1E1E, letra blanca» en toda la landing, y esa noche #000000). Cambió solo la piel: los colores slate y
  * los tamaños con corchetes pasaron a los tokens del tema oscuro, las fuentes propias (sans, body,
  * mono) a la de la landing, para que salga en Noto Sans como lo demás, el símbolo y el nombre
- * escrito a mano al logo blanco nuevo, y el contenedor al ancho y los márgenes de las secciones
- * de arriba. El contenido, los textos y los enlaces son los mismos. Los enlaces ganan un foco
- * visible en el ámbar del logo, que no tenían.
+ * escrito a mano al logo de RaDAR (el de siempre, con letras blancas en oscuro), y el contenedor
+ * al ancho y los márgenes de las secciones de arriba. El contenido y los enlaces son los mismos.
+ * Los enlaces ganan un foco visible en el amarillo de la landing, que no tenían.
  */
 const ENLACE =
   'rounded-rd-sm text-rd-noche-tinta-2 no-underline transition-colors hover:text-rd-noche-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-ayuda';
@@ -30,9 +30,10 @@ export const LandingFooter: React.FC = () => {
         <div className="grid grid-cols-1 gap-8 text-rd-13-5 md:grid-cols-12 lg:gap-12">
           {/* Columna 1: identidad */}
           <div className="space-y-3 md:col-span-6 lg:col-span-5">
-            {/* El logo blanco en oscuro y el de tinta en claro (`claro:`), el mismo dibujo. */}
-            <img src="/logo-radar-de-ayuda-blanco.png" alt="Radar de ayuda" width={361} height={100} className="block h-10 w-auto claro:hidden" />
-            <img src="/logo-radar-de-ayuda.png" alt="Radar de ayuda" width={361} height={100} className="hidden h-10 w-auto claro:block" />
+            {/* El logo de RaDAR, el mismo del header: con letras blancas en oscuro y el original en
+                claro (`claro:`). */}
+            <img src="/logo-radar-blanco.svg" alt="Radar de ayuda" width={2902} height={600} className="block h-9.5 w-auto claro:hidden" />
+            <img src="/logo-radar.svg" alt="Radar de ayuda" width={2902} height={600} className="hidden h-9.5 w-auto claro:block" />
             <p className="m-0 max-w-sm text-rd-13-5 leading-relaxed text-rd-noche-tinta-2">{t('landingFooterTagline')}</p>
             <p className="m-0 pt-1 text-rd-11-5 text-rd-noche-meta">
               {t('landingFooterMadeWith')} <Heart aria-hidden="true" className="inline h-3 w-3 text-rd-coral" /> {t('landingFooterByVolunteers')}
@@ -41,7 +42,7 @@ export const LandingFooter: React.FC = () => {
 
           {/* Columna 2: plataforma y legal */}
           <div className="md:col-span-3 md:col-start-7 lg:col-span-3 lg:col-start-7">
-            <h5 className="m-0 mb-3 text-rd-12 font-semibold tracking-wider text-rd-noche-tinta uppercase">{t('landingFooterPlatform')}</h5>
+            <h5 className="m-0 mb-3 text-rd-13-5 font-semibold text-rd-noche-tinta">{t('landingFooterPlatform')}</h5>
             <ul className="m-0 list-none space-y-2 p-0">
               <li>
                 <a href="/mapa-ayudas-necesidades?pedir=true" className={ENLACE}>
@@ -55,12 +56,12 @@ export const LandingFooter: React.FC = () => {
               </li>
               <li>
                 <a href="/terminos" className={ENLACE}>
-                  {t('footerTerms')}
+                  {t('landingFooterTerminos')}
                 </a>
               </li>
               <li>
                 <a href="/privacidad" className={ENLACE}>
-                  {t('footerPrivacy')}
+                  {t('landingFooterPrivacidad')}
                 </a>
               </li>
             </ul>
@@ -68,11 +69,11 @@ export const LandingFooter: React.FC = () => {
 
           {/* Columna 3: canales de contacto directo */}
           <div className="md:col-span-3 lg:col-span-3">
-            <h5 className="m-0 mb-3 text-rd-12 font-semibold tracking-wider text-rd-noche-tinta uppercase">{t('landingFooterContact')}</h5>
+            <h5 className="m-0 mb-3 text-rd-13-5 font-semibold text-rd-noche-tinta">{t('landingFooterContact')}</h5>
             <ul className="m-0 list-none space-y-2.5 p-0">
               <li>
                 <a href="mailto:info@radardeayuda.co" className={`inline-flex items-center gap-2 ${ENLACE}`}>
-                  <Mail aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-navy-claro claro:text-rd-navy" />
+                  <Mail aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span>info@radardeayuda.co</span>
                 </a>
               </li>
@@ -83,7 +84,7 @@ export const LandingFooter: React.FC = () => {
                   rel="noopener noreferrer"
                   className={`inline-flex items-center gap-2 ${ENLACE}`}
                 >
-                  <MessageCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-green-claro claro:text-rd-green" />
+                  <MessageCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span>WhatsApp: +57 311 232 3588</span>
                 </a>
               </li>

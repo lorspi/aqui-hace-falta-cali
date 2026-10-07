@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Check, Moon, Settings, Sun } from 'lucide-react';
-import { BotonLanding } from './base';
+import { BotonLanding, claseOpcion as opcion } from './base';
 import { LANGUAGES } from '../../../components/LanguageSelector';
 import { useTranslation } from '../../../i18n/LanguageContext';
 import type { TemaLanding } from '../useTemaLanding';
@@ -67,11 +67,6 @@ export const AjustesLanding: React.FC<{ tema: TemaLanding; alCambiarTema: (tema:
   /* La fila del ⋮ de la herramienta, en los tokens de la landing. */
   const fila =
     'font-rd flex w-full cursor-pointer items-center gap-3 rounded-rd-md p-2 text-left text-rd-13-5 text-rd-noche-tinta transition-colors duration-150 hover:bg-rd-noche-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-ayuda';
-  /* La opción de `Segmented`, en los tokens de la landing. */
-  const opcion = (activa: boolean) =>
-    `font-rd inline-flex h-7.5 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-rd-13-5 whitespace-nowrap transition-colors duration-150 pointer-coarse:h-8.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-ayuda active:translate-y-px ${
-      activa ? 'bg-rd-noche-tinta font-semibold text-rd-noche' : 'font-medium text-rd-noche-tinta-2 hover:bg-rd-noche-3 hover:text-rd-noche-tinta'
-    }`;
 
   return (
     <div ref={raiz} className="relative">

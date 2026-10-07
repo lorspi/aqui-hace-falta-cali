@@ -68,22 +68,29 @@ export const LandingPage: React.FC = () => {
       {/* El header solo lleva el logo y el idioma: las dos acciones viven en el hero. */}
       <LandingHeader tema={tema} alCambiarTema={setTema} />
 
-      <main className="space-y-8 sm:space-y-12">
-        <LandingHero onOpenChat={() => setIsChatbotModalOpen(true)} />
+      {/* Dos capas (ver LAS CAPAS DE LA PÁGINA en `index.css`): el fondo de la página, que lleva
+          las secciones 1 a 3 y termina con las esquinas de abajo redondeadas, y detrás de su pie el
+          degradado de las secciones 4 y 5, que sube el alto del redondeo para asomar por las
+          esquinas. El fondo va encima (`relative z-10`) y lleva su propio grano. */}
+      <main>
+        <div className="rd-grano relative z-10 space-y-8 rounded-b-rd-lamina bg-rd-noche sm:space-y-12">
+          <LandingHero onOpenChat={() => setIsChatbotModalOpen(true)} />
 
-        <LandingAccesos />
+          <LandingAccesos />
 
-        {/* Los tres pasos, cada uno en el bloque de la referencia. Reemplazaron a la tarjeta
-            de pasos del equipo, que se borró el 6 de octubre de 2026 con las demás piezas sin
-            uso (Alejandro: «borre lo que ya no se usa»). */}
-        <LandingComoFunciona />
+          {/* Los tres pasos, cada uno en el bloque de la referencia. Reemplazaron a la tarjeta
+              de pasos del equipo, que se borró el 6 de octubre de 2026 con las demás piezas sin
+              uso (Alejandro: «borre lo que ya no se usa»). */}
+          <LandingComoFunciona />
+        </div>
 
-        {/* La ventana en vivo de la app se queda: es producto real, no adorno. */}
-        <LandingSplitPortal />
+        <div className="rd-degradado-radar -mt-rd-lamina space-y-8 overflow-x-clip pt-rd-lamina sm:space-y-12">
+          {/* La ventana en vivo de la app se queda: es producto real, no adorno. */}
+          <LandingSplitPortal />
 
-        {/* Súmate, con el patrón de tarjetas de la referencia. Reemplaza la sección de
-            organizaciones con sus auras y filigranas. */}
-        <LandingSumarse onOpenChat={() => setIsChatbotModalOpen(true)} />
+          {/* Súmate, en su contenedor gris (ver `LandingSumarse`). */}
+          <LandingSumarse onOpenChat={() => setIsChatbotModalOpen(true)} />
+        </div>
       </main>
 
       {/* Footer oficial */}

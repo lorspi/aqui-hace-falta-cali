@@ -37,7 +37,8 @@ import { useConsulta } from '../useConsulta';
  * Y sobre el color: los pasteles de tres tonos «son muy muy parecidos a los de Calendly, o sea
  * literal parece Calendly y no RaDAR». Cada vista lleva el color que ya significa algo en la
  * herramienta («semántica de la app»): el Radar en navy, el Directorio en ámbar y Mi organización
- * en verde. Desde la tarde del 6 de octubre de 2026 ese color vive solo en las pestañas y en el
+ * en rojo (verde hasta el 7 de octubre de 2026, cuando la landing quedó en amarillo, azul y rojo;
+ * ver TONOS). Desde la tarde del 6 de octubre de 2026 ese color vive solo en las pestañas y en el
  * fondo del visual, que va en sólido: el panel no lleva relleno, solo un trazo blanco con el borde
  * líquido de la gota del hero, y la línea de avance de la tarjeta es igual (Alejandro: «el
  * contenedor principal no tenga color. solo el stroke en blanco pero con el mismo estilo
@@ -51,7 +52,7 @@ import { useConsulta } from '../useConsulta';
  * de detalle—, sin afirmaciones nuevas.
  */
 
-type Tono = 'navy' | 'ambar' | 'verde';
+type Tono = 'navy' | 'ambar' | 'rojo';
 
 const VISTAS: {
   id: VistaAcceso;
@@ -91,20 +92,23 @@ const VISTAS: {
     href: '/panel',
     enlace: 'Ir a Mi organización',
     Icono: House,
-    tono: 'verde',
+    tono: 'rojo',
   },
 ];
 
-/* Cada vista en el color que ya significa algo en la herramienta (Alejandro, 6 de octubre de 2026:
-   «semántica de la app»): el navy de la marca y del Radar, el ámbar de los avisos del Directorio y
-   el verde de lo entregado. Dos escalones de cada familia en el tema oscuro: el claro (`icono`,
-   que es también el fondo sólido del visual en `VisualesAccesos`) y la línea oscura (`relleno`).
+/* Cada vista en uno de los tres colores de la landing (Alejandro, 7 de octubre de 2026: «Usa como
+   colores el amarillo azul y rojo, pero mantén este amarillo. también puedes usar colores que sean
+   azul y rojo pero que sean más "limpios"»): el azul de la marca y del Radar, el amarillo de los
+   avisos del Directorio y, en Mi organización, el rojo claro de la marca (`rd-coral-claro`), que
+   antes era el verde de lo entregado. Dos escalones de cada familia en el tema oscuro: el claro
+   (`icono`, que es también el fondo sólido del visual en `VisualesAccesos`) y la línea oscura
+   (`relleno`).
 
    Los iconos de las pestañas van pintados en su tono: es la excepción aprobada a la regla de
    iconos sin color (Alejandro, 6 de octubre de 2026: «hazlo pintado el icono»). Desde el tema
    oscuro de ese mismo día, la activa se rellena de la línea oscura de su familia y lleva el icono
-   en el tono claro. Contraste del icono sobre su relleno, medido: navy 3,4:1, ámbar 5,9:1, verde
-   5,0:1, por encima del 3:1 que pide un gráfico. Las inactivas van sin fondo, con el borde y el
+   en el tono claro. Contraste del icono sobre su relleno, medido: navy 3,4:1, ámbar 5,9:1, rojo
+   3,6:1, por encima del 3:1 que pide un gráfico. Las inactivas van sin fondo, con el borde y el
    icono en la tinta de la página (Alejandro, 6 de octubre de 2026: «los tabs de icono podemos
    dejarlo sin fondo cuando no estén seleccionados. y dejar solo el borde y el icono en blanco»).
    La línea de avance va en el claro de su vista (`avance`; ese mismo día: «la linea de progreso
@@ -112,7 +116,7 @@ const VISTAS: {
 const TONOS: Record<Tono, { relleno: string; icono: string; avance: string }> = {
   navy: { relleno: 'bg-rd-navy-noche-linea', icono: 'text-rd-navy-claro', avance: 'fill-rd-navy-claro' },
   ambar: { relleno: 'bg-rd-amber-noche-linea', icono: 'text-rd-amber-claro', avance: 'fill-rd-amber-claro' },
-  verde: { relleno: 'bg-rd-green-noche-linea', icono: 'text-rd-green-claro', avance: 'fill-rd-green-claro' },
+  rojo: { relleno: 'bg-rd-coral-noche-linea', icono: 'text-rd-coral-claro', avance: 'fill-rd-coral-claro' },
 };
 
 /* El borde líquido del panel y de la línea de avance: la receta del anillo de la gota del hero

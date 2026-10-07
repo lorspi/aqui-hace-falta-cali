@@ -166,51 +166,91 @@ La portada pública: `LandingPage`, en las rutas `/` y `/landing` (`App.tsx` la 
 Monta, en este orden, `LandingHeader`, `LandingHero`, `LandingAccesos`, `LandingComoFunciona`,
 `LandingSplitPortal`, `LandingSumarse` y `LandingFooter`, más `Grilla12` (solo en `npm run dev`)
 y el `ChatbotTicketModal` de `components/`. Sus estilos y movimientos viven en `src/index.css`, en
-los bloques de la landing (`.rd-revela`, `.rd-bucle`, `.rd-radar-*`, `.rd-avance`, `.rd-paso`,
+los bloques de la landing (`.rd-revela`, `.rd-bucle`, `.rd-radar-*`, `.rd-mazo-*`, `.rd-herramienta`, `.rd-red-*`, `.rd-avance`, `.rd-paso`,
 `.rd-accesos-*`, `.rd-acc-*`, `.rd-liquido`, `.rd-mano-*`, `.rd-grano`, `.rd-hero-anillos`,
 `.rd-gira`, `.rd-sobre-foto`, `.rd-encuentro-onda`, `.rd-grilla` y las utilidades del acordeón;
 `.rd-avance` y las del acordeón eran del «Cómo funciona» anterior y hoy no las usa nadie).
 
 Tiene modo oscuro (el de arranque) y claro: toda la landing se pinta con la familia de tokens
 `rd-noche-*` y `rd-ayuda`, y el modo claro solo les da otros valores cuando el `html` lleva
-`data-tema-landing="claro"` (bloque «EL MODO CLARO DE LA LANDING» de `index.css`). Lo poco que
-cambia de clase en claro usa la variante `claro:`. Antes de crear una pieza de la landing, busca
-aquí:
+`data-tema-landing="claro"` (bloque «EL MODO CLARO DE LA LANDING» de `index.css`): en claro
+valen lo mismo que los fondos, líneas y tintas de la herramienta (`rd-fondo`, `rd-surface`,
+`rd-sunken`, `rd-line`, `rd-ink`). Lo poco que cambia de clase en claro usa la variante `claro:`.
+Los acentos son tres: el amarillo de la landing (`rd-ayuda`), el azul (`rd-navy-claro`, y el navy
+de la marca en los botones) y el rojo (`rd-coral`, `rd-coral-claro`); la landing no usa verde.
+Los botones (`BotonLanding`) llevan los colores del `Button` de la herramienta. El logo es el de
+siempre de RaDAR (`public/logo-radar.svg`, y `logo-radar-blanco.svg` con las letras en blanco
+para el fondo oscuro).
+
+La página va por capas (bloque «LAS CAPAS DE LA PÁGINA» de `index.css`): `LandingPage` pone el
+fondo de la página (`rd-noche`, el gris de la app en claro) bajo las secciones 1 a 3 y lo cierra
+con las esquinas de abajo redondeadas (`rd-lamina`); detrás de ese pie empieza el degradado de las
+secciones 4 y 5 (`.rd-degradado-radar`, la malla de la referencia de Calendly: azul, violeta,
+rosa y durazno, y el fondo de la página antes del footer); lo de la sección 4 va en blanco
+(`.rd-sobre-azul`). Las ilustraciones van en una sola línea continua, sin levantar el lápiz
+(`pasarPor`, `espiral` y `temblar` en `trazoAMano.ts`): el mapa de la sección 3, el radar de la 4
+y la red de la 5. El hero lleva su propio
+fondo (`rd-noche-lamina`, blanco en claro, `.rd-fondo-hero`), del ancho de las 12 columnas, que
+baja hasta la mitad del panel de la sección 2 y se desvanece. La sección 5 va en un contenedor
+gris (`rd-noche-contenedor`) con sus bloques en la superficie. Cada capa con color lleva su grano
+(`rd-grano`). Los titulares de sección van todos a 40 desde 768 (`Titular`), los de dentro de
+cada sección a 28 y el hero a 48 con el primer renglón en negrita. Antes de crear una pieza de la
+landing, busca aquí:
 
 - `components/base.tsx` — el juego de piezas de la landing sobre los tokens `rd-*` (otra escala
   que la de `components/ui`, mismos colores): `Seccion` (ancho, márgenes y aire de toda sección;
   aparece al llegar con `rd-revela`), `Rotulo`, `Titular`, `Parrafo`, `BotonLanding` (con
   `soloIcono`, `etiqueta`, `expandido` y `controla` para un botón de icono que abre algo),
   `claseBotonIcono` (la receta del botón de icono de 48: el de configuración, la X y las pestañas
-  de la segunda sección) y `Regla`.
+  de la segunda sección), `claseConmutador` y `claseOpcion` (el `Segmented` de la herramienta en
+  los tokens de la landing: el tema del menú de ajustes y el «¿Cómo quieres sumarte?» de la
+  sección 5) y `Regla`.
 - `components/AjustesLanding.tsx` — `AjustesLanding`: el botón de configuración del header y su
   panel flotante con el idioma (los `LANGUAGES` de `LanguageSelector`) y el modo oscuro o claro.
   Lo usa `LandingHeader`.
 - `components/AnillosHero.tsx` — `AnillosHero`: los anillos concéntricos a pulso del fondo del
   hero, que giran despacio. Solo desde 1024. Lo usa `LandingHero`.
+- `components/ManosCorazon.tsx` — `ManosCorazon`: dos manos que hacen un corazón en una sola línea
+  que se dibuja al cargar (`.rd-trazo-continuo`). Hoy sin uso: estuvo un rato en el hero, con la
+  distribución de Biograph, y el hero volvió a su versión centrada (7 de octubre de 2026).
 - `components/Maquetas.tsx` — las maquetas de producto, sin datos vivos y `aria-hidden`:
   `MaquetaRadarLista`, `MaquetaDirectorio` y `MaquetaPanel` (los visuales de la segunda sección);
   `PantallaReporte`, `PantallaCruce` y `PantallaActa` (los tres pasos del «Cómo funciona»
   anterior; hoy sin uso, se quedan hasta que «El encuentro» se apruebe).
 - `components/Ilustraciones.tsx` — `Composicion` (fotografía de base con la pieza de interfaz
-  encima; la usa `LandingSumarse`) y los tres pasos del «Cómo funciona» anterior, que envuelven
-  las pantallas de `Maquetas`: `NecesidadEnTerritorio`, `RutaEntreCiudades`, `LineaDeEntrega`
-  (hoy sin uso, como sus pantallas).
-- `components/RadarEnVivo.tsx` — `RadarEnVivo({ ecos, etiqueta, rotulos, textos })`: «El radar en
-  vivo», la sección 4. Las necesidades y ofertas que carga `LandingSplitPortal` son ecos de un
-  radar a pulso; el haz gira y los enciende. Al lado, la lectura del último eco (tipo, título,
-  detalle, dónde, hace cuánto, categoría y «Ver en el mapa» a su `link`, con una raya que se llena
-  mientras llega el siguiente) y el registro de las tres anteriores, cada una un botón que lleva el
-  haz a su eco. El eco leído lleva un anillo amarillo en el radar. Con el cursor, el dedo o el
-  teclado se elige un eco. Exporta también `Senal` (el punto de un tipo con su radar que late, o
-  quieto con `quieta`) y el tipo `EcoRadar`. Lo usa `LandingSplitPortal`.
+  encima; la usaba `LandingSumarse` hasta «Tu punto en la red», hoy sin uso) y los tres pasos del
+  «Cómo funciona» anterior, que envuelven las pantallas de `Maquetas`: `NecesidadEnTerritorio`,
+  `RutaEntreCiudades`, `LineaDeEntrega` (hoy sin uso, como sus pantallas).
+- `components/RedSumarse.tsx` — `RedSumarse({ rol, destinos, resaltado, onResaltar, textos })`:
+  «Tu punto en la red», el lienzo de la sección 5. La red de quienes ya están en RaDAR, con
+  nodos de la herramienta (organizaciones y comunidades de `mocks/directorioMock.ts`, sus líderes
+  por nombre y los voluntarios de `EQUIPO` en `mocks/panelMock.ts`) repartidos por todo el lienzo
+  vertical y unidos por una sola línea que pasa por todos (un recorrido corto sin cruces). Al elegir un
+  papel, «tú» cae en el centro y salen tres líneas amarillas, una por pilar, a los nodos con los
+  que trabajaría (`destinosDe(rol)`, por tipo y dirección), con su número y su nombre
+  (`.rd-red-*` en `index.css`). Lo usa `LandingSumarse`, que pone el conmutador de papeles, los
+  pilares contados para el papel y el botón que dice el papel.
+- `components/RadarEnVivo.tsx` — `RadarEnVivo({ publicaciones, etiqueta, rotulos, onAbrir })`:
+  «El radar en vivo», la sección 4. Las publicaciones son ecos de un radar dibujado en una sola
+  línea (espiral, anillo de afuera y cruz); el haz gira, recortado por ese anillo dibujado, y los
+  enciende. Al lado van como una baraja de la `Tarjeta` de la herramienta (de
+  `components/ui`, en Inter con `.rd-herramienta`): tres hojas asoman detrás y, con cada eco
+  nuevo, la del frente se levanta y pasa al fondo (`.rd-mazo-*` en `index.css`). Con el cursor o
+  el foco encima, la baraja no se mueve. El eco del frente lleva un anillo amarillo en el radar.
+  Lo usa `LandingSplitPortal`, que le pasa seis publicaciones de `mocks/publicacionesMock.ts`
+  (las de la Radar) y abre cada una en `/radar-v2?punto=`.
 - `trazoAMano.ts` — el trazo a pulso sin filtros: `azar` (con semilla), `trazar`, `curva`, `ovalo`
-  y el tipo `Punto`. Lo usan `LienzoEncuentro` y `RadarEnVivo`.
+  y el tipo `Punto`; y la línea continua: `pasarPor` (una curva suave por unos puntos), `espiral`
+  (anillos y curvas de nivel en un solo trazo) y `temblar` (el temblor parejo a lo largo de la
+  línea). Lo usan `LienzoEncuentro`, `RadarEnVivo`, `RedSumarse` y `ManosCorazon`.
 - `components/LienzoEncuentro.tsx` — `LienzoEncuentro({ progreso })`: el lienzo de «El encuentro»,
-  la sección 3. Una necesidad y una oferta, dos gotas líquidas sobre un mapa a pulso, que RaDAR
+  la sección 3, apaisado (10:7). Una necesidad y una oferta, dos gotas líquidas sobre un mapa de
+  una sola línea (de un cerro a otro, en espirales), que RaDAR
   une por una ruta hasta fundirlas y sellar la entrega; todo es función de `progreso` (0 a 3, un
   tramo por paso). Lo usa `LandingComoFunciona`, fijo y atado al scroll desde 1280 y quieto en
-  cada paso por debajo.
+  cada paso por debajo. Entre paso y paso, `LandingComoFunciona` hace el relevo: el que sale sube
+  despacio y se apaga, y el que llega se enciende al acercarse, con aire entre los dos
+  (`rd-aire-encuentro`).
 - `components/VisualesAccesos.tsx` — `VisualAcceso` (el visual de cada vista de la segunda
   sección: contenedor en el color sólido de la pestaña con grano, la maqueta al centro y un fondo
   a pulso que se mueve detrás, pausado cuando no se ve) y el tipo `VistaAcceso` (`radar`,

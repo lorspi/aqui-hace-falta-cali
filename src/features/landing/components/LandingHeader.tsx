@@ -24,22 +24,21 @@ export const LandingHeader: React.FC<{ tema: TemaLanding; alCambiarTema: (tema: 
      debajo se transparentaba como una franja degradada (Alejandro: «header sin degradado»). */
   <header className="rd-grano sticky top-0 z-40 bg-rd-noche">
     <div className="mx-auto flex h-16 w-full max-w-360 items-center px-5 sm:px-8 lg:px-12">
-      {/* El logo nuevo en su versión blanca, para el fondo oscuro (Alejandro, 6 de octubre de
-          2026): la marca de anillos y «Radar de ayuda» en dos renglones, con «dar» en ámbar. Es
-          un PNG con fondo transparente recortado a su contenido (361x100): el original traía 40 px
-          de aire por lado, y puesto así salía a la mitad de tamaño y corrido del margen. A 40 de
-          alto queda a 2,5x, nítido en pantallas de alta densidad; `width` y `height` reservan su
-          caja para que el header no salte. El foco va en el ámbar del logo: el navy no se ve
-          sobre el fondo oscuro. La herramienta (Shell) sigue con el logo anterior. */}
+      {/* El logo de RaDAR, el de siempre y el mismo de la herramienta (Shell, a 38). Del 6 al 7 de
+          octubre de 2026 la landing llevó un logo nuevo; no se aprobó el cambio de identidad
+          (Alejandro, 7 de octubre: «Pon el logo de antes, el primero de radar porque no aceptaron
+          el cambio de la identidad del logo»). Sobre el fondo oscuro va su versión con las letras
+          en blanco (`logo-radar-blanco.svg`: el mismo SVG con el negro del texto en blanco, y los
+          colores de la marca intactos). `width` y `height` reservan su caja para que el header no
+          salte. El foco va en el amarillo de la landing: el navy no se ve sobre el fondo oscuro. */}
       <a
         href="/"
         aria-label="Radar de ayuda, inicio"
         className="flex shrink-0 items-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-ayuda"
       >
-        {/* El blanco en oscuro y el de tinta en claro (`claro:`): el mismo dibujo, con «dar» en el
-            amarillo del logo (logo nuevo del 6 de octubre de 2026). */}
-        <img src="/logo-radar-de-ayuda-blanco.png" alt="" width={361} height={100} className="block h-10 w-auto claro:hidden" />
-        <img src="/logo-radar-de-ayuda.png" alt="" width={361} height={100} className="hidden h-10 w-auto claro:block" />
+        {/* El de letras blancas en oscuro y el original en claro (`claro:`). */}
+        <img src="/logo-radar-blanco.svg" alt="" width={2902} height={600} className="block h-9.5 w-auto claro:hidden" />
+        <img src="/logo-radar.svg" alt="" width={2902} height={600} className="hidden h-9.5 w-auto claro:block" />
       </a>
 
       <div className="ml-auto shrink-0">

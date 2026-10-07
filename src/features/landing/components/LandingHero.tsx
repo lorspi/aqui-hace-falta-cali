@@ -41,7 +41,18 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
        `VentanaLiquida`) y los botones (`z-20`). La gota pasa por detrás del texto y lo vuelve
        crema donde pasa (Alejandro, 6 de octubre de 2026); `texto` es el bloque que se copia. */
     <section ref={hero} id="hero" className="relative isolate">
-      {/* Los anillos del fondo, lo primero: debajo de todo lo demás del hero. */}
+      {/* El fondo del hero, lo primero de todo (ver LAS CAPAS DE LA PÁGINA en `index.css`): del
+          ancho de las 12 columnas, desde el pie del header hasta la mitad del panel de la sección 2
+          (`rd-fondo-hero`), que sube encima de él; ahí se desvanece. Lleva su grano. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero">
+        <div className="mx-auto h-full w-full max-w-360 px-5 sm:px-8 lg:px-12">
+          <div className="rd-fondo-hero rd-grano h-full rounded-rd-xl bg-rd-noche-lamina" />
+        </div>
+      </div>
+      {/* Los anillos del fondo, encima del fondo y debajo de todo lo demás del hero. El 7 de
+          octubre de 2026 el hero pasó un rato a la distribución de Biograph, con una ilustración
+          de dos manos en una sola línea a la derecha y tres datos abajo; volvió a esta versión
+          (Alejandro: «nah. hero a la versión 1. quedó feo así»). */}
       <AnillosHero />
       <VentanaLiquida anfitrion={hero} texto={texto} />
 
@@ -60,7 +71,10 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 de `Titular`, porque esa mete un `<br />` y forzaría el quiebre siempre: así el
                 `text-balance` sigue decidiendo dónde parte según el ancho. */}
             <Titular como="h1" tamano="hero">
-              {t('landingHeroTitle')}
+              {/* El primer renglón en negrita, a prueba (Alejandro, 7 de octubre de 2026: «en el
+                  titulo principal prueba en la linea 1 un bold»): es lo primero que se lee de la
+                  página, y el segundo, en amarillo y en 400, lo completa. */}
+              <span className="font-bold">{t('landingHeroTitle')}</span>
             {/* «ayudas» cierra el primer renglón y el segundo va entero en el amarillo del logo
                 (Alejandro, 6 de octubre de 2026). El salto es fijo; la escala del titular está
                 medida para que el primer renglón quepa de una (ver `Titular`). El amarillo es

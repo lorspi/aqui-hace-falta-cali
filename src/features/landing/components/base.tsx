@@ -88,13 +88,19 @@ export const Titular: React.FC<{
      punto de encuentro de las ayudas» y tiene que caber de una. Mide 533 a 28, 685 a 36, 913 a 48
      y 1065 a 56, contra cajas de 576 (640), 769 (1024), 983 (1280) y 1116 (1536). El 40 entraba a
      1024 con 8 de holgura y una barra de desplazamiento visible lo partía: por eso 36. */
+  /* El 7 de octubre de 2026 el primer renglón pasó a negrita (a prueba, ver `LandingHero`), que es
+     más ancha: a 56 ya no cabía de una desde 1536, así que el escalón `2xl` salió y el hero se
+     queda en 48 desde 1280. */
   const escala =
     tamano === 'hero'
-      ? 'text-rd-28 lg:text-rd-36 xl:text-rd-48 2xl:text-rd-56'
-      : /* Medida igual que la del hero: el mayor tamaño que deja los titulares de sección en dos
-           líneas. En 1280 la caja se parte en dos columnas y baja a 544, por eso el paso de `xl`
-           es más pequeño que el de `md`: no es un error, es que ahí hay la mitad de sitio. */
-        'text-rd-28 md:text-rd-36 xl:text-rd-32';
+      ? 'text-rd-28 lg:text-rd-36 xl:text-rd-48'
+      : /* Un solo tamaño para todos los titulares de sección desde 768: 40, un escalón claro por
+           encima de los títulos de dentro de cada sección (28) y por debajo del hero (48 y 56)
+           (Alejandro, 7 de octubre de 2026: «revisa el tamaño del titulo de las secciones para que
+           sean consistentes»). Hasta ese día iban a 36 en `md` y bajaban a 32 en `xl` por la caja
+           de dos columnas de la sección 5, y a 1440 quedaban a 4 px de los de dentro (28): no se
+           leía cuál mandaba. En la columna de la sección 5 el titular parte en cuatro renglones. */
+        'text-rd-28 md:text-rd-40';
   return (
     /* El titular del hero va en 400 y los de sección se quedan en 500 (Alejandro, 29 de
        septiembre de 2026: pasó por 700, 600, 300 y acabó en 400). `tamano` es el interruptor
@@ -140,9 +146,22 @@ export const claseBotonIcono = (elegido?: string) =>
   }`;
 
 /**
- * El botón de la landing: píldora, más alto y más grande que el de la herramienta, con los
- * mismos tres niveles de consecuencia (decisión 223) y los mismos colores. `primario` es navy,
- * `pedir` es coral —la única acción en coral, decisión 139— y `secundario` es blanco con marco.
+ * El `Segmented` de la herramienta (`components/ui/Segmented.tsx`) en los tokens de la landing:
+ * la pista (`claseConmutador`) con marco y `p-1`, y cada opción (`claseOpcion`) de 30 sobre la
+ * pista de 40, la elegida en píldora de tinta. Las opciones son botones con `aria-pressed` dentro
+ * de un `role="group"` con nombre. Nació dentro del menú de ajustes (el tema) y salió aquí el 7 de
+ * octubre de 2026, cuando la sección 5 lo necesitó para elegir cómo sumarse.
+ */
+export const claseConmutador = 'inline-flex max-w-full items-center gap-0.5 rounded-full border border-rd-noche-linea p-1';
+export const claseOpcion = (activa: boolean) =>
+  `font-rd inline-flex h-7.5 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 text-rd-13-5 whitespace-nowrap transition-colors duration-150 pointer-coarse:h-8.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-ayuda active:translate-y-px ${
+    activa ? 'bg-rd-noche-tinta font-semibold text-rd-noche' : 'font-medium text-rd-noche-tinta-2 hover:bg-rd-noche-3 hover:text-rd-noche-tinta'
+  }`;
+
+/**
+ * El botón de la landing: más alto y más grande que el de la herramienta, con los mismos tres
+ * niveles de consecuencia (decisión 223) y los mismos colores. `primario` es navy, `pedir` es
+ * coral —la única acción en coral, decisión 139— y `secundario` es la superficie con marco.
  */
 export const BotonLanding: React.FC<{
   nivel?: 'primario' | 'pedir' | 'secundario' | 'terciario';
@@ -196,22 +215,20 @@ export const BotonLanding: React.FC<{
     ancho ? 'w-full' : ''
   } ${
     {
-      /* Sobre el fondo oscuro (6 de octubre de 2026) el foco va en el ámbar del logo: el navy no
-         se vería. */
-      /* Los dos del hero (Alejandro, 6 de octubre de 2026): «botón pedir ayuda en el amarillo y el
-         segundo blanco». Pedir va en el amarillo del logo con la tinta de la herramienta (9,2:1) y
-         Ofrecer (primario) en la tinta de la página con el fondo de la página como texto: blanco
-         sobre negro (21:1) en oscuro y al revés en claro. El amarillo de Pedir es `rd-amber-claro`
-         y no `rd-ayuda`, que en modo claro baja a ámbar tinta: este es un relleno, y sigue siendo
-         el amarillo en los dos modos. En la landing el coral deja de ser el color de Pedir
-         (decisión 139, que sigue valiendo en la herramienta). */
-      primario: 'border-rd-noche-tinta bg-rd-noche-tinta text-rd-noche hover:bg-rd-noche-tinta-2 hover:border-rd-noche-tinta-2 focus-visible:outline-rd-ayuda',
-      pedir: 'border-rd-amber-claro bg-rd-amber-claro text-rd-ink hover:brightness-95 focus-visible:outline-rd-ayuda',
-      /* El secundario es de la misma familia que los botones de icono (`claseBotonIcono`): sin
-         fondo, con el borde y el texto en la tinta de la página, y la superficie elevada al pasar
-         el cursor (6 de octubre de 2026, al unificarlos). Antes llevaba el borde al 40 % y la
-         superficie elevada de fondo. */
-      secundario: 'border-rd-noche-tinta bg-transparent text-rd-noche-tinta hover:bg-rd-noche-2 focus-visible:outline-rd-ayuda',
+      /* Los colores son los del `Button` de la herramienta (Alejandro, 7 de octubre de 2026:
+         «había que colocar el color de los botones como funciona en la app»): primario navy con
+         texto blanco, pedir coral con texto blanco (decisión 139: la única acción en coral) y
+         secundario en la superficie con el marco de línea. El secundario va en los tokens de la
+         landing, que en el modo claro valen lo mismo que la herramienta (superficie blanca, marco
+         `rd-line`, tinta, hundido al pasar) y en el oscuro son su par sobre negro. Del 6 al 7 de
+         octubre los del hero fueron amarillo (pedir) y blanco (primario), y el secundario, sin
+         fondo y con marco blanco.
+
+         El foco va en el amarillo de la landing (`rd-ayuda`): el navy no se vería sobre el
+         fondo oscuro. */
+      primario: 'border-rd-navy bg-rd-navy text-white hover:border-rd-navy-hover hover:bg-rd-navy-hover focus-visible:outline-rd-ayuda',
+      pedir: 'border-rd-coral bg-rd-coral text-white hover:brightness-95 focus-visible:outline-rd-ayuda',
+      secundario: 'border-rd-noche-linea bg-rd-noche-2 text-rd-noche-tinta hover:bg-rd-noche-3 focus-visible:outline-rd-ayuda',
       /* Ver no cambia nada, así que no lleva marco ni relleno (decisión 223). En la landing se
          lee como el enlace con flecha que usan Ramp y Superpower para «Learn more». */
       terciario: 'border-transparent bg-transparent px-0 text-rd-noche-tinta-2 hover:text-rd-noche-tinta focus-visible:outline-rd-ayuda',

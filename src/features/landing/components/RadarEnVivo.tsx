@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock, Map as Mapa, MapPin } from 'lucide-react';
-import { BotonLanding } from './base';
-import { azar, curva, ovalo, trazar } from '../trazoAMano';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Tarjeta } from '../../../components/ui/Tarjeta';
+import type { Publicacion, TipoPublicacion } from '../../../types/publicacion';
+import { azar, espiral, ovalo, pasarPor, temblar, trazar } from '../trazoAMano';
 import { useConsulta } from '../useConsulta';
 
 /**
@@ -12,57 +12,55 @@ import { useConsulta } from '../useConsulta';
  * y 3»; y sobre la propuesta, «hagale radar en vivo»).
  *
  * La marca se llama Radar y la sección dice «minuto a minuto»: la sección es un radar barriendo el
- * territorio. Las necesidades (coral) y las ofertas (navy) que la sección ya carga son ecos; el haz
- * gira y, al pasar por encima de un eco, lo enciende, y el eco se va apagando despacio, como en una
- * pantalla de radar.
+ * territorio. Las necesidades (coral) y las ofertas (navy) son ecos; el haz gira y, al pasar por
+ * encima de un eco, lo enciende, y el eco se va apagando despacio, como en una pantalla de radar.
  *
  * - EL HAZ da una vuelta cada 10 s (`VUELTA_MS`). Lo mueve un cuadro de animación que gira una capa
  *   ya pintada (la tarjeta gráfica la rota sin repintar) y enciende los ecos; se detiene fuera de la
  *   pantalla.
  * - EL CURSOR. Al pasar el cursor por un eco —o al enfocarlo con el teclado, o al tocarlo—, el haz
- *   va hacia él y se queda, el eco se queda encendido con un anillo amarillo y la lectura lo
- *   muestra. Los ecos llevan `data-cursor-eco`, y el cursor líquido de la landing late mientras
- *   está sobre uno (ver `VentanaLiquida`): el cursor es otro radar que detecta.
+ *   va hacia él y se queda, y la baraja lo trae al frente. Los ecos llevan `data-cursor-eco`, y el
+ *   cursor líquido de la landing late mientras está sobre uno (ver `VentanaLiquida`): el cursor es
+ *   otro radar que detecta.
  * - LA ENTRADA. Al llegar a la sección los anillos se dibujan a pulso de dentro hacia fuera, como
  *   el sello de la sección 3, y el haz arranca.
  * - En el centro, un punto amarillo que late: el lugar de quien mira.
+ * - El eco que está al frente de la baraja lleva en el radar un anillo amarillo quieto y otro que
+ *   late desde él, así se ve cuál es sin buscarlo. Un rato hubo además una línea a pulso del eco a
+ *   la tarjeta, y a Alejandro le pareció «rarísimo como se hilan las cards y el dot del radar»
+ *   (7 de octubre de 2026): se quitó.
  *
- * LA LECTURA
- * Al lado del radar va lo que el radar leyó. La primera versión era una tarjeta suelta con una
- * leyenda debajo, y Alejandro la vio «muy mediocre» (7 de octubre de 2026). Ahora son tres piezas:
- * - El eco leído: en el radar lleva el anillo amarillo que late, así se ve cuál es sin buscarlo. Un
- *   rato hubo además una línea a pulso del eco a la lectura, y a Alejandro le pareció «rarísimo
- *   como se hilan las cards y el dot del radar» (7 de octubre de 2026): se quitó.
- * - La lectura: el tipo con su señal, el título grande, su detalle, dónde y hace cuánto, la categoría y una
- *   acción, «Ver en el mapa», que lleva a esa necesidad u oferta. Cambia al eco que el haz acaba de
- *   pasar, pero no antes de 5 s (`PERMANENCIA_MS`): con seis ecos el haz pasa uno cada segundo y
- *   medio, y una lectura que cambiara a ese ritmo no se alcanzaría a leer. Una raya de su color se
- *   llena en su borde de abajo mientras espera; con un eco elegido no corre.
- * - El registro: las tres lecturas anteriores, la más reciente arriba, que se van corriendo hacia
- *   abajo con cada eco nuevo. Cada fila es un botón: al pasar el cursor, enfocarla o tocarla, el haz
- *   va a ese eco. Arranca lleno con los últimos ecos de la vuelta, para que no nazca vacío.
+ * LA BARAJA
+ * Al lado del radar van las publicaciones como una baraja de tarjetas físicas (Alejandro, 7 de
+ * octubre de 2026: «dejaría es como las cards colapsadas como en una baraja, y que cuando se
+ * muestra en el radar una nueva, esa que estaba al frente pasa para detrás […] que sean como cards
+ * más físicas. también me parece importante que las cards sean las que se usan en la herramienta
+ * app v.2»). Antes fue una lectura propia con su registro, que vio «muy mediocre».
+ * - Cada tarjeta es la `Tarjeta` de la herramienta, tal cual, en su tipografía (Inter: la envuelve
+ *   `.rd-herramienta`). Sus acciones llevan a esa publicación en la Radar (`onAbrir`).
+ * - Detrás de la del frente asoman tres hojas, cada una un poco más arriba, más pequeña, más
+ *   oscura y algo girada (`.rd-mazo-hoja-*`). Asoman solo su margen de arriba, que en la tarjeta es
+ *   papel en blanco, así que no hace falta saber qué tarjeta es cada una.
+ * - Cuando el haz trae un eco nuevo, la tarjeta del frente se levanta, se mete detrás de la baraja
+ *   y baja hasta el fondo (`.rd-mazo-sale`), mientras la nueva avanza desde la primera hoja
+ *   (`.rd-mazo-entra`). El cambio llega con el eco que el haz acaba de pasar, pero no antes de 5 s
+ *   (`PERMANENCIA_MS`): con seis ecos el haz pasa uno cada segundo y medio, y una tarjeta que
+ *   cambiara a ese ritmo no se alcanzaría a leer.
+ * - Con el cursor o el foco sobre la baraja, la del frente se queda: no se baraja algo que alguien
+ *   está a punto de tocar.
+ * - Todas las tarjetas están montadas en la misma celda, solo la del frente visible: la baraja
+ *   mide lo que la más alta y no salta al cambiar.
+ * - Solo la baraja: debajo hubo un rato un registro con las tres anteriores, y Alejandro lo quitó
+ *   (7 de octubre de 2026: «quitalo. deja solo las cards»).
  *
- * Todo el dibujo es a pulso (`trazoAMano`). Los ecos se reparten en la vuelta por orden, alternando
- * necesidades y ofertas, con un poco de azar en el ángulo y en la distancia sacado de su `id`, así
- * cada eco cae siempre en el mismo sitio.
+ * Todo el dibujo es a pulso (`trazoAMano`). Los ecos se reparten en la vuelta por orden, con un
+ * poco de azar en el ángulo y en la distancia sacado de su `id`, así cada eco cae siempre en el
+ * mismo sitio.
  *
- * El radar es un grupo con nombre (`etiqueta`), y cada eco es un botón con lo que dice su lectura,
- * así quien no lo ve oye los mismos datos. Con movimiento reducido el haz no gira: apunta al eco de
- * la lectura, y los ecos se eligen igual con el cursor, el dedo o el teclado.
+ * El radar es un grupo con nombre (`etiqueta`), y cada eco es un botón con el tipo, el título y el
+ * lugar de su publicación. Con movimiento reducido el haz no gira: apunta al eco del frente, la
+ * baraja cambia sin moverse, y los ecos se eligen igual con el cursor, el dedo o el teclado.
  */
-
-export type EcoRadar = {
-  id: string;
-  tipo: 'necesidad' | 'oferta';
-  category: string;
-  title: string;
-  /** El detalle bajo el título, si lo hay. */
-  description?: string;
-  location: string;
-  timeAgo: string;
-  /** A dónde lleva «Ver en el mapa». */
-  link: string;
-};
 
 const LADO = 600;
 const C = LADO / 2;
@@ -72,40 +70,54 @@ const PERMANENCIA_MS = 5000;
 const RASTRO = 110;
 /* El destello: los primeros 50° tras pasar el haz, el anillo del eco crece y se apaga. */
 const DESTELLO = 50;
-/* Las filas del registro, sin contar la lectura. */
-const REGISTRO = 3;
+/* Las hojas que asoman detrás de la tarjeta del frente. */
+const HOJAS = [1, 2, 3];
 const CONSULTA_REDUCIDO = '(prefers-reduced-motion: reduce)';
 
 const al = azar(83);
-/* El temblor de `ovalo` es una fracción del radio: igual en los cuatro, el de fuera salía
-   deformado. Baja con la raíz del radio, así los cuatro tiemblan unos 2 o 3 px, como de una
-   misma mano. */
-const RADIOS = [70, 140, 210, 278];
-const ANILLOS = RADIOS.map((r) => trazar(ovalo({ x: C, y: C }, r, r, al, 140, 0.7 * Math.sqrt(70 / r)), true));
-const CRUZ = [
-  trazar(curva({ x: C, y: C - 286 }, { x: C + 3, y: C - 100 }, { x: C - 3, y: C + 100 }, { x: C, y: C + 286 }, 50, 1.5, al)),
-  trazar(curva({ x: C - 286, y: C }, { x: C - 100, y: C - 3 }, { x: C + 100, y: C + 3 }, { x: C + 286, y: C }, 50, 1.5, al)),
-];
+/* El radar, en una sola línea (Alejandro, 7 de octubre de 2026: «lo mismo con el mapa del radar
+   posterior... siento que tiene mucha oportunidad»; antes eran cuatro anillos y una cruz sueltos).
+   Nace en el centro y sale en espiral, tres vueltas y media, que se leen como los anillos; al
+   llegar al borde da una vuelta entera a la misma distancia, que cierra el anillo de afuera; y de
+   ahí cruza por el centro de arriba abajo, sigue un cuarto de vuelta por el borde y cruza de lado a
+   lado. El temblor es uno solo para toda la línea.
+   El anillo de afuera también recorta el haz (`BORDE`, normalizado al lienzo): sale de los mismos
+   puntos ya temblados, así el haz termina justo en la línea dibujada y no en un círculo perfecto
+   (Alejandro: «el halo de luz del radar que da el giro es "limpio" y no sigue como la linea de
+   bordeador real del dibujo del radar»). */
+const R_AFUERA = 278;
+const ESPIRAL = espiral({ x: C, y: C }, 26, R_AFUERA, 3.5, 90, 1, 64);
+const ANILLO = espiral({ x: C, y: C }, R_AFUERA, R_AFUERA, 1, 90 + 3.5 * 360, 1, 96).slice(1);
+const CRUCES = pasarPor(
+  [
+    { x: C, y: C - R_AFUERA },
+    { x: C + 2, y: C - 120 },
+    { x: C - 2, y: C + 120 },
+    { x: C, y: C + R_AFUERA },
+    ...[100, 120, 140, 160].map((g) => ({ x: C + R_AFUERA * Math.cos((g * Math.PI) / 180), y: C + R_AFUERA * Math.sin((g * Math.PI) / 180) })),
+    { x: C - R_AFUERA, y: C },
+    { x: C - 120, y: C + 2 },
+    { x: C + 120, y: C - 2 },
+    { x: C + R_AFUERA, y: C },
+  ],
+  10,
+).slice(1);
+const RADAR_PUNTOS = temblar([...ESPIRAL, ...ANILLO, ...CRUCES], 1.6, al);
+const RADAR = trazar(RADAR_PUNTOS);
+const BORDE = RADAR_PUNTOS.slice(ESPIRAL.length, ESPIRAL.length + ANILLO.length)
+  .map((p) => `${(p.x / LADO).toFixed(4)},${(p.y / LADO).toFixed(4)}`)
+  .join(' ');
+/* El borde del haz: una raya a pulso del centro hacia arriba, más larga que el radio; el recorte
+   la corta en el anillo dibujado. */
+const RAYA = trazar(temblar(pasarPor([{ x: C, y: C }, { x: C, y: C - 150 }, { x: C, y: -10 }], 20), 1.2, azar(61)));
 const NUCLEO = trazar(ovalo({ x: 0, y: 0 }, 7, 7, al, 28, 1.3), true);
 const ONDA = trazar(ovalo({ x: 0, y: 0 }, 12, 12, al, 40, 1.5), true);
 const ELEGIDO = trazar(ovalo({ x: 0, y: 0 }, 19, 19, al, 48, 1.4), true);
 const CENTRO_ONDA = trazar(ovalo({ x: 0, y: 0 }, 8, 8, al, 32, 1.4), true);
 
 const COLOR = {
-  necesidad: {
-    trazo: 'stroke-rd-coral',
-    relleno: 'fill-rd-coral',
-    fondo: 'bg-rd-coral',
-    texto: 'text-rd-coral',
-    etiqueta: 'bg-rd-coral/25 text-rd-coral-soft claro:bg-rd-coral-soft claro:text-rd-coral-ink',
-  },
-  oferta: {
-    trazo: 'stroke-rd-navy-claro',
-    relleno: 'fill-rd-navy-claro',
-    fondo: 'bg-rd-navy-claro',
-    texto: 'text-rd-navy-claro',
-    etiqueta: 'bg-rd-navy-claro/25 text-rd-navy-soft claro:bg-rd-navy-soft claro:text-rd-navy',
-  },
+  necesidad: { trazo: 'stroke-rd-coral', relleno: 'fill-rd-coral' },
+  oferta: { trazo: 'stroke-rd-navy-claro', relleno: 'fill-rd-navy-claro' },
 };
 
 const huella = (s: string) => {
@@ -115,54 +127,38 @@ const huella = (s: string) => {
 };
 
 /* Dónde cae cada eco: repartidos en la vuelta por orden, con algo de azar sacado de su `id`. */
-const colocar = (ecos: EcoRadar[]) =>
-  ecos.map((e, k) => {
-    const h = huella(e.id);
-    const angulo = ((((k * 360) / ecos.length + (h % 30) - 15) % 360) + 360) % 360;
+const colocar = (publicaciones: Publicacion[]) =>
+  publicaciones.map((p, k) => {
+    const h = huella(p.id);
+    const angulo = ((((k * 360) / publicaciones.length + (h % 30) - 15) % 360) + 360) % 360;
     const radio = 105 + (Math.floor(h / 31) % 150);
     const a = (angulo * Math.PI) / 180;
-    return { ...e, angulo, x: C + radio * Math.sin(a), y: C - radio * Math.cos(a) };
+    return { p, angulo, x: C + radio * Math.sin(a), y: C - radio * Math.cos(a) };
   });
 
-/* La señal de un tipo: su punto de color y, salvo `quieta`, un radar a pulso que late. */
-const SENAL_ONDA = trazar(ovalo({ x: 7, y: 7 }, 4, 4, azar(71), 24, 1.6), true);
-export const Senal: React.FC<{ tipo: EcoRadar['tipo']; quieta?: boolean }> = ({ tipo, quieta = false }) => (
-  <svg aria-hidden="true" viewBox="0 0 14 14" className="h-3.5 w-3.5 shrink-0 overflow-visible">
-    {!quieta && (
-      <path
-        d={SENAL_ONDA}
-        strokeWidth={1.25}
-        vectorEffect="non-scaling-stroke"
-        className={`rd-encuentro-onda fill-none ${COLOR[tipo].trazo}`}
-        style={{ animationDuration: '2.8s', animationDelay: tipo === 'necesidad' ? '0s' : '1.4s' }}
-      />
-    )}
-    <circle cx={7} cy={7} r={3.5} className={COLOR[tipo].relleno} />
-  </svg>
-);
-
 export const RadarEnVivo: React.FC<{
-  ecos: EcoRadar[];
+  publicaciones: Publicacion[];
   /** El nombre del radar para el lector de pantalla. */
   etiqueta: string;
-  /** El nombre de cada tipo, para la lectura y el registro. */
-  rotulos: Record<EcoRadar['tipo'], string>;
-  /** «Ver en el mapa» y el rótulo del registro. */
-  textos: { verEnMapa: string; registro: string };
-}> = ({ ecos, etiqueta, rotulos, textos }) => {
-  const puestos = useMemo(() => colocar(ecos), [ecos]);
+  /** El nombre de cada tipo, para el nombre de cada eco. */
+  rotulos: Record<TipoPublicacion, string>;
+  /** Lo que hacen las acciones de una tarjeta: abrir esa publicación en la herramienta. */
+  onAbrir: (id: string) => void;
+}> = ({ publicaciones, etiqueta, rotulos, onAbrir }) => {
+  const puestos = useMemo(() => colocar(publicaciones), [publicaciones]);
   const reducido = useConsulta(CONSULTA_REDUCIDO, false);
   const caja = useRef<HTMLDivElement>(null);
+  /* El recorte del haz: un id por radar, que `useId` trae con dos puntos y `url()` los acepta. */
+  const borde = `radar-borde-${useId().replace(/:/g, '')}`;
   const haz = useRef<HTMLDivElement>(null);
   const nucleos = useRef<(SVGPathElement | null)[]>([]);
   const ondas = useRef<(SVGPathElement | null)[]>([]);
   const [dibujado, setDibujado] = useState(false);
-  /* La lectura y el registro: el eco leído primero y los anteriores detrás, sin repetir. Arranca
-     con los últimos de la vuelta, así el registro no nace vacío. */
-  const [historial, setHistorial] = useState<number[]>(() =>
-    [0, ...Array.from({ length: REGISTRO }, (_, k) => ecos.length - 1 - k)].filter((i, k, a) => i >= 0 && a.indexOf(i) === k),
-  );
+  /* La publicación al frente de la baraja. */
+  const [indice, setIndice] = useState(0);
   const [foco, setFoco] = useState<number | null>(null);
+  /* Las tarjetas que van saliendo del frente hacia el fondo, cada una con su vuelta. */
+  const [saliendo, setSaliendo] = useState<{ i: number; n: number }[]>([]);
 
   /* El eco elegido, también para el cuadro de animación, que no pasa por React. */
   const focoVivo = useRef<number | null>(null);
@@ -170,15 +166,23 @@ export const RadarEnVivo: React.FC<{
     focoVivo.current = foco;
   }, [foco]);
 
-  /* Si cambian los ecos (llegan los datos vivos), el registro vuelve a empezar con ellos. */
-  useEffect(() => {
-    setHistorial([0, ...Array.from({ length: REGISTRO }, (_, k) => puestos.length - 1 - k)].filter((i, k, a) => i >= 0 && a.indexOf(i) === k));
-  }, [puestos]);
-
-  const actual = Math.min(historial[0] ?? 0, Math.max(0, puestos.length - 1));
+  const actual = Math.min(indice, Math.max(0, puestos.length - 1));
   const elegido = puestos[actual];
 
-  const leer = (i: number) => setHistorial((h) => (h[0] === i ? h : [i, ...h.filter((x) => x !== i)].slice(0, REGISTRO + 1)));
+  const leer = (i: number) => setIndice(i);
+
+  /* Cuando cambia la del frente, la que estaba se va al fondo. Antes de pintar, para que no haya
+     un cuadro sin ella. */
+  const frente = useRef<number | null>(null);
+  const vueltas = useRef(0);
+  useLayoutEffect(() => {
+    const antes = frente.current;
+    frente.current = actual;
+    if (antes === null || antes === actual || reducido) return;
+    vueltas.current += 1;
+    const n = vueltas.current;
+    setSaliendo((s) => [...s, { i: antes, n }]);
+  }, [actual, reducido]);
 
   /* La entrada y el haz: se dibuja al llegar y gira mientras se ve. */
   useEffect(() => {
@@ -207,8 +211,8 @@ export const RadarEnVivo: React.FC<{
       }
       if (haz.current) haz.current.style.transform = `rotate(${angulo.toFixed(2)}deg)`;
 
-      puestos.forEach((p, i) => {
-        const pasado = (angulo - p.angulo + 360) % 360;
+      puestos.forEach((e, i) => {
+        const pasado = (angulo - e.angulo + 360) % 360;
         const brillo = i === f ? 1 : Math.exp(-pasado / RASTRO);
         const n = nucleos.current[i];
         if (n) n.style.opacity = (0.3 + 0.7 * brillo).toFixed(3);
@@ -218,7 +222,7 @@ export const RadarEnVivo: React.FC<{
           o.style.opacity = ((1 - d) * 0.9).toFixed(3);
           o.style.transform = `scale(${(1 + d * 1.6).toFixed(3)})`;
         }
-        /* El haz acaba de pasar por este eco: la lectura lo cuenta, si la anterior ya se leyó. */
+        /* El haz acaba de pasar por este eco: pasa al frente, si la anterior ya se leyó. */
         if (f === null && antes[i] > 180 && pasado < 180 && ahora - cambio > PERMANENCIA_MS) {
           cambio = ahora;
           leer(i);
@@ -251,7 +255,7 @@ export const RadarEnVivo: React.FC<{
     };
   }, [puestos, reducido]);
 
-  /* Con movimiento reducido el haz no gira: apunta al eco de la lectura. */
+  /* Con movimiento reducido el haz no gira: apunta al eco del frente. */
   useEffect(() => {
     if (!reducido || !haz.current || !elegido) return;
     haz.current.style.transform = `rotate(${elegido.angulo}deg)`;
@@ -263,43 +267,57 @@ export const RadarEnVivo: React.FC<{
     leer(i);
   };
   const soltar = () => setFoco(null);
+  /* La del frente se queda mientras el cursor o el foco están en la baraja. */
+  const quedarse = () => setFoco(actual);
 
   return (
     <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-6">
       <div className="lg:col-span-7">
         <div ref={caja} className="relative mx-auto aspect-square w-full max-w-140">
-          {/* Los anillos, la cruz y el centro, dibujados a pulso al llegar. */}
+          {/* El radar en una sola línea, que se dibuja al llegar; y el recorte del haz. */}
           <svg aria-hidden="true" viewBox={`0 0 ${LADO} ${LADO}`} className="absolute inset-0 h-full w-full overflow-visible">
-            <g className="fill-none stroke-rd-noche-linea" strokeWidth={1.5}>
-              {CRUZ.map((d, i) => (
-                <path key={i} d={d} pathLength={1} strokeDasharray="1 1" strokeDashoffset={dibujado ? 0 : 1} className="rd-radar-trazo" style={{ transitionDelay: `${0.2 + i * 0.15}s` }} />
-              ))}
-              {ANILLOS.map((d, i) => (
-                <path key={i} d={d} pathLength={1} strokeDasharray="1 1" strokeDashoffset={dibujado ? 0 : 1} className="rd-radar-trazo" style={{ transitionDelay: `${i * 0.18}s` }} />
-              ))}
-            </g>
+            <defs>
+              <clipPath id={borde} clipPathUnits="objectBoundingBox">
+                <polygon points={BORDE} />
+              </clipPath>
+            </defs>
+            <path
+              d={RADAR}
+              pathLength={1}
+              strokeDasharray="1 1"
+              strokeDashoffset={dibujado ? 0 : 1}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="rd-radar-trazo fill-none stroke-rd-noche-linea"
+              style={{ transitionDuration: '2.8s' }}
+            />
             <g transform={`translate(${C} ${C})`}>
               <path d={CENTRO_ONDA} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="rd-encuentro-onda fill-none stroke-rd-ayuda" style={{ animationDuration: '3s' }} />
               <circle r={5} className="fill-rd-ayuda" />
             </g>
           </svg>
 
-          {/* El haz: una estela que se apaga detrás de su borde, girada por el cuadro de animación. */}
-          <div aria-hidden="true" className="absolute inset-1/25 overflow-hidden rounded-full">
+          {/* El haz: una estela que se apaga detrás de su borde, girada por el cuadro de animación.
+              La caja que la recorta no gira y lleva el anillo dibujado (`borde`): así el haz llega
+              justo hasta la línea. Su borde es una raya a pulso que gira con él. */}
+          <div aria-hidden="true" className="absolute inset-0" style={{ clipPath: `url(#${borde})` }}>
             <div ref={haz} className={`rd-radar-haz absolute inset-0 rounded-full transition-opacity duration-700 ${dibujado ? 'opacity-100' : 'opacity-0'}`}>
-              <span className="absolute top-0 left-1/2 h-1/2 w-px -translate-x-1/2 bg-rd-ayuda/70" />
+              <svg viewBox={`0 0 ${LADO} ${LADO}`} className="absolute inset-0 h-full w-full overflow-visible">
+                <path d={RAYA} strokeWidth={1.75} strokeLinecap="round" className="fill-none stroke-rd-ayuda" />
+              </svg>
             </div>
           </div>
 
-          {/* Los ecos, encima del haz: cada uno un botón con lo que dice su lectura. */}
+          {/* Los ecos, encima del haz: cada uno un botón con lo que dice su publicación. */}
           <svg role="group" aria-label={etiqueta} viewBox={`0 0 ${LADO} ${LADO}`} className="absolute inset-0 h-full w-full overflow-visible">
-            {puestos.map((p, i) => (
+            {puestos.map(({ p, x, y }, i) => (
               <g
                 key={p.id}
-                transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}
+                transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}
                 role="button"
                 tabIndex={0}
-                aria-label={`${rotulos[p.tipo]}: ${p.title}, ${p.location}`}
+                aria-label={`${rotulos[p.tipo]}: ${p.titulo}, ${p.zona}`}
                 aria-pressed={i === actual}
                 data-cursor-eco=""
                 className="cursor-pointer outline-none"
@@ -328,7 +346,7 @@ export const RadarEnVivo: React.FC<{
                   className={COLOR[p.tipo].relleno}
                   style={{ opacity: dibujado ? 0.85 : 0, transition: dibujado ? undefined : 'opacity 0.6s' }}
                 />
-                {/* El eco que la lectura muestra: un anillo quieto y otro que late desde él. */}
+                {/* El eco del frente de la baraja: un anillo quieto y otro que late desde él. */}
                 {i === actual && (
                   <>
                     <path d={ELEGIDO} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="fill-none stroke-rd-ayuda" />
@@ -342,78 +360,38 @@ export const RadarEnVivo: React.FC<{
       </div>
 
       <div className="lg:col-span-5 lg:col-start-8">
-        {/* La lectura. */}
-        {elegido && (
-          <div className="relative overflow-hidden rounded-rd-xl border border-rd-noche-linea bg-rd-noche-2">
-            <div key={elegido.id} className="rd-paso flex min-h-80 flex-col p-6 sm:p-7">
-              <div className="flex items-center justify-between gap-3">
-                <p className={`font-rd m-0 flex items-center gap-2 text-rd-13-5 font-semibold ${COLOR[elegido.tipo].texto}`}>
-                  <Senal tipo={elegido.tipo} />
-                  {rotulos[elegido.tipo]}
-                </p>
-                <span className="font-rd inline-flex shrink-0 items-center gap-1.5 text-rd-12 text-rd-noche-meta">
-                  <Clock aria-hidden="true" className="h-3.5 w-3.5" />
-                  {elegido.timeAgo}
-                </span>
-              </div>
-              <h3 className="font-rd m-0 mt-5 line-clamp-3 text-rd-24 leading-rd-titular font-medium tracking-rd-titulo text-balance text-rd-noche-tinta sm:text-rd-28">
-                {elegido.title}
-              </h3>
-              {elegido.description && elegido.description.trim() !== elegido.title.trim() && (
-                <p className="font-rd m-0 mt-3 line-clamp-3 text-rd-15 leading-relaxed text-rd-noche-tinta-2">{elegido.description}</p>
-              )}
-              <p className="font-rd m-0 mt-4 flex items-center gap-2 text-rd-14 text-rd-noche-meta">
-                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-noche-meta" />
-                <span className="min-w-0 truncate">{elegido.location}</span>
-              </p>
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-7">
-                <span className={`font-rd inline-flex rounded-full px-2.5 py-1 text-rd-11-5 font-semibold ${COLOR[elegido.tipo].etiqueta}`}>{elegido.category}</span>
-                <BotonLanding nivel="secundario" tamano="md" como="enlace" href={elegido.link} icono={<Mapa className="h-4 w-4" />}>
-                  {textos.verEnMapa}
-                </BotonLanding>
-              </div>
+        {/* La baraja: las hojas que asoman, todas las tarjetas en la misma celda (solo la del
+            frente visible) y las que van saliendo hacia el fondo. */}
+        <div className="rd-mazo rd-herramienta grid pt-8" onMouseEnter={quedarse} onMouseLeave={soltar} onFocus={quedarse} onBlur={soltar}>
+          {HOJAS.map((k) => (
+            <div key={k} aria-hidden="true" className={`rd-mazo-hoja rd-mazo-hoja-${k} col-start-1 row-start-1 rounded-rd-xl border border-rd-line bg-rd-surface`} />
+          ))}
+          {puestos.map(({ p }, i) => (
+            <div
+              key={p.id}
+              className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${i === actual ? `z-4 ${saliendo.length > 0 ? 'rd-mazo-entra' : ''}` : 'invisible'}`}
+            >
+              <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
             </div>
-            {/* La espera hasta el siguiente eco, en el borde de abajo. */}
-            {foco === null && !reducido && (
-              <span
-                key={`${elegido.id}-espera`}
+          ))}
+          {saliendo.map(({ i, n }) => {
+            const e = puestos[i];
+            if (!e) return null;
+            return (
+              <div
+                key={`sale-${n}`}
+                inert
                 aria-hidden="true"
-                className={`rd-radar-espera absolute bottom-0 left-0 h-0.5 w-full origin-left ${COLOR[elegido.tipo].fondo}`}
-                style={{ animationDuration: `${PERMANENCIA_MS}ms` }}
-              />
-            )}
-          </div>
-        )}
-
-        {/* El registro: lo que el radar leyó antes, la más reciente arriba. */}
-        {historial.length > 1 && (
-          <div className="mt-6">
-            <p className="font-rd m-0 mb-1 px-3 text-rd-12 font-semibold text-rd-noche-meta">{textos.registro}</p>
-            <ol className="m-0 flex list-none flex-col p-0">
-              {historial.slice(1).map((i) => {
-                const p = puestos[i];
-                if (!p) return null;
-                return (
-                  <li key={p.id} className="rd-paso">
-                    <button
-                      type="button"
-                      onMouseEnter={() => elegir(i)}
-                      onMouseLeave={soltar}
-                      onFocus={() => elegir(i)}
-                      onBlur={soltar}
-                      onClick={() => elegir(i)}
-                      className="font-rd flex w-full cursor-pointer items-center gap-3 rounded-rd-md px-3 py-2.5 text-left transition-colors duration-150 hover:bg-rd-noche-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-ayuda"
-                    >
-                      <Senal tipo={p.tipo} quieta />
-                      <span className="min-w-0 flex-1 truncate text-rd-13-5 text-rd-noche-tinta-2">{p.title}</span>
-                      <span className="shrink-0 text-rd-11-5 text-rd-noche-meta">{p.timeAgo}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        )}
+                className="rd-mazo-carta rd-mazo-sale col-start-1 row-start-1 rounded-rd-xl"
+                onAnimationEnd={(ev) => {
+                  if (ev.target === ev.currentTarget) setSaliendo((s) => s.filter((x) => x.n !== n));
+                }}
+              >
+                <Tarjeta publicacion={e.p} className="h-full" />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

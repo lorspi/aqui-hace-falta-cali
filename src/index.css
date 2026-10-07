@@ -67,9 +67,27 @@
      La superficie elevada es para tarjetas; la tercera, para lo hundido y el paso del cursor. */
   --color-rd-noche: #000000;
   /* Los anillos del fondo del hero (6 de octubre de 2026). Alejandro: «con este negro 1E1E1E
-     sobre el fondo 000000»: 1,2:1, apenas una sombra de línea. Es el negro que tuvo la landing
-     hasta esa misma noche. */
-  --color-rd-noche-anillo: #1E1E1E;
+     sobre el fondo 000000»: 1,2:1, apenas una sombra de línea. Desde el 7 de octubre de 2026 van
+     sobre el fondo del hero (`rd-noche-lamina`) y no sobre el negro, así que suben a #282828 para
+     guardar ese mismo 1,2:1. */
+  --color-rd-noche-anillo: #282828;
+  /* Las capas de la página (Alejandro, 7 de octubre de 2026; ver LAS CAPAS DE LA PÁGINA):
+     el fondo del hero, sobrepuesto al de la página, y el contenedor de la sección 5, otro gris. */
+  --color-rd-noche-lamina: #141414;
+  --color-rd-noche-contenedor: #171717;
+  /* La malla de color de las secciones 4 y 5, la de la referencia de Calendly (Alejandro, 7 de
+     octubre de 2026: «mira como quiero que se vea el degradado de color»): azul arriba, violeta a
+     la derecha, rosa y durazno abajo, y de ahí al fondo de la página. Son el azul y el rojo de la
+     paleta, limpios, y el amarillo llevado a durazno. El azul y el azul claro son los mismos en
+     los dos modos (el blanco encima: 6,4:1 y 3,7:1, el titular va en el primero); el rosa y el
+     durazno, que quedan cerca del fondo, son pastel en claro. En oscuro, sobre el negro, el rosa y
+     el durazno salían marrones: ahí son un morado y un índigo, y la malla baja del azul al negro
+     por el violeta. */
+  --color-rd-malla-azul: #3B5BC4;
+  --color-rd-malla-azul-claro: #6A86DA;
+  --color-rd-malla-violeta: #8C80DA;
+  --color-rd-malla-rosa: #4A2F7A;
+  --color-rd-malla-durazno: #2A3570;
   --color-rd-noche-2: #262626;
   --color-rd-noche-3: #303030;
   --color-rd-noche-linea: #3A3A3A;
@@ -89,8 +107,16 @@
   --color-rd-amber-noche-linea: #4A3B17;
   --color-rd-green-claro: #5FC48E;
   --color-rd-green-noche-linea: #24442F;
+  /* El rojo de la misma paleta (7 de octubre de 2026), para Mi organización, que era verde: la
+     landing quedó en amarillo, azul y rojo. El claro es el rojo claro de la marca (5,4:1 sobre el
+     fondo, 3,6:1 sobre su línea oscura). */
+  --color-rd-coral-claro: var(--color-brand-red-light);
+  --color-rd-coral-noche-linea: #4A2422;
   /* Noto Sans, solo para la landing: entra redefiniendo --font-rd dentro de `.rd-landing`. */
   --font-landing: "Noto Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Inter dentro de la landing, para lo de la herramienta que se muestra tal cual (la baraja de
+     la sección 4): entra con `.rd-herramienta`. */
+  --font-herramienta: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --color-rd-line: #E1E4EE;
   --color-rd-line-soft: #ECEEF5;
   /* El marco al pasar por encima, un escalón por encima de `rd-line`. Se usaba en cuatro sitios
@@ -160,6 +186,9 @@
      (29 de septiembre de 2026). */
   --radius-rd-2xl: 26px;
   --radius-rd-3xl: 34px;
+  /* El pie del fondo de la página (ver LAS CAPAS DE LA PÁGINA), del mismo alto que lo que el
+     degradado de la sección 4 sube por detrás (`rd-lamina` en el espaciado). */
+  --radius-rd-lamina: 48px;
   /* Aquí estaba `--radius-rd-panel` (56), el radio grande del panel de Calendly. Lo tuvo el hero y
      luego el panel de la segunda sección, que pasó al 16 de los botones el 6 de octubre de 2026
      (`.rd-accesos`); sin usos, se borró. */
@@ -172,10 +201,19 @@
      24 arriba y abajo porque su barra se esconde al bajar; la nuestra se queda, así que el panel
      se fija debajo de ella (`top-20`) en vez de pasar por detrás. */
   --spacing-rd-accesos-panel: calc(100svh - 6rem);
+  /* Lo que el fondo del hero baja por debajo del hero: hasta la mitad del panel de la sección 2,
+     que sube sobre él (7 de octubre de 2026). */
+  --spacing-rd-fondo-hero: calc(var(--spacing-rd-accesos-panel) / 2);
+  /* El redondeo del pie del fondo de la página, donde termina la sección 3 y asoma el degradado
+     de la 4 (7 de octubre de 2026). */
+  --spacing-rd-lamina: 48px;
   /* El recorrido de cada paso de «El encuentro», la sección 3 (6 de octubre de 2026): el aire de
      debajo de su texto, que el scroll recorre mientras el texto se queda fijo en el centro y el
      lienzo cuenta su tramo al lado. El 70 % del alto de la ventana. */
   --spacing-rd-paso-encuentro: 70svh;
+  /* El aire entre un paso de «El encuentro» y el siguiente (7 de octubre de 2026): sin él,
+     el que entraba subía pegado al que salía y parecía empujarlo. */
+  --spacing-rd-aire-encuentro: 16svh;
   /* La hoja del pin: abre a media pantalla (Alejandro, 16 de septiembre de 2026; enmienda la
      231) y expandida mide 100dvh − 96 (177) */
   --spacing-rd-hoja-1: 50dvh;
@@ -279,10 +317,15 @@
    `data-tema-landing="claro"`, que pone `LandingPage` y quita al salir de la landing. Va en el
    `html` y no en la raíz de la landing porque el cursor vive en `body`, fuera de ella.
 
-   Los valores claros son los de la landing antes del tema oscuro: la crema de página, las
-   tarjetas blancas y las tintas de la herramienta (16,4:1, 7,6:1 y 5,1:1 sobre la crema). El
-   ámbar de acento baja al ámbar tinta (5,5:1): el amarillo del logo sobre crema da 1,9:1 y no se
-   leería ni como texto ni como trazo. Donde el amarillo es relleno y no tinta —el botón Pedir y el
+   Los valores claros son los de la herramienta (Alejandro, 7 de octubre de 2026: «los colores de
+   fondo y demás que están en la app como para que haya consistencia entre ambos»): la superficie
+   blanca, el hundido, el fondo de la app, las líneas y las tintas. Hasta ese día eran la crema de
+   la landing y sus grises cálidos. La página va en el gris del fondo de la app y sobre ella las
+   capas (ver LAS CAPAS DE LA PÁGINA): el fondo del hero en blanco (Alejandro, ese mismo día:
+   «usa el color del fondo al reves en la sección 1. el fondo blanco sobre puesto al fondo
+   gris») y el contenedor de la sección 5 en el hundido, con sus bloques en blanco. El ámbar de acento baja al ámbar tinta: el
+   amarillo de la landing sobre un fondo claro da 1,9:1 y no se leería ni como texto ni como
+   trazo. Donde el amarillo es relleno y no tinta —el segundo renglón del titular del hero y el
    fondo del visual del Directorio— la landing usa `rd-amber-claro`, que no cambia.
 
    Lo que tiene que verse igual en los dos modos no usa la familia `rd-noche`: las maquetas, que
@@ -293,14 +336,18 @@
 @custom-variant claro (&:where([data-tema-landing='claro'], [data-tema-landing='claro'] *));
 
 :root[data-tema-landing='claro'] {
-  --color-rd-noche: var(--color-rd-crema);
+  --color-rd-noche: var(--color-rd-fondo);
   --color-rd-noche-2: var(--color-rd-surface);
-  --color-rd-noche-3: #F1EFE9;
-  --color-rd-noche-linea: #E3E0D8;
+  --color-rd-noche-3: var(--color-rd-sunken);
+  --color-rd-noche-linea: var(--color-rd-line);
   --color-rd-noche-tinta: var(--color-rd-ink);
   --color-rd-noche-tinta-2: var(--color-rd-ink-2);
   --color-rd-noche-meta: var(--color-rd-ink-meta);
-  --color-rd-noche-anillo: #ECE9E2;
+  --color-rd-noche-anillo: var(--color-rd-line);
+  --color-rd-noche-lamina: var(--color-rd-surface);
+  --color-rd-noche-contenedor: var(--color-rd-sunken);
+  --color-rd-malla-rosa: #F1B4B6;
+  --color-rd-malla-durazno: #F7DAA8;
   --color-rd-ayuda: var(--color-rd-amber-ink);
 }
 
@@ -719,6 +766,11 @@ header {
    ya lee esa variable —la clase font-rd y la regla de arriba— pasa a Noto Sans solo ahí dentro. */
 .rd-landing {
   --font-rd: var(--font-landing);
+}
+/* Lo de la herramienta que la landing muestra tal cual vuelve a Inter (la baraja de la sección
+   4, 7 de octubre de 2026). */
+.rd-herramienta {
+  --font-rd: var(--font-herramienta);
 }
 
 /* Custom scrollbar for modals */
@@ -1140,6 +1192,88 @@ html:has(.rd-revela) {
   background-size: 160px 160px;
 }
 
+/* ======================================================================
+   LAS CAPAS DE LA PÁGINA (7 de octubre de 2026)
+   Alejandro: «en la sección 1. genera un fondo sobre puesto al fondo fondo, que no supere el ancho
+   de las 12 columnas. ese fondo comienza justo en la parte inferior del header y llega a la mitad
+   de la sección 2 el cual desaparece por medio de un degradado. en la sección 3 va a finalizar el
+   fondo fondo. ese fondo va a tener radiuos en las esquinas. luego para la sección 4 va a haber un
+   fondo degradado de color […] ese fondo va a empezar en color y va a ir cambiando al blanco […]
+   hasta llegar al footer. en la sección 5 va a haber una contenedor como el de la sección 1. pero
+   con fill de otro color gris».
+   - El fondo de la página (`rd-noche`, blanco en claro) va de arriba hasta el final de la sección
+     3, y ahí termina con las esquinas de abajo redondeadas (`rd-lamina`, en `LandingPage`).
+   - El fondo del hero (`rd-noche-lamina`), del ancho de las 12 columnas, empieza bajo el header y
+     baja hasta la mitad del panel de la sección 2, donde se desvanece (`.rd-fondo-hero`).
+   - Desde el pie redondeado, por detrás de él, el degradado de las secciones 4 y 5
+     (`.rd-degradado-radar`): la malla de la referencia de Calendly, azul arriba, violeta, rosa y
+     durazno, que llega al fondo de la página en la sección 5, antes del footer. Lleva el grano en
+     la misma capa, encima del color. Lo de encima de la sección 4 va en blanco (`.rd-sobre-azul`).
+   - La sección 5 va en un contenedor del ancho de las 12 columnas (`rd-noche-contenedor`) con sus
+     bloques en la superficie (`rd-noche-2`): en claro, el fondo de la app y el blanco.
+   Cada capa con color propio lleva su grano, porque tapa el de la página. */
+.rd-fondo-hero {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
+
+/* La línea continua de las ilustraciones (ver LA LÍNEA CONTINUA en `trazoAMano.ts`): se dibuja
+   sola al aparecer, de punta a punta, como si alguien la trazara sin levantar el lápiz. El trazado
+   lleva `pathLength="1"` y `stroke-dasharray="1 1"`. Con movimiento reducido aparece hecha. */
+.rd-trazo-continuo {
+  animation: rd-trazo-continuo 3.4s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+}
+@keyframes rd-trazo-continuo {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-trazo-continuo { animation: none; }
+}
+/* La malla (Alejandro, 7 de octubre de 2026, sobre la anterior: «mira este corte del degradado.
+   se ve horrible»; tenía un halo encima que terminaba en una franja). Cuatro manchas suaves sobre
+   un degradado de fondo, todas sin borde (cada una se apaga a transparente) y mezcladas en oklab,
+   que no ensucia el paso de un color a otro: el azul arriba a la izquierda, el violeta arriba a la
+   derecha, el rosa y el durazno a media altura, y el fondo de la página desde el 82 %, donde ya no
+   queda color que cortar. Encima, el grano, que además disuelve las bandas. */
+.rd-degradado-radar {
+  background-image:
+    url('/images/landing/grano.png'),
+    radial-gradient(70% 28% at 92% 12%, color-mix(in oklab, var(--color-rd-malla-violeta) 85%, transparent), transparent),
+    radial-gradient(55% 24% at 6% 24%, color-mix(in oklab, var(--color-rd-malla-azul) 75%, transparent), transparent),
+    radial-gradient(62% 20% at 16% 56%, color-mix(in oklab, var(--color-rd-malla-rosa) 80%, transparent), transparent),
+    radial-gradient(58% 20% at 86% 60%, color-mix(in oklab, var(--color-rd-malla-durazno) 75%, transparent), transparent),
+    linear-gradient(
+      in oklab to bottom,
+      var(--color-rd-malla-azul) 0%,
+      var(--color-rd-malla-azul-claro) 26%,
+      color-mix(in oklab, var(--color-rd-malla-violeta) 75%, var(--color-rd-malla-azul-claro)) 40%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 70%, var(--color-rd-malla-violeta)) 54%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 55%, var(--color-rd-noche)) 64%,
+      color-mix(in oklab, var(--color-rd-malla-durazno) 30%, var(--color-rd-noche)) 74%,
+      var(--color-rd-noche) 86%
+    );
+  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Lo que va sobre el azul de la sección 4, en los dos modos: la tinta en blanco y los grises en
+   azules claros (sobre el azul de la malla: 6,4:1, 4,8:1 y 3,4:1), las líneas y las superficies
+   en blanco transparente, el amarillo vivo y el azul de las ofertas más claro para que se lea
+   sobre el azul. Como `.rd-sobre-foto`, redefine los tokens en vez de cambiar clases. Las
+   tarjetas de la herramienta no usan esta familia y se quedan blancas. */
+.rd-sobre-azul {
+  --color-rd-noche: var(--color-rd-malla-azul);
+  --color-rd-noche-2: rgb(255 255 255 / 0.08);
+  --color-rd-noche-3: rgb(255 255 255 / 0.16);
+  --color-rd-noche-linea: rgb(255 255 255 / 0.26);
+  --color-rd-noche-tinta: #FFFFFF;
+  --color-rd-noche-tinta-2: #D3DCF5;
+  --color-rd-noche-meta: #A8B7E4;
+  --color-rd-ayuda: var(--color-rd-amber-claro);
+  --color-rd-navy-claro: #A9BDF5;
+  /* La estela del haz: sobre el azul, el amarillo al 22 % se veía gris; aquí es una luz cálida. */
+  --rd-haz: rgb(255 226 150 / 0.34);
+}
+
 /* Los anillos del fondo del hero (`AnillosHero`) se desvanecen hacia los bordes del hero: enteros
    en el centro, detrás del titular, y nada en los bordes, así no se cortan en seco donde el hero
    termina ni contra el header. */
@@ -1204,7 +1338,7 @@ html:has(.rd-revela) {
   background: conic-gradient(
     from 0deg,
     transparent 0deg 280deg,
-    color-mix(in oklab, var(--color-rd-ayuda) 22%, transparent) 360deg
+    var(--rd-haz, color-mix(in oklab, var(--color-rd-ayuda) 22%, transparent)) 360deg
   );
   will-change: transform;
 }
@@ -1215,17 +1349,92 @@ html:has(.rd-revela) {
   transform-box: fill-box;
   transform-origin: center;
 }
-/* La espera de la lectura (7 de octubre de 2026): una raya que se llena en su borde de abajo
-   mientras llega el siguiente eco (su duración viene en línea, `PERMANENCIA_MS`). */
-.rd-radar-espera {
-  animation: rd-radar-espera linear both;
-}
-@keyframes rd-radar-espera {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
 @media (prefers-reduced-motion: reduce) {
   .rd-radar-trazo { transition: none; }
+}
+
+/* La baraja de la sección 4 (`RadarEnVivo`, 7 de octubre de 2026): las tarjetas de la
+   herramienta apiladas como cartas físicas.
+   - Las hojas que asoman detrás: cada una sube 9 o 10 px, se achica un 4 %, se oscurece y se
+     gira un poco, alternando, como una baraja que nadie cuadró del todo. Crecen desde su borde de
+     arriba, así lo que asoma es ese borde.
+   - La que sale: se levanta, se mete detrás de las hojas a mitad de camino (el z-index cae de
+     golpe) y baja hasta la última hoja, donde desaparece bajo ella.
+   - La que entra: avanza desde la primera hoja hasta el frente, un poco después de que la otra
+     empieza a levantarse.
+   - La sombra hace físicas las cartas sobre el fondo claro; sobre el negro las separa el gris de
+     las hojas.
+   Con movimiento reducido no hay barajado: la del frente cambia sin moverse. */
+.rd-mazo {
+  --rd-mazo-1: translateY(-10px) scale(0.96) rotate(-1.2deg);
+  --rd-mazo-2: translateY(-19px) scale(0.92) rotate(0.9deg);
+  --rd-mazo-3: translateY(-27px) scale(0.88) rotate(-0.6deg);
+}
+.rd-mazo-hoja,
+.rd-mazo-carta {
+  transform-origin: 50% 0;
+  box-shadow: var(--shadow-rd-2);
+}
+.rd-mazo-hoja-1 { transform: var(--rd-mazo-1); filter: brightness(0.92); z-index: 3; }
+.rd-mazo-hoja-2 { transform: var(--rd-mazo-2); filter: brightness(0.84); z-index: 2; }
+.rd-mazo-hoja-3 { transform: var(--rd-mazo-3); filter: brightness(0.76); z-index: 1; }
+.rd-mazo-entra {
+  animation: rd-mazo-entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+@keyframes rd-mazo-entra {
+  from { transform: var(--rd-mazo-1); filter: brightness(0.92); }
+  to { transform: none; filter: none; }
+}
+.rd-mazo-sale {
+  animation: rd-mazo-sale 0.95s both;
+}
+@keyframes rd-mazo-sale {
+  0% { transform: none; z-index: 5; animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1); }
+  42% { transform: translateY(-50%) rotate(-5deg); z-index: 5; animation-timing-function: cubic-bezier(0.45, 0, 0.3, 1); }
+  43% { z-index: 0; }
+  100% { transform: var(--rd-mazo-3); z-index: 0; filter: brightness(0.76); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-mazo-entra,
+  .rd-mazo-sale { animation: none; }
+}
+
+/* La red de la sección 5 (`RedSumarse`, 7 de octubre de 2026). Las uniones de la red se dibujan
+   al llegar con la transición de los anillos del radar (`.rd-radar-trazo`); esto es lo que pasa
+   al elegir cómo sumarse:
+   - `.rd-red-traza`: cada línea amarilla se dibuja desde «tú» hasta su nodo.
+   - `.rd-red-aparece`: el punto de «tú» y el anillo del nodo crecen desde su centro.
+   - `.rd-red-etiqueta`: el número y el nombre aparecen cuando llega su línea.
+   Las tres llenan solo hacia atrás (`backwards`): esperan escondidas su turno, pero al terminar
+   sueltan la opacidad, así el resalte de un pilar puede apagar las demás. Cada una trae su espera
+   en línea. Con movimiento reducido aparecen sin moverse. */
+.rd-red-traza {
+  animation: rd-red-traza 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes rd-red-traza {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.rd-red-aparece {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rd-red-aparece 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+@keyframes rd-red-aparece {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: none; }
+}
+.rd-red-etiqueta {
+  animation: rd-red-etiqueta 0.35s ease-out backwards;
+}
+@keyframes rd-red-etiqueta {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-red-traza,
+  .rd-red-aparece,
+  .rd-red-etiqueta { animation: none; }
 }
 
 /* ======================================================================

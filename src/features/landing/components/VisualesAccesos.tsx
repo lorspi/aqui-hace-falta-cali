@@ -207,7 +207,7 @@ const FondoOrganizacion: React.FC = () => (
 const PIEZAS: Record<VistaAcceso, { Fondo: React.FC; Pieza: React.FC; fondo: string }> = {
   radar: { Fondo: FondoRadar, Pieza: MaquetaRadarLista, fondo: 'bg-rd-navy-claro' },
   directorio: { Fondo: FondoDirectorio, Pieza: MaquetaDirectorio, fondo: 'bg-rd-amber-claro' },
-  panel: { Fondo: FondoOrganizacion, Pieza: MaquetaPanel, fondo: 'bg-rd-green-claro' },
+  panel: { Fondo: FondoOrganizacion, Pieza: MaquetaPanel, fondo: 'bg-rd-coral-claro' },
 };
 
 export const VisualAcceso: React.FC<{ vista: VistaAcceso; className?: string }> = ({ vista, className = '' }) => {
