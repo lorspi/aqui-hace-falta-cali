@@ -504,22 +504,10 @@ function MainApp() {
     };
   }, []);
 
-  // Favicon claro/oscuro según el tema del sistema
-  useEffect(() => {
-    const favicon = document.getElementById('favicon') as HTMLLinkElement;
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const updateFavicon = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (favicon) {
-        favicon.href = e.matches ? '/favicon-dark.svg' : '/favicon.svg';
-      }
-    };
-
-    updateFavicon(darkModeMediaQuery);
-    darkModeMediaQuery.addEventListener('change', updateFavicon);
-
-    return () => darkModeMediaQuery.removeEventListener('change', updateFavicon);
-  }, []);
+  // Aquí había un efecto que alternaba el favicon claro y el oscuro según el tema del sistema. Se
+  // quitó el 6 de octubre de 2026: la pestaña usa ahora el isotipo nuevo (/isotipo-radar.png,
+  // declarado en index.html), que trae su propio fondo ámbar y se lee igual con la barra del
+  // navegador clara u oscura. Con el efecto, el ícono nuevo se reemplazaba al cargar la página.
 
   // --- SUPABASE DATA HOOKS ---
   const { needCounts, offerCounts } = useCityCounts();

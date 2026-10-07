@@ -6,10 +6,14 @@ import { LandingComoFunciona } from './components/LandingComoFunciona';
 import { LandingSumarse } from './components/LandingSumarse';
 import { LandingSplitPortal } from './components/LandingSplitPortal';
 import { LandingFooter } from './components/LandingFooter';
+import { Grilla12 } from './components/Grilla12';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
+import { useTemaLanding } from './useTemaLanding';
 
 export const LandingPage: React.FC = () => {
   const [isChatbotModalOpen, setIsChatbotModalOpen] = useState(false);
+  /* Oscuro o claro (ver `useTemaLanding`): lo cambia la configuración del header. */
+  const [tema, setTema] = useTemaLanding();
 
   // Asegurar aislamiento de scroll y fondo continuo idéntico al footer para evitar rebote a espacio en blanco
   useEffect(() => {
@@ -20,8 +24,12 @@ export const LandingPage: React.FC = () => {
     // Bloquear overscroll a nivel de documento para evitar rebote elástico hacia espacio en blanco
     document.documentElement.style.overscrollBehaviorY = 'none';
     document.body.style.overscrollBehaviorY = 'none';
-    // Sincronizar el canvas del navegador con el color oscuro del footer (#0f172a)
-    document.documentElement.style.backgroundColor = '#0f172a';
+    // El lienzo del navegador toma el fondo de la landing (rd-noche) para que el rebote del
+    // scroll no muestre otro color. Se lee del token en vez de escribir el hex aquí, y se vuelve a
+    // leer al cambiar de modo: en claro el token vale la crema.
+    document.documentElement.style.backgroundColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-rd-noche')
+      .trim();
 
     if (isChatbotModalOpen) {
       const prevHtmlOverflow = document.documentElement.style.overflow;
@@ -48,29 +56,26 @@ export const LandingPage: React.FC = () => {
       document.documentElement.style.overscrollBehaviorY = prevHtmlOverscroll;
       document.body.style.overscrollBehaviorY = prevBodyOverscroll;
     };
-  }, [isChatbotModalOpen]);
+  }, [isChatbotModalOpen, tema]);
 
-  /* Fondo blanco, no el gris `brand-surface` de antes: las tarjetas de la landing son
-     `rd-sunken` (#EEF0F6) y sobre un fondo de #F5F6F9 no se distinguían. En la referencia la
-     página es blanca y la tarjeta es el gris tenue (28 de septiembre de 2026). */
+  /* La landing va en oscuro: fondo negro y letra blanca (Alejandro, 6 de octubre de 2026: «fondo
+     negro 1E1E1E, letra blanca», y esa noche «Pon el fondo completamente negro. 000000»), en Noto
+     Sans por la clase rd-landing. Antes iba en crema, con la tinta oscura de la herramienta. El
+     fondo lleva el grano (`rd-grano`; Alejandro, 6 de octubre de 2026: «una textura como granular
+     a todo»), y con él el hero y el panel de la sección 2, que no tienen fondo propio. */
   return (
-    <div className="font-rd min-h-screen bg-rd-surface text-rd-ink selection:bg-rd-navy selection:text-white">
-      {/* Header oficial de navegación */}
-      <LandingHeader onOpenChat={() => setIsChatbotModalOpen(true)} />
+    <div className="rd-landing rd-grano font-rd min-h-screen bg-rd-noche text-rd-noche-tinta selection:bg-rd-ayuda selection:text-rd-noche">
+      {/* El header solo lleva el logo y el idioma: las dos acciones viven en el hero. */}
+      <LandingHeader tema={tema} alCambiarTema={setTema} />
 
       <main className="space-y-8 sm:space-y-12">
-        {/* ========================================================
-            HERO (ABOVE THE FOLD)
-            Rehecho el 28 de septiembre de 2026 sobre la referencia de x.ai: una sola
-            columna centrada sobre blanco, sin fondo animado. Vive en `LandingHero`.
-           ======================================================== */}
         <LandingHero onOpenChat={() => setIsChatbotModalOpen(true)} />
-
 
         <LandingAccesos />
 
-        {/* Los tres pasos, cada uno en el bloque de la referencia. Reemplazan a
-            `HowItWorksHeroCard`. */}
+        {/* Los tres pasos, cada uno en el bloque de la referencia. Reemplazaron a la tarjeta
+            de pasos del equipo, que se borró el 6 de octubre de 2026 con las demás piezas sin
+            uso (Alejandro: «borre lo que ya no se usa»). */}
         <LandingComoFunciona />
 
         {/* La ventana en vivo de la app se queda: es producto real, no adorno. */}
@@ -83,6 +88,12 @@ export const LandingPage: React.FC = () => {
 
       {/* Footer oficial */}
       <LandingFooter />
+
+      {/* La grilla de revisión, solo en `npm run dev` (Alejandro, 6 de octubre de 2026: «Si, solo
+          en desarrollo como en sandbox»). Con `import.meta.env.DEV` falso la build la deja fuera
+          entera, componente y escucha de la tecla incluidos: la landing pública no la lleva.
+          Apagada por defecto, se prende con G. */}
+      {import.meta.env.DEV && <Grilla12 />}
 
       {/* MODAL DEL CHATBOT EXISTENTE: 100% quirúrgico, sin tocar base de datos */}
       <ChatbotTicketModal

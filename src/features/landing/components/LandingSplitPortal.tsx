@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Clock, ArrowRight } from 'lucide-react';
-import { Segmented } from '../../../components/ui/Segmented';
+import React, { useState, useEffect, useMemo } from 'react';
+import { MapPin } from 'lucide-react';
 import { BotonLanding, Parrafo, Seccion, Titular } from './base';
+import { RadarEnVivo, type EcoRadar } from './RadarEnVivo';
 import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../../lib/supabaseClient';
 import { getCategoryLabel, formatTimeAgo } from '../../../utils/formatters';
 import { useTranslation } from '../../../i18n/LanguageContext';
@@ -75,39 +75,8 @@ const FALLBACK_OFFERS = [
 
 export const LandingSplitPortal: React.FC = () => {
   const { t } = useTranslation();
-  const [mobileTab, setMobileTab] = useState<'needs' | 'offers'>('needs');
   const [needs, setNeeds] = useState<any[]>(FALLBACK_NEEDS);
   const [offers, setOffers] = useState<any[]>(FALLBACK_OFFERS);
-
-  // Soporte de gesto swipe en móvil para alternar entre Necesidades y Ofertas
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-
-    // Solo activar si el desplazamiento horizontal es al menos 40px y predomina sobre el vertical
-    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-      if (deltaX < 0 && mobileTab === 'needs') {
-        // Swipe izquierda -> cambiar a Ofertas
-        setMobileTab('offers');
-      } else if (deltaX > 0 && mobileTab === 'offers') {
-        // Swipe derecha -> cambiar a Necesidades
-        setMobileTab('needs');
-      }
-    }
-
-    touchStartX.current = null;
-    touchStartY.current = null;
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -185,96 +154,59 @@ export const LandingSplitPortal: React.FC = () => {
     };
   }, []);
 
-  /* Presentación rehecha el 28 de septiembre de 2026 sobre la referencia. La carga desde
-     Supabase de arriba no se tocó: Producto no conecta Supabase (protocolo del equipo).
-     Antes: tarjeta con marco y sombra, dos auras desenfocadas de 384, dos columnas en paralelo
-     y pestañas propias. Ahora: el patrón de la referencia —texto a la izquierda, panel de
-     producto a la derecha— con el conmutador real de la app (`Segmented`). */
-  const esNecesidad = mobileTab === 'needs';
-  const lista = esNecesidad ? needs : offers;
+  /* La presentación es «El radar en vivo» (`RadarEnVivo`, 7 de octubre de 2026): las necesidades y
+     las ofertas que se cargan arriba son los ecos de un radar que barre el territorio, y una
+     tarjeta cuenta el último que detectó. Antes fue una marquesina de dos filas de tarjetas en
+     sentidos opuestos (29 de septiembre de 2026), tomada de `trust-bar-scroll` de Calendly, y por
+     un rato un mapa decorativo detrás de ella, que Alejandro sintió cargado y sin idea: «solo
+     "embelleciste" con elementos visuales […] quiero que idees algo similar en cuanto a
+     "innovación" como se hizo en el 2 y 3». La carga desde Supabase de arriba no se tocó: Producto
+     no conecta Supabase.
+
+     Los ecos van alternando necesidad y oferta, para que el haz no encuentre primero todas las de
+     un color. */
+  const ecos = useMemo<EcoRadar[]>(() => {
+    const lista: EcoRadar[] = [];
+    const eco = (it: any, tipo: EcoRadar['tipo']): EcoRadar => ({
+      id: String(it.id),
+      tipo,
+      category: it.category,
+      title: it.title,
+      description: it.description,
+      location: it.location,
+      timeAgo: it.timeAgo,
+      link: it.link,
+    });
+    for (let i = 0; i < Math.max(needs.length, offers.length); i++) {
+      if (needs[i]) lista.push(eco(needs[i], 'necesidad'));
+      if (offers[i]) lista.push(eco(offers[i], 'oferta'));
+    }
+    return lista;
+  }, [needs, offers]);
 
   return (
     <Seccion id="portal-en-vivo">
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-        <div>
-          <Titular>{t('landingPortalTitle')}</Titular>
-          <Parrafo className="mt-6 max-w-xl">{t('landingPortalSubtitle')}</Parrafo>
+      <div className="mx-auto max-w-2xl text-center">
+        <Titular>{t('landingPortalTitle')}</Titular>
+        <Parrafo className="mx-auto mt-5">{t('landingPortalSubtitle')}</Parrafo>
+      </div>
 
-          <p className="font-rd m-0 mt-6 text-rd-14 text-rd-ink-meta">
-            {esNecesidad ? t('landingPortalNeedsSubtitle') : t('landingPortalOffersSubtitle')}
-          </p>
+      <div className="mt-12 sm:mt-14">
+        <RadarEnVivo
+          ecos={ecos}
+          etiqueta={t('landingPortalRadar')}
+          rotulos={{ necesidad: t('landingPortalNeedsHeading'), oferta: t('landingPortalOffersHeading') }}
+          textos={{ verEnMapa: t('landingPortalVerEnMapa'), registro: t('landingPortalRegistro') }}
+        />
+      </div>
 
-          <div className="mt-8">
-            <BotonLanding
-              nivel="terciario"
-              como="enlace"
-              href={esNecesidad ? '/mapa-ayudas-necesidades' : '/mapa-ayudas-necesidades?ofrecer=true'}
-              iconoDespues={<ArrowRight aria-hidden="true" className="h-4.5 w-4.5 shrink-0" />}
-            >
-              {esNecesidad ? t('landingPortalViewAllNeeds') : t('landingPortalViewAllOffers')}
-            </BotonLanding>
-          </div>
-        </div>
-
-        {/* El panel, con el conmutador encima (Alejandro, 29 de septiembre de 2026): manda sobre
-            lo que se ve en el recuadro, así que va pegado a él y no en la columna del texto.
-            Se sigue deslizando con el dedo entre las dos caras. */}
-        <div
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="min-w-0 rounded-rd-xl bg-rd-fondo p-5 sm:p-7"
-        >
-          <div className="mb-4 flex justify-center lg:justify-start">
-            <Segmented
-              etiquetaGrupo={t('landingPortalTitle')}
-              valor={mobileTab}
-              onChange={(v) => setMobileTab(v)}
-              opciones={[
-                { id: 'needs', etiqueta: t('landingPortalNeedsTab'), n: needs.length, pip: 'necesidad' },
-                { id: 'offers', etiqueta: t('landingPortalOffersTab'), n: offers.length, pip: 'oferta' },
-              ]}
-            />
-          </div>
-
-          <div className="overflow-hidden rounded-rd-lg border border-rd-line bg-rd-surface shadow-2xs">
-            <div className="flex items-center justify-between gap-2 border-b border-rd-line bg-rd-fondo px-4 py-2.5">
-              <span className="font-rd text-rd-12 font-semibold text-rd-ink-2">
-                {esNecesidad ? t('landingPortalNeedsHeading') : t('landingPortalOffersHeading')}
-              </span>
-              <span className="font-rd inline-flex items-center gap-1.5 text-rd-11-5 text-rd-ink-meta">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${esNecesidad ? 'bg-rd-coral' : 'bg-rd-navy'}`} />
-                {lista.length}
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              {lista.slice(0, 4).map((item: any, i: number) => (
-                <article key={item.id} className={`flex flex-col gap-2 p-4 ${i ? 'border-t border-rd-line-soft' : ''}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <span
-                      className={`font-rd shrink-0 rounded-full px-2 py-0.5 text-rd-11 font-semibold ${
-                        esNecesidad ? 'bg-rd-coral-soft text-rd-coral-ink' : 'bg-rd-navy-soft text-rd-navy'
-                      }`}
-                    >
-                      {item.category}
-                    </span>
-                    <span className="font-rd inline-flex shrink-0 items-center gap-1 text-rd-11-5 text-rd-ink-meta">
-                      <Clock aria-hidden="true" className="h-3 w-3" />
-                      {item.timeAgo}
-                    </span>
-                  </div>
-
-                  <h3 className="font-rd m-0 text-rd-14 leading-snug font-semibold text-rd-ink">{item.title}</h3>
-
-                  <p className="font-rd m-0 flex items-center gap-1.5 text-rd-12 text-rd-ink-2">
-                    <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-ink-3" />
-                    <span className="truncate">{item.location}</span>
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* El botón de la landing, secundario y del tamaño de los del hero —es la acción que cierra
+          la sección—, con el icono delante como el botón del sistema. Antes era un enlace con una
+          flecha detrás, que el sistema no documenta (7 de octubre de 2026). */}
+      <div className="mt-12 flex justify-center">
+        <BotonLanding nivel="secundario" como="enlace" href="/mapa-ayudas-necesidades" icono={<MapPin className="h-4.5 w-4.5" />}>
+          {t('landingPortalViewAllNeeds')}
+        </BotonLanding>
       </div>
     </Seccion>
   );

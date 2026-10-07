@@ -1,0 +1,583 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+
+/**
+ * El recorrido fijado de la segunda sección de la landing (Alejandro, 6 de octubre de 2026: «al
+ * hacer el scroll entre sección 1 y 2, el contenedor de la sección 2 inicia con un ancho de 8
+ * columnas. Cuando entra completa la sección 2 en esa transición de scroll pasa a las 12»).
+ *
+ * El scroll se reparte en tres tramos, todos atados a la posición y no al tiempo:
+ *
+ *   1. ENTRADA. Desde donde el contenedor asoma bajo el hero hasta que llega a su sitio fijo, se
+ *      abre de 8 a 12 columnas.
+ *   2. VISTAS. El contenedor queda fijo (`position: sticky`) y el scroll recorre Radar,
+ *      Directorio y Mi organización, un tramo igual para cada una.
+ *   3. SALIDA. Se suelta, sube con la página y se cierra de 12 a 8 en espejo con la entrada, a la
+ *      misma distancia (Alejandro confirmó el espejo el 6 de octubre de 2026).
+ *
+ * Nada de esto pasa por el estado de React: un solo `requestAnimationFrame` por evento de scroll
+ * escribe cuatro propiedades CSS en el panel (`--rd-lado`, `--rd-arriba`, `--rd-abajo` y
+ * `--rd-radio-menos`) y el CSS las usa en un `clip-path`, que no recalcula el diseño de la página
+ * en cada cuadro. Están registradas sin herencia en `index.css`, así que escribirlas tampoco
+ * recalcula el estilo de los nodos de dentro del panel (6 de octubre de 2026, H24). Ese cuadro
+ * escribe además, en los propios nodos que las usan y también registradas sin herencia, `--rd-abre`
+ * (cuánto se ven las pestañas y la línea de avance) y `--rd-empuje` (las pestañas con el foco del
+ * teclado y el panel estrecho), y el `stroke-dashoffset` de la línea alrededor de la tarjeta. Lo
+ * único que sube a React es el índice de la vista, que cambia dos veces en todo el recorrido.
+ */
+
+/** Cuánto scroll toma cada vista mientras el contenedor está fijo, en altos de ventana. Una
+ *  ventana entera por vista se sentía como scroll muerto al probarlo; 0,9 deja ver que pasa algo
+ *  sin que la vista se vaya antes de leerla. */
+export const PASO_POR_VISTA = 0.9;
+
+/** El hueco de la grilla de 12, el mismo `gap-6` de `Grilla12`. Con él salen las 8 columnas. */
+const HUECO = 24;
+
+/* El alto del panel crece con el ancho (Alejandro, 6 de octubre de 2026: «la altura del contenedor
+   grande de la sección 2 debería iniciar con la misma distancia que el ancho y aumentar de manera
+   progresiva. creo que quedó más alto porque anteriormente los tabs estaban arriba»). Con el panel
+   estrecho, el color deja alrededor de la tarjeta el mismo margen arriba, abajo y a los lados: el
+   que queda a los lados con 8 columnas (24 desde 1280; 0 entre 1024 y 1279, donde la tarjeta mide
+   las 8 enteras). Mientras se abre, los dos márgenes crecen a la vez y con la misma curva, el de
+   los lados hasta las 12 columnas y el de arriba y abajo hasta el alto entero del panel fijo, que
+   es lo que cabe en la ventana sin cortar la tarjeta; al cerrar, el espejo. Arriba y abajo se
+   recorta lo mismo porque la tarjeta va centrada.
+
+   Hasta ese día el borde de arriba bajaba un máximo de 64 y el de abajo no se movía, a imitación
+   de Calendly, que crece el panel hacia arriba: con las pestañas encima de la tarjeta eso dejaba
+   aire para ellas, y sin ellas quedaba un panel estrecho con 114 arriba, 178 abajo y 24 a los
+   lados (medido a 1440 por 900). La sección sube sobre el hero lo mismo que sin recorrido más este
+   recogido, que `medir` escribe en `--rd-vertical`: así el borde visible sigue a 80 de los botones
+   del hero a cualquier altura (H6). */
+
+/** Dónde deja el scroll un clic en una pestaña: al principio del tramo de su vista, un 2 % dentro
+ *  para que un temblor del desplazamiento suave no la deje en la vista de antes. Hasta el 6 de
+ *  octubre de 2026 la dejaba a la mitad, y la línea alrededor de la tarjeta aparecía ya a medio
+ *  llenar: quien llegaba a la segunda o la tercera vista con las pestañas nunca la veía empezar
+ *  (Alejandro: «debería como reiniciarse por cada uno, actualmente se ve en el 1ro y para los otros
+ *  2 no funciona»). Medido antes del cambio: a 1440 y a 1024, tras el clic, la línea quedaba quieta
+ *  en el 50 % en la vista 2 y en la 3. */
+const ARRANQUE_DEL_TRAMO = 0.02;
+
+/** La parte final de la apertura en la que aparecen las pestañas y la línea de avance, y la
+ *  primera del cierre en la que se van (Alejandro, 6 de octubre de 2026: «esos solo se visualizan
+ *  cuando se amplía el fondo de esa sección. Antes no»). Un cuarto: aparecen cuando el color ya
+ *  casi llegó a las 12 columnas, y a esa altura el recorte (a 1440, 57 de 228 por lado) queda
+ *  lejos de ellas, así que nunca se ven a medio cortar. */
+const TRAMO_PESTANAS = 0.25;
+
+/** Cuánto entran las pestañas desde el borde recortado cuando las enfoca el teclado con el panel
+ *  estrecho, como la X, que va a 24 de su esquina (H14). */
+const AIRE_PESTANAS_ENFOCADAS = 8;
+
+/** Si un clic en una pestaña o en la X lleva el scroll lejos, el índice se queda en la vista de
+ *  partida o de llegada mientras el desplazamiento suave pasa por las de en medio; sin esto, ir
+ *  de la 1 a la 3 hacía parpadear la 2. Este es el tope por si el desplazamiento se interrumpe y
+ *  nunca llega. */
+const ESPERA_MAX_MS = 1600;
+
+/** Las teclas con las que el navegador desplaza la página. Con cualquiera de ellas quien lee toma
+ *  el control y la vista vuelve a seguir al scroll, igual que con la rueda o el dedo: antes una
+ *  flecha a medio camino dejaba la pestaña y el scroll en desacuerdo sin límite de tiempo
+ *  (6 de octubre de 2026, H29). */
+const TECLAS_QUE_DESPLAZAN = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+
+/** El recorrido solo existe en escritorio con altura suficiente y sin movimiento reducido. En
+ *  cualquier otro caso el contenedor va a 12 columnas, sin fijar, y las pestañas cambian con un
+ *  toque (Alejandro, 6 de octubre de 2026, decisión «e»). 640 es el piso: debajo, la tarjeta no
+ *  cabe en el panel. Encima, `useModoFijado` además la mide, porque con el espaciado de texto de
+ *  WCAG 1.4.12 la tarjeta crece y el panel fijo, de alto fijo, la cortaba arriba y abajo (6 de
+ *  octubre de 2026, H11). */
+const CONSULTA_FIJADO = '(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)';
+
+/** Lo que mide el panel fijo: es `--spacing-rd-accesos-panel` de `index.css` (`100svh - 6rem`).
+ *  Si cambia uno, cambia el otro. */
+function altoDelPanelFijo(): number {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  return window.innerHeight - 6 * rem;
+}
+
+/** Si la tarjeta cabe en el panel fijo. Mide lo mismo con recorrido y sin él (su ancho no depende
+ *  del modo), así que la cuenta no cambia al cambiar de modo y no hay vaivén entre uno y otro.
+ *  Desde el 6 de octubre de 2026 las pestañas van a su izquierda, fuera de ella y sin sumarle
+ *  alto (la caja `rd-accesos-ancho` mide lo que la tarjeta), así que basta con medirla. */
+function cabeEnElPanel(p: HTMLElement | null): boolean {
+  const tarjeta = p?.querySelector<HTMLElement>('.rd-accesos-ancho');
+  if (!tarjeta) return true;
+  return tarjeta.offsetHeight <= altoDelPanelFijo();
+}
+
+/** Si va el recorrido. `antesDeCambiar` corre justo antes de que el modo cambie con la página
+ *  abierta, para que `useRecorrido` guarde dónde iba quien lee. */
+export function useModoFijado(panel: RefObject<HTMLElement | null>, antesDeCambiar: () => void): boolean {
+  const [si, setSi] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(CONSULTA_FIJADO).matches);
+  const aviso = useRef(antesDeCambiar);
+
+  useEffect(() => {
+    aviso.current = antesDeCambiar;
+  }, [antesDeCambiar]);
+
+  /* `useLayoutEffect`: si al cargar la tarjeta no cabe, el cambio llega antes del primer pintado
+     y no se ve el panel fijo un cuadro. Se vuelve a mirar al cambiar la consulta, el alto de la
+     ventana o el de la tarjeta (fuentes que cargan, espaciado del usuario). */
+  useLayoutEffect(() => {
+    const mq = window.matchMedia?.(CONSULTA_FIJADO);
+    if (!mq) return;
+    let actual: boolean | null = null;
+    const evaluar = () => {
+      const nuevo = mq.matches && cabeEnElPanel(panel.current);
+      if (nuevo === actual) return;
+      if (actual !== null) aviso.current();
+      actual = nuevo;
+      setSi(nuevo);
+    };
+    evaluar();
+    mq.addEventListener('change', evaluar);
+    window.addEventListener('resize', evaluar);
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(evaluar);
+    const tarjeta = panel.current?.querySelector('.rd-accesos-ancho');
+    if (tarjeta) ro?.observe(tarjeta);
+    return () => {
+      mq.removeEventListener('change', evaluar);
+      window.removeEventListener('resize', evaluar);
+      ro?.disconnect();
+    };
+  }, [panel]);
+
+  return si;
+}
+
+interface Geometria {
+  /** Donde empieza a abrir: el scroll en el que el panel asoma, o 0 si ya asoma al cargar. */
+  s0: number;
+  /** Donde termina de abrir y se fija. */
+  s1: number;
+  /** Donde se suelta. */
+  s2: number;
+  /** La distancia de la entrada, que es también la de la salida. */
+  entrada: number;
+  /** Lo que dura fijo: el alto de la sección menos el del panel. */
+  recorrido: number;
+  /** Cuánto se recorta de cada lado con el panel cerrado: la mitad de 12 columnas menos 8. */
+  lado: number;
+  /** Cuánto se recorta arriba, y lo mismo abajo, con el panel cerrado. */
+  vertical: number;
+  /** El margen entre la tarjeta y el borde del panel abierto, a los lados y arriba. */
+  holgura: number;
+  aire: number;
+  /** Los radios del panel y de la tarjeta, leídos del CSS: con poco margen la esquina del panel
+   *  se cierra sobre la de la tarjeta. */
+  radioPanel: number;
+  radioTarjeta: number;
+  /** El largo del contorno de la tarjeta, que recorre la línea de avance. */
+  contorno: number;
+  /** El `top` del panel fijo, leído del CSS para no tener el número en dos sitios. */
+  tope: number;
+  /** El alto de la sección, para saber dónde queda su borde de abajo sin medir en cada cuadro. */
+  altoSeccion: number;
+  /** Dónde empiezan las pestañas desde el borde izquierdo del panel, sin transformaciones: con el
+   *  recorte por encima de esto quedan fuera de lo que se ve. */
+  pestanas: number;
+}
+
+/** Dónde iba quien lee cuando el modo cambió con la página abierta (al cruzar 1024 de ancho o 640
+ *  de alto, con zoom o al cambiar el movimiento reducido). La sección cambia de alto en unos 2400
+ *  y, sin esto, el scroll se quedaba en el mismo píxel y caía en otra sección (6 de octubre de
+ *  2026, H28). */
+type Lugar =
+  /** Con recorrido: en qué tramo iba y dónde quedaba en la ventana el borde de abajo de la sección. */
+  | { modo: 'fijado'; tramo: 'antes' | 'dentro' | 'despues'; abajo: number; tope: number }
+  /** Sin recorrido: dónde quedaban en la ventana los dos bordes de la sección. */
+  | { modo: 'libre'; arriba: number; abajo: number };
+
+const limitar = (x: number) => Math.min(1, Math.max(0, x));
+
+/** La posición de un elemento en el documento por `offsetTop`, que no suma transformaciones: la
+ *  sección 3 entra con `rd-revela`, que la baja 18 px hasta que aparece, y con
+ *  `getBoundingClientRect` la X la dejaba 18 px corta. */
+function topeEnDocumento(el: HTMLElement): number {
+  let y = 0;
+  for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
+  return y;
+}
+
+/** Lo mismo en horizontal y hasta un ancestro: dónde queda un elemento dentro del panel sin contar
+ *  el deslizamiento con el que entran las pestañas. */
+function izquierdaEn(el: HTMLElement, ancestro: HTMLElement): number {
+  let x = 0;
+  for (let n: HTMLElement | null = el; n && n !== ancestro; n = n.offsetParent as HTMLElement | null) x += n.offsetLeft;
+  return x;
+}
+
+/** El contorno de la tarjeta, con su radio, para la línea de avance: un solo trazo que nace en la
+ *  mitad del borde de abajo y va hacia la izquierda por ese borde, sube por el lado izquierdo,
+ *  cruza el de arriba de izquierda a derecha, baja por el derecho y vuelve por abajo a la mitad,
+ *  siguiendo las esquinas redondeadas: en pantalla, el sentido del reloj (Alejandro, 6 de octubre
+ *  de 2026: «la línea de progreso inicia en la mitad de la zona inferior de la card. y avanza hacia
+ *  la izquierda a derecha»; hasta ese día nacía en la mitad del borde de arriba). Un trazado y no
+ *  un `rect`: el de un `rect` nace siempre arriba a la izquierda. Los arcos van con la bandera de
+ *  barrido en 1, que con la `y` hacia abajo es el sentido del reloj. Devuelve el trazado y su
+ *  largo, que es el del trazo. */
+function contornoDesdeAbajo(w: number, h: number, radio: number): { d: string; largo: number } {
+  const r = Math.max(0, Math.min(radio, w / 2, h / 2));
+  const a = (x: number, y: number) => `A${r} ${r} 0 0 1 ${x} ${y}`;
+  const d = `M${w / 2} ${h}H${r}${a(0, h - r)}V${r}${a(r, 0)}H${w - r}${a(w, r)}V${h - r}${a(w - r, h)}Z`;
+  return { d, largo: 2 * (w - 2 * r) + 2 * (h - 2 * r) + 2 * Math.PI * r };
+}
+
+export function useRecorrido({
+  seccion,
+  fijo,
+  panel,
+  vistas,
+  activa,
+  alCambiar,
+}: {
+  seccion: RefObject<HTMLElement | null>;
+  fijo: RefObject<HTMLElement | null>;
+  panel: RefObject<HTMLElement | null>;
+  vistas: number;
+  activa: number;
+  alCambiar: (indice: number) => void;
+}) {
+  const geo = useRef<Geometria | null>(null);
+  const forzada = useRef<{ indice: number; objetivo: number; hasta: number } | null>(null);
+  const ultimo = useRef(-1);
+  const avisar = useRef(alCambiar);
+  const vistaActiva = useRef(activa);
+  /* Dónde va quien lee, al día en cada cuadro del recorrido (solo con recorrido), y la copia que
+     se guarda justo antes de que el modo cambie. */
+  const registro = useRef<Lugar | null>(null);
+  const lugar = useRef<Lugar | null>(null);
+
+  useEffect(() => {
+    avisar.current = alCambiar;
+    vistaActiva.current = activa;
+  }, [alCambiar, activa]);
+
+  /* Con recorrido vale el último cuadro pintado: a esta hora la ventana ya puede tener otro tamaño
+     y medir ahora daría un tramo que nadie vio. Sin recorrido no hay cuadros: se mide la sección. */
+  const recordar = useCallback(() => {
+    if (registro.current) {
+      lugar.current = registro.current;
+      return;
+    }
+    const s = seccion.current;
+    if (!s) return;
+    const r = s.getBoundingClientRect();
+    lugar.current = { modo: 'libre', arriba: r.top, abajo: r.bottom };
+  }, [seccion]);
+
+  const activo = useModoFijado(panel, recordar);
+
+  /* `useLayoutEffect` y no `useEffect`: el primer recorte tiene que estar puesto antes de que el
+     navegador pinte. Con `useEffect` la página cargaba con el panel a 12 columnas y en el cuadro
+     siguiente saltaba a 8. */
+  useLayoutEffect(() => {
+    const s = seccion.current;
+
+    /* Sin recorrido. Si se acaba de salir de él con quien lee dentro de la sección, se le deja
+       donde iba: con el panel fijo, la sección arriba bajo el header; en la salida o más abajo,
+       el borde de abajo de la sección donde estaba, que deja lo que sigue en su sitio (H28). */
+    if (!activo) {
+      const l = lugar.current;
+      lugar.current = null;
+      if (s && l?.modo === 'fijado' && l.tramo !== 'antes') {
+        const r = s.getBoundingClientRect();
+        const y = window.scrollY + (l.tramo === 'dentro' ? r.top - l.tope : r.bottom - l.abajo);
+        window.scrollTo({ top: Math.round(y), behavior: 'instant' });
+      }
+      return;
+    }
+
+    const f = fijo.current;
+    const p = panel.current;
+    if (!s || !f || !p) return;
+
+    let raf = 0;
+    let vence = 0;
+    /* Lo que se escribe además del recorte, cada cosa en el nodo que la usa (`LandingAccesos`): la
+       columna de pestañas, la línea de avance alrededor de la tarjeta (`data-avance`, sobre su
+       riel) y lo que aparece al abrirse el panel (`data-abre`, la línea y su riel; las pestañas
+       también). Montados mientras hay recorrido, así los nodos no cambian mientras dura el
+       efecto. */
+    const pestanas = p.querySelector<HTMLElement>('[role="tablist"]');
+    const avance = p.querySelector<SVGPathElement>('[data-avance]');
+    const trazos = Array.from(avance?.ownerSVGElement?.querySelectorAll('path') ?? []);
+    const abren: (HTMLElement | SVGElement)[] = Array.from(p.querySelectorAll<SVGElement>('[data-abre]'));
+    if (pestanas) abren.push(pestanas);
+
+    const medir = (): Geometria => {
+      /* El recogido sale del aire alrededor de la tarjeta, que no depende de dónde esté la
+         sección, y se escribe antes de medirla porque su margen depende de él (H6). La caja
+         `rd-accesos-ancho` mide lo que la tarjeta y va centrada en el panel: el aire de arriba es
+         el de abajo. */
+      const caja = p.querySelector<HTMLElement>('.rd-accesos-ancho')?.getBoundingClientRect();
+      const marco = p.getBoundingClientRect();
+      const lado = p.offsetWidth / 6 + HUECO / 6;
+      const holgura = caja ? (marco.width - caja.width) / 2 : 0;
+      const aire = caja ? caja.top - marco.top : 0;
+      const margenCerrado = Math.max(0, holgura - lado);
+      const vertical = Math.max(0, aire - margenCerrado);
+      s.style.setProperty('--rd-vertical', `${vertical.toFixed(1)}px`);
+
+      /* El contorno de la tarjeta para la línea y su riel, en píxeles: el largo del trazo es el
+         del contorno, así que el desplazamiento sale en píxeles y no depende de `pathLength`. Con
+         el rectángulo y no con `offsetWidth`, que redondea: a 1280 la tarjeta mide 733,3. */
+      const tarjeta = avance?.ownerSVGElement?.parentElement;
+      const radioTarjeta = tarjeta ? parseFloat(getComputedStyle(tarjeta).borderTopLeftRadius) || 0 : 0;
+      let contorno = 0;
+      if (tarjeta && avance) {
+        const r = tarjeta.getBoundingClientRect();
+        const c = contornoDesdeAbajo(r.width, r.height, radioTarjeta);
+        contorno = Math.round(c.largo * 100) / 100;
+        trazos.forEach((t) => t.setAttribute('d', c.d));
+        avance.style.setProperty('stroke-dasharray', `${contorno}px ${contorno}px`);
+      }
+
+      const alto = window.innerHeight;
+      const tope = parseFloat(getComputedStyle(f).top) || 0;
+      const arriba = topeEnDocumento(s);
+      const s1 = arriba - tope;
+      const s0 = Math.max(0, arriba - alto);
+      const recorrido = Math.max(1, s.offsetHeight - f.offsetHeight);
+      return {
+        s0,
+        s1,
+        s2: s1 + recorrido,
+        entrada: Math.max(1, s1 - s0),
+        recorrido,
+        lado,
+        vertical,
+        holgura,
+        aire,
+        radioPanel: parseFloat(getComputedStyle(p).getPropertyValue('--rd-accesos-radio')) || 0,
+        radioTarjeta,
+        contorno,
+        tope,
+        altoSeccion: s.offsetHeight,
+        pestanas: pestanas ? izquierdaEn(pestanas, p) : 0,
+      };
+    };
+
+    /* El índice de la vista que toca a una altura de scroll. */
+    const indiceEn = (g: Geometria, y: number) => Math.min(vistas - 1, Math.floor(limitar((y - g.s1) / g.recorrido) * vistas));
+
+    const pintar = () => {
+      raf = 0;
+      if (!geo.current) geo.current = medir();
+      const g = geo.current;
+      const y = window.scrollY;
+
+      /* 0 abierto, 1 cerrado. Antes de soltarse manda la entrada; después, la salida. El recorte
+         de arriba y el de abajo son el mismo y van con la misma curva que el de los lados (ver
+         arriba, 6 de octubre de 2026). */
+      const saliendo = y > g.s2;
+      const cerrado = saliendo ? limitar((y - g.s2) / g.entrada) : 1 - limitar((y - g.s0) / g.entrada);
+      const lado = cerrado * g.lado;
+      const vertical = cerrado * g.vertical;
+      p.style.setProperty('--rd-lado', `${lado.toFixed(1)}px`);
+      p.style.setProperty('--rd-arriba', `${vertical.toFixed(1)}px`);
+      p.style.setProperty('--rd-abajo', `${vertical.toFixed(1)}px`);
+      /* La esquina del recorte nunca más cerrada que la de la tarjeta más su margen: esquinas
+         concéntricas, como la escala anidada de radios del sistema. Desde 1280 el margen más
+         estrecho es 24 y 34 + 24 pasa del radio del panel, 56, así que no cambia nada; entre 1024
+         y 1279 el panel estrecho va a ras de la tarjeta y su esquina de 56 le cortaba las cuatro
+         esquinas, que miden 34 (medido a 1024 el 6 de octubre de 2026). Desde que el panel lleva
+         la esquina de 16 de los botones (esa misma tarde) el resultado es siempre 0: se queda
+         por si el radio vuelve a crecer. */
+      const margen = Math.max(0, Math.min(g.holgura - lado, g.aire - vertical));
+      p.style.setProperty('--rd-radio-menos', `${Math.max(0, g.radioPanel - g.radioTarjeta - margen).toFixed(1)}px`);
+      /* La X solo con el panel abierto, como en la referencia, donde el panel estrecho no la lleva
+         (6 de octubre de 2026, H14). El CSS la oculta sin este atributo salvo con el foco del
+         teclado encima, así el salto por tabulador sigue ahí. */
+      p.toggleAttribute('data-abierto', cerrado < 0.02);
+
+      /* Las pestañas y la línea de avance aparecen en el último cuarto de la apertura y se van en
+         el primero del cierre (`TRAMO_PESTANAS`), atadas al scroll como el recorte. Por debajo de
+         la mitad las pestañas no reciben el cursor (`data-oculta`): casi transparentes, un clic
+         ahí llevaría a una vista sin que se viera adónde. Con el foco del teclado se ven siempre
+         y, si el recorte las tapa, entran `--rd-empuje` hasta quedar a la vista, como la X. */
+      const abre = limitar(1 - cerrado / TRAMO_PESTANAS);
+      abren.forEach((el) => el.style.setProperty('--rd-abre', abre.toFixed(3)));
+      if (pestanas) {
+        pestanas.style.setProperty('--rd-empuje', `${Math.max(0, lado + AIRE_PESTANAS_ENFOCADAS - g.pestanas).toFixed(1)}px`);
+        pestanas.toggleAttribute('data-oculta', abre < 0.5);
+      }
+
+      registro.current = {
+        modo: 'fijado',
+        tramo: y < g.s1 ? 'antes' : saliendo ? 'despues' : 'dentro',
+        abajo: g.s1 + g.tope + g.altoSeccion - y,
+        tope: g.tope,
+      };
+
+      let indice = indiceEn(g, y);
+      const fz = forzada.current;
+      if (fz) {
+        const ahora = performance.now();
+        if (Math.abs(y - fz.objetivo) < 3 || ahora > fz.hasta) forzada.current = null;
+        else {
+          indice = fz.indice;
+          /* El tope solo se mira aquí, que corre por evento de scroll: si el desplazamiento se
+             corta y no llega otro, nunca se miraría. Un temporizador vuelve a pintar cuando vence
+             (H29). */
+          clearTimeout(vence);
+          vence = window.setTimeout(pedir, fz.hasta - ahora + 50);
+        }
+      }
+      if (indice !== ultimo.current) {
+        ultimo.current = indice;
+        avisar.current(indice);
+      }
+
+      /* La línea alrededor de la tarjeta, de 0 a 1 a lo largo del tramo de la vista que se ve:
+         vuelve a 0 al pasar a la siguiente (Alejandro, 6 de octubre de 2026: «la línea que muestra
+         el tiempo que se demora en cambiar a la siguiente subsección […] alrededor de la card», y
+         luego «debería como reiniciarse por cada uno»). Cuenta desde el tramo de la vista que se
+         muestra y no desde el que pide el scroll. Mientras un clic en una pestaña o en la X lleva
+         el scroll a su sitio, vacía: la vista que llega empieza de cero, y como el clic deja el
+         scroll al principio de su tramo (`ARRANQUE_DEL_TRAMO`), al llegar sigue casi vacía y se
+         llena con lo que se baje desde ahí. Antes del recorrido vacía y después llena. */
+      const enTramos = ((y - g.s1) / g.recorrido) * vistas;
+      const lleno = forzada.current ? 0 : limitar(enTramos - indice);
+      avance?.style.setProperty('stroke-dashoffset', `${(g.contorno * (1 - lleno)).toFixed(2)}px`);
+    };
+
+    const pedir = () => {
+      if (!raf) raf = requestAnimationFrame(pintar);
+    };
+    const remedir = () => {
+      geo.current = null;
+      pedir();
+    };
+    /* La rueda, el dedo, un clic o una tecla de desplazamiento devuelven el control: si alguien
+       hizo clic en una pestaña y a medio camino decide seguir por su cuenta, la vista vuelve a
+       seguir al scroll. El clic y la tecla en fase de captura, antes que los de las pestañas y la
+       X, que vuelven a fijar la vista enseguida (H29). */
+    const soltar = () => {
+      forzada.current = null;
+    };
+    const alTeclear = (e: KeyboardEvent) => {
+      if (TECLAS_QUE_DESPLAZAN.has(e.key)) soltar();
+    };
+    /* Cuando el desplazamiento termina, llegue o no, la vista vuelve a seguir al scroll (H29). */
+    const alTerminar = () => {
+      if (!forzada.current) return;
+      forzada.current = null;
+      pedir();
+    };
+
+    /* Si se acaba de entrar en el recorrido con el panel cruzando la mitad de la ventana y el
+       scroll pide otra vista que la abierta, se lleva a quien lee a la mitad del tramo de la suya;
+       si ya había pasado el panel, el borde de abajo de la sección queda donde estaba; si aún no
+       llegaba, nada (H28). Antes de pintar, para no avisar de una vista que no toca. */
+    const recolocar = (g: Geometria) => {
+      const l = lugar.current;
+      lugar.current = null;
+      const medio = window.innerHeight / 2;
+      if (l?.modo !== 'libre' || l.arriba >= medio) return;
+      if (l.abajo >= medio && indiceEn(g, window.scrollY) === vistaActiva.current) return;
+      const y =
+        l.abajo >= medio
+          ? g.s1 + ((vistaActiva.current + 0.5) * g.recorrido) / vistas
+          : g.s1 + g.tope + g.altoSeccion - l.abajo;
+      window.scrollTo({ top: Math.round(y), behavior: 'instant' });
+    };
+
+    window.addEventListener('scroll', pedir, { passive: true });
+    window.addEventListener('scrollend', alTerminar);
+    window.addEventListener('resize', remedir);
+    window.addEventListener('wheel', soltar, { passive: true });
+    window.addEventListener('touchstart', soltar, { passive: true });
+    window.addEventListener('pointerdown', soltar, { capture: true, passive: true });
+    window.addEventListener('keydown', alTeclear, { capture: true });
+    /* El cuerpo cambia de alto cuando cargan las fuentes o las fotos del hero, y eso mueve la
+       sección: hay que volver a medir aunque la ventana no cambie. */
+    const ro = new ResizeObserver(remedir);
+    ro.observe(s);
+    ro.observe(document.body);
+    geo.current = medir();
+    recolocar(geo.current);
+    pintar();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(vence);
+      window.removeEventListener('scroll', pedir);
+      window.removeEventListener('scrollend', alTerminar);
+      window.removeEventListener('resize', remedir);
+      window.removeEventListener('wheel', soltar);
+      window.removeEventListener('touchstart', soltar);
+      window.removeEventListener('pointerdown', soltar, { capture: true });
+      window.removeEventListener('keydown', alTeclear, { capture: true });
+      ro.disconnect();
+      geo.current = null;
+      forzada.current = null;
+      registro.current = null;
+      ultimo.current = -1;
+      p.style.removeProperty('--rd-lado');
+      p.style.removeProperty('--rd-arriba');
+      p.style.removeProperty('--rd-abajo');
+      p.style.removeProperty('--rd-radio-menos');
+      p.removeAttribute('data-abierto');
+      abren.forEach((el) => el.style.removeProperty('--rd-abre'));
+      pestanas?.style.removeProperty('--rd-empuje');
+      pestanas?.removeAttribute('data-oculta');
+      avance?.style.removeProperty('stroke-dasharray');
+      avance?.style.removeProperty('stroke-dashoffset');
+      trazos.forEach((t) => t.removeAttribute('d'));
+      s.style.removeProperty('--rd-vertical');
+    };
+  }, [activo, seccion, fijo, panel, vistas]);
+
+  /** Lleva el scroll al principio del tramo de una vista (`ARRANQUE_DEL_TRAMO`), para que la línea
+   *  alrededor de la tarjeta arranque de cero en la vista que llega. Devuelve `false` si no hay
+   *  recorrido (móvil o movimiento reducido), y entonces la pestaña solo cambia. */
+  const irA = useCallback(
+    (indice: number): boolean => {
+      const g = geo.current;
+      if (!activo || !g) return false;
+      const objetivo = Math.round(g.s1 + ((indice + ARRANQUE_DEL_TRAMO) * g.recorrido) / vistas);
+      ultimo.current = indice;
+      /* Ya en su sitio no hay desplazamiento que suelte la vista, así que no se fija: fijada, un
+         arrastre de la barra en el segundo y medio siguiente la dejaba atrás (H29). */
+      if (Math.abs(window.scrollY - objetivo) < 3) {
+        forzada.current = null;
+        return true;
+      }
+      forzada.current = { indice, objetivo, hasta: performance.now() + ESPERA_MAX_MS };
+      window.scrollTo({ top: objetivo, behavior: 'smooth' });
+      return true;
+    },
+    [activo, vistas],
+  );
+
+  /** La X: lleva a la sección 3 pasando por el cierre. El destino es el borde de arriba de la
+   *  sección siguiente bajo el header, y nunca antes de que el cierre termine. */
+  const cerrar = useCallback(() => {
+    const s = seccion.current;
+    const g = geo.current;
+    if (!s || !g) return;
+    const siguiente = s.nextElementSibling as HTMLElement | null;
+    const objetivo = Math.round(Math.max(siguiente ? topeEnDocumento(siguiente) - g.tope : 0, g.s2 + g.entrada));
+    /* La vista se queda en la que estaba durante todo el viaje, como con las pestañas: sin esto
+       el panel pasaba por las vistas que faltaban, con su tarjeta y su malla, antes de cerrarse
+       (6 de octubre de 2026, H5 y H9). Al llegar el panel ya está fuera de la ventana. */
+    forzada.current = { indice: ultimo.current, objetivo, hasta: performance.now() + ESPERA_MAX_MS };
+    window.scrollTo({ top: objetivo, behavior: 'smooth' });
+    /* El foco va con quien lee: si se quedaba en la X, el siguiente Tab volvía a la pestaña activa
+       y la página subía al panel (H4 y H10). La sección siguiente no es un control, así que solo
+       recibe el foco mientras lo tiene (`tabindex` -1, que se quita al salir) y sin desplazar,
+       porque el desplazamiento ya va en camino. */
+    if (siguiente) {
+      if (!siguiente.hasAttribute('tabindex')) {
+        siguiente.setAttribute('tabindex', '-1');
+        siguiente.addEventListener('blur', () => siguiente.removeAttribute('tabindex'), { once: true });
+      }
+      siguiente.focus({ preventScroll: true });
+    }
+  }, [seccion]);
+
+  return { fijado: activo, irA, cerrar };
+}

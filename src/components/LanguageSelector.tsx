@@ -9,7 +9,7 @@ interface LanguageOption {
   flag: string;
 }
 
-const LANGUAGES: LanguageOption[] = [
+export const LANGUAGES: LanguageOption[] = [
   { code: 'es', label: 'Español', flag: '/idioma/es.svg' },
   { code: 'en', label: 'English', flag: '/idioma/en.svg' },
   { code: 'pt', label: 'Português', flag: '/idioma/pt.svg' },

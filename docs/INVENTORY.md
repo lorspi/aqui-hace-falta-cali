@@ -160,6 +160,98 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `pedir` · `ofrecer` — el camino y la guarda de cada flujo (lógica pura): `caminoPedir`, `listoPedir`, `faltanCantidades`, `aDeclarar`; `caminoOfrecer`, `listoOfrecer`, `itemListo`, `textoEntrega`, `fechaCorta`.
 - `publicaciones` — cuentas de RaDAR (lógica pura): `movido`, `restante`, `porcentaje`, `resumen`, `estadoRecurso`, `estadoPublicacion`, `distanciaKm`, `distanciaTexto`, `cifra`, `unidad`, `iniciales`, `tituloPublicacion`, `actorPublicacion`. Pruebas en `tests/unit/publicaciones-titulo.test.ts`.
 
+## Landing (`src/features/landing/`)
+
+La portada pública: `LandingPage`, en las rutas `/` y `/landing` (`App.tsx` la carga con `lazy`).
+Monta, en este orden, `LandingHeader`, `LandingHero`, `LandingAccesos`, `LandingComoFunciona`,
+`LandingSplitPortal`, `LandingSumarse` y `LandingFooter`, más `Grilla12` (solo en `npm run dev`)
+y el `ChatbotTicketModal` de `components/`. Sus estilos y movimientos viven en `src/index.css`, en
+los bloques de la landing (`.rd-revela`, `.rd-bucle`, `.rd-radar-*`, `.rd-avance`, `.rd-paso`,
+`.rd-accesos-*`, `.rd-acc-*`, `.rd-liquido`, `.rd-mano-*`, `.rd-grano`, `.rd-hero-anillos`,
+`.rd-gira`, `.rd-sobre-foto`, `.rd-encuentro-onda`, `.rd-grilla` y las utilidades del acordeón;
+`.rd-avance` y las del acordeón eran del «Cómo funciona» anterior y hoy no las usa nadie).
+
+Tiene modo oscuro (el de arranque) y claro: toda la landing se pinta con la familia de tokens
+`rd-noche-*` y `rd-ayuda`, y el modo claro solo les da otros valores cuando el `html` lleva
+`data-tema-landing="claro"` (bloque «EL MODO CLARO DE LA LANDING» de `index.css`). Lo poco que
+cambia de clase en claro usa la variante `claro:`. Antes de crear una pieza de la landing, busca
+aquí:
+
+- `components/base.tsx` — el juego de piezas de la landing sobre los tokens `rd-*` (otra escala
+  que la de `components/ui`, mismos colores): `Seccion` (ancho, márgenes y aire de toda sección;
+  aparece al llegar con `rd-revela`), `Rotulo`, `Titular`, `Parrafo`, `BotonLanding` (con
+  `soloIcono`, `etiqueta`, `expandido` y `controla` para un botón de icono que abre algo),
+  `claseBotonIcono` (la receta del botón de icono de 48: el de configuración, la X y las pestañas
+  de la segunda sección) y `Regla`.
+- `components/AjustesLanding.tsx` — `AjustesLanding`: el botón de configuración del header y su
+  panel flotante con el idioma (los `LANGUAGES` de `LanguageSelector`) y el modo oscuro o claro.
+  Lo usa `LandingHeader`.
+- `components/AnillosHero.tsx` — `AnillosHero`: los anillos concéntricos a pulso del fondo del
+  hero, que giran despacio. Solo desde 1024. Lo usa `LandingHero`.
+- `components/Maquetas.tsx` — las maquetas de producto, sin datos vivos y `aria-hidden`:
+  `MaquetaRadarLista`, `MaquetaDirectorio` y `MaquetaPanel` (los visuales de la segunda sección);
+  `PantallaReporte`, `PantallaCruce` y `PantallaActa` (los tres pasos del «Cómo funciona»
+  anterior; hoy sin uso, se quedan hasta que «El encuentro» se apruebe).
+- `components/Ilustraciones.tsx` — `Composicion` (fotografía de base con la pieza de interfaz
+  encima; la usa `LandingSumarse`) y los tres pasos del «Cómo funciona» anterior, que envuelven
+  las pantallas de `Maquetas`: `NecesidadEnTerritorio`, `RutaEntreCiudades`, `LineaDeEntrega`
+  (hoy sin uso, como sus pantallas).
+- `components/RadarEnVivo.tsx` — `RadarEnVivo({ ecos, etiqueta, rotulos, textos })`: «El radar en
+  vivo», la sección 4. Las necesidades y ofertas que carga `LandingSplitPortal` son ecos de un
+  radar a pulso; el haz gira y los enciende. Al lado, la lectura del último eco (tipo, título,
+  detalle, dónde, hace cuánto, categoría y «Ver en el mapa» a su `link`, con una raya que se llena
+  mientras llega el siguiente) y el registro de las tres anteriores, cada una un botón que lleva el
+  haz a su eco. El eco leído lleva un anillo amarillo en el radar. Con el cursor, el dedo o el
+  teclado se elige un eco. Exporta también `Senal` (el punto de un tipo con su radar que late, o
+  quieto con `quieta`) y el tipo `EcoRadar`. Lo usa `LandingSplitPortal`.
+- `trazoAMano.ts` — el trazo a pulso sin filtros: `azar` (con semilla), `trazar`, `curva`, `ovalo`
+  y el tipo `Punto`. Lo usan `LienzoEncuentro` y `RadarEnVivo`.
+- `components/LienzoEncuentro.tsx` — `LienzoEncuentro({ progreso })`: el lienzo de «El encuentro»,
+  la sección 3. Una necesidad y una oferta, dos gotas líquidas sobre un mapa a pulso, que RaDAR
+  une por una ruta hasta fundirlas y sellar la entrega; todo es función de `progreso` (0 a 3, un
+  tramo por paso). Lo usa `LandingComoFunciona`, fijo y atado al scroll desde 1280 y quieto en
+  cada paso por debajo.
+- `components/VisualesAccesos.tsx` — `VisualAcceso` (el visual de cada vista de la segunda
+  sección: contenedor en el color sólido de la pestaña con grano, la maqueta al centro y un fondo
+  a pulso que se mueve detrás, pausado cuando no se ve) y el tipo `VistaAcceso` (`radar`,
+  `directorio`, `panel`). Lo usa `LandingAccesos`.
+- `components/VentanaLiquida.tsx` — `VentanaLiquida`: el cursor líquido de toda la landing (tres
+  anillos y un punto, en una capa fija montada en `body`) y, en el hero, la gota que se abre con
+  una foto dentro cuando el cursor se queda quieto (máscara SVG con metabolas y turbulencia). Con
+  la flecha sobre algo marcado con `data-cursor-punto` deja solo el punto, y sobre algo marcado con
+  `data-cursor-eco` (los ecos de `RadarEnVivo`) sus anillos laten. Solo desde 1024, con
+  ratón y sin movimiento reducido. Recibe el `anfitrion` (el hero) y el `texto` que se copia sobre
+  la foto. La usa `LandingHero`.
+- `components/Grilla12.tsx` — `Grilla12`: la grilla de 12 columnas del contenedor de `Seccion`,
+  que se enciende y se apaga con la tecla G. Herramienta de revisión, no de producción: la monta
+  `LandingPage` solo con `import.meta.env.DEV`, así que la build no la lleva.
+- `useEnVista.ts` — `useEnVista(margen)`: devuelve `{ ref, visible }` y avisa una sola vez cuando
+  el elemento entra en pantalla. Lo usa `Seccion`.
+- `useConsulta.ts` — `useConsulta(consulta, sinVentana)`: una consulta de medios al día. Lo usan
+  `LandingAccesos` y `LandingComoFunciona`.
+- `useRecorrido.ts` — el recorrido fijado de la segunda sección: `useRecorrido` (el panel se abre
+  de 8 a 12 columnas al entrar, queda fijo mientras el scroll pasa por las tres vistas y se
+  cierra de 12 a 8 al salir; escribe `--rd-lado`, `--rd-arriba` y `--rd-abajo` en el panel y
+  devuelve `irA` y `cerrar`), `useModoFijado` (si el recorrido aplica: desde 1024 de ancho y 640
+  de alto, sin movimiento reducido) y `PASO_POR_VISTA` (el scroll de cada vista, en altos de
+  ventana). Lo usa `LandingAccesos`.
+- `useTemaLanding.ts` — `useTemaLanding()`: el modo de la landing (`TemaLanding`, `oscuro` o
+  `claro`), recordado en el navegador y aplicado como `data-tema-landing` en el `html` mientras la
+  landing está montada. Lo usa `LandingPage`.
+
+Borrado el 6 de octubre de 2026 porque nadie lo montaba (Alejandro: «borre lo que ya no se
+usa»), por si alguien lo busca: del equipo, `ElasticRadarHero`, `HowItWorksHeroCard`,
+`HowItWorksPills`, `BigRadarCtaSection`, `RadarSplitCtaSection`, `RadarAnimatedLogo` y
+`RadarMapBackground`; de la maqueta del 29 de septiembre de 2026, `VistasProducto`,
+`SeccionCaracteristica`, `MaquetaRadar`, `UnionOrganizaciones`, `RedDeRespuesta`,
+`EntregaCertificada`, el mapa de Colombia de `Ilustraciones`, `TarjetaSuave` y `retraso()`; y en
+`src/index.css`, `.rd-malla`, `.rd-ruta`, `.rd-barra`, `.rd-sello`, `.rd-late`, `.rd-entrada`,
+`.rd-mancha`, sus `@keyframes` (`rd-trazar`, `rd-llena`, `rd-timbre`, `rd-latido`, `rd-cae`,
+`rd-sube`, `rd-deriva-1` a `4`) y los tokens `--color-rd-crema-2`, `--color-rd-malla`,
+`--color-rd-malla-ambar`, `--color-rd-malla-coral`, `--color-rd-malla-azul`,
+`--color-rd-navy-noche`, `--color-rd-amber-noche`, `--color-rd-green-noche`, `--radius-rd-panel`,
+`--text-rd-72` y `--spacing-rd-hero`. Quedan en el historial de git.
+
 ## Esquemas (`src/features/auth/schemas/`)
 
 - `registerSchema` — los esquemas Zod de registro. Desde `mockup/registro-v2` exporta también

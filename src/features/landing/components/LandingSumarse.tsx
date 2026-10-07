@@ -33,7 +33,7 @@ export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenCha
 
   return (
     <Seccion id="organizaciones">
-      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+      <div className="grid grid-cols-1 items-center gap-10 xl:grid-cols-2 xl:gap-20">
         <div>
           <Rotulo>{t('landingNavForOrgs')}</Rotulo>
           <Titular className="mt-3">
@@ -49,8 +49,9 @@ export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenCha
               de una pareja que solo tiene dos. */}
           <div className="mt-9">
             <BotonLanding nivel="secundario" onClick={onOpenChat}>
-              {t('landingOrgsCta')}
-              <span className="inline-block -scale-x-100">R</span>
+              {/* Sin salto de línea entre el texto y la R: JSX lo convierte en un espacio y el
+                  botón decía «Sumarme a raDA R» (medido en el navegador, 29 de septiembre). */}
+              {t('landingOrgsCta')}<span className="inline-block -scale-x-100">R</span>
             </BotonLanding>
           </div>
         </div>
@@ -88,19 +89,22 @@ export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenCha
           <li key={p.n}>
             {i > 0 && <Regla className="my-7 sm:my-8" />}
             <div className="grid gap-3 sm:grid-cols-12 sm:gap-6">
-              <span className="font-rd text-rd-18 font-normal text-rd-ink-3 tabular-nums sm:col-span-1">
+              {/* En oscuro (6 de octubre de 2026): número en el gris meta, título en blanco,
+                  insignia y texto en el secundario claro, y el check en el ámbar del logo, el
+                  acento de la landing sobre el negro (el navy no se veía). */}
+              <span className="font-rd text-rd-18 font-normal text-rd-noche-meta tabular-nums sm:col-span-1">
                 {String(p.n).padStart(2, '0')}
               </span>
 
               <div className="sm:col-span-4">
-                <h3 className="font-rd m-0 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{p.titulo}</h3>
-                <p className="font-rd m-0 mt-2 flex items-center gap-1.5 text-rd-12-5 font-semibold text-rd-ink-2">
-                  <Check className="h-3.5 w-3.5 shrink-0 text-rd-navy" />
+                <h3 className="font-rd m-0 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-noche-tinta">{p.titulo}</h3>
+                <p className="font-rd m-0 mt-2 flex items-center gap-1.5 text-rd-12-5 font-semibold text-rd-noche-tinta-2">
+                  <Check className="h-3.5 w-3.5 shrink-0 text-rd-ayuda" />
                   {p.insignia}
                 </p>
               </div>
 
-              <p className="font-rd m-0 text-rd-15 leading-relaxed text-rd-ink-2 sm:col-span-7">{p.texto}</p>
+              <p className="font-rd m-0 text-rd-15 leading-relaxed text-rd-noche-tinta-2 sm:col-span-7">{p.texto}</p>
             </div>
           </li>
         ))}
