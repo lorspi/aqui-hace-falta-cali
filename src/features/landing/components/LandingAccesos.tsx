@@ -360,7 +360,6 @@ export const LandingAccesos: React.FC = () => {
               que fuera del panel estrecho el cursor vuelve a tener sus anillos. */}
           <div
             ref={panel}
-            data-cursor-punto=""
             className={`rd-accesos pointer-events-auto relative flex flex-col items-center ${
               fijado ? 'h-full justify-center' : 'px-3 py-8 sm:px-6 sm:py-12 lg:px-0 lg:py-16'
             }`}

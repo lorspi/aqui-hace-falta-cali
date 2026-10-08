@@ -36,6 +36,7 @@
   --color-rd-amber-ink: #8A5D07;
   --color-rd-amber-soft: #FCF4DE;
   --color-rd-amber-line: #F0DFA8;
+  --color-rd-amber-miel: #F5A623;
   --color-rd-green: #17734A;
   --color-rd-green-soft: #E7F3EC;
   --color-rd-green-line: #BEDCCB;
@@ -348,7 +349,7 @@
   --color-rd-noche-contenedor: var(--color-rd-sunken);
   --color-rd-malla-rosa: #F1B4B6;
   --color-rd-malla-durazno: #F7DAA8;
-  --color-rd-ayuda: var(--color-rd-amber-ink);
+  --color-rd-ayuda: var(--color-rd-amber-miel, #F5A623);
 }
 
 /* Lo que va sobre la foto del cursor en el hero (la copia del texto de `VentanaLiquida`) lleva
@@ -358,6 +359,24 @@
   --color-rd-noche-tinta: #FFFFFF;
   --color-rd-noche-tinta-2: #C7C7C7;
   --color-rd-ayuda: var(--color-rd-amber-claro);
+}
+
+/* ======================================================================
+   CURSOR PERSONALIZADO DE LA LANDING
+   Oculta la flecha nativa del navegador cuando el cursor líquido está activo,
+   para que la animación del radar actúe como puntero principal de la landing.
+   ====================================================================== */
+html.rd-cursor-activo,
+html.rd-cursor-activo body,
+html.rd-cursor-activo .rd-landing,
+html.rd-cursor-activo .rd-landing * {
+  cursor: none !important;
+}
+
+/* Restituye el cursor nativo cuando hay un diálogo o modal interactivo */
+html.rd-cursor-activo [role="dialog"],
+html.rd-cursor-activo [role="dialog"] * {
+  cursor: auto !important;
 }
 
 /* ======================================================================

@@ -51,7 +51,20 @@ const PAUSA = 0.3;
 const ESPERA = 0.2;
 const LLEGADA = 0.7;
 
-const ORGANIZACIONES = ENTIDADES.filter((e) => e.clase === 'organizacion').map((e) => ({ id: e.id, clase: 'organizacion' as const, nombre: e.nombre, detalle: e.tipo }));
+const sanitizarOrg = (e: (typeof ENTIDADES)[number]) => {
+  const n = e.nombre.toLowerCase();
+  if (n.includes('hospital')) return { nombre: 'Hospital', detalle: 'Centro médico' };
+  if (n.includes('alcald')) return { nombre: 'Alcaldía', detalle: e.tipo };
+  if (n.includes('bombero')) return { nombre: 'Bomberos', detalle: e.tipo };
+  if (n.includes('cruz roja')) return { nombre: 'Brigada de Emergencia', detalle: 'Cuerpo de socorro' };
+  if (n.includes('centro de salud') || n.includes('vitelma')) return { nombre: 'Centro de salud', detalle: 'Atención primaria' };
+  return { nombre: e.nombre, detalle: e.tipo };
+};
+
+const ORGANIZACIONES = ENTIDADES.filter((e) => e.clase === 'organizacion').map((e) => {
+  const s = sanitizarOrg(e);
+  return { id: e.id, clase: 'organizacion' as const, nombre: s.nombre, detalle: s.detalle };
+});
 /* Las comunidades con una persona al frente («Rosa Angulo, presidenta de la JAC») entran como
    líderes, con su nombre; las que lleva un comité, como comunidad. */
 const LIDERES = ENTIDADES.filter((e) => e.clase === 'comunidad' && (e.lider ?? '').includes(',')).map((e) => ({
@@ -293,7 +306,9 @@ export const RedSumarse: React.FC<{
               {destino && <circle r={24} fill="transparent" />}
               <path
                 d={NODO}
-                className={`transition-[fill,opacity] duration-500 ${destino ? 'fill-rd-noche-tinta' : 'fill-rd-noche-meta'}`}
+                className={`transition-[fill,opacity] duration-500 ${
+                  destino ? (k % 2 === 0 ? 'fill-rd-navy-claro' : 'fill-rd-coral') : 'fill-rd-noche-meta'
+                }`}
                 style={{ opacity: dibujado ? (destino ? 1 : 0.6) : 0 }}
               />
               {destino && (
@@ -327,13 +342,6 @@ export const RedSumarse: React.FC<{
       </svg>
 
       {/* Lo que se escribe sobre el lienzo, en HTML para que no se encoja con él. */}
-      <span
-        aria-hidden="true"
-        className={`font-rd pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-9 text-rd-13-5 font-semibold whitespace-nowrap ${rol ? 'text-rd-ayuda' : 'text-rd-noche-meta'}`}
-      >
-        {rol ? textos.tu : textos.tuLugar}
-      </span>
-
       {rol &&
         lineas.map((l, i) => (
           <React.Fragment key={`${rol}-${l.nodo.id}-rotulos`}>

@@ -26,9 +26,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
  */
 
 /** Cuánto scroll toma cada vista mientras el contenedor está fijo, en altos de ventana. Una
- *  ventana entera por vista se sentía como scroll muerto al probarlo; 0,9 deja ver que pasa algo
- *  sin que la vista se vaya antes de leerla. */
-export const PASO_POR_VISTA = 0.9;
+ *  ventana entera por vista se sentía como scroll muerto al probarlo; 0,55 deja ver que pasa algo
+ *  con fluidez y sin que la sección se sienta trabada. */
+export const PASO_POR_VISTA = 0.55;
 
 /** El hueco de la grilla de 12, el mismo `gap-6` de `Grilla12`. Con él salen las 8 columnas. */
 const HUECO = 24;
@@ -497,6 +497,8 @@ export function useRecorrido({
     const ro = new ResizeObserver(remedir);
     ro.observe(s);
     ro.observe(document.body);
+    const tarjeta = avance?.ownerSVGElement?.parentElement;
+    if (tarjeta) ro.observe(tarjeta);
     geo.current = medir();
     recolocar(geo.current);
     pintar();
@@ -531,26 +533,15 @@ export function useRecorrido({
     };
   }, [activo, seccion, fijo, panel, vistas]);
 
-  /** Lleva el scroll al principio del tramo de una vista (`ARRANQUE_DEL_TRAMO`), para que la línea
-   *  alrededor de la tarjeta arranque de cero en la vista que llega. Devuelve `false` si no hay
-   *  recorrido (móvil o movimiento reducido), y entonces la pestaña solo cambia. */
+  /** Cambia a la vista indicada de forma suave e inmediata sin forzar scroll ni desfasar el cursor */
   const irA = useCallback(
     (indice: number): boolean => {
-      const g = geo.current;
-      if (!activo || !g) return false;
-      const objetivo = Math.round(g.s1 + ((indice + ARRANQUE_DEL_TRAMO) * g.recorrido) / vistas);
       ultimo.current = indice;
-      /* Ya en su sitio no hay desplazamiento que suelte la vista, así que no se fija: fijada, un
-         arrastre de la barra en el segundo y medio siguiente la dejaba atrás (H29). */
-      if (Math.abs(window.scrollY - objetivo) < 3) {
-        forzada.current = null;
-        return true;
-      }
-      forzada.current = { indice, objetivo, hasta: performance.now() + ESPERA_MAX_MS };
-      window.scrollTo({ top: objetivo, behavior: 'smooth' });
+      forzada.current = { indice, objetivo: window.scrollY, hasta: performance.now() + 2000 };
+      avisar.current(indice);
       return true;
     },
-    [activo, vistas],
+    [],
   );
 
   /** La X: lleva a la sección 3 pasando por el cierre. El destino es el borde de arriba de la
