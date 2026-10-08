@@ -159,11 +159,12 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `impacto` — métricas y telemetría para el equipo de impacto (lógica pura): `calcularTiemposPorColumna`, `calcularMetricasCertificacion`, `calcularCumplimientoOrganizaciones`, `calcularActividadRed`. Mapeado con Supabase en `docs/IMPACTO_METRICAS_SCHEMA.md`. Pruebas en `tests/unit/impacto.test.ts`.
 - `pedir` · `ofrecer` — el camino y la guarda de cada flujo (lógica pura): `caminoPedir`, `listoPedir`, `faltanCantidades`, `aDeclarar`; `caminoOfrecer`, `listoOfrecer`, `itemListo`, `textoEntrega`, `fechaCorta`.
 - `publicaciones` — cuentas de RaDAR (lógica pura): `movido`, `restante`, `porcentaje`, `resumen`, `estadoRecurso`, `estadoPublicacion`, `distanciaKm`, `distanciaTexto`, `cifra`, `unidad`, `iniciales`, `tituloPublicacion`, `actorPublicacion`. Pruebas en `tests/unit/publicaciones-titulo.test.ts`.
+- `contact.ts` (`src/constants/contact.ts`) — constantes de contacto oficial de la plataforma: número y visualización de WhatsApp (`+57 322 826 2389`), helper de enlaces `getOfficialWhatsappLink`, correo oficial (`info@radardeayuda.org`) y dominio (`www.radardeayuda.org`). Lo usan `LandingFooter` y flujos de contacto.
 
 ## Landing (`src/features/landing/`)
 
 La portada pública: `LandingPage`, en las rutas `/` y `/landing` (`App.tsx` la carga con `lazy`).
-Monta, en este orden, `LandingHeader`, `LandingHero`, `LandingAccesos`, `LandingComoFunciona`,
+Monta, en este orden, `LandingHeader` (con accesos a «Ir a la app», «Ingresar / Registrarse», menú móvil y ajustes de tema/idioma), `LandingHero`, `LandingAccesos`, `LandingComoFunciona`,
 `LandingSplitPortal`, `LandingSumarse` y `LandingFooter`, más `Grilla12` (solo en `npm run dev`)
 y el `ChatbotTicketModal` de `components/`. Sus estilos y movimientos viven en `src/index.css`, en
 los bloques de la landing (`.rd-revela`, `.rd-bucle`, `.rd-radar-*`, `.rd-mazo-*`, `.rd-herramienta`, `.rd-red-*`, `.rd-avance`, `.rd-paso`,
@@ -245,8 +246,8 @@ crear una pieza de la landing, busca aquí:
   que trabajaría (`destinosDe(rol)`, por tipo y dirección), con su número y su nombre
   (`.rd-red-*` en `index.css`). Con `apaisado` (el teléfono) muestra la franja del medio en 3:2,
   sin nombres, con los destinos de esa franja (`destinosDe(rol, true)`). Lo usa `LandingSumarse`,
-  que pone el conmutador de papeles, los pilares contados para el papel y el botón; en el
-  teléfono, una tarjeta por papel en un carrusel.
+  que pone el conmutador de papeles, los pilares contados para el papel y el botón de enlace a `/registro`; en el
+  teléfono, una tarjeta por papel en un carrusel con su botón a `/registro`.
 - `components/RadarEnVivo.tsx` — `RadarEnVivo({ publicaciones, etiqueta, rotulos, onAbrir, pista })`:
   «El radar en vivo», la sección 4. Las publicaciones son ecos de un radar dibujado en una sola
   línea (espiral, anillo de afuera y cruz); el haz gira, recortado por ese anillo dibujado, y los

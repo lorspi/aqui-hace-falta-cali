@@ -63,7 +63,7 @@ const CONSULTA_COLUMNAS = '(min-width: 1024px)';
 /* Los destinos de cada papel en la red apaisada del teléfono, en el orden de `ROLES`. */
 const DESTINOS_MOVIL = ROLES.map((r) => destinosDe(r.id, true));
 
-export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }) => {
+export const LandingSumarse: React.FC<{ onOpenChat?: () => void }> = () => {
   const { t } = useTranslation();
   const grupo = useId();
   const columnas = useConsulta(CONSULTA_COLUMNAS, true);
@@ -210,7 +210,7 @@ export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenCha
                   ))}
                 </ol>
                 <div className="mt-7">
-                  <BotonLanding nivel="secundario" onClick={onOpenChat}>
+                  <BotonLanding nivel="secundario" como="enlace" href="/registro">
                     {t('landingOrgsCta')}
                   </BotonLanding>
                 </div>
@@ -263,7 +263,7 @@ export const LandingSumarse: React.FC<{ onOpenChat: () => void }> = ({ onOpenCha
                 Hasta el 7 de octubre de 2026 decía «Sumarme a raDAЯ», con la marca estilizada dentro
                 del texto, y por un rato «Sumarme como voluntario» según el papel. */}
             <div className="mt-9">
-              <BotonLanding nivel="secundario" onClick={onOpenChat}>
+              <BotonLanding nivel="secundario" como="enlace" href="/registro">
                 {t('landingOrgsCta')}
               </BotonLanding>
             </div>

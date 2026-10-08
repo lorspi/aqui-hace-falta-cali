@@ -1,6 +1,12 @@
 import React from 'react';
 import { Heart, Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../../../i18n/LanguageContext';
+import {
+  OFFICIAL_DOMAIN,
+  OFFICIAL_EMAIL,
+  OFFICIAL_WHATSAPP_DISPLAY,
+  getOfficialWhatsappLink,
+} from '../../../constants/contact';
 
 /**
  * El footer de la landing, del equipo, llevado al tema oscuro el 6 de octubre de 2026 (Alejandro:
@@ -72,20 +78,20 @@ export const LandingFooter: React.FC = () => {
             <h5 className="m-0 mb-3 text-rd-13-5 font-semibold text-rd-noche-tinta">{t('landingFooterContact')}</h5>
             <ul className="m-0 list-none space-y-2.5 p-0">
               <li>
-                <a href="mailto:info@radardeayuda.co" className={`inline-flex items-center gap-2 ${ENLACE}`}>
+                <a href={`mailto:${OFFICIAL_EMAIL}`} className={`inline-flex items-center gap-2 ${ENLACE}`}>
                   <Mail aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                  <span>info@radardeayuda.co</span>
+                  <span>{OFFICIAL_EMAIL}</span>
                 </a>
               </li>
               <li>
                 <a
-                  href="https://wa.me/573112323588?text=Hola%20raDAR,%20quisiera%20ponerme%20en%20contacto%20con%20el%20equipo."
+                  href={getOfficialWhatsappLink('Hola raDAR, quisiera ponerme en contacto con el equipo.')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`inline-flex items-center gap-2 ${ENLACE}`}
                 >
                   <MessageCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                  <span>WhatsApp: +57 311 232 3588</span>
+                  <span>WhatsApp: {OFFICIAL_WHATSAPP_DISPLAY}</span>
                 </a>
               </li>
             </ul>
@@ -101,7 +107,7 @@ export const LandingFooter: React.FC = () => {
             </a>
             {/* Divisor, no punto medio: el punto medio está prohibido en RaDAR. */}
             <span aria-hidden="true" className="inline-block h-3 w-px bg-rd-noche-linea" />
-            <span>www.radardeayuda.co</span>
+            <span>{OFFICIAL_DOMAIN}</span>
           </div>
         </div>
       </div>

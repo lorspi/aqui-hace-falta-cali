@@ -543,10 +543,10 @@ export const translations = {
     footerPrivacy: 'Política de Privacidad',
 
     // Landing Page
-    landingHeroTitle: 'Somos el punto de encuentro de las ayudas',
-    landingHeroTitleSoft: 'en medio de las emergencias.',
-    landingHeroTitleMovil: 'Somos el punto de encuentro',
-    landingHeroTitleSoftMovil: 'de las ayudas.',
+    landingHeroTitle: 'Conectamos a quien necesita ayuda',
+    landingHeroTitleSoft: 'con quien puede darla.',
+    landingHeroTitleMovil: 'Conectamos a quien necesita ayuda',
+    landingHeroTitleSoftMovil: 'con quien puede darla.',
     landingHeroSubtitle: 'Organizaciones, comunidades y voluntarios permiten que las conexiones se hagan realidad',
     landingAccesosTitulo: 'Todo lo que hace falta, en un solo sitio',
     landingHeroCtaNeed: 'Pedir ayuda',
@@ -562,6 +562,7 @@ export const translations = {
     landingNavForOrgs: 'Para organizaciones',
     landingNavContact: 'Contacto',
     landingNavLanguage: 'Idioma',
+    landingNavAuth: 'Ingresar / Registrarse',
 
     // Landing - How it works
     landingHowTitleBefore: '¿Cómo funciona ',
@@ -1200,10 +1201,10 @@ export const translations = {
     footerPrivacy: 'Privacy Policy',
 
     // Landing Page
-    landingHeroTitle: 'We are the meeting point for help',
-    landingHeroTitleSoft: 'in the middle of an emergency.',
-    landingHeroTitleMovil: 'We are the meeting point',
-    landingHeroTitleSoftMovil: 'for help.',
+    landingHeroTitle: 'We connect those who need help',
+    landingHeroTitleSoft: 'with those who can give it.',
+    landingHeroTitleMovil: 'We connect those who need help',
+    landingHeroTitleSoftMovil: 'with those who can give it.',
     landingHeroSubtitle: 'Organizations, communities and volunteers make connections real',
     landingAccesosTitulo: 'Everything you need, in one place',
     landingHeroCtaNeed: 'Request help',
@@ -1219,6 +1220,7 @@ export const translations = {
     landingNavForOrgs: 'For organizations',
     landingNavContact: 'Contact',
     landingNavLanguage: 'Language',
+    landingNavAuth: 'Log in / Sign up',
 
     // Landing - How it works
     landingHowTitleBefore: 'How does ',
@@ -1854,10 +1856,10 @@ export const translations = {
     footerPrivacy: 'Política de Privacidade',
 
     // Landing Page
-    landingHeroTitle: 'Somos o ponto de encontro das ajudas',
-    landingHeroTitleSoft: 'em meio às emergências.',
-    landingHeroTitleMovil: 'Somos o ponto de encontro',
-    landingHeroTitleSoftMovil: 'das ajudas.',
+    landingHeroTitle: 'Conectamos quem precisa de ajuda',
+    landingHeroTitleSoft: 'com quem pode ajudar.',
+    landingHeroTitleMovil: 'Conectamos quem precisa de ajuda',
+    landingHeroTitleSoftMovil: 'com quem pode ajudar.',
     landingHeroSubtitle: 'Organizações, comunidades e voluntários fazem com que as conexões aconteçam',
     landingAccesosTitulo: 'Tudo o que faz falta, em um só lugar',
     landingHeroCtaNeed: 'Pedir ajuda',
@@ -1873,6 +1875,7 @@ export const translations = {
     landingNavForOrgs: 'Para organizações',
     landingNavContact: 'Contato',
     landingNavLanguage: 'Idioma',
+    landingNavAuth: 'Entrar / Cadastrar',
 
     // Landing - How it works
     landingHowTitleBefore: 'Como funciona o ',
@@ -2508,10 +2511,10 @@ export const translations = {
     footerPrivacy: 'Politique de Confidentialité',
 
     // Landing Page
-    landingHeroTitle: "Nous sommes le point de rencontre de l'aide",
-    landingHeroTitleSoft: "au cœur de l'urgence.",
-    landingHeroTitleMovil: 'Nous sommes le point de rencontre',
-    landingHeroTitleSoftMovil: "de l'aide.",
+    landingHeroTitle: "Nous connectons ceux qui ont besoin d'aide",
+    landingHeroTitleSoft: 'avec ceux qui peuvent aider.',
+    landingHeroTitleMovil: "Nous connectons ceux qui ont besoin d'aide",
+    landingHeroTitleSoftMovil: 'avec ceux qui peuvent aider.',
     landingHeroSubtitle: 'Organisations, communautés et bénévoles font exister les connexions',
     landingAccesosTitulo: 'Tout ce qu’il faut, au même endroit',
     landingHeroCtaNeed: "Demander de l'aide",
@@ -2527,6 +2530,7 @@ export const translations = {
     landingNavForOrgs: 'Pour les organisations',
     landingNavContact: 'Contact',
     landingNavLanguage: 'Langue',
+    landingNavAuth: 'Connexion / Inscription',
 
     // Landing - How it works
     landingHowTitleBefore: 'Comment fonctionne ',
