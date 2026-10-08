@@ -67,8 +67,10 @@ import { useConsulta } from '../useConsulta';
  * movimiento reducido el lienzo salta al final de cada paso en vez de recorrerlo, y los radares no
  * laten.
  *
- * Por debajo de 1280 no cabe un lienzo fijo al lado: los pasos no se fijan, cada uno lleva su
- * lienzo debajo, quieto en el final de su tramo, y la línea se ve llena.
+ * Por debajo de 1280 no cabe un lienzo fijo al lado: los pasos no se fijan y cada uno lleva su
+ * lienzo debajo. Ahí cada paso tiene su propio avance con el scroll (ver `avances`): su línea se
+ * llena y su lienzo cuenta su tramo mientras cruza la ventana. Hasta el 7 de octubre de 2026 se
+ * veían quietos, en el final de su tramo, con la línea llena.
  *
  * El texto de los pasos es el de siempre, de las traducciones.
  */
@@ -118,8 +120,14 @@ export const LandingComoFunciona: React.FC = () => {
   const lienzo = useRef<HTMLDivElement>(null);
   const cola = useRef<HTMLDivElement>(null);
   const [progreso, setProgreso] = useState(0);
-  /* Con el lienzo fijo (desde 1280) los pasos siguen al scroll; sin él se ven todos completos. */
+  /* Con el lienzo fijo (desde 1280) los pasos siguen al scroll con un lienzo para los tres. Sin él
+     (EN EL TELÉFONO, 7 de octubre de 2026), cada paso lleva su lienzo debajo y su propio avance
+     (`avances`, de 0 a 1): la línea del paso se llena y su lienzo cuenta su tramo mientras ese
+     lienzo cruza la ventana, de abajo a arriba. Hasta ese día se veían todos terminados y quietos
+     (Alejandro: «muchas de las animaciones y comportamientos con componentes solo sirven en la
+     logica desktop»). */
   const fijo = useConsulta(CONSULTA_ANCHO, true);
+  const [avances, setAvances] = useState([0, 0, 0]);
 
   const pasos = [1, 2, 3].map((n) => ({
     n,
@@ -160,10 +168,24 @@ export const LandingComoFunciona: React.FC = () => {
       if (lienzo.current) lienzo.current.style.top = '';
       if (cola.current) cola.current.style.height = '';
     };
+    /* El avance de cada paso en el teléfono: 0 cuando su lienzo asoma por el 85 % de la ventana y
+       1 cuando llega al 30 %. Con movimiento reducido salta entero al pasar la mitad. */
+    const medirMovil = () => {
+      const alto = window.innerHeight;
+      const nuevos = Array.from(ol.children).map((paso) => {
+        const l = paso.querySelector<HTMLElement>('[data-lienzo]');
+        if (!l) return 1;
+        const r = l.getBoundingClientRect();
+        const a = Math.min(1, Math.max(0, (alto * 0.85 - r.top) / (alto * 0.55)));
+        return reducido?.matches ? (a > 0.5 ? 1 : 0) : a;
+      });
+      setAvances((antes) => (antes.some((v, i) => Math.abs(v - nuevos[i]) > 0.004) ? nuevos : antes));
+    };
     const medir = () => {
       raf = 0;
       if (!ancho.matches) {
         limpiar();
+        medirMovil();
         return;
       }
       centrar(lienzo.current);
@@ -251,8 +273,8 @@ export const LandingComoFunciona: React.FC = () => {
           <div>
           <ol ref={lista} className="m-0 list-none p-0">
             {pasos.map((p, i) => {
-              const lleno = fijo ? Math.min(1, Math.max(0, progreso - i)) : 1;
-              const alcanzado = !fijo || progreso > i;
+              const lleno = fijo ? Math.min(1, Math.max(0, progreso - i)) : avances[i];
+              const alcanzado = fijo ? progreso > i : avances[i] > 0.02;
               return (
                 /* El paso: su texto y, debajo, el aire que el scroll recorre mientras el texto se
                    queda fijo (el espaciador del final, solo desde 1280). Desde el segundo, arriba,
@@ -310,8 +332,8 @@ export const LandingComoFunciona: React.FC = () => {
                     </ul>
 
                     {/* El lienzo de este paso, solo donde no cabe el fijo. */}
-                    <div className="mt-8 max-w-145 xl:hidden">
-                      <LienzoEncuentro progreso={i + 1} />
+                    <div data-lienzo="" className="mt-8 max-w-145 xl:hidden">
+                      <LienzoEncuentro progreso={i + avances[i]} />
                     </div>
                   </div>
 

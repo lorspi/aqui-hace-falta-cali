@@ -622,6 +622,15 @@ header {
 @utility zona-rd-scroll {
   scrollbar-width: none;
 }
+/* Una tarjeta de los carruseles del teléfono de la landing (`useCarrusel`): tres columnas y media
+   de la grilla de cuatro, con huecos de 16 (`gap-4` entre tarjetas), y la media que falta deja
+   asomar la siguiente (Alejandro, 7 de octubre de 2026: «amplia a 3 y 1/2 el ancho de las
+   cards»). La cuenta: cada columna es (100 % − 3 huecos) / 4, y 3,5 columnas más sus 3 huecos
+   dan 87,5 % + 0,375 de hueco, 6 px. El 100 % es la caja del carrusel sin su relleno, que son
+   las cuatro columnas. */
+@utility tarjeta-rd-carrusel {
+  flex: 0 0 calc(87.5% + var(--spacing) * 1.5);
+}
 @utility zona-rd-chips {
   scrollbar-width: none;
   mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 64px), transparent calc(100% - 16px));
@@ -1394,6 +1403,10 @@ html:has(.rd-revela) {
   transform-origin: 50% 0;
   box-shadow: var(--shadow-rd-2);
 }
+/* Arrastrada con el dedo y soltada antes del umbral, la del frente vuelve a su sitio. */
+.rd-mazo-carta {
+  transition: translate 0.3s cubic-bezier(0.22, 1, 0.36, 1), rotate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .rd-mazo-hoja-1 { transform: var(--rd-mazo-1); filter: brightness(0.92); z-index: 3; }
 .rd-mazo-hoja-2 { transform: var(--rd-mazo-2); filter: brightness(0.84); z-index: 2; }
 .rd-mazo-hoja-3 { transform: var(--rd-mazo-3); filter: brightness(0.76); z-index: 1; }
@@ -1413,9 +1426,30 @@ html:has(.rd-revela) {
   43% { z-index: 0; }
   100% { transform: var(--rd-mazo-3); z-index: 0; filter: brightness(0.76); }
 }
+/* La que mandó el dedo (`RadarEnVivo`, CON EL DEDO): arranca donde la soltó (`--rd-arrastre`,
+   `--rd-giro`), sigue por su lado, se mete detrás y baja a la última hoja, como la que sale con
+   el haz. El lado va por clase y no multiplicado en un `calc()`: dentro de un `@keyframes`,
+   Chrome toma `calc(var(--lado) * 70%)` por `none`, y la tarjeta volvía al centro. */
+.rd-mazo-sale-lado {
+  --rd-lejos: 70%;
+  --rd-vuelta: 8deg;
+  animation: rd-mazo-sale-lado 0.8s both;
+}
+.rd-mazo-sale-izquierda {
+  --rd-lejos: -70%;
+  --rd-vuelta: -8deg;
+}
+@keyframes rd-mazo-sale-lado {
+  0% { transform: translateX(var(--rd-arrastre)) rotate(var(--rd-giro)); z-index: 5; animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1); }
+  40% { transform: translateX(var(--rd-lejos)) rotate(var(--rd-vuelta)); z-index: 5; animation-timing-function: cubic-bezier(0.45, 0, 0.3, 1); }
+  41% { z-index: 0; }
+  100% { transform: var(--rd-mazo-3); z-index: 0; filter: brightness(0.76); }
+}
 @media (prefers-reduced-motion: reduce) {
   .rd-mazo-entra,
-  .rd-mazo-sale { animation: none; }
+  .rd-mazo-sale,
+  .rd-mazo-sale-lado { animation: none; }
+  .rd-mazo-carta { transition: none; }
 }
 
 /* La red de la sección 5 (`RedSumarse`, 7 de octubre de 2026). Las uniones de la red se dibujan
@@ -1524,6 +1558,14 @@ html:has(.rd-revela) {
     var(--rd-arriba, 0px) var(--rd-lado, 0px) var(--rd-abajo, 0px)
     round calc(var(--rd-accesos-radio) - var(--rd-radio-menos, 0px))
   );
+}
+/* En el teléfono el panel no tiene borde (Alejandro, 7 de octubre de 2026: «el stroke de la seccion
+   2 quitalo») ni recorrido, y el carrusel sale hasta el borde de la pantalla: sin recorte, que lo
+   cortaba en el borde del panel. */
+@media (width < 64rem) {
+  .rd-accesos {
+    clip-path: none;
+  }
 }
 
 /* El borde del panel: sigue al recorte con su mismo radio, `--rd-accesos-aire` por dentro, y lee

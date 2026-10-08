@@ -61,8 +61,10 @@ export const Titular: React.FC<{
   tamano?: 'hero' | 'seccion';
   /** `claro` para cuando el titular va sobre fotografía. */
   tono?: 'tinta' | 'claro';
+  /** Para la sección que se nombra con él (`aria-labelledby`). */
+  id?: string;
   className?: string;
-}> = ({ children, apagado, como = 'h2', tamano = 'seccion', tono = 'tinta', className = '' }) => {
+}> = ({ children, apagado, como = 'h2', tamano = 'seccion', tono = 'tinta', id, className = '' }) => {
   const Etiqueta = como;
   /* La escala del hero está medida ancho por ancho en el navegador, no elegida a ojo: es el
      tamaño más grande que deja el titular en DOS líneas en cada punto de quiebre (Alejandro, 29
@@ -107,6 +109,7 @@ export const Titular: React.FC<{
        porque `hero` solo lo usa la portada: así el cambio no se derrama a las otras cinco
        secciones. */
     <Etiqueta
+      id={id}
       className={`font-rd m-0 ${tamano === 'hero' ? 'font-normal' : 'font-medium'} tracking-rd-titular ${
         tono === 'claro' ? 'text-white' : 'text-rd-noche-tinta'
       } ${escala} leading-rd-display text-balance ${className}`}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useConsulta } from '../useConsulta';
 
 /**
  * Los anillos del fondo del hero (Alejandro, 6 de octubre de 2026: «al hero le puedes poner sabes
@@ -35,8 +36,13 @@ import React, { useEffect, useRef, useState } from 'react';
  * (`data-quieto`) y no gira con movimiento reducido.
  *
  * Se desvanecen hacia los bordes del hero (`.rd-hero-anillos`) para no cortarse en seco donde el
- * hero termina. Solo desde 1024, como la gota con la foto: en el teléfono el hero es el fondo liso
- * (Alejandro, 6 de octubre de 2026).
+ * hero termina.
+ *
+ * EN EL TELÉFONO. Hasta el 7 de octubre de 2026 iban solo desde 1024, como la gota con la foto, y
+ * en el teléfono el hero era el fondo liso (Alejandro, 6 de octubre de 2026). Ese 7, sobre el hero
+ * del teléfono ya centrado: «el fondo se ve vacío». En escritorio los anillos le dan un centro al
+ * texto centrado, y en el teléfono le faltaba: ahora van en todos los anchos. Debajo de 1024 van
+ * los cinco de adentro (`JUEGOS_CHICOS`). La gota sigue solo en escritorio.
  */
 
 const RADIO_INICIAL = 120;
@@ -84,14 +90,28 @@ const ANILLOS = (() => {
 })();
 
 /* Los dos juegos de anillos (ver EL GIRO): los pares giran a un lado y los impares al otro. */
-const JUEGOS = [
-  { anillos: ANILLOS.filter((_, i) => i % 2 === 0), giro: 'rd-gira' },
-  { anillos: ANILLOS.filter((_, i) => i % 2 === 1), giro: 'rd-gira rd-gira-inverso' },
+const juegos = (anillos: string[]) => [
+  { anillos: anillos.filter((_, i) => i % 2 === 0), giro: 'rd-gira' },
+  { anillos: anillos.filter((_, i) => i % 2 === 1), giro: 'rd-gira rd-gira-inverso' },
 ];
+const JUEGOS = juegos(ANILLOS);
+
+/* Debajo de 1024 (ver EN EL TELÉFONO), los seis de adentro, al 55 %: cada 60 en vez de cada 110,
+   así caben cinco alrededor del texto antes de que la máscara los apague (a 110, en un teléfono
+   se veía uno solo). Son los mismos trazos; el SVG recorta alrededor del centro (`viewBox`) y se
+   pinta más chico, y la línea se queda en 1,5 (`non-scaling-stroke`). Mide 759 de lado y no
+   2.700, que en una pantalla de 3× eran dos capas de 8.100 px girando. */
+const CUANTOS_CHICO = 6;
+const LADO_CHICO = 2 * (RADIO_INICIAL + PASO * (CUANTOS_CHICO - 1)) + 40;
+const ESCALA_CHICA = 0.55;
+const JUEGOS_CHICOS = juegos(ANILLOS.slice(0, CUANTOS_CHICO));
 
 export const AnillosHero: React.FC = () => {
   const caja = useRef<HTMLDivElement>(null);
   const [fuera, setFuera] = useState(false);
+  const chico = useConsulta('(width < 64rem)', false);
+  const lado = chico ? LADO_CHICO : LADO;
+  const desde = CENTRO - lado / 2;
 
   /* Fuera de la pantalla el giro se pausa. */
   useEffect(() => {
@@ -107,18 +127,18 @@ export const AnillosHero: React.FC = () => {
       ref={caja}
       aria-hidden="true"
       data-quieto={fuera ? '' : undefined}
-      className="rd-hero-anillos pointer-events-none absolute inset-0 hidden overflow-hidden lg:block"
+      className="rd-hero-anillos pointer-events-none absolute inset-0 overflow-hidden"
     >
-      {JUEGOS.map((j) => (
+      {(chico ? JUEGOS_CHICOS : JUEGOS).map((j) => (
         <svg
           key={j.giro}
           className={`${j.giro} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`}
-          width={LADO}
-          height={LADO}
-          viewBox={`0 0 ${LADO} ${LADO}`}
+          width={chico ? Math.round(lado * ESCALA_CHICA) : lado}
+          height={chico ? Math.round(lado * ESCALA_CHICA) : lado}
+          viewBox={`${desde} ${desde} ${lado} ${lado}`}
         >
           {j.anillos.map((d) => (
-            <path key={d.slice(0, 24)} d={d} className="fill-none stroke-rd-noche-anillo" strokeWidth={TRAZO} />
+            <path key={d.slice(0, 24)} d={d} className="fill-none stroke-rd-noche-anillo" strokeWidth={TRAZO} vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
       ))}

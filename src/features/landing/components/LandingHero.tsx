@@ -3,7 +3,9 @@ import { Hand, HeartHandshake } from 'lucide-react';
 import { BotonLanding, Parrafo, Titular } from './base';
 import { VentanaLiquida } from './VentanaLiquida';
 import { AnillosHero } from './AnillosHero';
+import { useConsulta } from '../useConsulta';
 import { useTranslation } from '../../../i18n/LanguageContext';
+
 
 /**
  * El hero, reducido a texto el 29 de septiembre de 2026 al cambiar el discurso.
@@ -32,6 +34,8 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
   const { t } = useTranslation();
   const hero = useRef<HTMLElement>(null);
   const texto = useRef<HTMLDivElement>(null);
+  /* El teléfono (debajo de 640) lleva la frase corta y los botones en `md` (ver EN EL TELÉFONO). */
+  const telefono = useConsulta('(width < 40rem)', false);
 
   return (
     /* La sección va a todo el ancho de la ventana por la gota: si se quedara en los 1440 del
@@ -43,8 +47,11 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
     <section ref={hero} id="hero" className="relative isolate">
       {/* El fondo del hero, lo primero de todo (ver LAS CAPAS DE LA PÁGINA en `index.css`): del
           ancho de las 12 columnas, desde el pie del header hasta la mitad del panel de la sección 2
-          (`rd-fondo-hero`), que sube encima de él; ahí se desvanece. Lleva su grano. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero">
+          (`rd-fondo-hero`), que sube encima de él; ahí se desvanece. Lleva su grano. En el teléfono
+          no va (Alejandro, 7 de octubre de 2026: «el subfondo principal desde la seccion 1 quitalo.
+          porque queda a los 4 columnas y tanto los textos como botones se ven montados»): en la
+          grilla de cuatro, su borde quedaba a 15 px del texto y de los botones. Desde 768 vuelve. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero max-md:hidden">
         <div className="mx-auto h-full w-full max-w-360 px-5 sm:px-8 lg:px-12">
           <div className="rd-fondo-hero rd-grano h-full rounded-rd-xl bg-rd-noche-lamina" />
         </div>
@@ -64,17 +71,33 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
 
             Debajo de 768 no hay grilla: con 12 columnas y huecos de 24 en un ancho de 320, los
             huecos se comen 264 y cada columna queda en menos de 5 px. Ahí el bloque va a todo lo
-            que hay. */}
+            que hay.
+
+            EN EL TELÉFONO (debajo de 640; Alejandro, 7 de octubre de 2026: «me preocupa el texto del
+            hero porque se ve muy feo. qué podemos hacer para que se vea mejor?»). Pasó por una
+            versión a la izquierda («sigue horrible») y por tres a elegir: la izquierda, la
+            centrada y una con el amarillo de rótulo. Eligió la centrada («diría que b. pero me
+            parece aún rarísimo») y dijo qué le sobraba: «el título es muy largo» y «el fondo se ve
+            vacío». Así que en el teléfono:
+            - El titular dice la frase corta (`landingHeroTitleMovil` y `landingHeroTitleSoftMovil`:
+              «Somos el punto de encuentro / de las ayudas.»), en tres renglones y no en cinco, a 36
+              y en un solo peso (600). Era de 28, en 700 y 400, y la frase entera partía en cinco.
+            - La bajada en 400: en 300, a 16 sobre negro, se leía débil.
+            - Los dos botones lado a lado en el tamaño `md` de la herramienta: apilados a todo lo
+              ancho eran dos barras de color que pesaban más que el titular.
+            - Los anillos del fondo, que antes eran solo de escritorio (ver `AnillosHero`).
+            Desde 640 todo sigue como estaba. */}
         <div className="md:grid md:grid-cols-12 md:gap-6">
           <div className="flex flex-col items-center text-center md:col-span-10 md:col-start-2">
             {/* El cierre baja a jerarquía 2. Va como hijo en línea y no por la propiedad `apagado`
                 de `Titular`, porque esa mete un `<br />` y forzaría el quiebre siempre: así el
                 `text-balance` sigue decidiendo dónde parte según el ancho. */}
-            <Titular como="h1" tamano="hero">
+            <Titular como="h1" tamano="hero" className="max-sm:text-rd-36 max-sm:font-semibold">
               {/* El primer renglón en negrita, a prueba (Alejandro, 7 de octubre de 2026: «en el
                   titulo principal prueba en la linea 1 un bold»): es lo primero que se lee de la
-                  página, y el segundo, en amarillo y en 400, lo completa. */}
-              <span className="font-bold">{t('landingHeroTitle')}</span>
+                  página, y el segundo, en amarillo y en 400, lo completa. En el teléfono todo va en
+                  600 (ver EN EL TELÉFONO). */}
+              <span className="font-bold max-sm:font-semibold">{t(telefono ? 'landingHeroTitleMovil' : 'landingHeroTitle')}</span>
             {/* «ayudas» cierra el primer renglón y el segundo va entero en el amarillo del logo
                 (Alejandro, 6 de octubre de 2026). El salto es fijo; la escala del titular está
                 medida para que el primer renglón quepa de una (ver `Titular`). El amarillo es
@@ -82,7 +105,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 el mismo amarillo en los dos modos (Alejandro, ese mismo día: «el amarillo de la
                 tipo del hero debe ser la misma que en dark»). Sobre la crema da 1,9:1. */}
             <br />
-            <span className="text-rd-amber-claro">{t('landingHeroTitleSoft')}</span>
+            <span className="text-rd-amber-claro">{t(telefono ? 'landingHeroTitleSoftMovil' : 'landingHeroTitleSoft')}</span>
             </Titular>
 
             {/* Titular y bajada separados por 24 exactos, sin salto por punto de quiebre: es el
@@ -95,7 +118,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 de 2026—, así que cabe en un renglón en cuanto la caja pasa de eso, y la caja de las
                 columnas 2 a 11 da 769 a 1024, 983 a 1280 y 1116 a 1440. Debajo de 1024 no cabe:
                 a 768 la caja mide 583 y haría falta bajar a 13,5 px, por debajo del cuerpo. */}
-            <Parrafo className="mt-6 font-light text-balance">{t('landingHeroSubtitle')}</Parrafo>
+            <Parrafo className="mt-6 font-light text-balance max-sm:mt-5 max-sm:font-normal">{t('landingHeroSubtitle')}</Parrafo>
 
             {/* Los dos accesos, del mismo ancho. `inline-grid` con dos columnas `1fr` se encoge al
                 contenido y reparte ese ancho en dos partes iguales, así que las dos toman la medida
@@ -109,13 +132,14 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
 
                 `relative z-20` los sube sobre la capa de la gota (`z-10`): tienen fondo propio y
                 la gota pasa por debajo de ellos sin cambiarlos (6 de octubre de 2026). */}
-            <div className="relative z-20 mt-6 grid w-full max-w-xs grid-cols-1 gap-6 sm:mt-10 sm:inline-grid sm:w-auto sm:max-w-none sm:grid-cols-2">
-              <BotonLanding nivel="pedir" ancho onClick={onOpenChat} icono={<Hand className="h-4.5 w-4.5" />}>
+            <div className="relative z-20 mt-6 grid w-full grid-cols-1 gap-6 max-sm:mt-8 max-sm:grid-cols-2 max-sm:gap-3 sm:mt-10 sm:inline-grid sm:w-auto sm:grid-cols-2">
+              <BotonLanding nivel="pedir" tamano={telefono ? 'md' : 'lg'} ancho onClick={onOpenChat} icono={<Hand className="h-4.5 w-4.5" />}>
                 {t('landingHeroCtaNeed')}
               </BotonLanding>
               <BotonLanding
                 nivel="primario"
                 como="enlace"
+                tamano={telefono ? 'md' : 'lg'}
                 ancho
                 href="/mapa-ayudas-necesidades?ofrecer=true"
                 icono={<HeartHandshake className="h-4.5 w-4.5" />}

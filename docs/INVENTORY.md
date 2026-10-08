@@ -194,12 +194,27 @@ fondo (`rd-noche-lamina`, blanco en claro, `.rd-fondo-hero`), del ancho de las 1
 baja hasta la mitad del panel de la sección 2 y se desvanece. La sección 5 va en un contenedor
 gris (`rd-noche-contenedor`) con sus bloques en la superficie. Cada capa con color lleva su grano
 (`rd-grano`). Los titulares de sección van todos a 40 desde 768 (`Titular`), los de dentro de
-cada sección a 28 y el hero a 48 con el primer renglón en negrita. Antes de crear una pieza de la
-landing, busca aquí:
+cada sección a 28 y el hero a 48 con el primer renglón en negrita.
+
+En el teléfono (por debajo de 1024) la landing no depende del cursor: lo que en escritorio
+responde al pasar la flecha solo responde al ratón (`pointerType`), y cada sección tiene su
+gesto. Las secciones 2, 4 y 5 son carruseles de deslizar (`useCarrusel`), con tarjetas de tres
+columnas y media de la grilla de cuatro (`tarjeta-rd-carrusel` en `index.css`) que salen hasta
+el borde. La segunda va sin pestañas ni borde, con su titular a la vista (desde 1024 solo para el
+lector de pantalla); en la tercera, cada lienzo avanza con el scroll de su paso y sus tarjetas
+van al 75 % y del lado contrario a su gota; en la cuarta, el carrusel de publicaciones (todas del
+alto de la más alta) mueve el haz al eco de la que se ve, y tocar un eco lleva el carrusel a su
+tarjeta; en la quinta no hay conmutador: cada papel es una tarjeta con sus pilares y su botón,
+la red apaisada de encima dibuja las líneas de la que se ve, y encima de las tarjetas van la
+pregunta y dos flechas. El hero va centrado, sin gota ni su fondo (este vuelve desde 768), con
+los anillos más juntos; debajo de 640 dice la frase corta (`landingHeroTitleMovil` y
+`landingHeroTitleSoftMovil`) a 36 en un solo peso, con los botones lado a lado en `md`. Antes de
+crear una pieza de la landing, busca aquí:
 
 - `components/base.tsx` — el juego de piezas de la landing sobre los tokens `rd-*` (otra escala
   que la de `components/ui`, mismos colores): `Seccion` (ancho, márgenes y aire de toda sección;
-  aparece al llegar con `rd-revela`), `Rotulo`, `Titular`, `Parrafo`, `BotonLanding` (con
+  aparece al llegar con `rd-revela`), `Rotulo`, `Titular` (con `id` para nombrar su sección),
+  `Parrafo`, `BotonLanding` (con
   `soloIcono`, `etiqueta`, `expandido` y `controla` para un botón de icono que abre algo),
   `claseBotonIcono` (la receta del botón de icono de 48: el de configuración, la X y las pestañas
   de la segunda sección), `claseConmutador` y `claseOpcion` (el `Segmented` de la herramienta en
@@ -209,7 +224,7 @@ landing, busca aquí:
   panel flotante con el idioma (los `LANGUAGES` de `LanguageSelector`) y el modo oscuro o claro.
   Lo usa `LandingHeader`.
 - `components/AnillosHero.tsx` — `AnillosHero`: los anillos concéntricos a pulso del fondo del
-  hero, que giran despacio. Solo desde 1024. Lo usa `LandingHero`.
+  hero, que giran despacio. Debajo de 1024, los seis de adentro al 55 %. Lo usa `LandingHero`.
 - `components/ManosCorazon.tsx` — `ManosCorazon`: dos manos que hacen un corazón en una sola línea
   que se dibuja al cargar (`.rd-trazo-continuo`). Hoy sin uso: estuvo un rato en el hero, con la
   distribución de Biograph, y el hero volvió a su versión centrada (7 de octubre de 2026).
@@ -221,22 +236,28 @@ landing, busca aquí:
   encima; la usaba `LandingSumarse` hasta «Tu punto en la red», hoy sin uso) y los tres pasos del
   «Cómo funciona» anterior, que envuelven las pantallas de `Maquetas`: `NecesidadEnTerritorio`,
   `RutaEntreCiudades`, `LineaDeEntrega` (hoy sin uso, como sus pantallas).
-- `components/RedSumarse.tsx` — `RedSumarse({ rol, destinos, resaltado, onResaltar, textos })`:
+- `components/RedSumarse.tsx` — `RedSumarse({ rol, destinos, resaltado, onResaltar, textos, apaisado })`:
   «Tu punto en la red», el lienzo de la sección 5. La red de quienes ya están en RaDAR, con
   nodos de la herramienta (organizaciones y comunidades de `mocks/directorioMock.ts`, sus líderes
   por nombre y los voluntarios de `EQUIPO` en `mocks/panelMock.ts`) repartidos por todo el lienzo
   vertical y unidos por una sola línea que pasa por todos (un recorrido corto sin cruces). Al elegir un
   papel, «tú» cae en el centro y salen tres líneas amarillas, una por pilar, a los nodos con los
   que trabajaría (`destinosDe(rol)`, por tipo y dirección), con su número y su nombre
-  (`.rd-red-*` en `index.css`). Lo usa `LandingSumarse`, que pone el conmutador de papeles, los
-  pilares contados para el papel y el botón que dice el papel.
-- `components/RadarEnVivo.tsx` — `RadarEnVivo({ publicaciones, etiqueta, rotulos, onAbrir })`:
+  (`.rd-red-*` en `index.css`). Con `apaisado` (el teléfono) muestra la franja del medio en 3:2,
+  sin nombres, con los destinos de esa franja (`destinosDe(rol, true)`). Lo usa `LandingSumarse`,
+  que pone el conmutador de papeles, los pilares contados para el papel y el botón; en el
+  teléfono, una tarjeta por papel en un carrusel.
+- `components/RadarEnVivo.tsx` — `RadarEnVivo({ publicaciones, etiqueta, rotulos, onAbrir, pista })`:
   «El radar en vivo», la sección 4. Las publicaciones son ecos de un radar dibujado en una sola
   línea (espiral, anillo de afuera y cruz); el haz gira, recortado por ese anillo dibujado, y los
   enciende. Al lado van como una baraja de la `Tarjeta` de la herramienta (de
   `components/ui`, en Inter con `.rd-herramienta`): tres hojas asoman detrás y, con cada eco
   nuevo, la del frente se levanta y pasa al fondo (`.rd-mazo-*` en `index.css`). Con el cursor o
   el foco encima, la baraja no se mueve. El eco del frente lleva un anillo amarillo en el radar.
+  Con el dedo la baraja también se arrastra de lado (eje y umbral de `HojaPin`,
+  `.rd-mazo-sale-lado`), con la `pista` debajo. Con una columna no hay baraja sino un carrusel
+  de las mismas tarjetas (`useCarrusel`). La línea del radar va en blanco entero (3,5:1 sobre el
+  azul).
   Lo usa `LandingSplitPortal`, que le pasa seis publicaciones de `mocks/publicacionesMock.ts`
   (las de la Radar) y abre cada una en `/radar-v2?punto=`.
 - `trazoAMano.ts` — el trazo a pulso sin filtros: `azar` (con semilla), `trazar`, `curva`, `ovalo`
@@ -268,7 +289,11 @@ landing, busca aquí:
 - `useEnVista.ts` — `useEnVista(margen)`: devuelve `{ ref, visible }` y avisa una sola vez cuando
   el elemento entra en pantalla. Lo usa `Seccion`.
 - `useConsulta.ts` — `useConsulta(consulta, sinVentana)`: una consulta de medios al día. Lo usan
-  `LandingAccesos` y `LandingComoFunciona`.
+  `LandingAccesos`, `LandingComoFunciona`, `RadarEnVivo` y `LandingSumarse`.
+- `useCarrusel.ts` — `useCarrusel(activo, alVer)`: los carruseles del teléfono. Devuelve
+  `{ carrusel, tarjeta, ir }`: avisa de la tarjeta que se ve (la que pasa del 60 % dentro de la
+  caja) y desliza la caja hasta una sin mover la página. Lo usan `LandingAccesos`,
+  `RadarEnVivo` y `LandingSumarse`.
 - `useRecorrido.ts` — el recorrido fijado de la segunda sección: `useRecorrido` (el panel se abre
   de 8 a 12 columnas al entrar, queda fijo mientras el scroll pasa por las tres vistas y se
   cierra de 12 a 8 al salir; escribe `--rd-lado`, `--rd-arriba` y `--rd-abajo` en el panel y

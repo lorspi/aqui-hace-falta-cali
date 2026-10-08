@@ -545,7 +545,10 @@ export const translations = {
     // Landing Page
     landingHeroTitle: 'Somos el punto de encuentro de las ayudas',
     landingHeroTitleSoft: 'en medio de las emergencias.',
+    landingHeroTitleMovil: 'Somos el punto de encuentro',
+    landingHeroTitleSoftMovil: 'de las ayudas.',
     landingHeroSubtitle: 'Organizaciones, comunidades y voluntarios permiten que las conexiones se hagan realidad',
+    landingAccesosTitulo: 'Todo lo que hace falta, en un solo sitio',
     landingHeroCtaNeed: 'Pedir ayuda',
     landingHeroCtaOffer: 'Ofrecer ayuda',
     landingAjustes: 'Configuración',
@@ -595,6 +598,7 @@ export const translations = {
     landingPortalOffersSubtitle: 'Ciudadanos y organizaciones listos para actuar',
     landingPortalViewAllNeeds: 'Ver en el mapa',
     landingPortalRadar: 'Radar en vivo: necesidades y ofertas recientes',
+    landingPortalDesliza: 'Desliza la tarjeta para ver la siguiente',
     landingPortalViewAllOffers: 'Ver todas las ofertas en el mapa',
 
     // Landing - Organizations
@@ -623,6 +627,8 @@ export const translations = {
     landingOrgsPillar3Foot: 'Datos abiertos y auditables',
     // Landing - La red de la sección 5 (cómo sumarse, 7 de octubre de 2026)
     landingRedGrupo: '¿Cómo quieres sumarte?',
+    landingRedAnterior: 'Ver el papel anterior',
+    landingRedSiguiente: 'Ver el papel siguiente',
     landingRedOrganizacion: 'Organización',
     landingRedLider: 'Líder comunitario',
     landingRedVoluntario: 'Voluntario',
@@ -1196,7 +1202,10 @@ export const translations = {
     // Landing Page
     landingHeroTitle: 'We are the meeting point for help',
     landingHeroTitleSoft: 'in the middle of an emergency.',
+    landingHeroTitleMovil: 'We are the meeting point',
+    landingHeroTitleSoftMovil: 'for help.',
     landingHeroSubtitle: 'Organizations, communities and volunteers make connections real',
+    landingAccesosTitulo: 'Everything you need, in one place',
     landingHeroCtaNeed: 'Request help',
     landingHeroCtaOffer: 'Offer help',
     landingAjustes: 'Settings',
@@ -1246,6 +1255,7 @@ export const translations = {
     landingPortalOffersSubtitle: 'Citizens and organizations ready to take action',
     landingPortalViewAllNeeds: 'View on the map',
     landingPortalRadar: 'Live radar: recent needs and offers',
+    landingPortalDesliza: 'Swipe the card to see the next one',
     landingPortalViewAllOffers: 'View all offers on the map',
 
     // Landing - Organizations
@@ -1273,6 +1283,8 @@ export const translations = {
     landingOrgsPillar3DescMobile: 'Delivery confirmation to free up resources with auditable transparency.',
     landingOrgsPillar3Foot: 'Open and auditable data',
     landingRedGrupo: 'How do you want to join?',
+    landingRedAnterior: 'See the previous role',
+    landingRedSiguiente: 'See the next role',
     landingRedOrganizacion: 'Organization',
     landingRedLider: 'Community leader',
     landingRedVoluntario: 'Volunteer',
@@ -1844,7 +1856,10 @@ export const translations = {
     // Landing Page
     landingHeroTitle: 'Somos o ponto de encontro das ajudas',
     landingHeroTitleSoft: 'em meio às emergências.',
+    landingHeroTitleMovil: 'Somos o ponto de encontro',
+    landingHeroTitleSoftMovil: 'das ajudas.',
     landingHeroSubtitle: 'Organizações, comunidades e voluntários fazem com que as conexões aconteçam',
+    landingAccesosTitulo: 'Tudo o que faz falta, em um só lugar',
     landingHeroCtaNeed: 'Pedir ajuda',
     landingHeroCtaOffer: 'Oferecer ajuda',
     landingAjustes: 'Configurações',
@@ -1894,6 +1909,7 @@ export const translations = {
     landingPortalOffersSubtitle: 'Cidadãos e organizações prontos para agir',
     landingPortalViewAllNeeds: 'Ver no mapa',
     landingPortalRadar: 'Radar ao vivo: necessidades e ofertas recentes',
+    landingPortalDesliza: 'Deslize o cartão para ver o próximo',
     landingPortalViewAllOffers: 'Ver todas as ofertas no mapa',
 
     // Landing - Organizations
@@ -1921,6 +1937,8 @@ export const translations = {
     landingOrgsPillar3DescMobile: 'Confirmação de entregas para liberar recursos com transparência auditável.',
     landingOrgsPillar3Foot: 'Dados abertos e auditáveis',
     landingRedGrupo: 'Como você quer participar?',
+    landingRedAnterior: 'Ver o papel anterior',
+    landingRedSiguiente: 'Ver o próximo papel',
     landingRedOrganizacion: 'Organização',
     landingRedLider: 'Líder comunitário',
     landingRedVoluntario: 'Voluntário',
@@ -2492,7 +2510,10 @@ export const translations = {
     // Landing Page
     landingHeroTitle: "Nous sommes le point de rencontre de l'aide",
     landingHeroTitleSoft: "au cœur de l'urgence.",
+    landingHeroTitleMovil: 'Nous sommes le point de rencontre',
+    landingHeroTitleSoftMovil: "de l'aide.",
     landingHeroSubtitle: 'Organisations, communautés et bénévoles font exister les connexions',
+    landingAccesosTitulo: 'Tout ce qu’il faut, au même endroit',
     landingHeroCtaNeed: "Demander de l'aide",
     landingHeroCtaOffer: "Offrir de l'aide",
     landingAjustes: 'Paramètres',
@@ -2542,6 +2563,7 @@ export const translations = {
     landingPortalOffersSubtitle: 'Citoyens et organisations prêts à agir',
     landingPortalViewAllNeeds: 'Voir sur la carte',
     landingPortalRadar: 'Radar en direct : besoins et offres récents',
+    landingPortalDesliza: 'Faites glisser la carte pour voir la suivante',
     landingPortalViewAllOffers: 'Voir toutes les offres sur la carte',
 
     // Landing - Organizations
@@ -2569,6 +2591,8 @@ export const translations = {
     landingOrgsPillar3DescMobile: 'Confirmation des livraisons pour libérer les ressources avec transparence vérifiable.',
     landingOrgsPillar3Foot: 'Données ouvertes et vérifiables',
     landingRedGrupo: 'Comment souhaitez-vous participer ?',
+    landingRedAnterior: 'Voir le rôle précédent',
+    landingRedSiguiente: 'Voir le rôle suivant',
     landingRedOrganizacion: 'Organisation',
     landingRedLider: 'Leader communautaire',
     landingRedVoluntario: 'Bénévole',

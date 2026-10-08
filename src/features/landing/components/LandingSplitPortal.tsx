@@ -52,6 +52,7 @@ export const LandingSplitPortal: React.FC = () => {
           etiqueta={t('landingPortalRadar')}
           rotulos={{ necesidad: t('landingPortalNeedsHeading'), oferta: t('landingPortalOffersHeading') }}
           onAbrir={abrir}
+          pista={t('landingPortalDesliza')}
         />
       </div>
 

@@ -24,12 +24,19 @@ import { azar, curva, espiral, ovalo, pasarPor, temblar, trazar, type Punto } fr
  *   dibujar.
  * - EL RESALTE. Pasar el cursor por un pilar de la lista, o por un nodo encendido, deja su línea
  *   al frente y apaga las otras (`resaltado`). Los nodos encendidos llevan `data-cursor-eco`: el
- *   cursor late sobre ellos, como sobre los ecos del radar.
+ *   cursor late sobre ellos, como sobre los ecos del radar. Solo el cursor (`pointerType`): con el
+ *   dedo el resalte se quedaba pegado hasta tocar otra cosa.
  *
  * Todo lo que se lee aquí está también en la lista de la sección (los pilares y a quién llega cada
  * línea), así que el lienzo es una imagen con nombre y sus rótulos van ocultos al lector. Los
  * nombres solo se ven desde 640: en un teléfono no caben al lado de los nodos, y la lista los dice.
  * Con movimiento reducido todo aparece sin dibujarse.
+ *
+ * EN EL TELÉFONO (por debajo de 1024, 7 de octubre de 2026) el lienzo va apaisado (`apaisado`): la
+ * franja del medio, 400 de alto alrededor de «tú», en 3:2, para que quepa encima de la tarjeta del
+ * papel y las dos se lean juntas (ver `LandingSumarse`). Los destinos se eligen entre los nodos de
+ * esa franja (`destinosDe(rol, true)`), y no lleva nombres: los dice la tarjeta. Las líneas del
+ * papel esperan a que la red esté a la vista, porque ahí hay papel desde el principio.
  */
 
 export type RolRed = 'organizacion' | 'lider' | 'voluntario';
@@ -180,13 +187,28 @@ const PAPELES: Record<RolRed, { clase: Clase; hacia: number }[]> = {
     { clase: 'organizacion', hacia: 150 },
   ],
 };
-export const destinosDe = (rol: RolRed): NodoRed[] => {
-  const usados = new Set<string>();
-  const lejos = (n: Nodo, hacia: number) => Math.abs(((((Math.atan2(n.y - CY, n.x - CX) * 180) / Math.PI - hacia) % 360) + 540) % 360 - 180);
+/* El recorte apaisado del teléfono (ver EN EL TELÉFONO): la franja del medio del lienzo, 400 de
+   alto alrededor de «tú». Los destinos se buscan solo entre los nodos que caen dentro, con 40 de
+   aire para su anillo. */
+const APAISADO = { y0: CY - 200, alto: 400 };
+const enElApaisado = (n: Nodo) => Math.abs(n.y - CY) <= APAISADO.alto / 2 - 40;
+
+/* En la franja apaisada no siempre hay un nodo del tipo hacia donde apunta el papel, y el más
+   cercano podía caer junto a otro destino: dos líneas salían casi encimadas, con sus números uno
+   sobre otro. Ahí cada línea abre al menos 40° de las demás. */
+const SEPARACION_APAISADO = 40;
+
+export const destinosDe = (rol: RolRed, apaisado = false): NodoRed[] => {
+  const usados: Nodo[] = [];
+  const angulo = (n: Nodo) => (Math.atan2(n.y - CY, n.x - CX) * 180) / Math.PI;
+  const entre = (a: number, b: number) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+  const candidatos = apaisado ? NODOS.filter(enElApaisado) : NODOS;
   return PAPELES[rol].flatMap(({ clase, hacia }) => {
-    const n = NODOS.filter((x) => x.clase === clase && !usados.has(x.id)).sort((a, b) => lejos(a, hacia) - lejos(b, hacia))[0];
+    const libres = candidatos.filter((x) => x.clase === clase && !usados.includes(x));
+    const abiertos = apaisado ? libres.filter((x) => usados.every((u) => entre(angulo(x), angulo(u)) >= SEPARACION_APAISADO)) : libres;
+    const n = (abiertos.length ? abiertos : libres).sort((a, b) => entre(angulo(a), hacia) - entre(angulo(b), hacia))[0];
     if (!n) return [];
-    usados.add(n.id);
+    usados.push(n);
     return [n];
   });
 };
@@ -225,9 +247,18 @@ export const RedSumarse: React.FC<{
   resaltado: number | null;
   onResaltar: (pilar: number | null) => void;
   textos: { etiqueta: string; tu: string; tuLugar: string };
-}> = ({ rol, destinos, resaltado, onResaltar, textos }) => {
+  /** El recorte apaisado del teléfono, sin los nombres: los dice la tarjeta del papel. */
+  apaisado?: boolean;
+}> = ({ rol: elegido, destinos, resaltado, onResaltar, textos, apaisado = false }) => {
   const caja = useRef<HTMLDivElement>(null);
   const [dibujado, setDibujado] = useState(false);
+  /* El papel se dibuja cuando la red ya está a la vista: en el teléfono hay papel desde el
+     principio (la primera tarjeta), y sus líneas se habrían dibujado fuera de la pantalla. */
+  const rol = dibujado ? elegido : null;
+  /* Dónde cae un punto del lienzo, en fracciones de la caja (las capas de HTML encima). */
+  const y0 = apaisado ? APAISADO.y0 : 0;
+  const alto = apaisado ? APAISADO.alto : ALTO;
+  const en = (p: Punto) => ({ left: `${(p.x / ANCHO) * 100}%`, top: `${((p.y - y0) / alto) * 100}%` });
 
   useEffect(() => {
     const el = caja.current;
@@ -263,8 +294,13 @@ export const RedSumarse: React.FC<{
   const llega = (i: number) => `${ESPERA + i * PAUSA + LLEGADA}s`;
 
   return (
-    <div ref={caja} role="img" aria-label={textos.etiqueta} className="relative mx-auto aspect-30/43 w-full max-w-140">
-      <svg aria-hidden="true" viewBox={`0 0 ${ANCHO} ${ALTO}`} className="absolute inset-0 h-full w-full overflow-visible">
+    <div
+      ref={caja}
+      role="img"
+      aria-label={textos.etiqueta}
+      className={`relative mx-auto w-full ${apaisado ? 'aspect-3/2 overflow-hidden' : 'aspect-30/43 max-w-140'}`}
+    >
+      <svg aria-hidden="true" viewBox={`0 ${y0} ${ANCHO} ${alto}`} className="absolute inset-0 h-full w-full overflow-visible">
         {/* La red que ya existe, una sola línea que se dibuja al llegar. */}
         <path
           d={RED}
@@ -301,7 +337,17 @@ export const RedSumarse: React.FC<{
             <g
               key={n.id}
               transform={`translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})`}
-              {...(destino ? { 'data-cursor-eco': '', onMouseEnter: () => onResaltar(k), onMouseLeave: () => onResaltar(null) } : {})}
+              {...(destino
+                ? {
+                    'data-cursor-eco': '',
+                    onPointerEnter: (ev: React.PointerEvent) => {
+                      if (ev.pointerType === 'mouse') onResaltar(k);
+                    },
+                    onPointerLeave: (ev: React.PointerEvent) => {
+                      if (ev.pointerType === 'mouse') onResaltar(null);
+                    },
+                  }
+                : {})}
             >
               {destino && <circle r={24} fill="transparent" />}
               <path
@@ -348,18 +394,20 @@ export const RedSumarse: React.FC<{
             <span
               aria-hidden="true"
               className="rd-red-etiqueta font-rd pointer-events-none absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-rd-ayuda text-rd-12 font-semibold text-rd-noche tabular-nums transition-opacity duration-200"
-              style={{ left: `${(l.medio.x / ANCHO) * 100}%`, top: `${(l.medio.y / ALTO) * 100}%`, animationDelay: `${ESPERA + i * PAUSA + 0.35}s`, opacity: encendido(i) ? undefined : 0.3 }}
+              style={{ ...en(l.medio), animationDelay: `${ESPERA + i * PAUSA + 0.35}s`, opacity: encendido(i) ? undefined : 0.3 }}
             >
               {i + 1}
             </span>
-            <span
-              aria-hidden="true"
-              className="rd-red-etiqueta font-rd pointer-events-none absolute hidden max-w-52 rounded-rd-md border border-rd-noche-linea bg-rd-noche-2 px-2.5 py-1.5 transition-opacity duration-200 sm:block"
-              style={{ ...rotuloEn(l.nodo), animationDelay: llega(i), opacity: encendido(i) ? undefined : 0.3 }}
-            >
-              <span className="block truncate text-rd-12-5 font-semibold text-rd-noche-tinta">{l.nodo.nombre}</span>
-              <span className="block truncate text-rd-11-5 text-rd-noche-meta">{l.nodo.detalle}</span>
-            </span>
+            {!apaisado && (
+              <span
+                aria-hidden="true"
+                className="rd-red-etiqueta font-rd pointer-events-none absolute hidden max-w-52 rounded-rd-md border border-rd-noche-linea bg-rd-noche-2 px-2.5 py-1.5 transition-opacity duration-200 sm:block"
+                style={{ ...rotuloEn(l.nodo), animationDelay: llega(i), opacity: encendido(i) ? undefined : 0.3 }}
+              >
+                <span className="block truncate text-rd-12-5 font-semibold text-rd-noche-tinta">{l.nodo.nombre}</span>
+                <span className="block truncate text-rd-11-5 text-rd-noche-meta">{l.nodo.detalle}</span>
+              </span>
+            )}
           </React.Fragment>
         ))}
     </div>

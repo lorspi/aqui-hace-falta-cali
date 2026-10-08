@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { House, MapPin, Users, X } from 'lucide-react';
 import { VisualAcceso, type VistaAcceso } from './VisualesAccesos';
-import { BotonLanding, claseBotonIcono } from './base';
+import { BotonLanding, claseBotonIcono, Titular } from './base';
+import { useTranslation } from '../../../i18n/LanguageContext';
 import { PASO_POR_VISTA, useRecorrido } from '../useRecorrido';
 import { useConsulta } from '../useConsulta';
+import { useCarrusel } from '../useCarrusel';
 
 /**
  * Las tres puertas del producto, rehechas el 6 de octubre de 2026 con el contenedor de la segunda
@@ -191,6 +193,7 @@ const CONSULTA_COLUMNA = '(min-width: 1024px)';
 const CONSULTA_REDUCIDO = '(prefers-reduced-motion: reduce)';
 
 export const LandingAccesos: React.FC = () => {
+  const { t } = useTranslation();
   const [activa, setActiva] = useState(0);
   const [quieto, setQuieto] = useState(false);
   const columna = useConsulta(CONSULTA_COLUMNA, true);
@@ -202,6 +205,19 @@ export const LandingAccesos: React.FC = () => {
   const deriva = useRef<SVGFEOffsetElement>(null);
 
   const { fijado, irA, cerrar } = useRecorrido({ seccion, fijo, panel, vistas: VISTAS.length, activa, alCambiar: setActiva });
+
+  /* EN EL TELÉFONO (7 de octubre de 2026; Alejandro: «mejora toda la lógica de mobile... muchas de
+     las animaciones y comportamientos con componentes solo sirven en la logica desktop»). Por
+     debajo de 1024 no hay recorrido, y las tres vistas iban apiladas en la misma celda detrás de
+     tres iconos sin nombre: había que adivinar que se tocaban. Ahí son un carrusel que se desliza
+     con el dedo (`useCarrusel`), con la siguiente tarjeta asomando para decir que hay más.
+     Esa misma tarde, sobre la primera versión, que llevaba encima las pestañas y alrededor el
+     borde líquido del panel: «el stroke de la seccion 2 quitalo y amplia a 3 y 1/2 el ancho de
+     las cards. quita los tabs y dejalo carrusel». Así que en el teléfono no hay borde ni
+     pestañas: cada tarjeta mide tres columnas y media (`tarjeta-rd-carrusel`), el carrusel sale
+     hasta el borde de la pantalla y la tarjeta se detiene en la primera columna. Cada tarjeta ya
+     dice su nombre arriba. Desde 1024 todo sigue como estaba. */
+  const { carrusel, tarjeta, ir: llevar } = useCarrusel(!columna, setActiva);
 
   /* Si el scroll cambia de vista con el foco en el enlace de la que se va, ese enlace pasa a
      `invisible`, el navegador manda el foco a `body` y se pierden el anillo y el sitio del lector
@@ -244,13 +260,15 @@ export const LandingAccesos: React.FC = () => {
   }, [quieto, reducido]);
 
   /* Clic, toque o tecla en una pestaña. En el recorrido además lleva el scroll al tramo de esa
-     vista, para que pestañas y scroll digan siempre lo mismo; sin recorrido solo cambia. */
+     vista, para que pestañas y scroll digan siempre lo mismo; sin columna (una ventana que se
+     estrecha con una pestaña elegida) desliza el carrusel hasta su tarjeta. */
   const cambiar = useCallback(
     (i: number) => {
       setActiva(i);
       irA(i);
+      if (!columna) llevar(i, reducido);
     },
-    [irA],
+    [irA, columna, reducido, llevar],
   );
 
   /* El teclado de `Pestanas.tsx` (flechas, Inicio y Fin, con el foco detrás), con las flechas de
@@ -304,11 +322,15 @@ export const LandingAccesos: React.FC = () => {
       className={`pointer-events-none relative z-10 ${fijado ? 'rd-accesos-recorrido' : 'lg:-mt-22'}`}
       style={fijado ? ({ ['--rd-recorrido' as string]: `${VISTAS.length * PASO_POR_VISTA * 100}svh` } as React.CSSProperties) : undefined}
     >
-      {/* El titular de la sección se queda para quien navega por encabezados; en pantalla el
-          panel habla por sí solo, como en la referencia, que no lleva titular encima. */}
-      <h2 id="accesos-titulo" className="sr-only">
-        Todo lo que hace falta, en un solo sitio
-      </h2>
+      {/* El titular de la sección. Desde 1024 se queda para quien navega por encabezados; en
+          pantalla el panel habla por sí solo, como en la referencia, que no lleva titular encima.
+          En el teléfono se ve (Alejandro, 7 de octubre de 2026: «la sección 2 no tiene titulo?»):
+          ahí no hay panel montado sobre el hero ni pestañas, y el carrusel llegaba sin nombre
+          debajo de los botones. Va a la izquierda, colgado del mismo borde que las tarjetas, y
+          con el margen de la página. */}
+      <Titular id="accesos-titulo" className="mx-auto max-w-360 px-5 sm:px-8 lg:sr-only">
+        {t('landingAccesosTitulo')}
+      </Titular>
 
       {/* El filtro del borde líquido (ver `LIQUIDO`), que usan el trazo del panel y la línea de
           avance. Sin tamaño pero sin `display: none`, que en algunos navegadores apaga el filtro. */}
@@ -360,13 +382,13 @@ export const LandingAccesos: React.FC = () => {
               que fuera del panel estrecho el cursor vuelve a tener sus anillos. */}
           <div
             ref={panel}
-            className={`rd-accesos pointer-events-auto relative flex flex-col items-center ${
-              fijado ? 'h-full justify-center' : 'px-3 py-8 sm:px-6 sm:py-12 lg:px-0 lg:py-16'
-            }`}
+            className={`rd-accesos pointer-events-auto relative flex flex-col items-center ${fijado ? 'h-full justify-center' : 'py-8 sm:py-12 lg:py-16'}`}
           >
             {/* El borde del panel: un trazo blanco líquido, sin relleno (6 de octubre de 2026). Va
-                sobre el recorte y viaja con él (`rd-accesos-borde`). */}
-            <div aria-hidden="true" className="rd-accesos-borde rd-liquido pointer-events-none absolute" />
+                sobre el recorte y viaja con él (`rd-accesos-borde`). En el teléfono no va (ver EN
+                EL TELÉFONO), y el panel tampoco lleva relleno a los lados: el carrusel ocupa las
+                cuatro columnas. */}
+            <div aria-hidden="true" className="rd-accesos-borde rd-liquido pointer-events-none absolute max-lg:hidden" />
 
             {/* La X, arriba a la derecha como en la referencia. Viaja con el borde recortado del
                 panel (`rd-accesos-x`) y solo se ve con el panel abierto, como en la referencia;
@@ -406,16 +428,13 @@ export const LandingAccesos: React.FC = () => {
                   con el foco del teclado se ve siempre, como la X (H14). `z-10` para que el
                   nombre de la pestaña, que se asoma sobre la tarjeta, no quede debajo de ella.
 
-                  Por debajo de 1024 la columna no cabe: a 768 al panel le sobran 24 a cada lado
-                  de la tarjeta y a 390, 12. Ahí va como fila encima de la tarjeta, siempre a la
-                  vista (sin recorrido no hay apertura que esperar), con botones de 48, por encima
-                  del mínimo táctil de 44 (`rd-tactil`). 16 entre una y otra, el mismo aire que se
-                  veía entre las baldosas de 56 con su marco. */}
+                  Por debajo de 1024 la columna no cabe. Fue un rato una fila encima de la tarjeta,
+                  y salió: ahí la sección es solo el carrusel (ver EN EL TELÉFONO). */}
               <div
                 role="tablist"
                 aria-label="Las tres pantallas de RaDAR"
                 aria-orientation={columna ? 'vertical' : 'horizontal'}
-                className="rd-accesos-pestanas mx-auto mb-4 flex w-fit gap-4 lg:absolute lg:top-1/2 lg:right-full lg:z-10 lg:mr-6 lg:mb-0 lg:-translate-y-1/2 lg:flex-col"
+                className="rd-accesos-pestanas mx-auto mb-4 flex w-fit gap-4 max-lg:hidden lg:absolute lg:top-1/2 lg:right-full lg:z-10 lg:mr-6 lg:mb-0 lg:-translate-y-1/2 lg:flex-col"
               >
                 {VISTAS.map((v, i) => {
                   const sel = i === activa;
@@ -479,18 +498,30 @@ export const LandingAccesos: React.FC = () => {
                   Alejandro, 6 de octubre de 2026: «el border radius de la card con el contenido
                   de la sección 2 también debe verse coherente con el radius del contenedor
                   grande»). Era 34. */}
-              <div className="@container relative grid w-full rounded-rd-xl bg-rd-noche-2">
+              {/* En el teléfono (por debajo de 1024) la caja es el carrusel: cada vista es su propia
+                  tarjeta de tres columnas y media, que se detiene en la primera columna, y la caja
+                  se desliza sin barra hasta el borde de la pantalla (sale del margen de la página
+                  con `-mx` y lo devuelve como relleno). Sin pestañas, cada vista es un grupo con
+                  su nombre y no un panel de pestañas. Cada vista es además su propio
+                  `@container`, así su interior se acomoda a su ancho en los dos casos. Ver EN EL
+                  TELÉFONO, arriba. */}
+              <div
+                ref={carrusel}
+                className="@container relative w-full max-lg:zona-rd-scroll max-lg:-mx-5 max-lg:flex max-lg:w-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-5 max-lg:gap-4 max-lg:overflow-x-auto max-lg:px-5 sm:max-lg:-mx-8 sm:max-lg:scroll-px-8 sm:max-lg:px-8 lg:grid lg:rounded-rd-xl lg:bg-rd-noche-2"
+              >
                 {VISTAS.map((v, i) => {
                   const sel = i === activa;
                   return (
                     <div
                       key={v.id}
+                      ref={tarjeta(i)}
                       id={`acceso-panel-${v.id}`}
-                      role="tabpanel"
-                      aria-labelledby={`acceso-pestana-${v.id}`}
+                      role={columna ? 'tabpanel' : 'group'}
+                      aria-labelledby={columna ? `acceso-pestana-${v.id}` : undefined}
+                      aria-label={columna ? undefined : v.nombre}
                       data-activa={sel ? 'si' : 'no'}
-                      className={`col-start-1 row-start-1 flex flex-col gap-6 p-5 sm:p-8 @xl:flex-row @xl:items-center @2xl:p-10 @3xl:gap-10 @3xl:p-12 ${
-                        sel ? 'rd-acc-entra' : 'invisible'
+                      className={`@container col-start-1 row-start-1 flex flex-col gap-6 p-5 max-lg:tarjeta-rd-carrusel max-lg:snap-start max-lg:rounded-rd-xl max-lg:bg-rd-noche-2 sm:p-8 @xl:flex-row @xl:items-center @2xl:p-10 @3xl:gap-10 @3xl:p-12 ${
+                        sel ? (columna ? 'rd-acc-entra' : '') : 'lg:invisible'
                       }`}
                     >
                       <div className="flex min-w-0 flex-col @xl:w-2/5 @xl:shrink-0 @3xl:w-76">

@@ -224,13 +224,16 @@ export const LienzoEncuentro: React.FC<{ progreso: number }> = ({ progreso: e })
 
       {/* Las tarjetas, islas de la herramienta. */}
       {/* Por fracciones del lienzo y no en píxeles: el lienzo mide de 350 a 630. */}
-      <div className="absolute bottom-3/50 left-1/20" style={tarjeta(tramo(e, 0.3, 0.6), tramo(e, 1.6, 1.85))}>
+      {/* En un lienzo de teléfono (menos de 448 de ancho) las tarjetas, que no se encogen con él,
+          tapaban las gotas: ahí van al 75 % y cada una al lado contrario de su gota (7 de octubre
+          de 2026, la lógica del teléfono). */}
+      <div className="absolute bottom-3/50 left-1/20 @max-md:right-1/20 @max-md:left-auto @max-md:origin-bottom-right @max-md:scale-75" style={tarjeta(tramo(e, 0.3, 0.6), tramo(e, 1.6, 1.85))}>
         <Tarjeta tono="necesidad" {...TARJETAS.necesidad} />
       </div>
-      <div className="absolute top-3/50 right-1/20" style={tarjeta(tramo(e, 1.25, 1.5), tramo(e, 1.6, 1.85))}>
+      <div className="absolute top-3/50 right-1/20 @max-md:right-auto @max-md:left-1/20 @max-md:origin-top-left @max-md:scale-75" style={tarjeta(tramo(e, 1.25, 1.5), tramo(e, 1.6, 1.85))}>
         <Tarjeta tono="oferta" {...TARJETAS.oferta} />
       </div>
-      <div className="absolute bottom-2/25 left-1/2 -translate-x-1/2" style={tarjeta(tramo(e, 2.45, 2.75))}>
+      <div className="absolute bottom-2/25 left-1/2 -translate-x-1/2 @max-md:right-1/20 @max-md:left-auto @max-md:translate-x-0 @max-md:origin-bottom-right @max-md:scale-75" style={tarjeta(tramo(e, 2.45, 2.75))}>
         <Tarjeta tono="entrega" rotulo="" {...TARJETAS.entrega} />
       </div>
     </div>

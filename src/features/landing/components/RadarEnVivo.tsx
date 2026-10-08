@@ -3,6 +3,7 @@ import { Tarjeta } from '../../../components/ui/Tarjeta';
 import type { Publicacion, TipoPublicacion } from '../../../types/publicacion';
 import { azar, espiral, ovalo, pasarPor, temblar, trazar } from '../trazoAMano';
 import { useConsulta } from '../useConsulta';
+import { useCarrusel } from '../useCarrusel';
 
 /**
  * «El radar en vivo», la sección 4 (Alejandro, 7 de octubre de 2026: sobre una primera versión
@@ -53,6 +54,39 @@ import { useConsulta } from '../useConsulta';
  * - Solo la baraja: debajo hubo un rato un registro con las tres anteriores, y Alejandro lo quitó
  *   (7 de octubre de 2026: «quitalo. deja solo las cards»).
  *
+ * CON EL DEDO (7 de octubre de 2026, la lógica del teléfono: Alejandro, «muchas de las
+ * animaciones y comportamientos con componentes solo sirven en la logica desktop»). Hasta ese día
+ * todo colgaba del cursor: el dedo que tocaba un eco dejaba el haz clavado ahí hasta tocar otra
+ * cosa, y en el teléfono la tarjeta mide casi una pantalla, así que el radar y la baraja no se
+ * ven juntos y la tarjeta cambiaba mientras se leía.
+ * - El cursor y el dedo van por separado (`pointerType`). El cursor hace lo de siempre; el dedo que
+ *   toca un eco trae su tarjeta y el haz se queda en él un rato (`TOQUE_MS`), luego sigue girando.
+ *   El foco del teclado elige el eco solo cuando es del teclado (`:focus-visible`): el del toque
+ *   no cuenta.
+ * - La baraja se arrastra con el dedo: la del frente va de lado y, pasado el umbral, se va al
+ *   fondo por ese lado y trae la siguiente, y el haz va a su eco. El eje y el umbral son los del
+ *   carrusel de la hoja del pin de la herramienta (`HojaPin`: 8 y 48 px, `touch-pan-y`). Debajo,
+ *   una pista lo dice a quien usa el dedo (`pointer-coarse`). Con el dedo, la baraja sigue al haz
+ *   como con el cursor; tocarla la deja quieta un rato (`SOSTEN_MS`).
+ *
+ * EL CARRUSEL. Con una sola columna (menos de 1024) no hay baraja: es un carrusel de las mismas
+ * tarjetas, como el de la sección 2 (`useCarrusel`, tres columnas y media por tarjeta). La baraja
+ * se probó esa tarde en el teléfono —arrastrada a mano, cada tarjeta con su alto— y Alejandro: «las
+ * cards compiladas tampoco funcionan bien. carrusel mejor».
+ * - La tarjeta que se ve es la del frente: el haz va a su eco un rato (`TOQUE_MS`) y su eco lleva el
+ *   anillo amarillo. Tocar un eco desliza el carrusel hasta su tarjeta. El haz no la cambia solo:
+ *   la tarjeta mide casi una pantalla, y cambiaría mientras se lee.
+ * - Todas del alto de la más alta, con las acciones abajo. Un rato cada una tuvo su alto, para no
+ *   dejar blanco dentro de las cortas, y Alejandro: «dejalas de la misma altura, como la 1ra. asi
+ *   queden espacios en blanco pero ese salto de tamaños afecta dado que el botón queda flotando
+ *   debajo» (el «Ver en el mapa» de la sección quedaba lejos de las cortas).
+ *
+ * EL CONTRASTE. La línea del radar va en la tinta de encima del azul, blanco entero (Alejandro, 7
+ * de octubre de 2026: «en la sección del radar las lineas no hacen buen contraste»). Era la línea de
+ * la página (`rd-noche-linea`), blanco al 26 %: 1,45:1 sobre el azul claro de la malla (#6A86DA);
+ * en blanco, 3,5:1, por encima del 3:1 de un gráfico. En el teléfono va además más gruesa
+ * (`max-sm:stroke-3`): el dibujo se encoge con el radar, y a 350 px la línea de 1,5 quedaba en 0,9.
+ *
  * Todo el dibujo es a pulso (`trazoAMano`). Los ecos se reparten en la vuelta por orden, con un
  * poco de azar en el ángulo y en la distancia sacado de su `id`, así cada eco cae siempre en el
  * mismo sitio.
@@ -73,6 +107,13 @@ const DESTELLO = 50;
 /* Las hojas que asoman detrás de la tarjeta del frente. */
 const HOJAS = [1, 2, 3];
 const CONSULTA_REDUCIDO = '(prefers-reduced-motion: reduce)';
+const CONSULTA_COLUMNAS = '(min-width: 1024px)';
+/* Con el dedo (ver CON EL DEDO): lo que el haz se queda en el eco tocado y lo que se queda la del
+   frente al tocar la baraja; y el eje y el umbral del arrastre, los de `HojaPin`. */
+const TOQUE_MS = 2500;
+const SOSTEN_MS = 8000;
+const UMBRAL_EJE = 8;
+const UMBRAL_CAMBIO = 48;
 
 const al = azar(83);
 /* El radar, en una sola línea (Alejandro, 7 de octubre de 2026: «lo mismo con el mapa del radar
@@ -144,9 +185,17 @@ export const RadarEnVivo: React.FC<{
   rotulos: Record<TipoPublicacion, string>;
   /** Lo que hacen las acciones de una tarjeta: abrir esa publicación en la herramienta. */
   onAbrir: (id: string) => void;
-}> = ({ publicaciones, etiqueta, rotulos, onAbrir }) => {
+  /** La pista de debajo de la baraja, para quien usa el dedo: que se pasa arrastrándola. */
+  pista: string;
+}> = ({ publicaciones, etiqueta, rotulos, onAbrir, pista }) => {
   const puestos = useMemo(() => colocar(publicaciones), [publicaciones]);
   const reducido = useConsulta(CONSULTA_REDUCIDO, false);
+  /* Con dos columnas la baraja sigue al haz; con una se pasa a mano. También para el cuadro. */
+  const columnas = useConsulta(CONSULTA_COLUMNAS, true);
+  const sigue = useRef(columnas);
+  useEffect(() => {
+    sigue.current = columnas;
+  }, [columnas]);
   const caja = useRef<HTMLDivElement>(null);
   /* El recorte del haz: un id por radar, que `useId` trae con dos puntos y `url()` los acepta. */
   const borde = `radar-borde-${useId().replace(/:/g, '')}`;
@@ -158,7 +207,7 @@ export const RadarEnVivo: React.FC<{
   const [indice, setIndice] = useState(0);
   const [foco, setFoco] = useState<number | null>(null);
   /* Las tarjetas que van saliendo del frente hacia el fondo, cada una con su vuelta. */
-  const [saliendo, setSaliendo] = useState<{ i: number; n: number }[]>([]);
+  const [saliendo, setSaliendo] = useState<{ i: number; n: number; dx: number | null }[]>([]);
 
   /* El eco elegido, también para el cuadro de animación, que no pasa por React. */
   const focoVivo = useRef<number | null>(null);
@@ -172,17 +221,21 @@ export const RadarEnVivo: React.FC<{
   const leer = (i: number) => setIndice(i);
 
   /* Cuando cambia la del frente, la que estaba se va al fondo. Antes de pintar, para que no haya
-     un cuadro sin ella. */
+     un cuadro sin ella. Si la mandó el dedo, sale desde donde la soltó (`lanzada`). */
   const frente = useRef<number | null>(null);
   const vueltas = useRef(0);
+  const lanzada = useRef<number | null>(null);
   useLayoutEffect(() => {
     const antes = frente.current;
     frente.current = actual;
-    if (antes === null || antes === actual || reducido) return;
+    const dx = lanzada.current;
+    lanzada.current = null;
+    /* Sin baraja (el carrusel del teléfono) no hay nada que mandar al fondo. */
+    if (antes === null || antes === actual || reducido || !columnas) return;
     vueltas.current += 1;
     const n = vueltas.current;
-    setSaliendo((s) => [...s, { i: antes, n }]);
-  }, [actual, reducido]);
+    setSaliendo((s) => [...s, { i: antes, n, dx }]);
+  }, [actual, reducido, columnas]);
 
   /* La entrada y el haz: se dibuja al llegar y gira mientras se ve. */
   useEffect(() => {
@@ -222,8 +275,9 @@ export const RadarEnVivo: React.FC<{
           o.style.opacity = ((1 - d) * 0.9).toFixed(3);
           o.style.transform = `scale(${(1 + d * 1.6).toFixed(3)})`;
         }
-        /* El haz acaba de pasar por este eco: pasa al frente, si la anterior ya se leyó. */
-        if (f === null && antes[i] > 180 && pasado < 180 && ahora - cambio > PERMANENCIA_MS) {
+        /* El haz acaba de pasar por este eco: pasa al frente, si la anterior ya se leyó. Con una
+           columna no: la baraja se pasa a mano. */
+        if (sigue.current && f === null && antes[i] > 180 && pasado < 180 && ahora - cambio > PERMANENCIA_MS) {
           cambio = ahora;
           leer(i);
         }
@@ -262,13 +316,89 @@ export const RadarEnVivo: React.FC<{
     nucleos.current.forEach((n) => n && (n.style.opacity = '0.85'));
   }, [reducido, elegido]);
 
-  const elegir = (i: number) => {
+  /* El haz se queda en un eco mientras el cursor o el foco están ahí; con el dedo, un rato
+     (`ms`) y luego sigue. */
+  const suelta = useRef(0);
+  useEffect(() => () => window.clearTimeout(suelta.current), []);
+  const fijar = (i: number, ms: number) => {
+    window.clearTimeout(suelta.current);
     setFoco(i);
+    if (ms) suelta.current = window.setTimeout(() => setFoco(null), ms);
+  };
+  const elegir = (i: number, ms = 0) => {
+    fijar(i, ms);
     leer(i);
   };
-  const soltar = () => setFoco(null);
-  /* La del frente se queda mientras el cursor o el foco están en la baraja. */
-  const quedarse = () => setFoco(actual);
+  const soltar = () => {
+    window.clearTimeout(suelta.current);
+    setFoco(null);
+  };
+  /* La del frente se queda mientras el cursor o el foco están en la baraja, o un rato al tocarla. */
+  const quedarse = (ms = 0) => fijar(actual, ms);
+  /* Con qué se tocó el último eco: el clic del cursor y el toque del dedo hacen cosas distintas. */
+  const puntero = useRef('mouse');
+
+  /* El carrusel del teléfono (ver EL CARRUSEL): la tarjeta que se ve pasa a ser la del frente y el
+     haz va a su eco un rato. */
+  const { carrusel, tarjeta, ir: llevar } = useCarrusel(!columnas, (i) => {
+    if (i !== frente.current) elegir(i, TOQUE_MS);
+  });
+
+  /* El arrastre de la del frente con el dedo (ver CON EL DEDO). Mueve la tarjeta con `translate` y
+     `rotate`, que no pisan el `transform` de su animación de entrada. */
+  const cartas = useRef<(HTMLDivElement | null)[]>([]);
+  const arrastre = useRef<{ id: number; x: number; y: number; dx: number; lateral: boolean } | null>(null);
+  const arrastro = useRef(false);
+  const mover = (c: HTMLDivElement | null | undefined, dx: number) => {
+    if (!c) return;
+    c.style.translate = dx ? `${dx}px 0` : '';
+    c.style.rotate = dx ? `${(dx * 0.04).toFixed(2)}deg` : '';
+  };
+  const empezar = (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (ev.pointerType === 'mouse' || puestos.length < 2) return;
+    arrastre.current = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, dx: 0, lateral: false };
+    arrastro.current = false;
+    if (columnas) quedarse(SOSTEN_MS);
+  };
+  const arrastrar = (ev: React.PointerEvent<HTMLDivElement>) => {
+    const a = arrastre.current;
+    if (!a || a.id !== ev.pointerId) return;
+    const dx = ev.clientX - a.x;
+    const dy = ev.clientY - a.y;
+    if (!a.lateral) {
+      if (Math.abs(dx) < UMBRAL_EJE && Math.abs(dy) < UMBRAL_EJE) return;
+      /* Hacia arriba o abajo es la página que se mueve: el gesto ya no es de la baraja. */
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        arrastre.current = null;
+        return;
+      }
+      a.lateral = true;
+      arrastro.current = true;
+      ev.currentTarget.setPointerCapture(ev.pointerId);
+      const c = cartas.current[actual];
+      if (c) c.style.transition = 'none';
+    }
+    a.dx = dx;
+    mover(cartas.current[actual], dx);
+  };
+  const terminar = (ev: React.PointerEvent<HTMLDivElement>) => {
+    const a = arrastre.current;
+    if (!a || a.id !== ev.pointerId) return;
+    arrastre.current = null;
+    if (!a.lateral) return;
+    const c = cartas.current[actual];
+    if (ev.type !== 'pointercancel' && Math.abs(a.dx) >= UMBRAL_CAMBIO) {
+      /* Se va: la que sale es otra capa que arranca donde quedó esta, que ya vuelve a su sitio sin
+         verse. */
+      mover(c, 0);
+      lanzada.current = a.dx;
+      elegir((actual + 1) % puestos.length, TOQUE_MS);
+      return;
+    }
+    /* No llegó: vuelve a su sitio. */
+    if (c) c.style.transition = '';
+    mover(c, 0);
+  };
 
   return (
     <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-6">
@@ -289,7 +419,7 @@ export const RadarEnVivo: React.FC<{
               strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="rd-radar-trazo fill-none stroke-rd-noche-linea"
+              className="rd-radar-trazo fill-none stroke-rd-noche-tinta max-sm:stroke-3"
               style={{ transitionDuration: '2.8s' }}
             />
             <g transform={`translate(${C} ${C})`}>
@@ -321,11 +451,23 @@ export const RadarEnVivo: React.FC<{
                 aria-pressed={i === actual}
                 data-cursor-eco=""
                 className="cursor-pointer outline-none"
-                onMouseEnter={() => elegir(i)}
-                onMouseLeave={soltar}
-                onFocus={() => elegir(i)}
+                onPointerDown={(ev) => {
+                  puntero.current = ev.pointerType;
+                }}
+                onPointerEnter={(ev) => {
+                  if (ev.pointerType === 'mouse') elegir(i);
+                }}
+                onPointerLeave={(ev) => {
+                  if (ev.pointerType === 'mouse') soltar();
+                }}
+                onFocus={(ev) => {
+                  if (ev.currentTarget.matches(':focus-visible')) elegir(i);
+                }}
                 onBlur={soltar}
-                onClick={() => elegir(i)}
+                onClick={() => {
+                  elegir(i, puntero.current === 'mouse' ? 0 : TOQUE_MS);
+                  if (!columnas) llevar(i, reducido);
+                }}
               >
                 <circle r={24} fill="transparent" />
                 <path
@@ -360,38 +502,87 @@ export const RadarEnVivo: React.FC<{
       </div>
 
       <div className="lg:col-span-5 lg:col-start-8">
-        {/* La baraja: las hojas que asoman, todas las tarjetas en la misma celda (solo la del
-            frente visible) y las que van saliendo hacia el fondo. */}
-        <div className="rd-mazo rd-herramienta grid pt-8" onMouseEnter={quedarse} onMouseLeave={soltar} onFocus={quedarse} onBlur={soltar}>
-          {HOJAS.map((k) => (
-            <div key={k} aria-hidden="true" className={`rd-mazo-hoja rd-mazo-hoja-${k} col-start-1 row-start-1 rounded-rd-xl border border-rd-line bg-rd-surface`} />
-          ))}
-          {puestos.map(({ p }, i) => (
+        {columnas ? (
+          <>
+            {/* La baraja: las hojas que asoman, todas las tarjetas en la misma celda (solo la del
+                frente visible) y las que van saliendo hacia el fondo. */}
             <div
-              key={p.id}
-              className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${i === actual ? `z-4 ${saliendo.length > 0 ? 'rd-mazo-entra' : ''}` : 'invisible'}`}
+              className="rd-mazo rd-herramienta grid touch-pan-y touch-pinch-zoom pt-8"
+              onPointerEnter={(ev) => {
+                if (ev.pointerType === 'mouse') quedarse();
+              }}
+              onPointerLeave={(ev) => {
+                if (ev.pointerType === 'mouse') soltar();
+              }}
+              onFocus={() => quedarse()}
+              onBlur={soltar}
+              onPointerDown={empezar}
+              onPointerMove={arrastrar}
+              onPointerUp={terminar}
+              onPointerCancel={terminar}
+              onClickCapture={(ev) => {
+                /* Lo que se soltó tras arrastrar no es un toque a un botón de la tarjeta. */
+                if (!arrastro.current) return;
+                arrastro.current = false;
+                ev.preventDefault();
+                ev.stopPropagation();
+              }}
             >
-              <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+              {HOJAS.map((k) => (
+                <div key={k} aria-hidden="true" className={`rd-mazo-hoja rd-mazo-hoja-${k} col-start-1 row-start-1 rounded-rd-xl border border-rd-line bg-rd-surface`} />
+              ))}
+              {puestos.map(({ p }, i) => (
+                <div
+                  key={p.id}
+                  ref={(c) => {
+                    cartas.current[i] = c;
+                  }}
+                  className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${i === actual ? `z-4 ${saliendo.length > 0 ? 'rd-mazo-entra' : ''}` : 'invisible'}`}
+                >
+                  <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+                </div>
+              ))}
+              {saliendo.map(({ i, n, dx }) => {
+                const e = puestos[i];
+                if (!e) return null;
+                /* La que mandó el dedo sale por su lado, desde donde la soltó. */
+                const lado = dx === null ? undefined : ({ '--rd-arrastre': `${dx}px`, '--rd-giro': `${(dx * 0.04).toFixed(2)}deg` } as React.CSSProperties);
+                return (
+                  <div
+                    key={`sale-${n}`}
+                    inert
+                    aria-hidden="true"
+                    className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${dx === null ? 'rd-mazo-sale' : `rd-mazo-sale-lado ${dx < 0 ? 'rd-mazo-sale-izquierda' : ''}`}`}
+                    style={lado}
+                    onAnimationEnd={(ev) => {
+                      if (ev.target === ev.currentTarget) setSaliendo((s) => s.filter((x) => x.n !== n));
+                    }}
+                  >
+                    <Tarjeta publicacion={e.p} className="h-full" />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-          {saliendo.map(({ i, n }) => {
-            const e = puestos[i];
-            if (!e) return null;
-            return (
-              <div
-                key={`sale-${n}`}
-                inert
-                aria-hidden="true"
-                className="rd-mazo-carta rd-mazo-sale col-start-1 row-start-1 rounded-rd-xl"
-                onAnimationEnd={(ev) => {
-                  if (ev.target === ev.currentTarget) setSaliendo((s) => s.filter((x) => x.n !== n));
-                }}
-              >
-                <Tarjeta publicacion={e.p} className="h-full" />
+            {/* La pista, solo para quien usa el dedo (una tableta acostada: la baraja también se
+                arrastra). */}
+            <p className="font-rd mt-4 mb-0 hidden text-center text-rd-13 text-rd-noche-meta pointer-coarse:block">{pista}</p>
+          </>
+        ) : (
+          /* El carrusel del teléfono (ver EL CARRUSEL): sale del margen de la página hasta el
+             borde de la pantalla y lo devuelve como relleno, y cada tarjeta mide tres columnas y
+             media. Todas del alto de la más alta, con las acciones abajo (`h-full`; la `Tarjeta`
+             las empuja con `mt-auto`). */
+          <div
+            ref={carrusel}
+            className="rd-herramienta zona-rd-scroll relative -mx-5 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 sm:-mx-8 sm:scroll-px-8 sm:px-8"
+          >
+            {puestos.map(({ p }, i) => (
+              <div key={p.id} ref={tarjeta(i)} className="tarjeta-rd-carrusel snap-start">
+                <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
