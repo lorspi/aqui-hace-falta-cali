@@ -49,7 +49,7 @@ export type NodoRed = Nodo;
    de esa "card" o bloque hay un par de lineas conectadas... pero el resto del mismo lienzo queda en
    blanco completamente»). */
 const ANCHO = 600;
-const ALTO = 860;
+const ALTO = 840;
 const CX = ANCHO / 2;
 const CY = ALTO / 2;
 const CENTRO: Punto = { x: CX, y: CY };
@@ -98,18 +98,17 @@ const intercalar = () => {
 };
 
 /* Una constelación: puntos al azar (con semilla) en el anillo entre el 30 % y el borde de una elipse
-   del alto del lienzo, cuyo centro queda libre para «tú»; ninguno a menos de 74 de otro ni pegado
-   al borde, así se reparten parejos por todo el lienzo. Repartidos en franjas o en una vuelta
-   ordenada, la red salía como una estrella geométrica; con menos espacio entre puntos, en islas. */
+   del alto del lienzo, cuyo centro queda libre para «tú»; ninguno a menos de 70 de otro ni pegado
+   al borde, así se reparten parejos aprovechando toda la altura vertical del lienzo. */
 const constelacion = (cuantos: number) => {
   const al = azar(29);
   const puestos: Punto[] = [];
   for (let intento = 0; puestos.length < cuantos && intento < 60000; intento++) {
     const a = al() * Math.PI * 2;
     const f = Math.sqrt(0.09 + al() * 0.91);
-    const p = { x: CX + f * 270 * Math.cos(a), y: CY + f * 400 * Math.sin(a) };
-    if (p.x < 40 || p.x > ANCHO - 40 || p.y < 40 || p.y > ALTO - 40) continue;
-    if (puestos.every((q) => Math.hypot(p.x - q.x, p.y - q.y) > 74)) puestos.push(p);
+    const p = { x: CX + f * 265 * Math.cos(a), y: CY + f * 385 * Math.sin(a) };
+    if (p.x < 36 || p.x > ANCHO - 36 || p.y < 36 || p.y > ALTO - 36) continue;
+    if (puestos.every((q) => Math.hypot(p.x - q.x, p.y - q.y) > 70)) puestos.push(p);
   }
   return puestos;
 };
@@ -128,18 +127,13 @@ const unir = (a: Punto, b: Punto, curvatura: number, puntos: number, temblor: nu
   return curva(a, { x: a.x + dx / 3 + nx, y: a.y + dy / 3 + ny }, { x: a.x + (2 * dx) / 3 + nx * 0.4, y: a.y + (2 * dy) / 3 + ny * 0.4 }, b, puntos, temblor, semilla);
 };
 
-/* La red, en una sola línea que pasa por todos los nodos (Alejandro, 7 de octubre de 2026, sobre
-   las ilustraciones: «una sola linea hace toda la ilustración completa como si "no se despegara el
-   lapiz del papel"»; antes eran uniones sueltas entre vecinos). El orden es un recorrido corto: se
-   empieza por el nodo de más arriba, se va siempre al más cercano que falte, y después se
-   deshacen los cruces (2-opt), así la línea serpentea por el lienzo sin enredarse. Un tramo que
-   pasara por el centro cuesta el doble: ese lugar es de «tú». */
+/* La red, en una sola línea que pasa por todos los nodos. */
 const RED = (() => {
   const n = NODOS.length;
   const costo = (i: number, j: number) => {
     const a = NODOS[i];
     const b = NODOS[j];
-    const pasaPorElCentro = Math.hypot((a.x + b.x) / 2 - CX, (a.y + b.y) / 2 - CY) < 120;
+    const pasaPorElCentro = Math.hypot((a.x + b.x) / 2 - CX, (a.y + b.y) / 2 - CY) < 115;
     return Math.hypot(a.x - b.x, a.y - b.y) * (pasaPorElCentro ? 2 : 1);
   };
   const orden = [NODOS.reduce((m, p, i) => (p.y < NODOS[m].y ? i : m), 0)];
@@ -255,10 +249,9 @@ export const RedSumarse: React.FC<{
   /* El papel se dibuja cuando la red ya está a la vista: en el teléfono hay papel desde el
      principio (la primera tarjeta), y sus líneas se habrían dibujado fuera de la pantalla. */
   const rol = dibujado ? elegido : null;
-  /* Dónde cae un punto del lienzo, en fracciones de la caja (las capas de HTML encima). */
+  /* Dónde cae un punto del lienzo, en fracciones de la caja. */
   const y0 = apaisado ? APAISADO.y0 : 0;
   const alto = apaisado ? APAISADO.alto : ALTO;
-  const en = (p: Punto) => ({ left: `${(p.x / ANCHO) * 100}%`, top: `${((p.y - y0) / alto) * 100}%` });
 
   useEffect(() => {
     const el = caja.current;
@@ -298,9 +291,9 @@ export const RedSumarse: React.FC<{
       ref={caja}
       role="img"
       aria-label={textos.etiqueta}
-      className={`relative mx-auto w-full ${apaisado ? 'aspect-3/2 overflow-hidden' : 'aspect-30/43 max-w-140'}`}
+      className={`relative mx-auto flex h-full w-full items-center justify-center ${apaisado ? 'aspect-3/2 overflow-hidden' : 'aspect-30/42 max-h-[630px] xl:max-h-[650px]'}`}
     >
-      <svg aria-hidden="true" viewBox={`0 ${y0} ${ANCHO} ${alto}`} className="absolute inset-0 h-full w-full overflow-visible">
+      <svg aria-hidden="true" viewBox={`0 ${y0} ${ANCHO} ${alto}`} className="h-full w-full object-contain overflow-visible">
         {/* La red que ya existe, una sola línea que se dibuja al llegar. */}
         <path
           d={RED}
@@ -327,6 +320,32 @@ export const RedSumarse: React.FC<{
               className="rd-red-traza fill-none stroke-rd-ayuda transition-opacity duration-200"
               style={{ animationDelay: `${ESPERA + i * PAUSA}s`, opacity: encendido(i) ? 1 : 0.3 }}
             />
+          ))}
+
+        {/* Los conectores 1, 2, 3 exactamente sobre cada línea trazada */}
+        {rol &&
+          lineas.map((l, i) => (
+            <g
+              key={`${rol}-${l.nodo.id}-conector`}
+              className="rd-red-aparece transition-opacity duration-200"
+              style={{ animationDelay: `${ESPERA + i * PAUSA + 0.35}s`, opacity: encendido(i) ? 1 : 0.3 }}
+            >
+              <circle
+                cx={l.medio.x}
+                cy={l.medio.y}
+                r={12}
+                className="fill-rd-ayuda"
+              />
+              <text
+                x={l.medio.x}
+                y={l.medio.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="font-rd select-none text-[12px] font-bold fill-rd-noche tabular-nums"
+              >
+                {i + 1}
+              </text>
+            </g>
           ))}
 
         {/* Los nodos; los que reciben una línea, encendidos. */}
@@ -387,28 +406,19 @@ export const RedSumarse: React.FC<{
         </g>
       </svg>
 
-      {/* Lo que se escribe sobre el lienzo, en HTML para que no se encoja con él. */}
+      {/* Lo que se escribe sobre el lienzo, en HTML para los nombres de los nodos. */}
       {rol &&
+        !apaisado &&
         lineas.map((l, i) => (
-          <React.Fragment key={`${rol}-${l.nodo.id}-rotulos`}>
-            <span
-              aria-hidden="true"
-              className="rd-red-etiqueta font-rd pointer-events-none absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-rd-ayuda text-rd-12 font-semibold text-rd-noche tabular-nums transition-opacity duration-200"
-              style={{ ...en(l.medio), animationDelay: `${ESPERA + i * PAUSA + 0.35}s`, opacity: encendido(i) ? undefined : 0.3 }}
-            >
-              {i + 1}
-            </span>
-            {!apaisado && (
-              <span
-                aria-hidden="true"
-                className="rd-red-etiqueta font-rd pointer-events-none absolute hidden max-w-52 rounded-rd-md border border-rd-noche-linea bg-rd-noche-2 px-2.5 py-1.5 transition-opacity duration-200 sm:block"
-                style={{ ...rotuloEn(l.nodo), animationDelay: llega(i), opacity: encendido(i) ? undefined : 0.3 }}
-              >
-                <span className="block truncate text-rd-12-5 font-semibold text-rd-noche-tinta">{l.nodo.nombre}</span>
-                <span className="block truncate text-rd-11-5 text-rd-noche-meta">{l.nodo.detalle}</span>
-              </span>
-            )}
-          </React.Fragment>
+          <span
+            key={`${rol}-${l.nodo.id}-rotulo`}
+            aria-hidden="true"
+            className="rd-red-etiqueta font-rd pointer-events-none absolute hidden max-w-52 rounded-rd-md border border-rd-noche-linea bg-rd-noche-2 px-2.5 py-1.5 transition-opacity duration-200 sm:block"
+            style={{ ...rotuloEn(l.nodo), animationDelay: llega(i), opacity: encendido(i) ? undefined : 0.3 }}
+          >
+            <span className="block truncate text-rd-12-5 font-semibold text-rd-noche-tinta">{l.nodo.nombre}</span>
+            <span className="block truncate text-rd-11-5 text-rd-noche-meta">{l.nodo.detalle}</span>
+          </span>
         ))}
     </div>
   );

@@ -36,7 +36,7 @@ import type { TemaLanding } from '../useTemaLanding';
  * Los idiomas y sus banderas son los del selector del equipo (`LANGUAGES` de `LanguageSelector`),
  * con su mismo `setLanguage`.
  */
-export const AjustesLanding: React.FC<{ tema: TemaLanding; alCambiarTema: (tema: TemaLanding) => void }> = ({ tema, alCambiarTema }) => {
+export const AjustesLanding: React.FC<{ tema: TemaLanding; alCambiarTema: (tema: TemaLanding) => void; tamano?: 'lg' | 'md' }> = ({ tema, alCambiarTema, tamano = 'md' }) => {
   const { language, setLanguage, t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
@@ -73,11 +73,12 @@ export const AjustesLanding: React.FC<{ tema: TemaLanding; alCambiarTema: (tema:
       <BotonLanding
         ref={boton}
         soloIcono
+        tamano={tamano}
         etiqueta={t('landingAjustes')}
         expandido={abierto}
         controla={panel}
         onClick={() => setAbierto((a) => !a)}
-        icono={<Settings className="h-5 w-5" />}
+        icono={<Settings className={tamano === 'md' ? 'h-4 w-4' : 'h-5 w-5'} />}
       />
 
       {/* Colgado del borde derecho del botón, 8 por debajo. */}

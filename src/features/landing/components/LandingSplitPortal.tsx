@@ -1,44 +1,104 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { BotonLanding, Parrafo, Seccion, Titular } from './base';
 import { RadarEnVivo } from './RadarEnVivo';
-import { PUBLICACIONES } from '../../../mocks/publicacionesMock';
-import { RUTAS } from '../../../mocks/cuentasMock';
 import type { Publicacion } from '../../../types/publicacion';
 import { useTranslation } from '../../../i18n/LanguageContext';
+import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../../lib/supabaseClient';
+import { needToPublicacion, offerToPublicacion } from '../../../utils/supabaseMappers';
 
-/* Las publicaciones que barre el radar, de las de la herramienta (`PUBLICACIONES`, las mismas de
-   la Radar), alternando necesidad y oferta para que el haz no encuentre primero todas las de un
-   color. Van las de Cali y las que tienen fotos y descripción: son las que mejor muestran la
-   tarjeta. */
-const EN_EL_RADAR = ['necesidad-bosa', 'oferta-usme', 'c1', 'c2', 'necesidad-sanfrancisco', 'm7'];
-const PUBLICACIONES_RADAR = EN_EL_RADAR.map((id) => PUBLICACIONES.find((p) => p.id === id)).filter((p): p is Publicacion => Boolean(p));
+const CACHE_KEY = 'radar_live_publicaciones_cache';
 
-/* Las acciones de una tarjeta llevan a esa publicación en la Radar (`?punto=`), donde se ayuda,
-   se solicita, se comparte o se reporta de verdad. */
-const abrir = (id: string) => window.location.assign(`${RUTAS.radar}?punto=${encodeURIComponent(id)}`);
+function obtenerCacheInicial(): Publicacion[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // Si falla JSON o sesión, retorna vacío
+  }
+  return [];
+}
+
+function guardarEnCache(pubs: Publicacion[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(pubs));
+  } catch {
+    // ignorar quota o error
+  }
+}
+
+/**
+ * Intercala necesidades y ofertas para que el radar muestre una distribución equilibrada
+ * de colores (rojo para necesidades, azul para ofertas).
+ */
+function intercalar(necesidades: Publicacion[], ofertas: Publicacion[]): Publicacion[] {
+  const lista: Publicacion[] = [];
+  const max = Math.max(necesidades.length, ofertas.length);
+  for (let i = 0; i < max; i++) {
+    if (i < necesidades.length) lista.push(necesidades[i]);
+    if (i < ofertas.length) lista.push(ofertas[i]);
+  }
+  return lista;
+}
+
+/* Abrir la publicación seleccionada en el mapa oficial de RaDAR */
+const abrir = (id: string) => window.location.assign(`/mapa-ayudas-necesidades?punto=${encodeURIComponent(id)}`);
 
 export const LandingSplitPortal: React.FC = () => {
   const { t } = useTranslation();
+  const [publicaciones, setPublicaciones] = useState<Publicacion[]>(obtenerCacheInicial);
 
-  /* La presentación es «El radar en vivo» (`RadarEnVivo`, 7 de octubre de 2026): las
-     publicaciones son los ecos de un radar que barre el territorio, y al lado van como una baraja
-     de tarjetas de la herramienta. Antes fue una marquesina de dos filas de tarjetas en sentidos
-     opuestos (29 de septiembre de 2026), tomada de `trust-bar-scroll` de Calendly, y por un rato
-     un mapa decorativo detrás de ella, que Alejandro sintió cargado y sin idea: «solo
-     "embelleciste" con elementos visuales […] quiero que idees algo similar en cuanto a
-     "innovación" como se hizo en el 2 y 3».
+  useEffect(() => {
+    let cancelado = false;
 
-     Hasta la baraja, la sección leía las tres últimas necesidades y ofertas de Supabase, con unas
-     de respaldo en el código. Las tarjetas de la herramienta piden publicaciones de la herramienta
-     (Alejandro: «me parece importante que las cards sean las que se usan en la herramienta app
-     v.2»), y la herramienta todavía lee los mocks: la sección los lee también. Cuando Frontend
-     conecte la herramienta, esta sección viene con ella. */
-  /* Va sobre el azul de la malla (ver LAS CAPAS DE LA PÁGINA en `index.css`): `rd-sobre-azul`
-     pone en blanco lo que se lee encima. El halo que hubo un rato detrás del radar salió con la
-     malla: dejaba una franja donde terminaba. El titular queda cerca de su contenido (Alejandro, 7
-     de octubre de 2026: «Los títulos de cada sección estén mas cerca del contenido de su
-     sección»). */
+    async function cargarPublicacionesReales() {
+      try {
+        const [{ data: needsData, error: needsErr }, { data: offersData, error: offersErr }] = await Promise.all([
+          supabase
+            .from('needs')
+            .select('*')
+            .neq('verification_status', 'ARCHIVED')
+            .order('created_at', { ascending: false })
+            .limit(4),
+          supabase
+            .from('offers')
+            .select('*')
+            .neq('verification_status', 'ARCHIVED')
+            .order('created_at', { ascending: false })
+            .limit(4),
+        ]);
+
+        if (cancelado) return;
+
+        if (needsErr || offersErr) {
+          console.warn('[LandingRadar] Advertencia al consultar publicaciones en vivo:', needsErr || offersErr);
+        }
+
+        const needsMapped = (needsData || []).map(dbNeedToNeed).map(needToPublicacion);
+        const offersMapped = (offersData || []).map(dbOfferToOffer).map(offerToPublicacion);
+        const combinadas = intercalar(needsMapped, offersMapped);
+
+        if (combinadas.length > 0) {
+          setPublicaciones(combinadas);
+          guardarEnCache(combinadas);
+        }
+      } catch (err) {
+        console.error('[LandingRadar] Error al cargar publicaciones reales de Supabase:', err);
+      }
+    }
+
+    cargarPublicacionesReales();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   return (
     <Seccion id="portal-en-vivo" className="rd-sobre-azul relative">
       <div className="relative mx-auto max-w-2xl text-center">
@@ -48,7 +108,7 @@ export const LandingSplitPortal: React.FC = () => {
 
       <div className="relative mt-8 sm:mt-10">
         <RadarEnVivo
-          publicaciones={PUBLICACIONES_RADAR}
+          publicaciones={publicaciones}
           etiqueta={t('landingPortalRadar')}
           rotulos={{ necesidad: t('landingPortalNeedsHeading'), oferta: t('landingPortalOffersHeading') }}
           onAbrir={abrir}

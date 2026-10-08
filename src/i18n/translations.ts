@@ -603,7 +603,7 @@ export const translations = {
     landingPortalViewAllOffers: 'Ver todas las ofertas en el mapa',
 
     // Landing - Organizations
-    landingOrgsTitle: '¿Quieres actuar? Súmate como',
+    landingOrgsTitle: '¿Cómo quieres sumarte?',
     landingOrgsTitleOrg: 'organización',
     landingOrgsTitleRest: ', líder comunitario o voluntario',
     landingOrgsDescDesktop: 'raDAR conecta la capacidad de respuesta con la verdad en territorio. Articulamos a organizaciones que movilizan recursos, líderes comunitarios que censan las necesidades reales de su sector y voluntarios listos para aportar tiempo o habilidades técnicas. Todo coordinado en tiempo real, sin duplicidades ni esfuerzos aislados.',
@@ -1453,7 +1453,7 @@ export const translations = {
     landingPortalViewAllOffers: 'View all offers on the map',
 
     // Landing - Organizations
-    landingOrgsTitle: 'Want to take action? Join as an',
+    landingOrgsTitle: 'How do you want to join?',
     landingOrgsTitleOrg: 'organization',
     landingOrgsTitleRest: ', community leader, or volunteer',
     landingOrgsDescDesktop: 'raDAR connects response capacity with ground truth. We coordinate organizations mobilizing resources, community leaders assessing real local needs, and volunteers ready to contribute time or technical skills. All in real time, avoiding duplicate efforts.',
@@ -2300,7 +2300,7 @@ export const translations = {
     landingPortalViewAllOffers: 'Ver todas as ofertas no mapa',
 
     // Landing - Organizations
-    landingOrgsTitle: 'Quer agir? Junte-se como',
+    landingOrgsTitle: 'Como você quer participar?',
     landingOrgsTitleOrg: 'organização',
     landingOrgsTitleRest: ', líder comunitário ou voluntário',
     landingOrgsDescDesktop: 'O raDAR conecta a capacidade de resposta com a realidade no território. Articulamos organizações, líderes comunitários e voluntários em tempo real, sem duplicidades nem esforços isolados.',
@@ -3147,7 +3147,7 @@ export const translations = {
     landingPortalViewAllOffers: 'Voir toutes les offres sur la carte',
 
     // Landing - Organizations
-    landingOrgsTitle: 'Vous souhaitez agir ? Rejoignez-nous en tant',
+    landingOrgsTitle: 'Comment souhaitez-vous participer ?',
     landingOrgsTitleOrg: 'qu’organisation',
     landingOrgsTitleRest: ', leader communautaire ou bénévole',
     landingOrgsDescDesktop: "raDAR connecte la capacité de réponse à la vérité du terrain. Nous articulons organisations, leaders communautaires et bénévoles en temps réel, sans chevauchement ni efforts isolés.",

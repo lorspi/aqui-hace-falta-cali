@@ -531,17 +531,25 @@ export const RadarEnVivo: React.FC<{
               {HOJAS.map((k) => (
                 <div key={k} aria-hidden="true" className={`rd-mazo-hoja rd-mazo-hoja-${k} col-start-1 row-start-1 rounded-rd-xl border border-rd-line bg-rd-surface`} />
               ))}
-              {puestos.map(({ p }, i) => (
-                <div
-                  key={p.id}
-                  ref={(c) => {
-                    cartas.current[i] = c;
-                  }}
-                  className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${i === actual ? `z-4 ${saliendo.length > 0 ? 'rd-mazo-entra' : ''}` : 'invisible'}`}
-                >
-                  <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+              {puestos.length === 0 ? (
+                <div className="rd-mazo-carta col-start-1 row-start-1 z-4 flex min-h-[380px] flex-col items-center justify-center rounded-rd-xl border border-rd-line bg-rd-surface p-8 text-center shadow-rd-1">
+                  <div className="mb-4 h-7 w-7 animate-spin rounded-full border-2 border-rd-coral border-t-transparent" />
+                  <p className="font-rd m-0 text-rd-14 font-semibold text-rd-ink">Sincronizando con el radar...</p>
+                  <p className="font-rd mt-1.5 max-w-xs text-rd-12 text-rd-ink-2">Conectando con las necesidades y ofertas en vivo reportadas por la comunidad</p>
                 </div>
-              ))}
+              ) : (
+                puestos.map(({ p }, i) => (
+                  <div
+                    key={p.id}
+                    ref={(c) => {
+                      cartas.current[i] = c;
+                    }}
+                    className={`rd-mazo-carta col-start-1 row-start-1 rounded-rd-xl ${i === actual ? `z-4 ${saliendo.length > 0 ? 'rd-mazo-entra' : ''}` : 'invisible'}`}
+                  >
+                    <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+                  </div>
+                ))
+              )}
               {saliendo.map(({ i, n, dx }) => {
                 const e = puestos[i];
                 if (!e) return null;
@@ -565,7 +573,7 @@ export const RadarEnVivo: React.FC<{
             </div>
             {/* La pista, solo para quien usa el dedo (una tableta acostada: la baraja también se
                 arrastra). */}
-            <p className="font-rd mt-4 mb-0 hidden text-center text-rd-13 text-rd-noche-meta pointer-coarse:block">{pista}</p>
+            {puestos.length > 0 && <p className="font-rd mt-4 mb-0 hidden text-center text-rd-13 text-rd-noche-meta pointer-coarse:block">{pista}</p>}
           </>
         ) : (
           /* El carrusel del teléfono (ver EL CARRUSEL): sale del margen de la página hasta el
@@ -576,11 +584,19 @@ export const RadarEnVivo: React.FC<{
             ref={carrusel}
             className="rd-herramienta zona-rd-scroll relative -mx-5 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 sm:-mx-8 sm:scroll-px-8 sm:px-8"
           >
-            {puestos.map(({ p }, i) => (
-              <div key={p.id} ref={tarjeta(i)} className="tarjeta-rd-carrusel snap-start">
-                <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+            {puestos.length === 0 ? (
+              <div className="flex w-full min-h-[300px] flex-col items-center justify-center rounded-rd-xl border border-rd-line bg-rd-surface p-6 text-center">
+                <div className="mb-3 h-6 w-6 animate-spin rounded-full border-2 border-rd-coral border-t-transparent" />
+                <p className="font-rd m-0 text-rd-14 font-semibold text-rd-ink">Sincronizando con el radar...</p>
+                <p className="font-rd mt-1 text-rd-12 text-rd-ink-2">Conectando con publicaciones en vivo</p>
               </div>
-            ))}
+            ) : (
+              puestos.map(({ p }, i) => (
+                <div key={p.id} ref={tarjeta(i)} className="tarjeta-rd-carrusel snap-start">
+                  <Tarjeta publicacion={p} className="h-full" onPrimaria={onAbrir} onVerEnMapa={onAbrir} onCompartir={onAbrir} onReportar={onAbrir} />
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

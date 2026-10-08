@@ -143,8 +143,8 @@ export const Parrafo: React.FC<{ children: React.ReactNode; className?: string }
  * su tono—, que reemplazan al borde y al color de reposo. 48 está por encima del mínimo táctil del
  * sistema (`rd-tactil`, 44).
  */
-export const claseBotonIcono = (elegido?: string) =>
-  `inline-flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-rd-xl border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-ayuda active:translate-y-px ${
+export const claseBotonIcono = (elegido?: string, tamano: 'lg' | 'md' = 'lg') =>
+  `inline-flex ${tamano === 'md' ? 'h-10 w-10' : 'h-12 w-12'} shrink-0 cursor-pointer items-center justify-center rounded-rd-xl border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-ayuda active:translate-y-px ${
     elegido ?? 'border-rd-noche-tinta bg-transparent text-rd-noche-tinta hover:bg-rd-noche-2'
   }`;
 
@@ -210,7 +210,7 @@ export const BotonLanding: React.FC<{
      `leading-none` y el hundimiento de un píxel al pulsar. Lo que cambia es la escala y la
      esquina, que es lo que separa una página de marca de una pantalla densa. `leading-none` solo
      donde el texto no parte: terciario sí parte y ahí apretaría las dos líneas. */
-  const clase = soloIcono ? claseBotonIcono() : `font-rd inline-flex max-w-full cursor-pointer items-center justify-center gap-1.75 rounded-rd-xl border text-center font-medium tracking-rd-btn transition-colors duration-150 ease-in-out active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${
+  const clase = soloIcono ? claseBotonIcono(undefined, tamano) : `font-rd inline-flex max-w-full cursor-pointer items-center justify-center gap-1.75 rounded-rd-xl border text-center font-medium tracking-rd-btn transition-colors duration-150 ease-in-out active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${
     nivel === 'terciario' ? '' : 'whitespace-nowrap leading-none'
   } ${
     tamano === 'lg' ? 'h-13 px-7 text-rd-15 sm:text-rd-16' : 'h-10 px-4.5 text-rd-13-5 pointer-coarse:h-rd-tactil'

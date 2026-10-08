@@ -77,10 +77,11 @@ export const LandingHeader: React.FC<{ tema: TemaLanding; alCambiarTema: (tema: 
 
           <BotonLanding
             soloIcono
+            tamano="md"
             etiqueta={t('landingNavMenu')}
             expandido={menuMovilAbierto}
             onClick={() => setMenuMovilAbierto((v) => !v)}
-            icono={menuMovilAbierto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            icono={menuMovilAbierto ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
           />
         </div>
       </div>
