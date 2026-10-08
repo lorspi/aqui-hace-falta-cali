@@ -1,7 +1,24 @@
 import React from 'react';
 import { Heart, Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../../../i18n/LanguageContext';
-import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../../../constants/contact';
+import {
+  OFFICIAL_DOMAIN,
+  OFFICIAL_EMAIL,
+  OFFICIAL_WHATSAPP_DISPLAY,
+  getOfficialWhatsappLink,
+} from '../../../constants/contact';
+
+/**
+ * El footer de la landing, del equipo, llevado al tema oscuro el 6 de octubre de 2026 (Alejandro:
+ * «fondo negro 1E1E1E, letra blanca» en toda la landing, y esa noche #000000). Cambió solo la piel: los colores slate y
+ * los tamaños con corchetes pasaron a los tokens del tema oscuro, las fuentes propias (sans, body,
+ * mono) a la de la landing, para que salga en Noto Sans como lo demás, el símbolo y el nombre
+ * escrito a mano al logo de RaDAR (el de siempre, con letras blancas en oscuro), y el contenedor
+ * al ancho y los márgenes de las secciones de arriba. El contenido y los enlaces son los mismos.
+ * Los enlaces ganan un foco visible en el amarillo de la landing, que no tenían.
+ */
+const ENLACE =
+  'rounded-rd-sm text-rd-noche-tinta-2 no-underline transition-colors hover:text-rd-noche-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-ayuda';
 
 export const LandingFooter: React.FC = () => {
   const { t } = useTranslation();
@@ -9,86 +26,71 @@ export const LandingFooter: React.FC = () => {
   return (
     <footer
       id="contacto"
-      className="bg-slate-900 text-slate-300 pt-12 pb-10 border-t border-slate-800 scroll-mt-12"
+      className="font-rd rd-grano scroll-mt-12 border-t border-rd-noche-linea bg-rd-noche pt-12 pb-10 text-rd-noche-tinta-2"
       style={{
         paddingBottom: 'max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom, 0px)))',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Enlaces y Contacto */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 text-xs text-slate-400">
-          {/* Columna 1: raDAR Identidad */}
+      <div className="mx-auto w-full max-w-360 space-y-10 px-5 sm:px-8 lg:px-12">
+        {/* Enlaces y contacto */}
+        <div className="grid grid-cols-1 gap-8 text-rd-13-5 md:grid-cols-12 lg:gap-12">
+          {/* Columna 1: identidad */}
           <div className="space-y-3 md:col-span-6 lg:col-span-5">
-            <div className="flex items-center gap-2.5">
-              <img
-                src="/simbolo-radar.svg"
-                alt="Símbolo raDAR"
-                className="w-7 h-7 object-contain"
-              />
-              <span className="text-base font-extrabold text-white font-sans tracking-tight">
-                raDAR DE AYUDA
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed font-body max-w-sm">
-              {t('landingFooterTagline')}
-            </p>
-            <p className="text-[11px] text-slate-500 font-mono pt-1">
-              {t('landingFooterMadeWith')} <Heart className="w-3 h-3 inline text-brand-red" /> {t('landingFooterByVolunteers')}
+            {/* El logo de RaDAR, el mismo del header: con letras blancas en oscuro y el original en
+                claro (`claro:`). */}
+            <img src="/logo-radar-blanco.svg" alt="Radar de ayuda" width={2902} height={600} className="block h-9.5 w-auto claro:hidden" />
+            <img src="/logo-radar.svg" alt="Radar de ayuda" width={2902} height={600} className="hidden h-9.5 w-auto claro:block" />
+            <p className="m-0 max-w-sm text-rd-13-5 leading-relaxed text-rd-noche-tinta-2">{t('landingFooterTagline')}</p>
+            <p className="m-0 pt-1 text-rd-11-5 text-rd-noche-meta">
+              {t('landingFooterMadeWith')} <Heart aria-hidden="true" className="inline h-3 w-3 text-rd-coral" /> {t('landingFooterByVolunteers')}
             </p>
           </div>
 
-          {/* Columna 2: Plataforma & Legal */}
-          <div className="md:col-span-3 lg:col-span-3 md:col-start-7 lg:col-start-7">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
-              {t('landingFooterPlatform')}
-            </h5>
-            <ul className="space-y-2 text-xs font-body">
+          {/* Columna 2: plataforma y legal */}
+          <div className="md:col-span-3 md:col-start-7 lg:col-span-3 lg:col-start-7">
+            <h5 className="m-0 mb-3 text-rd-13-5 font-semibold text-rd-noche-tinta">{t('landingFooterPlatform')}</h5>
+            <ul className="m-0 list-none space-y-2 p-0">
               <li>
-                <a href="/mapa-ayudas-necesidades?pedir=true" className="hover:text-white transition-colors">
+                <a href="/mapa-ayudas-necesidades?pedir=true" className={ENLACE}>
                   {t('landingHeroCtaNeed')}
                 </a>
               </li>
               <li>
-                <a href="/mapa-ayudas-necesidades?ofrecer=true" className="hover:text-white transition-colors">
+                <a href="/mapa-ayudas-necesidades?ofrecer=true" className={ENLACE}>
                   {t('landingHeroCtaOffer')}
                 </a>
               </li>
               <li>
-                <a href="/terminos" className="hover:text-white transition-colors">
-                  {t('footerTerms')}
+                <a href="/terminos" className={ENLACE}>
+                  {t('landingFooterTerminos')}
                 </a>
               </li>
               <li>
-                <a href="/privacidad" className="hover:text-white transition-colors">
-                  {t('footerPrivacy')}
+                <a href="/privacidad" className={ENLACE}>
+                  {t('landingFooterPrivacidad')}
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Columna 3: Canales de Contacto Directo */}
+          {/* Columna 3: canales de contacto directo */}
           <div className="md:col-span-3 lg:col-span-3">
-            <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-3 font-sans">
-              {t('landingFooterContact')}
-            </h5>
-            <ul className="space-y-2.5 text-xs font-body">
+            <h5 className="m-0 mb-3 text-rd-13-5 font-semibold text-rd-noche-tinta">{t('landingFooterContact')}</h5>
+            <ul className="m-0 list-none space-y-2.5 p-0">
               <li>
-                <a
-                  href="mailto:info@radardeayuda.org"
-                  className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
-                >
-                  <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span>info@radardeayuda.org</span>
+                <a href={`mailto:${OFFICIAL_EMAIL}`} className={`inline-flex items-center gap-2 ${ENLACE}`}>
+                  <Mail aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                  <span>{OFFICIAL_EMAIL}</span>
                 </a>
               </li>
               <li>
                 <a
-                  href={getOfficialWhatsappLink("Hola raDAR, quisiera ponerme en contacto con el equipo.")}
+                  href={getOfficialWhatsappLink('Hola raDAR, quisiera ponerme en contacto con el equipo.')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
+                  className={`inline-flex items-center gap-2 ${ENLACE}`}
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <MessageCircle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span>WhatsApp: {OFFICIAL_WHATSAPP_DISPLAY}</span>
                 </a>
               </li>
@@ -97,14 +99,15 @@ export const LandingFooter: React.FC = () => {
         </div>
 
         {/* Barra inferior */}
-        <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 font-body">
-          <p>{t('landingFooterCopyright')}</p>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-rd-noche-linea pt-6 text-rd-11-5 text-rd-noche-meta sm:flex-row">
+          <p className="m-0">{t('landingFooterCopyright')}</p>
           <div className="flex items-center gap-4">
-            <a href="https://instagram.com/radardeayuda" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+            <a href="https://instagram.com/radardeayuda" target="_blank" rel="noopener noreferrer" className={ENLACE}>
               @radardeayuda
             </a>
-            <span>·</span>
-            <span>www.radardeayuda.org</span>
+            {/* Divisor, no punto medio: el punto medio está prohibido en RaDAR. */}
+            <span aria-hidden="true" className="inline-block h-3 w-px bg-rd-noche-linea" />
+            <span>{OFFICIAL_DOMAIN}</span>
           </div>
         </div>
       </div>

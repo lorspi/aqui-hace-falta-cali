@@ -36,6 +36,7 @@
   --color-rd-amber-ink: #8A5D07;
   --color-rd-amber-soft: #FCF4DE;
   --color-rd-amber-line: #F0DFA8;
+  --color-rd-amber-miel: #F5A623;
   --color-rd-green: #17734A;
   --color-rd-green-soft: #E7F3EC;
   --color-rd-green-line: #BEDCCB;
@@ -47,8 +48,82 @@
   --color-rd-surface: #FFFFFF;
   --color-rd-sunken: #EEF0F6;
   --color-rd-fondo: #F6F7FB;
+  /* La crema de la landing (29 de septiembre de 2026). Calendly, medido: su página es
+     `rgb(252,251,248)` y sus tarjetas blancas —al revés que nosotros, que teníamos página blanca
+     y tarjetas grises frías—. Invertirlo es lo que más le quita frialdad a la página sin tocar
+     ni un texto. Solo para la landing; la herramienta se queda en `rd-surface`. */
+  --color-rd-crema: #FBFAF7;
+  /* Aquí estaban `rd-crema-2` (la crema un escalón más oscura) y la malla de color del primer
+     hero: `rd-malla`, su base azul, y las manchas `rd-malla-ambar`, `rd-malla-coral` y
+     `rd-malla-azul`. Desde que el panel de la segunda sección pasó a los tonos de la herramienta
+     no las usaba nadie, y se borraron el 6 de octubre de 2026 (Alejandro: «borre lo que ya no se
+     usa»). Ese mismo día el panel se quedó sin relleno: solo lleva un borde blanco. */
+  /* EL TEMA OSCURO DE LA LANDING (6 de octubre de 2026). Alejandro: «fondo negro 1E1E1E, letra
+     blanca», en toda la landing y solo en ella; la herramienta sigue clara. Esa misma noche: «Pon
+     el fondo completamente negro. 000000». Contrastes contra el fondo y contra la superficie
+     elevada (calculados con la fórmula de WCAG):
+       noche-tinta   #FFFFFF  21:1   y 15,1:1
+       noche-tinta-2 #C7C7C7  12,4:1 y  9,0:1
+       noche-meta    #9C9C9C   7,6:1 y  5,5:1
+     La superficie elevada es para tarjetas; la tercera, para lo hundido y el paso del cursor. */
+  --color-rd-noche: #000000;
+  /* Los anillos del fondo del hero (6 de octubre de 2026). Alejandro: «con este negro 1E1E1E
+     sobre el fondo 000000»: 1,2:1, apenas una sombra de línea. Desde el 7 de octubre de 2026 van
+     sobre el fondo del hero (`rd-noche-lamina`) y no sobre el negro, así que suben a #282828 para
+     guardar ese mismo 1,2:1. */
+  --color-rd-noche-anillo: #282828;
+  /* Las capas de la página (Alejandro, 7 de octubre de 2026; ver LAS CAPAS DE LA PÁGINA):
+     el fondo del hero, sobrepuesto al de la página, y el contenedor de la sección 5, otro gris. */
+  --color-rd-noche-lamina: #141414;
+  --color-rd-noche-contenedor: #171717;
+  /* La malla de color de las secciones 4 y 5, la de la referencia de Calendly (Alejandro, 7 de
+     octubre de 2026: «mira como quiero que se vea el degradado de color»): azul arriba, violeta a
+     la derecha, rosa y durazno abajo, y de ahí al fondo de la página. Son el azul y el rojo de la
+     paleta, limpios, y el amarillo llevado a durazno. El azul y el azul claro son los mismos en
+     los dos modos (el blanco encima: 6,4:1 y 3,7:1, el titular va en el primero); el rosa y el
+     durazno, que quedan cerca del fondo, son pastel en claro. En oscuro, sobre el negro, el rosa y
+     el durazno salían marrones: ahí son un morado y un índigo, y la malla baja del azul al negro
+     por el violeta. */
+  --color-rd-malla-azul: #3B5BC4;
+  --color-rd-malla-azul-claro: #6A86DA;
+  --color-rd-malla-violeta: #8C80DA;
+  --color-rd-malla-rosa: #4A2F7A;
+  --color-rd-malla-durazno: #2A3570;
+  --color-rd-noche-2: #262626;
+  --color-rd-noche-3: #303030;
+  --color-rd-noche-linea: #3A3A3A;
+  --color-rd-noche-tinta: #FFFFFF;
+  --color-rd-noche-tinta-2: #C7C7C7;
+  --color-rd-noche-meta: #9C9C9C;
+  /* El ámbar de «ayuda» en el logo, como acento sobre oscuro (9,0:1 sobre el fondo). */
+  --color-rd-ayuda: #FBB000;
+  /* La paleta semántica de la segunda sección llevada al oscuro: por tono, una línea oscura para
+     la pestaña activa y un claro para su icono y para el fondo sólido del visual. Los claros,
+     sobre el fondo: navy 5,1:1, ámbar 9,0:1 y verde 7,8:1. Los violetas que hubo un rato en esta
+     sección se retiraron este mismo día, sin usos, y los tintes oscuros del panel y del visual
+     (`-noche`) esa tarde, cuando el panel se quedó sin relleno y el visual pasó a sólido. */
+  --color-rd-navy-claro: #6D8CD8;
+  --color-rd-navy-noche-linea: #2B3A5E;
+  --color-rd-amber-claro: #FBB000;
+  --color-rd-amber-noche-linea: #4A3B17;
+  --color-rd-green-claro: #5FC48E;
+  --color-rd-green-noche-linea: #24442F;
+  /* El rojo de la misma paleta (7 de octubre de 2026), para Mi organización, que era verde: la
+     landing quedó en amarillo, azul y rojo. El claro es el rojo claro de la marca (5,4:1 sobre el
+     fondo, 3,6:1 sobre su línea oscura). */
+  --color-rd-coral-claro: var(--color-brand-red-light);
+  --color-rd-coral-noche-linea: #4A2422;
+  /* Noto Sans, solo para la landing: entra redefiniendo --font-rd dentro de `.rd-landing`. */
+  --font-landing: "Noto Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Inter dentro de la landing, para lo de la herramienta que se muestra tal cual (la baraja de
+     la sección 4): entra con `.rd-herramienta`. */
+  --font-herramienta: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --color-rd-line: #E1E4EE;
   --color-rd-line-soft: #ECEEF5;
+  /* El marco al pasar por encima, un escalón por encima de `rd-line`. Se usaba en cuatro sitios
+     —dos en el panel, del equipo— sin estar definido, así que esos `hover` no pintaban nada
+     (encontrado el 28 de septiembre de 2026 al armar la landing). */
+  --color-rd-line-strong: #C7CCDB;
   --color-rd-track: #DFE3EE;
   --color-rd-mapa: #EAE6DE;
 
@@ -72,6 +147,22 @@
   --text-rd-24: 24px;
   --text-rd-28: 28px;
   --text-rd-32: 32px;
+  /* El 36 faltaba y nadie lo notó: el titular de sección pide `md:text-rd-36` desde el 28 de
+     septiembre de 2026 y esa utilidad no existía, así que a 768 se quedaba en 28 aunque el
+     `media query` sí entrara. Descubierto midiendo el titular ancho por ancho el 29 de
+     septiembre. Va a `DECISIONES.md` como token nuevo. */
+  --text-rd-36: 36px;
+  /* Escala de display, solo para la landing (28 de septiembre de 2026). La escala de arriba está
+     hecha para la herramienta, donde el título de pantalla mide 22; una página de marca necesita
+     titulares que en la herramienta serían un error. Nacen como tokens para que la landing no
+     escriba medidas crudas ni corchetes, que el estándar del equipo prohíbe. El 72 se borró el 6
+     de octubre de 2026 por no tener uso (Alejandro: «borre lo que ya no se usa»). El 48 se borró
+     con él y volvió ese mismo día, cuando el titular del hero pasó a 28 / 36 / 48 / 56 con Noto
+     Sans: el primer renglón entero cabe a 48 desde 1280 y no a 56. */
+  --text-rd-40: 40px;
+  --text-rd-48: 48px;
+  --text-rd-56: 56px;
+  --text-rd-64: 64px;
   /* Un escalón por debajo de `sm`, para la línea de tiempo del congrats: desde 480 caben los
      tres pasos en fila y debajo van en columna. Nace como token para no escribir `min-[480px]:`,
      que el estándar del equipo prohíbe (`ESTANDAR_TECNICO_Y_MOCKS.md`, sin corchetes). */
@@ -82,16 +173,48 @@
   --tracking-rd-titulo: -0.03em;
   --tracking-rd-titular: -0.035em;
   --leading-rd-titular: 1.1;
+  /* El interlineado del titular de display de la landing. Nace como token porque `leading-[1.07]`
+     usa corchetes y el estándar del equipo los prohíbe (29 de septiembre de 2026). */
+  --leading-rd-display: 1.07;
 
   /* Radios (escala anidada de cuatro pasos) y alturas */
   --radius-rd-sm: 6px;
   --radius-rd-md: 8px;
   --radius-rd-lg: 12px;
   --radius-rd-xl: 16px;
+  /* Radios de dispositivo, para las maquetas de la landing: el marco de un teléfono y el de una
+     ventana. Nacen como tokens porque el estándar del equipo prohíbe los corchetes de Tailwind
+     (29 de septiembre de 2026). */
+  --radius-rd-2xl: 26px;
+  --radius-rd-3xl: 34px;
+  /* El pie del fondo de la página (ver LAS CAPAS DE LA PÁGINA), del mismo alto que lo que el
+     degradado de la sección 4 sube por detrás (`rd-lamina` en el espaciado). */
+  --radius-rd-lamina: 48px;
+  /* Aquí estaba `--radius-rd-panel` (56), el radio grande del panel de Calendly. Lo tuvo el hero y
+     luego el panel de la segunda sección, que pasó al 16 de los botones el 6 de octubre de 2026
+     (`.rd-accesos`); sin usos, se borró. */
   --spacing-rd-h-sm: 32px;
   --spacing-rd-h-md: 40px;
   --spacing-rd-h-lg: 48px;
   --spacing-rd-tactil: 44px;
+  /* El alto del panel fijo de la segunda sección (6 de octubre de 2026): la ventana menos el
+     header de 64, el aire de 16 entre el header y el panel, y otros 16 abajo. La referencia deja
+     24 arriba y abajo porque su barra se esconde al bajar; la nuestra se queda, así que el panel
+     se fija debajo de ella (`top-20`) en vez de pasar por detrás. */
+  --spacing-rd-accesos-panel: calc(100svh - 6rem);
+  /* Lo que el fondo del hero baja por debajo del hero: hasta la mitad del panel de la sección 2,
+     que sube sobre él (7 de octubre de 2026). */
+  --spacing-rd-fondo-hero: calc(var(--spacing-rd-accesos-panel) / 2);
+  /* El redondeo del pie del fondo de la página, donde termina la sección 3 y asoma el degradado
+     de la 4 (7 de octubre de 2026). */
+  --spacing-rd-lamina: 48px;
+  /* El recorrido de cada paso de «El encuentro», la sección 3 (6 de octubre de 2026): el aire de
+     debajo de su texto, que el scroll recorre mientras el texto se queda fijo en el centro y el
+     lienzo cuenta su tramo al lado. El 70 % del alto de la ventana. */
+  --spacing-rd-paso-encuentro: 70svh;
+  /* El aire entre un paso de «El encuentro» y el siguiente (7 de octubre de 2026): sin él,
+     el que entraba subía pegado al que salía y parecía empujarlo. */
+  --spacing-rd-aire-encuentro: 16svh;
   /* La hoja del pin: abre a media pantalla (Alejandro, 16 de septiembre de 2026; enmienda la
      231) y expandida mide 100dvh − 96 (177) */
   --spacing-rd-hoja-1: 50dvh;
@@ -99,7 +222,6 @@
   --shadow-rd-2: 0 8px 24px rgb(23 27 43 / 0.16);
   /* La sombra del pin sobre la tesela (`.rd-pin svg` del prototipo) */
   --drop-shadow-rd-pin: 0 1px 2px rgb(0 0 0 / 0.28);
-
   /* Las sugerencias del cruce (Alejandro, 21 de septiembre de 2026): un brillo que recorre la
      fila una sola vez al aparecer, y el barrido del radar de la marca (76) al publicar con una
      sugerencia fuerte. `motion-reduce:animate-none` los apaga, como todo movimiento del DS. */
@@ -121,30 +243,34 @@
         100% 50%;
     }
   }
-  /* La enhorabuena al publicar (Alejandro, 22 de septiembre de 2026): una subida de 8 px que se
-     asienta con el resorte suave de la casa (22). `motion-reduce:animate-none` la apaga. */
-  --animate-rd-enhorabuena: rd-enhorabuena 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* La enhorabuena al publicar: entra subiendo un poco mientras la tarjeta encoge al alto del
+     contenido (`MarcoFlujo` anima el alto). Corta y sin rebote: acompaña al encogimiento, no
+     compite con la explosión. */
+  --animate-rd-enhorabuena: rd-enhorabuena 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
   @keyframes rd-enhorabuena {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translate3d(0, 12px, 0);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate3d(0, 0, 0);
     }
   }
-  /* El papelillo del confeti (solo la pantalla de éxito al publicar): sube rotando y cae
-     despacio con un bamboleo lateral. La trayectoria la parametrizan las variables que pone el
-     componente (`--rd-x`, `--rd-giro`, `--rd-alto`). */
-  --animate-rd-confeti: rd-confeti 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  @keyframes rd-confeti {
+  /* La explosión de la primera publicación: sube, gira y se desvanece. Cada pedazo pone su
+     desvío, su altura y su giro (`Explosion.tsx`). */
+  --animate-rd-explosion: rd-explosion 1.8s cubic-bezier(0.1, 0.62, 0.28, 1) both;
+  @keyframes rd-explosion {
     0% {
-      transform: translate3d(0, 0, 0) scale(0) rotate(0deg);
+      transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+      opacity: 0;
+    }
+    /* Sube a plena tinta casi de inmediato y solo se apaga en el último tramo: así se lee la
+       subida entera y no un borrón pálido. */
+    8% {
       opacity: 1;
     }
-    15% {
-      transform: translate3d(calc(var(--rd-x, 0) * 0.3), calc(-1 * var(--rd-alto, 50vh) * 0.7), 0) scale(1.2) rotate(calc(var(--rd-giro, 180deg) * 0.4));
+    65% {
       opacity: 1;
     }
     100% {
@@ -181,6 +307,76 @@
       transform: rotate(360deg);
     }
   }
+}
+
+/* ======================================================================
+   EL MODO CLARO DE LA LANDING (6 de octubre de 2026)
+   Alejandro: «en el header pon a la derecha un botón de configuración que despliegue un menu
+   flotante que permita modifar el idioma y pasar de darkmode a lightmode. y así tenemos ambos».
+   La landing se pinta toda con la familia `rd-noche-*` y con `rd-ayuda`, así que el modo claro no
+   toca ninguna clase: le da a esos tokens sus valores claros cuando el `html` lleva
+   `data-tema-landing="claro"`, que pone `LandingPage` y quita al salir de la landing. Va en el
+   `html` y no en la raíz de la landing porque el cursor vive en `body`, fuera de ella.
+
+   Los valores claros son los de la herramienta (Alejandro, 7 de octubre de 2026: «los colores de
+   fondo y demás que están en la app como para que haya consistencia entre ambos»): la superficie
+   blanca, el hundido, el fondo de la app, las líneas y las tintas. Hasta ese día eran la crema de
+   la landing y sus grises cálidos. La página va en el gris del fondo de la app y sobre ella las
+   capas (ver LAS CAPAS DE LA PÁGINA): el fondo del hero en blanco (Alejandro, ese mismo día:
+   «usa el color del fondo al reves en la sección 1. el fondo blanco sobre puesto al fondo
+   gris») y el contenedor de la sección 5 en el hundido, con sus bloques en blanco. El ámbar de acento baja al ámbar tinta: el
+   amarillo de la landing sobre un fondo claro da 1,9:1 y no se leería ni como texto ni como
+   trazo. Donde el amarillo es relleno y no tinta —el segundo renglón del titular del hero y el
+   fondo del visual del Directorio— la landing usa `rd-amber-claro`, que no cambia.
+
+   Lo que tiene que verse igual en los dos modos no usa la familia `rd-noche`: las maquetas, que
+   son pantallas de la herramienta; lo que se mueve dentro de los visuales de la sección 2, que va
+   sobre un color sólido (`rd-ink` y `rd-surface`); y el texto sobre la foto del cursor
+   (`.rd-sobre-foto`). Lo poco que necesita otro color en claro lo dice con la variante `claro:`.
+   ====================================================================== */
+@custom-variant claro (&:where([data-tema-landing='claro'], [data-tema-landing='claro'] *));
+
+:root[data-tema-landing='claro'] {
+  --color-rd-noche: var(--color-rd-fondo);
+  --color-rd-noche-2: var(--color-rd-surface);
+  --color-rd-noche-3: var(--color-rd-sunken);
+  --color-rd-noche-linea: var(--color-rd-line);
+  --color-rd-noche-tinta: var(--color-rd-ink);
+  --color-rd-noche-tinta-2: var(--color-rd-ink-2);
+  --color-rd-noche-meta: var(--color-rd-ink-meta);
+  --color-rd-noche-anillo: var(--color-rd-line);
+  --color-rd-noche-lamina: var(--color-rd-surface);
+  --color-rd-noche-contenedor: var(--color-rd-sunken);
+  --color-rd-malla-rosa: #F1B4B6;
+  --color-rd-malla-durazno: #F7DAA8;
+  --color-rd-ayuda: var(--color-rd-amber-miel, #F5A623);
+}
+
+/* Lo que va sobre la foto del cursor en el hero (la copia del texto de `VentanaLiquida`) lleva
+   los colores del modo oscuro en los dos modos: las fotos son oscuras, y en claro la copia saldría
+   en tinta oscura sobre ellas. */
+.rd-sobre-foto {
+  --color-rd-noche-tinta: #FFFFFF;
+  --color-rd-noche-tinta-2: #C7C7C7;
+  --color-rd-ayuda: var(--color-rd-amber-claro);
+}
+
+/* ======================================================================
+   CURSOR PERSONALIZADO DE LA LANDING
+   Oculta la flecha nativa del navegador cuando el cursor líquido está activo,
+   para que la animación del radar actúe como puntero principal de la landing.
+   ====================================================================== */
+html.rd-cursor-activo,
+html.rd-cursor-activo body,
+html.rd-cursor-activo .rd-landing,
+html.rd-cursor-activo .rd-landing * {
+  cursor: none !important;
+}
+
+/* Restituye el cursor nativo cuando hay un diálogo o modal interactivo */
+html.rd-cursor-activo [role="dialog"],
+html.rd-cursor-activo [role="dialog"] * {
+  cursor: auto !important;
 }
 
 /* ======================================================================
@@ -293,8 +489,7 @@
            disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500;
   }
 
-  /* Estado de error (compone sobre .input-base, .textarea-base y .select-base):
-     borde rojo + anillo de foco rojo. Reutilizable en cualquier control de formulario. */
+  /* Input con error */
   .input-error {
     @apply border-red-400 focus:ring-red-300/30 focus:border-red-400;
   }
@@ -399,28 +594,12 @@
 }
 
 /* Base: Hanken Grotesk para cuerpo de texto, Figtree se aplica con font-sans en títulos/interfaz */
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
+html, body {
+  overscroll-behavior-y: none;
 }
 
 body {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
   font-family: var(--font-body);
-  margin: 0;
-  padding: 0;
-}
-
-#root {
-  width: 100%;
-  max-width: 100%;
-  min-height: 100dvh;
-  overflow-x: clip;
 }
 
 /* Interfaz: botones, labels, badges, headers usan Figtree */
@@ -443,6 +622,15 @@ header {
 @utility zona-rd-scroll {
   scrollbar-width: none;
 }
+/* Una tarjeta de los carruseles del teléfono de la landing (`useCarrusel`): tres columnas y media
+   de la grilla de cuatro, con huecos de 16 (`gap-4` entre tarjetas), y la media que falta deja
+   asomar la siguiente (Alejandro, 7 de octubre de 2026: «amplia a 3 y 1/2 el ancho de las
+   cards»). La cuenta: cada columna es (100 % − 3 huecos) / 4, y 3,5 columnas más sus 3 huecos
+   dan 87,5 % + 0,375 de hueco, 6 px. El 100 % es la caja del carrusel sin su relleno, que son
+   las cuatro columnas. */
+@utility tarjeta-rd-carrusel {
+  flex: 0 0 calc(87.5% + var(--spacing) * 1.5);
+}
 @utility zona-rd-chips {
   scrollbar-width: none;
   mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 64px), transparent calc(100% - 16px));
@@ -451,9 +639,6 @@ header {
    la actual centrada con las vecinas asomando 20 a cada lado; `--dx` lo escribe el gesto. */
 @utility pista-rd-hoja {
   transform: translateX(calc(-100% + 15 * var(--spacing) - 2 * var(--spacing) + var(--dx, 0px)));
-}
-@utility ranura-rd-hoja {
-  flex: 0 0 calc(100% - 10 * var(--spacing));
 }
 /* Nada inerte enseña su barra: no se puede desplazar, así que la barra solo estorba. Es la
    Radar que queda de fondo mientras se publica (`MarcoFlujo`), que se veía con su barra al
@@ -468,6 +653,31 @@ header {
   height: 0;
 }
 
+/* Bajo 1024 ninguna zona que se desplaza enseña su barra (Alejandro, 22 de septiembre de 2026):
+   en el teléfono el desplazamiento se anuncia con el contenido asomando y con los desvanecidos
+   de la zona de chips, no con una barra encima del contenido. Desde 1024 la barra se queda: con
+   ratón sí sirve. Solo dentro del cascarón de Producto (`.rd-app`), para no tocar las pantallas
+   de producción. */
+@media (max-width: 1023px) {
+  .rd-app,
+  .rd-app * {
+    scrollbar-width: none;
+  }
+  .rd-app::-webkit-scrollbar,
+  .rd-app *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Una zona que se desplaza sin enseñar la barra: lo que hay más abajo se anuncia con el
+   contenido asomando, no con una barra encima (Alejandro, 22 de septiembre de 2026). Para las
+   superficies que van encima del contenido —la ventana de un flujo, los diálogos, las hojas y
+   los desplegables—, donde la barra se pinta sobre la propia caja y se ve mal en cualquier
+   ancho. Las listas de una página conservan la suya desde 1024, donde con ratón sí sirve. */
+/* El desvanecido de una zona que se desplaza sin barra: el borde donde queda contenido se
+   difumina, y se apaga al llegar al final (`useDesvanecido` pone las medidas). Vertical, como
+   el de la fila de chips lo hace en horizontal (143). */
 @utility zona-rd-desvanece {
   mask-image: linear-gradient(
     to bottom,
@@ -486,6 +696,9 @@ header {
   }
 }
 
+@utility ranura-rd-hoja {
+  flex: 0 0 calc(100% - 10 * var(--spacing));
+}
 /* La fila de sugerencias en la tarjeta (Opción 1: Borde fino animado coral → navy con fondo
    limpio de superficie): el degradado coral → navy pleno en el contorno (border-box) y fondo de
    superficie limpio por dentro (padding-box), con texto oscuro legible en rd-ink. Al pasar el cursor,
@@ -521,51 +734,6 @@ header {
   font-family: var(--font-rd);
   background: var(--color-rd-mapa);
 }
-.rd-mapa .leaflet-control-zoom {
-  border: 1px solid var(--color-rd-line) !important;
-  border-radius: 8px !important;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
-}
-.rd-mapa .leaflet-control-zoom a {
-  background-color: var(--color-rd-surface) !important;
-  color: var(--color-rd-ink) !important;
-  width: 32px !important;
-  height: 32px !important;
-  line-height: 30px !important;
-  font-size: 16px !important;
-  transition: background-color 0.15s ease;
-}
-.rd-mapa .leaflet-control-zoom a:hover {
-  background-color: var(--color-rd-fondo) !important;
-  color: var(--color-rd-navy) !important;
-}
-.rd-mapa .leaflet-control-location {
-  border: 1px solid var(--color-rd-line) !important;
-  border-radius: 8px !important;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
-  margin-bottom: 6px !important;
-}
-.rd-mapa .leaflet-control-location a {
-  background-color: var(--color-rd-surface) !important;
-  color: var(--color-rd-ink) !important;
-  width: 32px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: all 0.15s ease;
-  cursor: pointer;
-  text-decoration: none;
-}
-.rd-mapa .leaflet-control-location a:hover {
-  background-color: var(--color-rd-fondo) !important;
-  color: var(--color-rd-navy) !important;
-}
-.rd-mapa .leaflet-control-location a:active {
-  transform: scale(0.92);
-}
 @media (max-width: 1023px) {
   .rd-mapa .leaflet-bottom {
     bottom: 4rem;
@@ -589,20 +757,21 @@ header {
 .rd-mapa .rd-grupo:hover {
   transform: scale(1.06);
 }
-/* La etiqueta al pasar por un grupo: en tinta, en la tipografía de Producto. */
-.rd-mapa .rd-tip-mapa {
-  font-family: var(--font-rd);
-  font-size: var(--text-rd-12-5);
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-rd-surface);
-  background: var(--color-rd-ink);
-  border: 0;
-  border-radius: var(--radius-rd-sm);
+/* El globo del pin, el único que queda en el mapa: es la tarjeta resumida, así que va como una
+   tarjeta (superficie, marco y sombra). No recibe el puntero: si lo recibiera, aparecer bajo el
+   cursor dispararía el mouseout del pin y el globo parpadearía. */
+.rd-mapa .rd-tip-pin {
+  padding: 8px 10px;
+  white-space: normal;
+  color: var(--color-rd-ink);
+  background: var(--color-rd-surface);
+  border: 1px solid var(--color-rd-line);
+  border-radius: var(--radius-rd-lg);
   box-shadow: var(--shadow-rd-2);
+  pointer-events: none;
 }
-.rd-mapa .rd-tip-mapa::before {
-  border-top-color: var(--color-rd-ink);
+.rd-mapa .rd-tip-pin::before {
+  border-top-color: var(--color-rd-line);
 }
 
 /* Los acordeones de Producto (`details`) dibujan su propia flecha: el marcador nativo no se
@@ -618,6 +787,18 @@ header {
 .font-rd,
 .font-rd :is(h1, h2, h3, h4, h5, h6, button, label, [role="button"], nav, header, input, select, textarea) {
   font-family: var(--font-rd);
+}
+
+/* La landing va en Noto Sans y la herramienta sigue en Inter (Alejandro, 6 de octubre de 2026).
+   En vez de cambiar la clase de cada pieza, la raíz de la landing redefine --font-rd: todo lo que
+   ya lee esa variable —la clase font-rd y la regla de arriba— pasa a Noto Sans solo ahí dentro. */
+.rd-landing {
+  --font-rd: var(--font-landing);
+}
+/* Lo de la herramienta que la landing muestra tal cual vuelve a Inter (la baraja de la sección
+   4, 7 de octubre de 2026). */
+.rd-herramienta {
+  --font-rd: var(--font-herramienta);
 }
 
 /* Custom scrollbar for modals */
@@ -701,22 +882,17 @@ body.modal-open {
 /* User location pulse animation */
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0,0,0,0.3);
   }
   100% {
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3);
   }
-}
-
-.user-location-pin {
-  pointer-events: none !important;
 }
 
 .user-location-pin div {
-  pointer-events: none !important;
   animation: pulse-ring 2s ease-out infinite;
 }
 
@@ -779,4 +955,752 @@ body.modal-open {
 .legal-content strong {
   font-weight: 700;
   color: #1e293b;
+}
+
+/* ======================================================================
+   IMPRESIÓN OFICIAL — Acta de Entrega y Custodia Humanitaria
+   ====================================================================== */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #171b2b !important;
+  }
+
+  /* Ocultar elementos interactivos de la aplicación */
+  header,
+  footer,
+  nav,
+  aside,
+  main,
+  .no-print,
+  dialog::backdrop {
+    display: none !important;
+  }
+
+  /* Cuando el diálogo está abierto al imprimir */
+  dialog {
+    display: block !important;
+    position: static !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  dialog form > div:last-child {
+    display: none !important;
+  }
+
+  #documento-acta-imprimible {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    color: #171b2b !important;
+    background: #ffffff !important;
+    border: 1px solid #e1e4ee !important;
+    border-radius: 8px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .salto-evitar {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+
+/* ======================================================================
+   MOVIMIENTO DE LA LANDING (29 de septiembre de 2026)
+   Las secciones aparecen al llegar a ellas. Se apaga con movimiento reducido.
+
+   El 6 de octubre de 2026 se borraron sin uso la ruta que se trazaba sobre el mapa de Colombia
+   (`.rd-ruta`), la barra de recurso que se llenaba (`.rd-barra`), el sello del acta que entraba
+   con rebote (`.rd-sello`), el punto que latía (`.rd-late`) y el retraso escalonado de
+   `.rd-revela` (`--rd-retraso`, que escribía `retraso()` de `base.tsx`): sus piezas ya no se
+   montaban (Alejandro: «borre lo que ya no se usa»).
+   ====================================================================== */
+
+.rd-revela {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+.rd-revela.es-visible {
+  animation: rd-entra 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes rd-entra {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-revela,
+  .rd-revela.es-visible {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Desplazamiento suave en la landing, como Calendly (medido el 29 de septiembre de 2026:
+   `scroll-behavior: smooth` en su `html`). Solo en la landing: esta hoja es de toda la app y la
+   regla suelta sobre `html` volvía suave cualquier `scrollTo` sin `behavior` del Radar, el Panel
+   o el registro, y el estándar del equipo pide no tocar los estilos base por un mockup
+   (`ESTANDAR_TECNICO_Y_MOCKS.md` §3; 6 de octubre de 2026, H26). Tiene que ir en `html`, que es
+   quien desplaza la página, así que se ata a `.rd-revela`, la clase de `Seccion`, que solo monta
+   la landing; por clase y no por `#hero` porque la casa no escribe selectores por `id`. Se apaga
+   con movimiento reducido. */
+html:has(.rd-revela) {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.rd-revela) {
+    scroll-behavior: auto;
+  }
+}
+
+/* «Cómo funciona»: la barra que se llena dentro de la pastilla activa mientras el paso avanza
+   solo, y la entrada del paso al cambiar. Las dos se apagan con movimiento reducido, y sin
+   avance automático la sección queda como tres pestañas normales. */
+.rd-avance {
+  animation-name: rd-avance;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  transform: scaleX(0);
+}
+@keyframes rd-avance {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.rd-paso {
+  animation: rd-paso 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes rd-paso {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+/* El detalle del acordeón se despliega animando la rejilla de 0fr a 1fr, que deja crecer el alto
+   sin medirlo. Tailwind no tiene clase para `1fr` ni para `0fr` (`grid-rows-1` da
+   `repeat(1, minmax(0, 1fr))`, que no se interpola con `0fr`) ni para transicionar
+   `grid-template-rows`, y el estándar del equipo prohíbe los corchetes, así que nacen como
+   utilidades con nombre (6 de octubre de 2026, H20). La duración y la curva siguen llegando de
+   `duration-*` y `ease-*`, con los mismos valores por defecto que `transition-*` de Tailwind. */
+@utility transicion-rd-acordeon {
+  transition-property: grid-template-rows, opacity;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+}
+@utility filas-rd-abiertas {
+  grid-template-rows: 1fr;
+}
+@utility filas-rd-cerradas {
+  grid-template-rows: 0fr;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-avance { animation: none; transform: scaleX(1); }
+  .rd-paso { animation: none; opacity: 1; transform: none; }
+}
+
+/* Los radares del lienzo de «El encuentro» (`LienzoEncuentro`, 6 de octubre de 2026): un anillo
+   que sale de la gota, crece a tres veces y se apaga. Tres desfasados se leen como uno que se
+   repite. `transform-box` para que crezca desde su propio centro dentro del SVG. Con movimiento
+   reducido no laten. */
+.rd-encuentro-onda {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rd-encuentro-onda 2.4s ease-out infinite both;
+}
+@keyframes rd-encuentro-onda {
+  from { transform: scale(0.6); opacity: 0.7; }
+  to { transform: scale(3.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-encuentro-onda { animation: none; opacity: 0; }
+}
+
+/* Aquí estaba la malla de color: las manchas desenfocadas a la deriva de Calendly (`.rd-mancha` y
+   `rd-deriva-1` a `4`), que fueron del hero y luego del panel de la segunda sección. Se borraron
+   la tarde del 6 de octubre de 2026, cuando el panel se quedó sin relleno (Alejandro: «el
+   contenedor principal no tenga color»). */
+
+/* ======================================================================
+   LAS ILUSTRACIONES EN MOVIMIENTO
+   Un mecanismo, no una clase por efecto: `.rd-bucle` para lo que no para. El recorrido llega por
+   `--rd-mov`, así que sumar un efecto nuevo es sumar un `@keyframes`, no una clase.
+
+   Nació para el hero de la maqueta del Radar, que salió del hero el 29 de septiembre de 2026.
+   Hoy `.rd-bucle` mueve los visuales de la segunda sección (`VisualesAccesos`: los anillos y los
+   pines del Radar, las columnas del Directorio y las barras de Mi organización), que se pausan
+   cuando no se ven (`data-activa`, `data-quieto`, al final de esta hoja). No parte de
+   `opacity: 0` en su estado base, para que con movimiento reducido —donde la animación se apaga—
+   todo quede visible y en su sitio.
+
+   Su pareja, `.rd-entrada` (lo que ocurre una vez al cargar), y los recorridos que solo ella
+   usaba —`rd-cae`, el pin que caía, y `rd-sube`, su entrada por defecto— se borraron el 6 de
+   octubre de 2026 con `MaquetaRadar`, la única que los montaba (Alejandro: «borre lo que ya no
+   se usa»).
+   ====================================================================== */
+/* `both` para que durante el retraso se pinte el fotograma cero y no el estado sin animar: un
+   anillo del radar sin rellenar se vería como un disco opaco hasta que le toca su turno. */
+.rd-bucle {
+  animation: var(--rd-mov) var(--rd-dur, 6s) var(--rd-curva, ease-in-out) var(--rd-esp, 0s) infinite both;
+}
+
+/* El barrido del radar: el anillo que sale del pin en foco. Tres, desfasados, leen como uno que
+   se repite y dicen «esto está escuchando». Hoy se ve detrás de la pantalla del Radar en la
+   segunda sección (`FondoRadar`), no en la portada (6 de octubre de 2026, H25). */
+@keyframes rd-onda {
+  0% { opacity: 0.5; transform: scale(0.3); }
+  70% { opacity: 0; transform: scale(2.8); }
+  100% { opacity: 0; transform: scale(2.8); }
+}
+
+/* La deriva lenta de lo que flota. Nació para las tarjetas que se salían del panel del hero; hoy
+   mueve los pines que rodean la pantalla del Radar en la segunda sección (`PINES` de
+   `FondoRadar`; 6 de octubre de 2026, H25). Recorrido corto: son datos, no globos. */
+@keyframes rd-flota {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -9px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-bucle {
+    animation: none;
+  }
+}
+
+/* ======================================================================
+   EL GRANO (6 de octubre de 2026)
+   Alejandro: «quiero que le agregues una textura como granular a todo», y para la sección 2, «el
+   efecto no lo lleva el fondo de la card de la sección 2. lo lleva el fondo animado del contenedor
+   de la parte "ilustrada". si? igual que el fondo del hero». Así que el grano es textura de fondo,
+   no una capa encima: lo lleva el fondo de la página —y con él el del hero y el del panel de la
+   sección 2—, el header, el pie y el fondo de cada visual ilustrado de la sección 2, encima de lo
+   que se mueve y debajo de la maqueta. Las tarjetas, las maquetas, los botones y el cursor van
+   lisos: tapan el fondo. Una primera versión iba en una capa fija sobre toda la página y se metía
+   también en la tarjeta.
+
+   El grano es un mosaico de ruido (`/images/landing/grano.png`): motas claras y oscuras, un 16 %
+   de cada una, con alfa de hasta el 12 %. Las claras se ven sobre el negro y las oscuras sobre el
+   color de los visuales, así que se nota igual en los dos. Mezcla normal, sin `mix-blend-mode`, y
+   quieto: un grano que hierve dejaría de ser sutil. Es una textura y no un color de la marca, así
+   que va en la imagen y no en tokens; se suma al color de fondo de cada pieza, que sigue saliendo
+   de su token.
+
+   Es una imagen ya hecha y no un SVG con un filtro de ruido, como fue la primera versión: de
+   fondo, el navegador volvía a calcular el ruido cada vez que repintaba algo encima, y el borde
+   animado del panel de la sección 2 repinta en cada cuadro. Con el panel abierto la página bajaba
+   de 59 a 48 cuadros por segundo; con la imagen no cuesta nada (Chrome sin pantalla a 1440 × 900, 6
+   de octubre de 2026). Mide 320 px y se muestra a 160: en una pantalla retina cada mota es un
+   píxel físico. Se generó con ruido normal de media 0,5 y desviación 0,1 por píxel, semilla 7:
+   blanco con alfa (6r − 3,6) × 0,12 y negro con alfa (2,4 − 6r) × 0,12, recortados entre 0 y 0,12.
+   ====================================================================== */
+.rd-grano {
+  background-image: url('/images/landing/grano.png');
+  background-size: 160px 160px;
+}
+
+/* ======================================================================
+   LAS CAPAS DE LA PÁGINA (7 de octubre de 2026)
+   Alejandro: «en la sección 1. genera un fondo sobre puesto al fondo fondo, que no supere el ancho
+   de las 12 columnas. ese fondo comienza justo en la parte inferior del header y llega a la mitad
+   de la sección 2 el cual desaparece por medio de un degradado. en la sección 3 va a finalizar el
+   fondo fondo. ese fondo va a tener radiuos en las esquinas. luego para la sección 4 va a haber un
+   fondo degradado de color […] ese fondo va a empezar en color y va a ir cambiando al blanco […]
+   hasta llegar al footer. en la sección 5 va a haber una contenedor como el de la sección 1. pero
+   con fill de otro color gris».
+   - El fondo de la página (`rd-noche`, blanco en claro) va de arriba hasta el final de la sección
+     3, y ahí termina con las esquinas de abajo redondeadas (`rd-lamina`, en `LandingPage`).
+   - El fondo del hero (`rd-noche-lamina`), del ancho de las 12 columnas, empieza bajo el header y
+     baja hasta la mitad del panel de la sección 2, donde se desvanece (`.rd-fondo-hero`).
+   - Desde el pie redondeado, por detrás de él, el degradado de las secciones 4 y 5
+     (`.rd-degradado-radar`): la malla de la referencia de Calendly, azul arriba, violeta, rosa y
+     durazno, que llega al fondo de la página en la sección 5, antes del footer. Lleva el grano en
+     la misma capa, encima del color. Lo de encima de la sección 4 va en blanco (`.rd-sobre-azul`).
+   - La sección 5 va en un contenedor del ancho de las 12 columnas (`rd-noche-contenedor`) con sus
+     bloques en la superficie (`rd-noche-2`): en claro, el fondo de la app y el blanco.
+   Cada capa con color propio lleva su grano, porque tapa el de la página. */
+.rd-fondo-hero {
+  mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
+
+/* La línea continua de las ilustraciones (ver LA LÍNEA CONTINUA en `trazoAMano.ts`): se dibuja
+   sola al aparecer, de punta a punta, como si alguien la trazara sin levantar el lápiz. El trazado
+   lleva `pathLength="1"` y `stroke-dasharray="1 1"`. Con movimiento reducido aparece hecha. */
+.rd-trazo-continuo {
+  animation: rd-trazo-continuo 3.4s cubic-bezier(0.45, 0, 0.25, 1) 0.3s backwards;
+}
+@keyframes rd-trazo-continuo {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-trazo-continuo { animation: none; }
+}
+/* La malla (Alejandro, 7 de octubre de 2026, sobre la anterior: «mira este corte del degradado.
+   se ve horrible»; tenía un halo encima que terminaba en una franja). Cuatro manchas suaves sobre
+   un degradado de fondo, todas sin borde (cada una se apaga a transparente) y mezcladas en oklab,
+   que no ensucia el paso de un color a otro: el azul arriba a la izquierda, el violeta arriba a la
+   derecha, el rosa y el durazno a media altura, y el fondo de la página desde el 82 %, donde ya no
+   queda color que cortar. Encima, el grano, que además disuelve las bandas. */
+.rd-degradado-radar {
+  background-image:
+    url('/images/landing/grano.png'),
+    radial-gradient(70% 28% at 92% 12%, color-mix(in oklab, var(--color-rd-malla-violeta) 85%, transparent), transparent),
+    radial-gradient(55% 24% at 6% 24%, color-mix(in oklab, var(--color-rd-malla-azul) 75%, transparent), transparent),
+    radial-gradient(62% 20% at 16% 56%, color-mix(in oklab, var(--color-rd-malla-rosa) 80%, transparent), transparent),
+    radial-gradient(58% 20% at 86% 60%, color-mix(in oklab, var(--color-rd-malla-durazno) 75%, transparent), transparent),
+    linear-gradient(
+      in oklab to bottom,
+      var(--color-rd-malla-azul) 0%,
+      var(--color-rd-malla-azul-claro) 26%,
+      color-mix(in oklab, var(--color-rd-malla-violeta) 75%, var(--color-rd-malla-azul-claro)) 40%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 70%, var(--color-rd-malla-violeta)) 54%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 55%, var(--color-rd-noche)) 64%,
+      color-mix(in oklab, var(--color-rd-malla-durazno) 30%, var(--color-rd-noche)) 74%,
+      var(--color-rd-noche) 86%
+    );
+  background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Lo que va sobre el azul de la sección 4, en los dos modos: la tinta en blanco y los grises en
+   azules claros (sobre el azul de la malla: 6,4:1, 4,8:1 y 3,4:1), las líneas y las superficies
+   en blanco transparente, el amarillo vivo y el azul de las ofertas más claro para que se lea
+   sobre el azul. Como `.rd-sobre-foto`, redefine los tokens en vez de cambiar clases. Las
+   tarjetas de la herramienta no usan esta familia y se quedan blancas. */
+.rd-sobre-azul {
+  --color-rd-noche: var(--color-rd-malla-azul);
+  --color-rd-noche-2: rgb(255 255 255 / 0.08);
+  --color-rd-noche-3: rgb(255 255 255 / 0.16);
+  --color-rd-noche-linea: rgb(255 255 255 / 0.26);
+  --color-rd-noche-tinta: #FFFFFF;
+  --color-rd-noche-tinta-2: #D3DCF5;
+  --color-rd-noche-meta: #A8B7E4;
+  --color-rd-ayuda: var(--color-rd-amber-claro);
+  --color-rd-navy-claro: #A9BDF5;
+  /* La estela del haz: sobre el azul, el amarillo al 22 % se veía gris; aquí es una luz cálida. */
+  --rd-haz: rgb(255 226 150 / 0.34);
+}
+
+/* Los anillos del fondo del hero (`AnillosHero`) se desvanecen hacia los bordes del hero: enteros
+   en el centro, detrás del titular, y nada en los bordes, así no se cortan en seco donde el hero
+   termina ni contra el header. */
+.rd-hero-anillos {
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+/* Su giro (ver EL GIRO en `AnillosHero`): cada juego de anillos entero, con la propiedad
+   `rotate`, que la tarjeta gráfica anima sin repintar. Los pares, una vuelta en 15 minutos; los
+   impares, al revés y en 19, para que los dos juegos no se acompasen. */
+.rd-gira {
+  animation: rd-gira 900s linear infinite;
+}
+.rd-gira-inverso {
+  animation-duration: 1140s;
+  animation-direction: reverse;
+}
+@keyframes rd-gira {
+  to { rotate: 360deg; }
+}
+[data-quieto] > .rd-gira {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-gira { animation: none; }
+}
+
+/* ======================================================================
+   LA GRILLA DE 12 COLUMNAS
+   Herramienta de revisión, no de producción: se enciende y se apaga con la tecla G y sirve para
+   ver si lo que hay en pantalla se apoya en la grilla o flota. Va en coral translúcido porque es
+   el color que se distingue sobre la crema de la página, sobre blanco y sobre navy.
+
+   El ancho y los márgenes son los de `Seccion` (`max-w-360`, 5 / 8 / 12), que es el contenedor
+   real de la landing. El hueco de 24 entre columnas es un supuesto: el producto no declara una
+   grilla en ninguna parte, así que ese número es el que habría que confirmar, no los otros dos.
+   ====================================================================== */
+.rd-grilla {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  pointer-events: none;
+}
+.rd-grilla-col {
+  background-color: color-mix(in oklab, var(--color-rd-coral) 10%, transparent);
+  border-inline: 1px solid color-mix(in oklab, var(--color-rd-coral) 22%, transparent);
+}
+
+/* Aquí estaba la marquesina del portal en vivo (`.rd-marquesina`, tomada de `trust-bar-scroll` de
+   Calendly): dos filas de tarjetas corriendo en sentidos opuestos. Se borró el 7 de octubre de
+   2026, cuando la sección 4 pasó a ser «El radar en vivo» (ver `.rd-radar-*`). */
+
+/* El radar en vivo de la sección 4 (`RadarEnVivo`, 7 de octubre de 2026).
+   - El haz: una estela cónica en el amarillo del logo que se apaga detrás de su borde, que va
+     arriba; la gira un cuadro de animación con `transform`, así la tarjeta gráfica la rota sin
+     repintarla.
+   - Los trazos de los anillos y la cruz se dibujan al llegar, de dentro hacia fuera (cada uno trae
+     su espera en línea).
+   - El anillo de cada eco crece desde su centro cuando el haz lo enciende.
+   Con movimiento reducido los trazos aparecen sin dibujarse. */
+.rd-radar-haz {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 280deg,
+    var(--rd-haz, color-mix(in oklab, var(--color-rd-ayuda) 22%, transparent)) 360deg
+  );
+  will-change: transform;
+}
+.rd-radar-trazo {
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rd-radar-onda {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-radar-trazo { transition: none; }
+}
+
+/* La baraja de la sección 4 (`RadarEnVivo`, 7 de octubre de 2026): las tarjetas de la
+   herramienta apiladas como cartas físicas.
+   - Las hojas que asoman detrás: cada una sube 9 o 10 px, se achica un 4 %, se oscurece y se
+     gira un poco, alternando, como una baraja que nadie cuadró del todo. Crecen desde su borde de
+     arriba, así lo que asoma es ese borde.
+   - La que sale: se levanta, se mete detrás de las hojas a mitad de camino (el z-index cae de
+     golpe) y baja hasta la última hoja, donde desaparece bajo ella.
+   - La que entra: avanza desde la primera hoja hasta el frente, un poco después de que la otra
+     empieza a levantarse.
+   - La sombra hace físicas las cartas sobre el fondo claro; sobre el negro las separa el gris de
+     las hojas.
+   Con movimiento reducido no hay barajado: la del frente cambia sin moverse. */
+.rd-mazo {
+  --rd-mazo-1: translateY(-10px) scale(0.96) rotate(-1.2deg);
+  --rd-mazo-2: translateY(-19px) scale(0.92) rotate(0.9deg);
+  --rd-mazo-3: translateY(-27px) scale(0.88) rotate(-0.6deg);
+}
+.rd-mazo-hoja,
+.rd-mazo-carta {
+  transform-origin: 50% 0;
+  box-shadow: var(--shadow-rd-2);
+}
+/* Arrastrada con el dedo y soltada antes del umbral, la del frente vuelve a su sitio. */
+.rd-mazo-carta {
+  transition: translate 0.3s cubic-bezier(0.22, 1, 0.36, 1), rotate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rd-mazo-hoja-1 { transform: var(--rd-mazo-1); filter: brightness(0.92); z-index: 3; }
+.rd-mazo-hoja-2 { transform: var(--rd-mazo-2); filter: brightness(0.84); z-index: 2; }
+.rd-mazo-hoja-3 { transform: var(--rd-mazo-3); filter: brightness(0.76); z-index: 1; }
+.rd-mazo-entra {
+  animation: rd-mazo-entra 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+@keyframes rd-mazo-entra {
+  from { transform: var(--rd-mazo-1); filter: brightness(0.92); }
+  to { transform: none; filter: none; }
+}
+.rd-mazo-sale {
+  animation: rd-mazo-sale 0.95s both;
+}
+@keyframes rd-mazo-sale {
+  0% { transform: none; z-index: 5; animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1); }
+  42% { transform: translateY(-50%) rotate(-5deg); z-index: 5; animation-timing-function: cubic-bezier(0.45, 0, 0.3, 1); }
+  43% { z-index: 0; }
+  100% { transform: var(--rd-mazo-3); z-index: 0; filter: brightness(0.76); }
+}
+/* La que mandó el dedo (`RadarEnVivo`, CON EL DEDO): arranca donde la soltó (`--rd-arrastre`,
+   `--rd-giro`), sigue por su lado, se mete detrás y baja a la última hoja, como la que sale con
+   el haz. El lado va por clase y no multiplicado en un `calc()`: dentro de un `@keyframes`,
+   Chrome toma `calc(var(--lado) * 70%)` por `none`, y la tarjeta volvía al centro. */
+.rd-mazo-sale-lado {
+  --rd-lejos: 70%;
+  --rd-vuelta: 8deg;
+  animation: rd-mazo-sale-lado 0.8s both;
+}
+.rd-mazo-sale-izquierda {
+  --rd-lejos: -70%;
+  --rd-vuelta: -8deg;
+}
+@keyframes rd-mazo-sale-lado {
+  0% { transform: translateX(var(--rd-arrastre)) rotate(var(--rd-giro)); z-index: 5; animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1); }
+  40% { transform: translateX(var(--rd-lejos)) rotate(var(--rd-vuelta)); z-index: 5; animation-timing-function: cubic-bezier(0.45, 0, 0.3, 1); }
+  41% { z-index: 0; }
+  100% { transform: var(--rd-mazo-3); z-index: 0; filter: brightness(0.76); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-mazo-entra,
+  .rd-mazo-sale,
+  .rd-mazo-sale-lado { animation: none; }
+  .rd-mazo-carta { transition: none; }
+}
+
+/* La red de la sección 5 (`RedSumarse`, 7 de octubre de 2026). Las uniones de la red se dibujan
+   al llegar con la transición de los anillos del radar (`.rd-radar-trazo`); esto es lo que pasa
+   al elegir cómo sumarse:
+   - `.rd-red-traza`: cada línea amarilla se dibuja desde «tú» hasta su nodo.
+   - `.rd-red-aparece`: el punto de «tú» y el anillo del nodo crecen desde su centro.
+   - `.rd-red-etiqueta`: el número y el nombre aparecen cuando llega su línea.
+   Las tres llenan solo hacia atrás (`backwards`): esperan escondidas su turno, pero al terminar
+   sueltan la opacidad, así el resalte de un pilar puede apagar las demás. Cada una trae su espera
+   en línea. Con movimiento reducido aparecen sin moverse. */
+.rd-red-traza {
+  animation: rd-red-traza 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes rd-red-traza {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.rd-red-aparece {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rd-red-aparece 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+@keyframes rd-red-aparece {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: none; }
+}
+.rd-red-etiqueta {
+  animation: rd-red-etiqueta 0.35s ease-out backwards;
+}
+@keyframes rd-red-etiqueta {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-red-traza,
+  .rd-red-aparece,
+  .rd-red-etiqueta { animation: none; }
+}
+
+/* ======================================================================
+   LA SEGUNDA SECCIÓN: EL PANEL DE LOS ACCESOS (6 de octubre de 2026)
+   El contenedor de Calendly que se monta sobre el hero, se abre de 8 a 12 columnas al entrar,
+   queda fijo mientras el scroll pasa por Radar, Directorio y Mi organización, y se cierra de
+   12 a 8 al salir (Alejandro, 6 de octubre de 2026). El movimiento lo escribe `useRecorrido` en
+   tres propiedades del panel y una de la sección; aquí solo se dice qué hacer con ellas. Con
+   movimiento reducido no hay recorrido (el panel va a 12 columnas, sin fijar) y todo lo que se
+   mueve queda quieto.
+   ====================================================================== */
+
+/* Las propiedades que escribe `useRecorrido`, registradas sin herencia (6 de octubre de 2026,
+   H24). Sin registrar se heredaban: cada cuadro de la entrada y de la salida recalculaba el estilo
+   de los 385 nodos del panel, que no las usan. Así solo se recalcula el elemento que las lleva y
+   la X, que las pide con `inherit`. Valen 0 mientras nadie las escribe: sin recorte y sin
+   recogido, que es lo mismo que sin recorrido. `--rd-radio-menos` es lo que se cierra la esquina
+   del recorte cuando el margen alrededor de la tarjeta es estrecho (6 de octubre de 2026).
+
+   Las dos de abajo se escriben en el propio nodo que las usa (pestañas a la izquierda y línea
+   alrededor de la tarjeta, 6 de octubre de 2026): `--rd-abre`, cuánto se ven las pestañas y la
+   línea, vale 1 sin recorrido, así en el teléfono y con movimiento reducido las pestañas están
+   siempre a la vista; `--rd-empuje`, lo que entran las pestañas enfocadas con el panel estrecho. */
+@property --rd-lado { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-arriba { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-abajo { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-radio-menos { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-vertical { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-abre { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --rd-empuje { syntax: '<length>'; inherits: false; initial-value: 0px; }
+
+/* El recorrido: el panel fijo más un tramo de scroll por vista (`--rd-recorrido`, que pone el
+   componente con `PASO_POR_VISTA`). */
+.rd-accesos-recorrido {
+  height: calc(var(--spacing-rd-accesos-panel) + var(--rd-recorrido, 0px));
+}
+/* La subida sobre el hero. Alejandro, 6 de octubre de 2026: «aumenta la distancia de la sección 1
+   y 2. que sea la misma de la 2 y 3». La de la 2 a la 3 —del borde visible del panel cerrado al
+   título de «Cómo funciona»— es el recogido vertical del panel cerrado (`--rd-vertical`), más el
+   espacio entre secciones (48), más el relleno de arriba de la sección 3 (56): 258 a 1440. La de
+   la 1 a la 2 es el mismo recogido, más los 48, más el relleno de abajo del hero (144), más esta
+   subida. Para que sean iguales la subida es 56 − 144 = −88, sin el recogido: así quedan iguales a
+   cualquier ancho y alto, porque el recogido entra en las dos. Antes subía 112 más el recogido y
+   el borde quedaba a 80 de los botones (H6). */
+@media (min-width: 1024px) {
+  .rd-accesos-recorrido {
+    margin-top: calc(var(--spacing) * -22);
+  }
+}
+
+/* El panel mide 12 columnas siempre; lo que cambia es el recorte. Un `clip-path` y no el ancho:
+   el ancho recalcularía el diseño de la tarjeta en cada cuadro del scroll y la haría crecer, y la
+   referencia deja la tarjeta quieta mientras el panel crece alrededor. Sin las variables (en
+   teléfono, con movimiento reducido) el recorte es cero y solo redondea las esquinas.
+
+   Sin relleno desde la tarde del 6 de octubre de 2026: lo que se ve del panel es su borde
+   (`.rd-accesos-borde`), y el recorte sigue porque esconde las pestañas y la X con el panel
+   estrecho y deja pasar el cursor al hero fuera de él. La esquina es la de los botones, 16
+   (Alejandro: «el radius del contenedor grande se debe ver coherente con el radius del botón»); en
+   escritorio era el radio de panel de 56 y en teléfono el de 34. Con 16, menos que los 34 de la
+   tarjeta, `--rd-radio-menos` ya no cierra nada. */
+.rd-accesos {
+  --rd-accesos-radio: var(--radius-rd-xl);
+  /* El trazo del borde va 6 por dentro del recorte: la onda lo saca hasta 4 de su sitio, y sin ese
+     aire el recorte le comería las crestas. */
+  --rd-accesos-aire: calc(var(--spacing) * 1.5);
+  clip-path: inset(
+    var(--rd-arriba, 0px) var(--rd-lado, 0px) var(--rd-abajo, 0px)
+    round calc(var(--rd-accesos-radio) - var(--rd-radio-menos, 0px))
+  );
+}
+/* En el teléfono el panel no tiene borde (Alejandro, 7 de octubre de 2026: «el stroke de la seccion
+   2 quitalo») ni recorrido, y el carrusel sale hasta el borde de la pantalla: sin recorte, que lo
+   cortaba en el borde del panel. */
+@media (width < 64rem) {
+  .rd-accesos {
+    clip-path: none;
+  }
+}
+
+/* El borde del panel: sigue al recorte con su mismo radio, `--rd-accesos-aire` por dentro, y lee
+   el recorte con `inherit` como la X (H24). Es la forma del panel rellena en blanco: el filtro
+   líquido (`.rd-liquido`) se queda solo con su borde, un trazo de 2 ondulado. */
+.rd-accesos-borde {
+  --rd-lado: inherit;
+  --rd-arriba: inherit;
+  --rd-abajo: inherit;
+  inset: calc(var(--rd-arriba) + var(--rd-accesos-aire)) calc(var(--rd-lado) + var(--rd-accesos-aire))
+    calc(var(--rd-abajo) + var(--rd-accesos-aire));
+  border-radius: var(--rd-accesos-radio);
+  background-color: var(--color-rd-noche-tinta);
+  /* En su propia capa: su filtro se rehace en cada paso de la deriva y no debe arrastrar al
+     repintado a la tarjeta ni a los fondos de los visuales (ver `LIQUIDO` en `LandingAccesos`). */
+  will-change: transform;
+}
+
+/* El borde líquido, del filtro que monta `LandingAccesos` (`LIQUIDO`): el del panel y la línea de
+   avance de la tarjeta. */
+.rd-liquido {
+  filter: url(#rd-accesos-liquido);
+}
+
+/* El trazo a mano de los fondos de los visuales de la sección 2, de los filtros que monta
+   `LandingAccesos` (ver `MANO_CAMPO_POR_PX`): el borde solo, o la forma entera con el borde
+   ondulado. Van sobre una pieza rellena; el color es el de su relleno. */
+.rd-mano-trazo {
+  filter: url(#rd-mano-trazo);
+}
+.rd-mano-relleno {
+  filter: url(#rd-mano-relleno);
+}
+
+/* La X viaja con el borde recortado: con el panel en 8 columnas queda en su esquina, no fuera.
+   Lee el recorte del panel con `inherit` porque las variables no se heredan (H24).
+
+   Solo se ve con el panel abierto (`data-abierto`, que pone `useRecorrido`): en la referencia el
+   panel estrecho no la lleva (6 de octubre de 2026, H14). Con el foco del teclado se ve siempre,
+   para que el salto por tabulador siga a la vista. La transición suma la opacidad a los colores
+   de `transition-colors`, que esta regla reemplaza. */
+.rd-accesos-x {
+  --rd-lado: inherit;
+  --rd-arriba: inherit;
+  transform: translate3d(calc(-1 * var(--rd-lado)), var(--rd-arriba), 0);
+  transition-property: color, background-color, border-color, opacity;
+}
+.rd-accesos:not([data-abierto]) .rd-accesos-x:not(:focus-visible) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* El destino de la X, la sección siguiente, recibe el foco para que el siguiente Tab siga desde
+   ahí (H4), pero no es un control: sin anillo. */
+.rd-accesos-recorrido + [tabindex='-1']:focus {
+  outline: none;
+}
+
+/* El ancho de la tarjeta, que no cambia en todo el recorrido. Desde 1280 son 8 columnas menos 24
+   de cada lado —el hueco de la grilla—, así con el panel cerrado queda un filo de color a los
+   lados, como en la referencia. Entre 1024 y 1279 son las 8 columnas enteras, a ras del panel
+   cerrado: con 24 menos a cada lado la tarjeta bajaba a 563 a 1024 y el titular partía en seis
+   renglones. 8 columnas son dos tercios del contenedor menos 8: llevan 7 huecos y no los 7,33
+   que les tocarían por proporción. Es la misma cuenta de `useRecorrido`. */
+@media (min-width: 1024px) {
+  .rd-accesos-ancho {
+    width: calc(200% / 3 - var(--spacing) * 2);
+  }
+}
+@media (min-width: 1280px) {
+  .rd-accesos-ancho {
+    width: calc(200% / 3 - var(--spacing) * 14);
+  }
+}
+
+/* Las pestañas, en columna a la izquierda de la tarjeta desde 1024 (6 de octubre de 2026). Con el
+   recorrido se ven según `--rd-abre`: entran deslizándose 16 desde la tarjeta mientras el panel
+   termina de abrirse y salen igual al empezar a cerrarse. Sin transición, porque lo escribe cada
+   cuadro del scroll y la seguiría con retraso. Sin recorrido `--rd-abre` vale 1 y no se mueven.
+
+   Con el foco del teclado se ven siempre, como la X (H14), y entran `--rd-empuje` si el recorte
+   del panel estrecho las tapa: un control enfocado no puede quedar invisible. Medio
+   transparentes no reciben el cursor (`data-oculta`, que pone `useRecorrido`). */
+.rd-accesos-pestanas {
+  opacity: var(--rd-abre);
+  transform: translate3d(calc((1 - var(--rd-abre)) * var(--spacing) * 4), 0, 0);
+}
+.rd-accesos-pestanas:has(:focus-visible) {
+  opacity: 1;
+  transform: translate3d(var(--rd-empuje), 0, 0);
+}
+.rd-accesos-pestanas[data-oculta]:not(:has(:focus-visible)) {
+  pointer-events: none;
+}
+
+/* La línea de avance alrededor de la tarjeta (6 de octubre de 2026): aparece y se va con las
+   pestañas. El contorno, el largo del trazo y lo recorrido los escribe `useRecorrido` en el
+   propio trazado, en píxeles, desde la mitad del borde de abajo hacia la izquierda y en el
+   sentido del reloj (Alejandro, 6 de octubre de 2026: «inicia en la mitad de la zona inferior de
+   la card»). La opacidad va sin transición, como las pestañas. Reemplaza al pico blanco que unía
+   la pestaña con la tarjeta: «queda muy muy literal como Calendly» (Alejandro). */
+.rd-accesos-progreso {
+  opacity: var(--rd-abre);
+  /* En su propia capa, como el borde del panel: su filtro se rehace con la deriva. */
+  will-change: transform;
+}
+
+/* La vista que entra: un fundido corto con la subida de `rd-paso`, a 360 ms en vez de 450 porque
+   aquí acompaña a un clic o a un tramo de scroll y no a un cambio automático. */
+.rd-acc-entra {
+  animation: rd-paso 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Las columnas de fichas del Directorio nacen y se van desvanecidas, no cortadas por el borde. */
+.rd-acc-columna {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+}
+/* La lista va dos veces y sube la mitad: ahí la copia queda donde estaba el original. */
+@keyframes rd-acc-sube {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+/* El relleno de las barras de Mi organización: sube desde abajo hasta completarse y baja. */
+@keyframes rd-acc-llena {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+
+/* Lo que no se ve no se mueve: las vistas ocultas y la sección entera cuando sale de pantalla
+   (`data-quieto`, que pone un `IntersectionObserver`). */
+[data-activa='no'] .rd-bucle,
+[data-quieto] .rd-bucle {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-acc-entra { animation: none; }
 }
