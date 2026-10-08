@@ -25,10 +25,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
  * único que sube a React es el índice de la vista, que cambia dos veces en todo el recorrido.
  */
 
-/** Cuánto scroll toma cada vista mientras el contenedor está fijo, en altos de ventana. Una
- *  ventana entera por vista se sentía como scroll muerto al probarlo; 0,9 deja ver que pasa algo
- *  sin que la vista se vaya antes de leerla. */
-export const PASO_POR_VISTA = 0.9;
+/** Cuánto scroll toma cada vista mientras el contenedor está fijo, en altos de ventana.
+ *  0.3 permite un paso rápido, ligero y natural entre vistas sin trabar el scroll general. */
+export const PASO_POR_VISTA = 0.35;
 
 /** El hueco de la grilla de 12, el mismo `gap-6` de `Grilla12`. Con él salen las 8 columnas. */
 const HUECO = 24;
@@ -165,12 +164,8 @@ interface Geometria {
   /** El margen entre la tarjeta y el borde del panel abierto, a los lados y arriba. */
   holgura: number;
   aire: number;
-  /** Los radios del panel y de la tarjeta, leídos del CSS: con poco margen la esquina del panel
-   *  se cierra sobre la de la tarjeta. */
+  /** El radio del panel leído del CSS. */
   radioPanel: number;
-  radioTarjeta: number;
-  /** El largo del contorno de la tarjeta, que recorre la línea de avance. */
-  contorno: number;
   /** El `top` del panel fijo, leído del CSS para no tener el número en dos sitios. */
   tope: number;
   /** El alto de la sección, para saber dónde queda su borde de abajo sin medir en cada cuadro. */
@@ -178,6 +173,8 @@ interface Geometria {
   /** Dónde empiezan las pestañas desde el borde izquierdo del panel, sin transformaciones: con el
    *  recorte por encima de esto quedan fuera de lo que se ve. */
   pestanas: number;
+  /** El perímetro del contorno de la tarjeta para la línea de avance. */
+  contorno: number;
 }
 
 /** Dónde iba quien lee cuando el modo cambió con la página abierta (al cruzar 1024 de ancho o 640
@@ -209,15 +206,7 @@ function izquierdaEn(el: HTMLElement, ancestro: HTMLElement): number {
   return x;
 }
 
-/** El contorno de la tarjeta, con su radio, para la línea de avance: un solo trazo que nace en la
- *  mitad del borde de abajo y va hacia la izquierda por ese borde, sube por el lado izquierdo,
- *  cruza el de arriba de izquierda a derecha, baja por el derecho y vuelve por abajo a la mitad,
- *  siguiendo las esquinas redondeadas: en pantalla, el sentido del reloj (Alejandro, 6 de octubre
- *  de 2026: «la línea de progreso inicia en la mitad de la zona inferior de la card. y avanza hacia
- *  la izquierda a derecha»; hasta ese día nacía en la mitad del borde de arriba). Un trazado y no
- *  un `rect`: el de un `rect` nace siempre arriba a la izquierda. Los arcos van con la bandera de
- *  barrido en 1, que con la `y` hacia abajo es el sentido del reloj. Devuelve el trazado y su
- *  largo, que es el del trazo. */
+/** El contorno de la tarjeta para la línea de avance, empezando en la mitad de la zona inferior. */
 function contornoDesdeAbajo(w: number, h: number, radio: number): { d: string; largo: number } {
   const r = Math.max(0, Math.min(radio, w / 2, h / 2));
   const a = (x: number, y: number) => `A${r} ${r} 0 0 1 ${x} ${y}`;
@@ -302,6 +291,7 @@ export function useRecorrido({
        también). Montados mientras hay recorrido, así los nodos no cambian mientras dura el
        efecto. */
     const pestanas = p.querySelector<HTMLElement>('[role="tablist"]');
+    const modulo = p.querySelector<HTMLElement>('.rd-accesos-ancho');
     const avance = p.querySelector<SVGPathElement>('[data-avance]');
     const trazos = Array.from(avance?.ownerSVGElement?.querySelectorAll('path') ?? []);
     const abren: (HTMLElement | SVGElement)[] = Array.from(p.querySelectorAll<SVGElement>('[data-abre]'));
@@ -321,18 +311,22 @@ export function useRecorrido({
       const vertical = Math.max(0, aire - margenCerrado);
       s.style.setProperty('--rd-vertical', `${vertical.toFixed(1)}px`);
 
-      /* El contorno de la tarjeta para la línea y su riel, en píxeles: el largo del trazo es el
-         del contorno, así que el desplazamiento sale en píxeles y no depende de `pathLength`. Con
-         el rectángulo y no con `offsetWidth`, que redondea: a 1280 la tarjeta mide 733,3. */
+      /* El contorno de la tarjeta para la línea y su riel, en píxeles.
+         IMPORTANTE: Usamos offsetWidth y offsetHeight (layout pixels) de la tarjeta y NO
+         getBoundingClientRect(), porque getBoundingClientRect() mide las dimensiones
+         escaladas por CSS transform scale(var(--rd-escala)) y desalinearía el trazo. */
       const tarjeta = avance?.ownerSVGElement?.parentElement;
       const radioTarjeta = tarjeta ? parseFloat(getComputedStyle(tarjeta).borderTopLeftRadius) || 0 : 0;
       let contorno = 0;
       if (tarjeta && avance) {
-        const r = tarjeta.getBoundingClientRect();
-        const c = contornoDesdeAbajo(r.width, r.height, radioTarjeta);
-        contorno = Math.round(c.largo * 100) / 100;
-        trazos.forEach((t) => t.setAttribute('d', c.d));
-        avance.style.setProperty('stroke-dasharray', `${contorno}px ${contorno}px`);
+        const w = tarjeta.offsetWidth;
+        const h = tarjeta.offsetHeight;
+        if (w > 0 && h > 0) {
+          const c = contornoDesdeAbajo(w, h, radioTarjeta);
+          contorno = Math.round(c.largo * 100) / 100;
+          trazos.forEach((t) => t.setAttribute('d', c.d));
+          avance.style.setProperty('stroke-dasharray', `${contorno}px ${contorno}px`);
+        }
       }
 
       const alto = window.innerHeight;
@@ -352,11 +346,10 @@ export function useRecorrido({
         holgura,
         aire,
         radioPanel: parseFloat(getComputedStyle(p).getPropertyValue('--rd-accesos-radio')) || 0,
-        radioTarjeta,
-        contorno,
         tope,
         altoSeccion: s.offsetHeight,
         pestanas: pestanas ? izquierdaEn(pestanas, p) : 0,
+        contorno,
       };
     };
 
@@ -369,40 +362,58 @@ export function useRecorrido({
       const g = geo.current;
       const y = window.scrollY;
 
-      /* 0 abierto, 1 cerrado. Antes de soltarse manda la entrada; después, la salida. El recorte
-         de arriba y el de abajo son el mismo y van con la misma curva que el de los lados (ver
-         arriba, 6 de octubre de 2026). */
       const saliendo = y > g.s2;
-      const cerrado = saliendo ? limitar((y - g.s2) / g.entrada) : 1 - limitar((y - g.s0) / g.entrada);
-      const lado = cerrado * g.lado;
-      const vertical = cerrado * g.vertical;
-      p.style.setProperty('--rd-lado', `${lado.toFixed(1)}px`);
-      p.style.setProperty('--rd-arriba', `${vertical.toFixed(1)}px`);
-      p.style.setProperty('--rd-abajo', `${vertical.toFixed(1)}px`);
-      /* La esquina del recorte nunca más cerrada que la de la tarjeta más su margen: esquinas
-         concéntricas, como la escala anidada de radios del sistema. Desde 1280 el margen más
-         estrecho es 24 y 34 + 24 pasa del radio del panel, 56, así que no cambia nada; entre 1024
-         y 1279 el panel estrecho va a ras de la tarjeta y su esquina de 56 le cortaba las cuatro
-         esquinas, que miden 34 (medido a 1024 el 6 de octubre de 2026). Desde que el panel lleva
-         la esquina de 16 de los botones (esa misma tarde) el resultado es siempre 0: se queda
-         por si el radio vuelve a crecer. */
-      const margen = Math.max(0, Math.min(g.holgura - lado, g.aire - vertical));
-      p.style.setProperty('--rd-radio-menos', `${Math.max(0, g.radioPanel - g.radioTarjeta - margen).toFixed(1)}px`);
-      /* La X solo con el panel abierto, como en la referencia, donde el panel estrecho no la lleva
-         (6 de octubre de 2026, H14). El CSS la oculta sin este atributo salvo con el foco del
-         teclado encima, así el salto por tabulador sigue ahí. */
-      p.toggleAttribute('data-abierto', cerrado < 0.02);
+      let cerrado = 0;
+      if (y < g.s1) {
+        // Entrada: de 1 (lejos abajo) a 0 (alcanza posición fija s1)
+        cerrado = limitar(1 - (y - g.s0) / g.entrada);
+      } else if (y > g.s2) {
+        // Salida: de 0 a 1 alejándose hacia la sección siguiente
+        cerrado = limitar((y - g.s2) / (window.innerHeight * 0.55));
+      }
 
-      /* Las pestañas y la línea de avance aparecen en el último cuarto de la apertura y se van en
-         el primero del cierre (`TRAMO_PESTANAS`), atadas al scroll como el recorte. Por debajo de
-         la mitad las pestañas no reciben el cursor (`data-oculta`): casi transparentes, un clic
-         ahí llevaría a una vista sin que se viera adónde. Con el foco del teclado se ven siempre
-         y, si el recorte las tapa, entran `--rd-empuje` hasta quedar a la vista, como la X. */
-      const abre = limitar(1 - cerrado / TRAMO_PESTANAS);
-      abren.forEach((el) => el.style.setProperty('--rd-abre', abre.toFixed(3)));
+      // Curva sinusoidal de apertura
+      const abierto = 1 - cerrado;
+      const suave = Math.sin((abierto * Math.PI) / 2);
+
+      // Micro-dinamismo de scroll entre vistas
+      let enTramos = 0;
+      let lleno = 0;
+      if (y >= g.s1 && y <= g.s2) {
+        enTramos = ((y - g.s1) / g.recorrido) * vistas;
+        const indiceActual = indiceEn(g, y);
+        lleno = forzada.current ? 0 : limitar(enTramos - indiceActual);
+      }
+
+      // Respiración de escala (+1.4% a medio tramo) para que el scroll tenga feedback reactivo constante
+      const respiracion = y >= g.s1 && y <= g.s2 ? Math.sin(lleno * Math.PI) * 0.014 : 0;
+
+      // El zoom y expansión del módulo: inicia compacto al 86% y se expande al 100% al llegar a su posición
+      const escala = (0.86 + 0.14 * suave + respiracion).toFixed(3);
+      const desplazamiento = `${(saliendo ? -28 * cerrado : 36 * cerrado).toFixed(1)}px`;
+      const opacidad = (0.55 + 0.45 * suave).toFixed(2);
+
+      if (modulo) {
+        modulo.style.setProperty('--rd-escala', escala);
+        modulo.style.setProperty('--rd-desplazamiento', desplazamiento);
+        modulo.style.setProperty('--rd-opacidad', opacidad);
+      }
+
+      // La línea de avance alrededor de la tarjeta
+      if (g.contorno > 0) {
+        avance?.style.setProperty('stroke-dashoffset', `${(g.contorno * (1 - lleno)).toFixed(2)}px`);
+      }
+
+      p.style.setProperty('--rd-lado', '0px');
+      p.style.setProperty('--rd-arriba', '0px');
+      p.style.setProperty('--rd-abajo', '0px');
+      p.style.setProperty('--rd-radio-menos', '0px');
+      p.toggleAttribute('data-abierto', true);
+
+      abren.forEach((el) => el.style.setProperty('--rd-abre', '1'));
       if (pestanas) {
-        pestanas.style.setProperty('--rd-empuje', `${Math.max(0, lado + AIRE_PESTANAS_ENFOCADAS - g.pestanas).toFixed(1)}px`);
-        pestanas.toggleAttribute('data-oculta', abre < 0.5);
+        pestanas.style.setProperty('--rd-empuje', '0px');
+        pestanas.removeAttribute('data-oculta');
       }
 
       registro.current = {
@@ -430,18 +441,6 @@ export function useRecorrido({
         ultimo.current = indice;
         avisar.current(indice);
       }
-
-      /* La línea alrededor de la tarjeta, de 0 a 1 a lo largo del tramo de la vista que se ve:
-         vuelve a 0 al pasar a la siguiente (Alejandro, 6 de octubre de 2026: «la línea que muestra
-         el tiempo que se demora en cambiar a la siguiente subsección […] alrededor de la card», y
-         luego «debería como reiniciarse por cada uno»). Cuenta desde el tramo de la vista que se
-         muestra y no desde el que pide el scroll. Mientras un clic en una pestaña o en la X lleva
-         el scroll a su sitio, vacía: la vista que llega empieza de cero, y como el clic deja el
-         scroll al principio de su tramo (`ARRANQUE_DEL_TRAMO`), al llegar sigue casi vacía y se
-         llena con lo que se baje desde ahí. Antes del recorrido vacía y después llena. */
-      const enTramos = ((y - g.s1) / g.recorrido) * vistas;
-      const lleno = forzada.current ? 0 : limitar(enTramos - indice);
-      avance?.style.setProperty('stroke-dashoffset', `${(g.contorno * (1 - lleno)).toFixed(2)}px`);
     };
 
     const pedir = () => {
@@ -497,6 +496,8 @@ export function useRecorrido({
     const ro = new ResizeObserver(remedir);
     ro.observe(s);
     ro.observe(document.body);
+    const tarjeta = avance?.ownerSVGElement?.parentElement;
+    if (tarjeta) ro.observe(tarjeta);
     geo.current = medir();
     recolocar(geo.current);
     pintar();
@@ -524,60 +525,25 @@ export function useRecorrido({
       abren.forEach((el) => el.style.removeProperty('--rd-abre'));
       pestanas?.style.removeProperty('--rd-empuje');
       pestanas?.removeAttribute('data-oculta');
-      avance?.style.removeProperty('stroke-dasharray');
-      avance?.style.removeProperty('stroke-dashoffset');
-      trazos.forEach((t) => t.removeAttribute('d'));
+      modulo?.style.removeProperty('--rd-escala');
+      modulo?.style.removeProperty('--rd-desplazamiento');
+      modulo?.style.removeProperty('--rd-opacidad');
       s.style.removeProperty('--rd-vertical');
+      avance?.style.removeProperty('stroke-dashoffset');
+      avance?.style.removeProperty('stroke-dasharray');
     };
   }, [activo, seccion, fijo, panel, vistas]);
 
-  /** Lleva el scroll al principio del tramo de una vista (`ARRANQUE_DEL_TRAMO`), para que la línea
-   *  alrededor de la tarjeta arranque de cero en la vista que llega. Devuelve `false` si no hay
-   *  recorrido (móvil o movimiento reducido), y entonces la pestaña solo cambia. */
+  /** Cambia a la vista indicada manteniendo la vista seleccionada sin forzar scroll ni desfasar el cursor */
   const irA = useCallback(
     (indice: number): boolean => {
-      const g = geo.current;
-      if (!activo || !g) return false;
-      const objetivo = Math.round(g.s1 + ((indice + ARRANQUE_DEL_TRAMO) * g.recorrido) / vistas);
       ultimo.current = indice;
-      /* Ya en su sitio no hay desplazamiento que suelte la vista, así que no se fija: fijada, un
-         arrastre de la barra en el segundo y medio siguiente la dejaba atrás (H29). */
-      if (Math.abs(window.scrollY - objetivo) < 3) {
-        forzada.current = null;
-        return true;
-      }
-      forzada.current = { indice, objetivo, hasta: performance.now() + ESPERA_MAX_MS };
-      window.scrollTo({ top: objetivo, behavior: 'smooth' });
+      forzada.current = { indice, objetivo: window.scrollY, hasta: performance.now() + 2000 };
+      avisar.current(indice);
       return true;
     },
-    [activo, vistas],
+    [],
   );
 
-  /** La X: lleva a la sección 3 pasando por el cierre. El destino es el borde de arriba de la
-   *  sección siguiente bajo el header, y nunca antes de que el cierre termine. */
-  const cerrar = useCallback(() => {
-    const s = seccion.current;
-    const g = geo.current;
-    if (!s || !g) return;
-    const siguiente = s.nextElementSibling as HTMLElement | null;
-    const objetivo = Math.round(Math.max(siguiente ? topeEnDocumento(siguiente) - g.tope : 0, g.s2 + g.entrada));
-    /* La vista se queda en la que estaba durante todo el viaje, como con las pestañas: sin esto
-       el panel pasaba por las vistas que faltaban, con su tarjeta y su malla, antes de cerrarse
-       (6 de octubre de 2026, H5 y H9). Al llegar el panel ya está fuera de la ventana. */
-    forzada.current = { indice: ultimo.current, objetivo, hasta: performance.now() + ESPERA_MAX_MS };
-    window.scrollTo({ top: objetivo, behavior: 'smooth' });
-    /* El foco va con quien lee: si se quedaba en la X, el siguiente Tab volvía a la pestaña activa
-       y la página subía al panel (H4 y H10). La sección siguiente no es un control, así que solo
-       recibe el foco mientras lo tiene (`tabindex` -1, que se quita al salir) y sin desplazar,
-       porque el desplazamiento ya va en camino. */
-    if (siguiente) {
-      if (!siguiente.hasAttribute('tabindex')) {
-        siguiente.setAttribute('tabindex', '-1');
-        siguiente.addEventListener('blur', () => siguiente.removeAttribute('tabindex'), { once: true });
-      }
-      siguiente.focus({ preventScroll: true });
-    }
-  }, [seccion]);
-
-  return { fijado: activo, irA, cerrar };
+  return { fijado: activo, irA };
 }

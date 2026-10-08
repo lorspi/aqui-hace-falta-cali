@@ -30,9 +30,13 @@ export const LandingFooter: React.FC = () => {
         <div className="grid grid-cols-1 gap-8 text-rd-13-5 md:grid-cols-12 lg:gap-12">
           {/* Columna 1: identidad */}
           <div className="space-y-3 md:col-span-6 lg:col-span-5">
-            {/* El logo blanco en oscuro y el de tinta en claro (`claro:`), el mismo dibujo. */}
-            <img src="/logo-radar-de-ayuda-blanco.png" alt="Radar de ayuda" width={361} height={100} className="block h-10 w-auto claro:hidden" />
-            <img src="/logo-radar-de-ayuda.png" alt="Radar de ayuda" width={361} height={100} className="hidden h-10 w-auto claro:block" />
+            {/* El logo original de RaDAR: en modo claro (por defecto) con sus colores y tintas
+                originales; en modo oscuro, con filtro blanco para alto contraste. */}
+            <img
+              src="/logo-radar.svg"
+              alt="RaDAR de ayuda"
+              className="block h-9.5 w-auto brightness-0 invert opacity-90 claro:filter-none claro:opacity-100"
+            />
             <p className="m-0 max-w-sm text-rd-13-5 leading-relaxed text-rd-noche-tinta-2">{t('landingFooterTagline')}</p>
             <p className="m-0 pt-1 text-rd-11-5 text-rd-noche-meta">
               {t('landingFooterMadeWith')} <Heart aria-hidden="true" className="inline h-3 w-3 text-rd-coral" /> {t('landingFooterByVolunteers')}

@@ -738,6 +738,16 @@ export const VentanaLiquida: React.FC<{
   const derivaPunto = useRef<SVGFEOffsetElement>(null);
   const desplazarPunto = useRef<SVGFEDisplacementMapElement>(null);
 
+  /* Oculta la flecha nativa del ratón mientras el cursor líquido está activo en pantalla,
+     para que la animación actúe como puntero principal en toda la landing. */
+  useEffect(() => {
+    if (!activo) return;
+    document.documentElement.classList.add('rd-cursor-activo');
+    return () => {
+      document.documentElement.classList.remove('rd-cursor-activo');
+    };
+  }, [activo]);
+
   /* El tamaño del hero, con su relleno: la ventana cubre toda la sección, no solo el contenido. Con
      sus decimales: el alto suele tenerlos (502,84 a 1024), y con `offsetHeight`, que redondea a
      503, el `viewBox` no medía lo mismo que el SVG y el navegador encogía todo un 0,03 % para que
@@ -1315,7 +1325,7 @@ export const VentanaLiquida: React.FC<{
                 <feColorMatrix in="campo" type="matrix" values={umbral(NIVEL)} result="fuera" />
                 <feColorMatrix in="campo" type="matrix" values={umbral(NIVEL_DENTRO)} result="dentro" />
                 <feComposite in="fuera" in2="dentro" operator="out" result="trazo" />
-                <feFlood style={{ floodColor: 'var(--color-rd-ayuda)' }} result="tinta" />
+                <feFlood style={{ floodColor: 'var(--color-rd-amber)' }} result="tinta" />
                 <feComposite in="tinta" in2="trazo" operator="in" />
               </filter>
             ))}
@@ -1384,7 +1394,8 @@ export const VentanaLiquida: React.FC<{
                   ref={(c) => {
                     puntos.current[i] = c;
                   }}
-                  className="fill-rd-ayuda"
+                  className="fill-rd-amber"
+                  style={{ fill: 'var(--color-rd-amber)' }}
                   cx={0}
                   cy={0}
                   r={0}

@@ -314,6 +314,24 @@
 }
 
 /* ======================================================================
+   CURSOR PERSONALIZADO DE LA LANDING
+   Oculta la flecha nativa del navegador cuando el cursor líquido está activo,
+   para que la animación del radar actúe como puntero principal de la landing.
+   ====================================================================== */
+html.rd-cursor-activo,
+html.rd-cursor-activo body,
+html.rd-cursor-activo .rd-landing,
+html.rd-cursor-activo .rd-landing * {
+  cursor: none !important;
+}
+
+/* Restituye el cursor nativo cuando hay un diálogo o modal interactivo */
+html.rd-cursor-activo [role="dialog"],
+html.rd-cursor-activo [role="dialog"] * {
+  cursor: auto !important;
+}
+
+/* ======================================================================
    DESIGN SYSTEM — Componentes UI unificados
    Jerarquía de botones:
      .btn-primary   → acción principal (enviar, confirmar, CTA)
@@ -1204,7 +1222,7 @@ html:has(.rd-revela) {
   background: conic-gradient(
     from 0deg,
     transparent 0deg 280deg,
-    color-mix(in oklab, var(--color-rd-ayuda) 22%, transparent) 360deg
+    color-mix(in oklab, var(--color-rd-amber) 30%, transparent) 360deg
   );
   will-change: transform;
 }
@@ -1256,6 +1274,9 @@ html:has(.rd-revela) {
 @property --rd-vertical { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --rd-abre { syntax: '<number>'; inherits: false; initial-value: 1; }
 @property --rd-empuje { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-escala { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --rd-desplazamiento { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --rd-opacidad { syntax: '<number>'; inherits: false; initial-value: 1; }
 
 /* El recorrido: el panel fijo más un tramo de scroll por vista (`--rd-recorrido`, que pone el
    componente con `PASO_POR_VISTA`). */
@@ -1289,63 +1310,18 @@ html:has(.rd-revela) {
    tarjeta, `--rd-radio-menos` ya no cierra nada. */
 .rd-accesos {
   --rd-accesos-radio: var(--radius-rd-xl);
-  /* El trazo del borde va 6 por dentro del recorte: la onda lo saca hasta 4 de su sitio, y sin ese
-     aire el recorte le comería las crestas. */
-  --rd-accesos-aire: calc(var(--spacing) * 1.5);
-  clip-path: inset(
-    var(--rd-arriba, 0px) var(--rd-lado, 0px) var(--rd-abajo, 0px)
-    round calc(var(--rd-accesos-radio) - var(--rd-radio-menos, 0px))
-  );
 }
 
-/* El borde del panel: sigue al recorte con su mismo radio, `--rd-accesos-aire` por dentro, y lee
-   el recorte con `inherit` como la X (H24). Es la forma del panel rellena en blanco: el filtro
-   líquido (`.rd-liquido`) se queda solo con su borde, un trazo de 2 ondulado. */
-.rd-accesos-borde {
-  --rd-lado: inherit;
-  --rd-arriba: inherit;
-  --rd-abajo: inherit;
-  inset: calc(var(--rd-arriba) + var(--rd-accesos-aire)) calc(var(--rd-lado) + var(--rd-accesos-aire))
-    calc(var(--rd-abajo) + var(--rd-accesos-aire));
-  border-radius: var(--rd-accesos-radio);
-  background-color: var(--color-rd-noche-tinta);
-  /* En su propia capa: su filtro se rehace en cada paso de la deriva y no debe arrastrar al
-     repintado a la tarjeta ni a los fondos de los visuales (ver `LIQUIDO` en `LandingAccesos`). */
-  will-change: transform;
-}
-
-/* El borde líquido, del filtro que monta `LandingAccesos` (`LIQUIDO`): el del panel y la línea de
-   avance de la tarjeta. */
 .rd-liquido {
   filter: url(#rd-accesos-liquido);
 }
 
-/* El trazo a mano de los fondos de los visuales de la sección 2, de los filtros que monta
-   `LandingAccesos` (ver `MANO_CAMPO_POR_PX`): el borde solo, o la forma entera con el borde
-   ondulado. Van sobre una pieza rellena; el color es el de su relleno. */
 .rd-mano-trazo {
   filter: url(#rd-mano-trazo);
 }
+
 .rd-mano-relleno {
   filter: url(#rd-mano-relleno);
-}
-
-/* La X viaja con el borde recortado: con el panel en 8 columnas queda en su esquina, no fuera.
-   Lee el recorte del panel con `inherit` porque las variables no se heredan (H24).
-
-   Solo se ve con el panel abierto (`data-abierto`, que pone `useRecorrido`): en la referencia el
-   panel estrecho no la lleva (6 de octubre de 2026, H14). Con el foco del teclado se ve siempre,
-   para que el salto por tabulador siga a la vista. La transición suma la opacidad a los colores
-   de `transition-colors`, que esta regla reemplaza. */
-.rd-accesos-x {
-  --rd-lado: inherit;
-  --rd-arriba: inherit;
-  transform: translate3d(calc(-1 * var(--rd-lado)), var(--rd-arriba), 0);
-  transition-property: color, background-color, border-color, opacity;
-}
-.rd-accesos:not([data-abierto]) .rd-accesos-x:not(:focus-visible) {
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* El destino de la X, la sección siguiente, recibe el foco para que el siguiente Tab siga desde
@@ -1363,6 +1339,10 @@ html:has(.rd-revela) {
 @media (min-width: 1024px) {
   .rd-accesos-ancho {
     width: calc(200% / 3 - var(--spacing) * 2);
+    transform: scale(var(--rd-escala, 1)) translateY(var(--rd-desplazamiento, 0px));
+    opacity: var(--rd-opacidad, 1);
+    transform-origin: center center;
+    will-change: transform, opacity;
   }
 }
 @media (min-width: 1280px) {
@@ -1380,33 +1360,29 @@ html:has(.rd-revela) {
    del panel estrecho las tapa: un control enfocado no puede quedar invisible. Medio
    transparentes no reciben el cursor (`data-oculta`, que pone `useRecorrido`). */
 .rd-accesos-pestanas {
-  opacity: var(--rd-abre);
-  transform: translate3d(calc((1 - var(--rd-abre)) * var(--spacing) * 4), 0, 0);
-}
-.rd-accesos-pestanas:has(:focus-visible) {
   opacity: 1;
-  transform: translate3d(var(--rd-empuje), 0, 0);
-}
-.rd-accesos-pestanas[data-oculta]:not(:has(:focus-visible)) {
-  pointer-events: none;
 }
 
-/* La línea de avance alrededor de la tarjeta (6 de octubre de 2026): aparece y se va con las
-   pestañas. El contorno, el largo del trazo y lo recorrido los escribe `useRecorrido` en el
-   propio trazado, en píxeles, desde la mitad del borde de abajo hacia la izquierda y en el
-   sentido del reloj (Alejandro, 6 de octubre de 2026: «inicia en la mitad de la zona inferior de
-   la card»). La opacidad va sin transición, como las pestañas. Reemplaza al pico blanco que unía
-   la pestaña con la tarjeta: «queda muy muy literal como Calendly» (Alejandro). */
+/* La línea de avance alrededor de la tarjeta */
 .rd-accesos-progreso {
-  opacity: var(--rd-abre);
-  /* En su propia capa, como el borde del panel: su filtro se rehace con la deriva. */
+  opacity: var(--rd-abre, 1);
   will-change: transform;
 }
 
-/* La vista que entra: un fundido corto con la subida de `rd-paso`, a 360 ms en vez de 450 porque
-   aquí acompaña a un clic o a un tramo de scroll y no a un cambio automático. */
+/* La vista que entra: animación dinámica con escala y fundido suave */
 .rd-acc-entra {
-  animation: rd-paso 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rd-acc-entra 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes rd-acc-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Las columnas de fichas del Directorio nacen y se van desvanecidas, no cortadas por el borde. */

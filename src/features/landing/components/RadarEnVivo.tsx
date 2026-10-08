@@ -279,15 +279,15 @@ export const RadarEnVivo: React.FC<{
               ))}
             </g>
             <g transform={`translate(${C} ${C})`}>
-              <path d={CENTRO_ONDA} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="rd-encuentro-onda fill-none stroke-rd-ayuda" style={{ animationDuration: '3s' }} />
-              <circle r={5} className="fill-rd-ayuda" />
+              <path d={CENTRO_ONDA} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="rd-encuentro-onda fill-none stroke-rd-amber" style={{ animationDuration: '3s' }} />
+              <circle r={5} className="fill-rd-amber" />
             </g>
           </svg>
 
           {/* El haz: una estela que se apaga detrás de su borde, girada por el cuadro de animación. */}
           <div aria-hidden="true" className="absolute inset-1/25 overflow-hidden rounded-full">
             <div ref={haz} className={`rd-radar-haz absolute inset-0 rounded-full transition-opacity duration-700 ${dibujado ? 'opacity-100' : 'opacity-0'}`}>
-              <span className="absolute top-0 left-1/2 h-1/2 w-px -translate-x-1/2 bg-rd-ayuda/70" />
+              <span className="absolute top-0 left-1/2 h-1/2 w-px -translate-x-1/2 bg-rd-amber/80" />
             </div>
           </div>
 
@@ -331,8 +331,8 @@ export const RadarEnVivo: React.FC<{
                 {/* El eco que la lectura muestra: un anillo quieto y otro que late desde él. */}
                 {i === actual && (
                   <>
-                    <path d={ELEGIDO} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="fill-none stroke-rd-ayuda" />
-                    <path d={ELEGIDO} strokeWidth={1.75} vectorEffect="non-scaling-stroke" className="rd-encuentro-onda fill-none stroke-rd-ayuda" style={{ animationDuration: '1.6s' }} />
+                    <path d={ELEGIDO} strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="fill-none stroke-rd-amber" />
+                    <path d={ELEGIDO} strokeWidth={1.75} vectorEffect="non-scaling-stroke" className="rd-encuentro-onda fill-none stroke-rd-amber" style={{ animationDuration: '1.6s' }} />
                   </>
                 )}
               </g>
@@ -402,7 +402,7 @@ export const RadarEnVivo: React.FC<{
                       onFocus={() => elegir(i)}
                       onBlur={soltar}
                       onClick={() => elegir(i)}
-                      className="font-rd flex w-full cursor-pointer items-center gap-3 rounded-rd-md px-3 py-2.5 text-left transition-colors duration-150 hover:bg-rd-noche-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-ayuda"
+                      className="font-rd flex w-full cursor-pointer items-center gap-3 rounded-rd-md px-3 py-2.5 text-left transition-colors duration-150 hover:bg-rd-noche-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-amber"
                     >
                       <Senal tipo={p.tipo} quieta />
                       <span className="min-w-0 flex-1 truncate text-rd-13-5 text-rd-noche-tinta-2">{p.title}</span>

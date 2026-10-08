@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { House, MapPin, Users, X } from 'lucide-react';
+import { House, MapPin, Users } from 'lucide-react';
 import { VisualAcceso, type VistaAcceso } from './VisualesAccesos';
 import { BotonLanding, claseBotonIcono } from './base';
 import { PASO_POR_VISTA, useRecorrido } from '../useRecorrido';
@@ -197,7 +197,7 @@ export const LandingAccesos: React.FC = () => {
   const panel = useRef<HTMLDivElement>(null);
   const deriva = useRef<SVGFEOffsetElement>(null);
 
-  const { fijado, irA, cerrar } = useRecorrido({ seccion, fijo, panel, vistas: VISTAS.length, activa, alCambiar: setActiva });
+  const { fijado, irA } = useRecorrido({ seccion, fijo, panel, vistas: VISTAS.length, activa, alCambiar: setActiva });
 
   /* Si el scroll cambia de vista con el foco en el enlace de la que se va, ese enlace pasa a
      `invisible`, el navegador manda el foco a `body` y se pierden el anillo y el sitio del lector
@@ -350,45 +350,12 @@ export const LandingAccesos: React.FC = () => {
           {/* El panel. En el recorrido mide 12 columnas siempre y lo que se anima es su recorte
               (`--rd-lado`, `--rd-arriba`, `--rd-abajo`, escritos por `useRecorrido`): de 8 a 12
               columnas sin recalcular el diseño en cada cuadro. */}
-          {/* `data-cursor-punto`: con la flecha dentro del panel el cursor de la landing deja solo
-              su punto, sin los anillos (Alejandro, 6 de octubre de 2026; ver LOS ANILLOS en
-              `VentanaLiquida`). El recorte del panel también recorta dónde recibe la flecha, así
-              que fuera del panel estrecho el cursor vuelve a tener sus anillos. */}
           <div
             ref={panel}
-            data-cursor-punto=""
             className={`rd-accesos pointer-events-auto relative flex flex-col items-center ${
               fijado ? 'h-full justify-center' : 'px-3 py-8 sm:px-6 sm:py-12 lg:px-0 lg:py-16'
             }`}
           >
-            {/* El borde del panel: un trazo blanco líquido, sin relleno (6 de octubre de 2026). Va
-                sobre el recorte y viaja con él (`rd-accesos-borde`). */}
-            <div aria-hidden="true" className="rd-accesos-borde rd-liquido pointer-events-none absolute" />
-
-            {/* La X, arriba a la derecha como en la referencia. Viaja con el borde recortado del
-                panel (`rd-accesos-x`) y solo se ve con el panel abierto, como en la referencia;
-                con el foco del teclado se ve siempre (6 de octubre de 2026, H14). Solo en el
-                recorrido: sin él no hay nada que cerrar ni que saltarse, la sección es un bloque
-                más de la página y una X que solo baja confundiría.
-
-                Va antes de las pestañas en el código porque en pantalla está arriba, en la
-                esquina del panel, y así con el teclado es lo primero que se encuentra al entrar:
-                quien navega con tabulador puede saltarse los tres tramos del recorrido de un solo
-                golpe, y el foco sigue en la sección 3 (`cerrar`). `scroll-mt-20`, como las
-                pestañas: al volver con Mayúsculas+Tab el navegador la dejaba bajo el header, que
-                mide 64 (H2). Es el botón de icono de la landing (`claseBotonIcono`), el mismo del
-                header y de las pestañas (6 de octubre de 2026). */}
-            {fijado && (
-              <button
-                type="button"
-                onClick={cerrar}
-                aria-label="Cerrar y seguir"
-                className={`rd-accesos-x absolute top-6 right-6 z-10 scroll-mt-20 ${claseBotonIcono()}`}
-              >
-                <X aria-hidden="true" className="h-5 w-5" />
-              </button>
-            )}
-
             {/* La tarjeta y sus pestañas. Esta caja mide lo que la tarjeta (8 columnas desde 1024,
                 `rd-accesos-ancho`) y es lo que `useRecorrido` mide para saber si cabe en el panel
                 fijo: desde 1024 las pestañas van fuera de ella, a su izquierda, y no le suman alto. */}
@@ -476,7 +443,7 @@ export const LandingAccesos: React.FC = () => {
                   Alejandro, 6 de octubre de 2026: «el border radius de la card con el contenido
                   de la sección 2 también debe verse coherente con el radius del contenedor
                   grande»). Era 34. */}
-              <div className="@container relative grid w-full rounded-rd-xl bg-rd-noche-2">
+              <div className={`@container relative grid w-full rounded-rd-xl bg-rd-noche-2 shadow-rd-2 ${fijado ? '' : 'border border-rd-noche-linea'}`}>
                 {VISTAS.map((v, i) => {
                   const sel = i === activa;
                   return (
@@ -542,35 +509,16 @@ export const LandingAccesos: React.FC = () => {
                   );
                 })}
 
-                {/* El avance de la vista, alrededor de la tarjeta (Alejandro, 6 de octubre de
-                    2026: «la línea que muestra el tiempo que se demora en cambiar a la siguiente
-                    subsección […] que sea alrededor de la card»). Con el borde líquido del panel
-                    (`rd-liquido`; 6 de octubre de 2026): el contorno de la tarjeta, relleno en
-                    blanco, pasa por el filtro y sale como su anillo ondulado. El riel es ese anillo
-                    en la tinta de la página al 20 %, y el avance, el mismo anillo en el claro de
-                    la vista (`TONOS`), recortado por una máscara: un
-                    trazo ancho por el contorno, con el largo y lo recorrido que escribe
-                    `useRecorrido` (`data-avance`). La máscara se aplica después del filtro, así
-                    que el avance es exactamente el trozo del anillo que ya se ve. El 20 % va como
-                    opacidad y no en el color por lo mismo: un blanco translúcido no pasaría el
-                    umbral. Nace en la mitad del borde de abajo y va
-                    hacia la izquierda, sube por el lado izquierdo, cruza el de arriba de izquierda
-                    a derecha y baja por el derecho hasta volver al punto de partida (Alejandro, 6
-                    de octubre de 2026: «la línea de progreso inicia en la mitad de la zona
-                    inferior de la card. y avanza hacia la izquierda a derecha»; antes nacía en la
-                    mitad del borde de arriba). Da la vuelta entera mientras dura el tramo de la
-                    vista y en la siguiente vuelve a empezar. El contorno y el avance los escribe
-                    `useRecorrido`, que mide la tarjeta. Aparece y se va con las pestañas
-                    (`data-abre`). Solo con el recorrido: sin él no hay tramo que contar. No
-                    recibe el cursor. */}
+                {/* El avance de la vista, alrededor de la tarjeta. Con el borde líquido del panel
+                    (`rd-liquido`): el contorno de la tarjeta, relleno en blanco, pasa por el filtro
+                    y sale como su anillo ondulado. El riel es ese anillo en la tinta de la página al 20 %,
+                    y el avance, el mismo anillo en el tono claro de la vista (`TONOS`), recortado por
+                    una máscara (`data-avance`) que se llena en sentido horario con el scroll. */}
                 {fijado && (
                   <svg aria-hidden="true" data-abre="" className="rd-accesos-progreso pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-                    {/* La máscara deja ver por la luz de su trazo: va en blanco fijo
-                        (`rd-surface`) y no en la tinta de la página, que en el modo claro es
-                        oscura y escondería el avance entero. */}
                     <defs>
                       <mask id="rd-accesos-avance">
-                        <path data-avance="" className="fill-none stroke-rd-surface stroke-16" />
+                        <path data-avance="" className="fill-none stroke-rd-surface" strokeWidth={16} />
                       </mask>
                     </defs>
                     <path className="rd-liquido fill-rd-noche-tinta opacity-20" />

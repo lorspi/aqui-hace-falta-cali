@@ -15,18 +15,29 @@ import { useEffect, useState } from 'react';
  */
 export type TemaLanding = 'oscuro' | 'claro';
 
-const CLAVE = 'rd_landing_tema';
+const CLAVE = 'rd_landing_tema_v2';
+const CLAVE_LEGACY = 'rd_landing_tema';
 
 const leer = (): TemaLanding => {
   try {
-    return window.localStorage.getItem(CLAVE) === 'claro' ? 'claro' : 'oscuro';
+    if (window.localStorage.getItem(CLAVE_LEGACY)) {
+      window.localStorage.removeItem(CLAVE_LEGACY);
+    }
+    const guardado = window.localStorage.getItem(CLAVE);
+    return guardado === 'oscuro' ? 'oscuro' : 'claro';
   } catch {
-    return 'oscuro';
+    return 'claro';
   }
 };
 
 export function useTemaLanding(): [TemaLanding, (tema: TemaLanding) => void] {
-  const [tema, setTema] = useState<TemaLanding>(leer);
+  const [tema, setTema] = useState<TemaLanding>(() => {
+    const t = leer();
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.temaLanding = t;
+    }
+    return t;
+  });
 
   useEffect(() => {
     const html = document.documentElement;
