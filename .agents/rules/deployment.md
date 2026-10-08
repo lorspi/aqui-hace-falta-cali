@@ -1,3 +1,8 @@
+---
+description: "Reglas de Entornos y Despliegues (Deployment Protocol)"
+always_on: true
+---
+
 # Reglas de Entornos y Despliegues (Deployment Protocol)
 
 1. **Despliegues Bajo Demanda Explícita:**

@@ -1,3 +1,8 @@
+---
+description: "Reutilizar antes de crear (Reuse-First Protocol)"
+always_on: true
+---
+
 # Reutilizar antes de crear (Reuse-First Protocol)
 
 ANTES de crear cualquier archivo, componente, hook, utilidad o servicio nuevo:
