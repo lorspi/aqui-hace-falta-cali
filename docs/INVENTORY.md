@@ -216,6 +216,7 @@ crear una pieza de la landing, busca aquí:
   Lo usa `LandingHeader`.
 - `components/AnillosHero.tsx` — `AnillosHero`: los anillos concéntricos a pulso del fondo del
   hero, que giran despacio. Debajo de 1024, los seis de adentro al 55 %. Lo usa `LandingHero`.
+- `components/BotonWhatsappFlotante.tsx` — `BotonWhatsappFlotante`: botón flotante en esquina inferior derecha exclusivo de la landing page con glifo de WhatsApp en trazo a mano alzada (`.rd-trazo-continuo`), enlace oficial y tooltip interactivo. Lo usa `LandingPage`.
 - `components/ManosCorazon.tsx` — `ManosCorazon`: dos manos que hacen un corazón en una sola línea
   que se dibuja al cargar (`.rd-trazo-continuo`). Hoy sin uso: estuvo un rato en el hero, con la
   distribución de Biograph, y el hero volvió a su versión centrada (7 de octubre de 2026).

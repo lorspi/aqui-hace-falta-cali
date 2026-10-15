@@ -100,7 +100,7 @@ export const LandingSplitPortal: React.FC = () => {
   }, []);
 
   return (
-    <Seccion id="portal-en-vivo" className="rd-sobre-azul relative">
+    <Seccion id="portal-en-vivo" className="rd-sobre-azul relative !pt-32 sm:!pt-32 lg:!pt-36">
       <div className="relative mx-auto max-w-2xl text-center">
         <Titular>{t('landingPortalTitle')}</Titular>
         <Parrafo className="mx-auto mt-4">{t('landingPortalSubtitle')}</Parrafo>
@@ -120,7 +120,13 @@ export const LandingSplitPortal: React.FC = () => {
           la sección—, con el icono delante como el botón del sistema. Antes era un enlace con una
           flecha detrás, que el sistema no documenta (7 de octubre de 2026). */}
       <div className="relative mt-12 flex justify-center">
-        <BotonLanding nivel="secundario" como="enlace" href="/mapa-ayudas-necesidades" icono={<MapPin className="h-4.5 w-4.5" />}>
+        <BotonLanding
+          nivel="secundario"
+          como="enlace"
+          href="/mapa-ayudas-necesidades"
+          icono={<MapPin className="h-4.5 w-4.5" />}
+          className="rd-boton-mapa-portal claro:!bg-slate-100 claro:!text-slate-800 claro:!border-slate-200 hover:claro:!bg-slate-200 claro:shadow-xs"
+        >
           {t('landingPortalViewAllNeeds')}
         </BotonLanding>
       </div>

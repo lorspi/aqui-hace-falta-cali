@@ -155,7 +155,6 @@ const TONOS: Record<Tono, { relleno: string; icono: string; avance: string }> = 
    Desenfoque de 4 y no de 9 como la gota: el filtro cubre el panel entero, unos 1300 × 800, y
    un desenfoque más ancho cuesta más en cada cuadro sin que se note en un borde casi recto. */
 const LIQUIDO = 'rd-accesos-liquido';
-const CADA_MS = 1000 / 15;
 const CAMPO_POR_PX = 0.093;
 const PENDIENTE = 11;
 const NIVEL = 0.46;
@@ -243,21 +242,8 @@ export const LandingAccesos: React.FC = () => {
     return () => io.disconnect();
   }, []);
 
-  /* La deriva del borde (ver `LIQUIDO`): 24 px de ida y vuelta en 17 s en horizontal y en 23 s en
-     vertical, con la curva del coseno, que arranca y llega despacio. Corre a 15 pasos por segundo
-     (`CADA_MS`) y solo con la sección a la vista y sin movimiento reducido; quieta, el borde se
-     queda con la forma que tenía. */
-  useEffect(() => {
-    const o = deriva.current;
-    if (!o || quieto || reducido) return;
-    const vaiven = (t: number, periodo: number) => (12 - 12 * Math.cos((2 * Math.PI * t) / periodo)).toFixed(2);
-    const reloj = window.setInterval(() => {
-      const t = performance.now() / 1000;
-      o.setAttribute('dx', vaiven(t, 17));
-      o.setAttribute('dy', vaiven(t, 23));
-    }, CADA_MS);
-    return () => window.clearInterval(reloj);
-  }, [quieto, reducido]);
+  /* El borde líquido mantiene su forma estática sin necesidad del vaivén por reloj continuo,
+     eliminando el re-renderizado masivo de filtros SVG por CPU en cada frame. */
 
   /* Clic, toque o tecla en una pestaña. En el recorrido además lleva el scroll al tramo de esa
      vista, para que pestañas y scroll digan siempre lo mismo; sin columna (una ventana que se
@@ -328,7 +314,7 @@ export const LandingAccesos: React.FC = () => {
           ahí no hay panel montado sobre el hero ni pestañas, y el carrusel llegaba sin nombre
           debajo de los botones. Va a la izquierda, colgado del mismo borde que las tarjetas, y
           con el margen de la página. */}
-      <Titular id="accesos-titulo" className="mx-auto max-w-360 px-5 sm:px-8 lg:sr-only">
+      <Titular id="accesos-titulo" className="rd-contenedor-landing lg:sr-only">
         {t('landingAccesosTitulo')}
       </Titular>
 
@@ -372,7 +358,7 @@ export const LandingAccesos: React.FC = () => {
       </svg>
 
       <div ref={fijo} className={fijado ? 'sticky top-20 h-rd-accesos-panel' : ''}>
-        <div className={`mx-auto w-full max-w-360 px-5 sm:px-8 lg:px-12 ${fijado ? 'h-full' : ''}`}>
+        <div className={`rd-contenedor-landing ${fijado ? 'h-full' : ''}`}>
           {/* El panel. En el recorrido mide 12 columnas siempre y lo que se anima es su recorte
               (`--rd-lado`, `--rd-arriba`, `--rd-abajo`, escritos por `useRecorrido`): de 8 a 12
               columnas sin recalcular el diseño en cada cuadro. */}
@@ -388,7 +374,7 @@ export const LandingAccesos: React.FC = () => {
                 sobre el recorte y viaja con él (`rd-accesos-borde`). En el teléfono no va (ver EN
                 EL TELÉFONO), y el panel tampoco lleva relleno a los lados: el carrusel ocupa las
                 cuatro columnas. */}
-            <div aria-hidden="true" className="rd-accesos-borde rd-liquido pointer-events-none absolute max-lg:hidden" />
+            <div aria-hidden="true" className="rd-accesos-borde pointer-events-none absolute max-lg:hidden" />
 
             {/* La X, arriba a la derecha como en la referencia. Viaja con el borde recortado del
                 panel (`rd-accesos-x`) y solo se ve con el panel abierto, como en la referencia;
@@ -507,7 +493,7 @@ export const LandingAccesos: React.FC = () => {
                   TELÉFONO, arriba. */}
               <div
                 ref={carrusel}
-                className="@container relative w-full max-lg:zona-rd-scroll max-lg:-mx-5 max-lg:flex max-lg:w-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-5 max-lg:gap-4 max-lg:overflow-x-auto max-lg:px-5 sm:max-lg:-mx-8 sm:max-lg:scroll-px-8 sm:max-lg:px-8 lg:grid lg:rounded-rd-xl lg:bg-rd-noche-2"
+                className="@container relative w-full max-lg:zona-rd-scroll max-lg:-mx-5 max-lg:flex max-lg:w-auto max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-5 max-lg:gap-4 max-lg:overflow-x-auto max-lg:px-5 sm:max-lg:-mx-8 sm:max-lg:scroll-px-8 sm:max-lg:px-8 lg:grid lg:rounded-rd-xl lg:bg-rd-noche-contenedor lg:rd-grano lg:border lg:border-rd-noche-linea/40"
               >
                 {VISTAS.map((v, i) => {
                   const sel = i === activa;
@@ -520,7 +506,7 @@ export const LandingAccesos: React.FC = () => {
                       aria-labelledby={columna ? `acceso-pestana-${v.id}` : undefined}
                       aria-label={columna ? undefined : v.nombre}
                       data-activa={sel ? 'si' : 'no'}
-                      className={`@container col-start-1 row-start-1 flex flex-col gap-6 p-5 max-lg:tarjeta-rd-carrusel max-lg:snap-start max-lg:rounded-rd-xl max-lg:bg-rd-noche-2 sm:p-8 @xl:flex-row @xl:items-center @2xl:p-10 @3xl:gap-10 @3xl:p-12 ${
+                      className={`@container col-start-1 row-start-1 flex flex-col gap-6 p-5 max-lg:tarjeta-rd-carrusel max-lg:snap-start max-lg:rounded-rd-xl max-lg:bg-rd-noche-contenedor max-lg:rd-grano max-lg:border max-lg:border-rd-noche-linea/40 sm:p-8 @xl:flex-row @xl:items-center @2xl:p-10 @3xl:gap-10 @3xl:p-12 ${
                         sel ? (columna ? 'rd-acc-entra' : '') : 'lg:invisible'
                       }`}
                     >

@@ -6,6 +6,7 @@ import { LandingComoFunciona } from './components/LandingComoFunciona';
 import { LandingSumarse } from './components/LandingSumarse';
 import { LandingSplitPortal } from './components/LandingSplitPortal';
 import { LandingFooter } from './components/LandingFooter';
+import { BotonWhatsappFlotante } from './components/BotonWhatsappFlotante';
 import { Grilla12 } from './components/Grilla12';
 import { ChatbotTicketModal } from '../../components/ChatbotTicketModal';
 import { useTemaLanding } from './useTemaLanding';
@@ -68,23 +69,19 @@ export const LandingPage: React.FC = () => {
       {/* El header solo lleva el logo y el idioma: las dos acciones viven en el hero. */}
       <LandingHeader tema={tema} alCambiarTema={setTema} />
 
-      {/* Dos capas (ver LAS CAPAS DE LA PÁGINA en `index.css`): el fondo de la página, que lleva
-          las secciones 1 a 3 y termina con las esquinas de abajo redondeadas, y detrás de su pie el
-          degradado de las secciones 4 y 5, que sube el alto del redondeo para asomar por las
-          esquinas. El fondo va encima (`relative z-10`) y lleva su propio grano. */}
+      {/* Dos capas: el fondo de la página para las secciones 1 a 3 que se funde en degradado
+          continuo y sin cortes con la malla de radar de las secciones 4 y 5. */}
       <main>
-        <div className="rd-grano relative z-10 space-y-8 rounded-b-rd-lamina bg-rd-noche sm:space-y-12">
+        <div className="space-y-8 sm:space-y-12">
           <LandingHero onOpenChat={() => setIsChatbotModalOpen(true)} />
 
           <LandingAccesos />
 
-          {/* Los tres pasos, cada uno en el bloque de la referencia. Reemplazaron a la tarjeta
-              de pasos del equipo, que se borró el 6 de octubre de 2026 con las demás piezas sin
-              uso (Alejandro: «borre lo que ya no se usa»). */}
+          {/* Los tres pasos, cada uno en el bloque de la referencia. */}
           <LandingComoFunciona />
         </div>
 
-        <div className="rd-degradado-radar -mt-rd-lamina space-y-8 overflow-x-clip pt-rd-lamina sm:space-y-12">
+        <div className="rd-degradado-radar space-y-8 overflow-x-clip pt-0 sm:pt-8 lg:pt-16 sm:space-y-12">
           {/* La ventana en vivo de la app se queda: es producto real, no adorno. */}
           <LandingSplitPortal />
 
@@ -110,6 +107,9 @@ export const LandingPage: React.FC = () => {
           window.location.href = '/';
         }}
       />
+
+      {/* Botón flotante oficial de WhatsApp exclusivo de la landing */}
+      <BotonWhatsappFlotante />
     </div>
   );
 };

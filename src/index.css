@@ -801,6 +801,31 @@ header {
   --font-rd: var(--font-herramienta);
 }
 
+/* ======================================================================
+   CONTENEDOR DINÁMICO DE LA LANDING
+   Sustituye el límite rígido a 1440px (`max-w-360`).
+   Permite que la landing escale de forma fluida y armónica en pantallas de
+   15" y 16" (1680px - 1728px) y monitores de escritorio, manteniendo un margen
+   lateral constante de ~1.2 a 1.5 cm en portátiles y centrado armónico en pantallas grandes.
+   ====================================================================== */
+.rd-contenedor-landing {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 108rem; /* 1728px */
+  padding-inline: 1.25rem; /* px-5 */
+}
+@media (min-width: 640px) {
+  .rd-contenedor-landing {
+    padding-inline: 2rem; /* sm:px-8 */
+  }
+}
+@media (min-width: 1024px) {
+  .rd-contenedor-landing {
+    padding-inline: 3rem; /* lg:px-12 */
+  }
+}
+
+
 /* Custom scrollbar for modals */
 .modal-scroll::-webkit-scrollbar {
   width: 6px;
@@ -1266,21 +1291,68 @@ html:has(.rd-revela) {
 .rd-degradado-radar {
   background-image:
     url('/images/landing/grano.png'),
-    radial-gradient(70% 28% at 92% 12%, color-mix(in oklab, var(--color-rd-malla-violeta) 85%, transparent), transparent),
-    radial-gradient(55% 24% at 6% 24%, color-mix(in oklab, var(--color-rd-malla-azul) 75%, transparent), transparent),
+    radial-gradient(70% 26% at 92% 18%, color-mix(in oklab, var(--color-rd-malla-violeta) 85%, transparent) 0%, transparent 68%),
+    radial-gradient(55% 22% at 6% 22%, color-mix(in oklab, var(--color-rd-malla-azul) 75%, transparent) 0%, transparent 68%),
     radial-gradient(62% 20% at 16% 56%, color-mix(in oklab, var(--color-rd-malla-rosa) 80%, transparent), transparent),
     radial-gradient(58% 20% at 86% 60%, color-mix(in oklab, var(--color-rd-malla-durazno) 75%, transparent), transparent),
     linear-gradient(
       in oklab to bottom,
-      var(--color-rd-malla-azul) 0%,
-      var(--color-rd-malla-azul-claro) 26%,
-      color-mix(in oklab, var(--color-rd-malla-violeta) 75%, var(--color-rd-malla-azul-claro)) 40%,
-      color-mix(in oklab, var(--color-rd-malla-rosa) 70%, var(--color-rd-malla-violeta)) 54%,
-      color-mix(in oklab, var(--color-rd-malla-rosa) 55%, var(--color-rd-noche)) 64%,
-      color-mix(in oklab, var(--color-rd-malla-durazno) 30%, var(--color-rd-noche)) 74%,
-      var(--color-rd-noche) 86%
+      var(--color-rd-noche) 0%,
+      var(--color-rd-noche) 1.5%,
+      color-mix(in oklab, var(--color-rd-malla-azul) 20%, var(--color-rd-noche)) 4%,
+      color-mix(in oklab, var(--color-rd-malla-azul) 50%, var(--color-rd-noche)) 7%,
+      color-mix(in oklab, var(--color-rd-malla-azul) 85%, var(--color-rd-noche)) 10%,
+      var(--color-rd-malla-azul) 14%,
+      var(--color-rd-malla-azul-claro) 24%,
+      color-mix(in oklab, var(--color-rd-malla-violeta) 75%, var(--color-rd-malla-azul-claro)) 36%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 70%, var(--color-rd-malla-violeta)) 48%,
+      color-mix(in oklab, var(--color-rd-malla-rosa) 55%, var(--color-rd-noche)) 60%,
+      color-mix(in oklab, var(--color-rd-malla-durazno) 30%, var(--color-rd-noche)) 72%,
+      var(--color-rd-noche) 84%
     );
   background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* En móvil, el degradado se resuelve hacia el negro noche más arriba, para que la
+   sección 5 quede asentada en la oscuridad profunda de la página. */
+@media (width < 64rem) {
+  .rd-degradado-radar {
+    background-image:
+      url('/images/landing/grano.png'),
+      radial-gradient(75% 22% at 90% 13%, color-mix(in oklab, var(--color-rd-malla-violeta) 80%, transparent) 0%, transparent 60%),
+      radial-gradient(60% 18% at 8% 17%, color-mix(in oklab, var(--color-rd-malla-azul) 75%, transparent) 0%, transparent 60%),
+      radial-gradient(62% 16% at 16% 40%, color-mix(in oklab, var(--color-rd-malla-rosa) 80%, transparent), transparent),
+      radial-gradient(58% 16% at 86% 44%, color-mix(in oklab, var(--color-rd-malla-durazno) 75%, transparent), transparent),
+      linear-gradient(
+        in oklab to bottom,
+        var(--color-rd-noche) 0%,
+        var(--color-rd-noche) 1%,
+        color-mix(in oklab, var(--color-rd-malla-azul) 25%, var(--color-rd-noche)) 3.5%,
+        color-mix(in oklab, var(--color-rd-malla-azul) 60%, var(--color-rd-noche)) 6.5%,
+        color-mix(in oklab, var(--color-rd-malla-azul) 90%, var(--color-rd-noche)) 10%,
+        var(--color-rd-malla-azul) 13%,
+        var(--color-rd-malla-azul-claro) 20%,
+        color-mix(in oklab, var(--color-rd-malla-violeta) 75%, var(--color-rd-malla-azul-claro)) 30%,
+        color-mix(in oklab, var(--color-rd-malla-rosa) 70%, var(--color-rd-malla-violeta)) 40%,
+        color-mix(in oklab, var(--color-rd-malla-rosa) 55%, var(--color-rd-noche)) 50%,
+        color-mix(in oklab, var(--color-rd-malla-durazno) 30%, var(--color-rd-noche)) 60%,
+        var(--color-rd-noche) 70%
+      );
+    background-size: 160px 160px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  }
+}
+
+/* En modo claro, el botón de «Ver en el mapa» usa un gris blanquecino sutil y texto oscuro legible */
+[data-tema-landing='claro'] .rd-boton-mapa-portal {
+  background-color: #F1F5F9 !important;
+  color: #1E293B !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05) !important;
+}
+[data-tema-landing='claro'] .rd-boton-mapa-portal:hover {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
 }
 
 /* Lo que va sobre el azul de la sección 4, en los dos modos: la tinta en blanco y los grises en
@@ -1322,11 +1394,44 @@ html:has(.rd-revela) {
 @keyframes rd-gira {
   to { rotate: 360deg; }
 }
-[data-quieto] > .rd-gira {
+
+/* En pantallas móviles (< 1024px / 64rem), animamos sutilmente el radar:
+   1) El latido/pulso concéntrico que respira suavemente como un sonar.
+   2) Una rotación fluida y muy serena (96s / 124s) que hace ondular el trazo sinuoso a mano. */
+@media (width < 64rem) {
+  .rd-hero-anillos-pulso {
+    animation: rd-radar-latido 7.5s ease-in-out infinite;
+    transform-origin: center center;
+    will-change: transform, opacity;
+  }
+  .rd-gira {
+    animation-duration: 96s;
+  }
+  .rd-gira.rd-gira-inverso {
+    animation-duration: 124s;
+  }
+}
+
+@keyframes rd-radar-latido {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 1;
+  }
+}
+
+[data-quieto] .rd-gira,
+[data-quieto] .rd-hero-anillos-pulso {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-  .rd-gira { animation: none; }
+  .rd-gira,
+  .rd-hero-anillos-pulso {
+    animation: none;
+  }
 }
 
 /* ======================================================================
@@ -1569,8 +1674,8 @@ html:has(.rd-revela) {
 }
 
 /* El borde del panel: sigue al recorte con su mismo radio, `--rd-accesos-aire` por dentro, y lee
-   el recorte con `inherit` como la X (H24). Es la forma del panel rellena en blanco: el filtro
-   líquido (`.rd-liquido`) se queda solo con su borde, un trazo de 2 ondulado. */
+   el recorte con `inherit` como la X (H24). Optimizado con trazo acelerado por hardware para evitar
+   el cuello de botella de re-filtrar un lienzo gigante en cada cuadro de scroll. */
 .rd-accesos-borde {
   --rd-lado: inherit;
   --rd-arriba: inherit;
@@ -1578,10 +1683,9 @@ html:has(.rd-revela) {
   inset: calc(var(--rd-arriba) + var(--rd-accesos-aire)) calc(var(--rd-lado) + var(--rd-accesos-aire))
     calc(var(--rd-abajo) + var(--rd-accesos-aire));
   border-radius: var(--rd-accesos-radio);
-  background-color: var(--color-rd-noche-tinta);
-  /* En su propia capa: su filtro se rehace en cada paso de la deriva y no debe arrastrar al
-     repintado a la tarjeta ni a los fondos de los visuales (ver `LIQUIDO` en `LandingAccesos`). */
-  will-change: transform;
+  border: 1.5px solid color-mix(in oklab, var(--color-rd-noche-tinta) 70%, transparent);
+  background-color: transparent;
+  pointer-events: none;
 }
 
 /* El borde líquido, del filtro que monta `LandingAccesos` (`LIQUIDO`): el del panel y la línea de

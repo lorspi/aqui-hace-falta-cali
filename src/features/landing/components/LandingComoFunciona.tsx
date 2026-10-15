@@ -258,7 +258,7 @@ export const LandingComoFunciona: React.FC = () => {
           nada. Hasta el 7 de octubre de 2026 era una sección aparte, y entre su párrafo y el primer
           paso quedaban 236 px (Alejandro: «Los títulos de cada sección estén mas cerca del
           contenido de su sección porque se ven muy distantes»). */}
-      <Seccion id="como-funciona">
+      <Seccion id="como-funciona" className="!pb-8 sm:!pb-14 lg:!pb-20">
         <div className="mx-auto max-w-2xl text-center">
           <Titular>
             {t('landingHowTitleBefore')}RaDAR{t('landingHowTitleAfter')}
@@ -270,8 +270,8 @@ export const LandingComoFunciona: React.FC = () => {
         </div>
 
         <div className="mt-12 grid grid-cols-1 items-start gap-10 sm:mt-14 xl:grid-cols-2 xl:gap-20">
-          <div>
-          <ol ref={lista} className="m-0 list-none p-0">
+          <div className="lg:pl-6 xl:pl-10 2xl:pl-16">
+            <ol ref={lista} className="m-0 list-none p-0">
             {pasos.map((p, i) => {
               const lleno = fijo ? Math.min(1, Math.max(0, progreso - i)) : avances[i];
               const alcanzado = fijo ? progreso > i : avances[i] > 0.02;
@@ -281,7 +281,7 @@ export const LandingComoFunciona: React.FC = () => {
                    el aire del relevo (ver EL RELEVO). La opacidad y el corrimiento del texto los
                    escribe el efecto de arriba; por debajo de 1280 todos se ven enteros. */
                 <li key={p.n} className={`pb-16 xl:pb-0 ${i > 0 ? 'xl:pt-rd-aire-encuentro' : ''}`}>
-                  <div data-paso="" className="relative pl-16 will-change-transform xl:sticky">
+                  <div data-paso="" className="relative pl-16 sm:pl-20 will-change-transform xl:sticky">
                     {/* El nodo del paso, en su color desde que se llega a él. */}
                     <span
                       className={`font-rd absolute top-0 left-0 flex h-10 w-10 items-center justify-center rounded-full border text-rd-13-5 font-semibold tabular-nums transition-colors duration-300 ${
@@ -317,16 +317,16 @@ export const LandingComoFunciona: React.FC = () => {
                       </svg>
                     </span>
 
-                    <p className={`font-rd m-0 pt-2 text-rd-13-5 font-semibold ${COLORES[i].rotulo}`}>{p.rotulo}</p>
-                    <h3 className="font-rd m-0 mt-2 text-rd-24 leading-rd-titular font-medium tracking-rd-titulo text-balance text-rd-noche-tinta sm:text-rd-28">
+                    <p className={`font-rd m-0 pt-2 text-rd-14-5 font-semibold ${COLORES[i].rotulo}`}>{p.rotulo}</p>
+                    <h3 className="font-rd m-0 mt-2.5 text-rd-24 leading-snug font-semibold tracking-rd-titulo text-balance text-rd-noche-tinta sm:text-rd-32">
                       {p.titulo}
                     </h3>
-                    <p className="font-rd m-0 mt-4 max-w-lg text-rd-15 leading-relaxed text-rd-noche-tinta-2 sm:text-rd-16">{p.texto}</p>
-                    <ul className="m-0 mt-5 flex list-none flex-col gap-2.5 p-0">
+                    <p className="font-rd m-0 mt-5 max-w-xl text-rd-15 leading-relaxed text-rd-noche-tinta-2 sm:text-rd-16">{p.texto}</p>
+                    <ul className="m-0 mt-6 flex list-none flex-col gap-3.5 p-0 sm:gap-4">
                       {p.puntos.map((x) => (
-                        <li key={x} className="flex items-start gap-2.5">
+                        <li key={x} className="flex items-start gap-3">
                           <Check aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${COLORES[i].rotulo}`} />
-                          <span className="font-rd text-rd-14 leading-relaxed text-rd-noche-tinta">{x}</span>
+                          <span className="font-rd text-rd-15 leading-relaxed text-rd-noche-tinta">{x}</span>
                         </li>
                       ))}
                     </ul>

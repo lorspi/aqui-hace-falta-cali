@@ -31,7 +31,7 @@ export const LandingFooter: React.FC = () => {
         paddingBottom: 'max(2.5rem, calc(2.5rem + env(safe-area-inset-bottom, 0px)))',
       }}
     >
-      <div className="mx-auto w-full max-w-360 space-y-10 px-5 sm:px-8 lg:px-12">
+      <div className="rd-contenedor-landing space-y-10">
         {/* Enlaces y contacto */}
         <div className="grid grid-cols-1 gap-8 text-rd-13-5 md:grid-cols-12 lg:gap-12">
           {/* Columna 1: identidad */}

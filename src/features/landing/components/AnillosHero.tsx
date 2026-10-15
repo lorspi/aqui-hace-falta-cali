@@ -129,19 +129,21 @@ export const AnillosHero: React.FC = () => {
       data-quieto={fuera ? '' : undefined}
       className="rd-hero-anillos pointer-events-none absolute inset-0 overflow-hidden"
     >
-      {(chico ? JUEGOS_CHICOS : JUEGOS).map((j) => (
-        <svg
-          key={j.giro}
-          className={`${j.giro} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`}
-          width={chico ? Math.round(lado * ESCALA_CHICA) : lado}
-          height={chico ? Math.round(lado * ESCALA_CHICA) : lado}
-          viewBox={`${desde} ${desde} ${lado} ${lado}`}
-        >
-          {j.anillos.map((d) => (
-            <path key={d.slice(0, 24)} d={d} className="fill-none stroke-rd-noche-anillo" strokeWidth={TRAZO} vectorEffect="non-scaling-stroke" />
-          ))}
-        </svg>
-      ))}
+      <div className="rd-hero-anillos-pulso pointer-events-none absolute inset-0">
+        {(chico ? JUEGOS_CHICOS : JUEGOS).map((j) => (
+          <svg
+            key={j.giro}
+            className={`${j.giro} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`}
+            width={chico ? Math.round(lado * ESCALA_CHICA) : lado}
+            height={chico ? Math.round(lado * ESCALA_CHICA) : lado}
+            viewBox={`${desde} ${desde} ${lado} ${lado}`}
+          >
+            {j.anillos.map((d) => (
+              <path key={d.slice(0, 24)} d={d} className="fill-none stroke-rd-noche-anillo" strokeWidth={TRAZO} vectorEffect="non-scaling-stroke" />
+            ))}
+          </svg>
+        ))}
+      </div>
     </div>
   );
 };

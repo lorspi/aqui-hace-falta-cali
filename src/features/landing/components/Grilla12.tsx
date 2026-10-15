@@ -37,7 +37,7 @@ export const Grilla12: React.FC = () => {
 
   return (
     <div aria-hidden="true" className="rd-grilla">
-      <div className="mx-auto grid h-full w-full max-w-360 grid-cols-12 gap-6 px-5 sm:px-8 lg:px-12">
+      <div className="rd-contenedor-landing grid h-full grid-cols-12 gap-6">
         {Array.from({ length: 12 }, (_, i) => (
           <span key={i} className="rd-grilla-col block h-full" />
         ))}

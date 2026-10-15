@@ -34,7 +34,7 @@ export const Seccion: React.FC<{
     <section
       ref={ref}
       id={id}
-      className={`rd-revela mx-auto w-full max-w-360 px-5 sm:px-8 lg:px-12 ${visible ? 'es-visible' : ''} ${
+      className={`rd-revela rd-contenedor-landing ${visible ? 'es-visible' : ''} ${
         separacion === 'apretada' ? 'py-10 sm:py-14' : 'py-16 sm:py-20 lg:py-24'
       } ${className}`}
     >
@@ -186,6 +186,7 @@ export const BotonLanding: React.FC<{
   expandido?: boolean;
   controla?: string;
   ref?: React.Ref<HTMLButtonElement>;
+  className?: string;
   children?: React.ReactNode;
 }> = ({
   nivel = 'secundario',
@@ -201,6 +202,7 @@ export const BotonLanding: React.FC<{
   expandido,
   controla,
   ref,
+  className = '',
   children,
 }) => {
   /* `max-w-full` y sin `whitespace-nowrap` en terciario: «Explorar todas las necesidades en el
@@ -210,7 +212,7 @@ export const BotonLanding: React.FC<{
      `leading-none` y el hundimiento de un píxel al pulsar. Lo que cambia es la escala y la
      esquina, que es lo que separa una página de marca de una pantalla densa. `leading-none` solo
      donde el texto no parte: terciario sí parte y ahí apretaría las dos líneas. */
-  const clase = soloIcono ? claseBotonIcono(undefined, tamano) : `font-rd inline-flex max-w-full cursor-pointer items-center justify-center gap-1.75 rounded-rd-xl border text-center font-medium tracking-rd-btn transition-colors duration-150 ease-in-out active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${
+  const clase = soloIcono ? `${claseBotonIcono(undefined, tamano)} ${className}` : `${`font-rd inline-flex max-w-full cursor-pointer items-center justify-center gap-1.75 rounded-rd-xl border text-center font-medium tracking-rd-btn transition-colors duration-150 ease-in-out active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${
     nivel === 'terciario' ? '' : 'whitespace-nowrap leading-none'
   } ${
     tamano === 'lg' ? 'h-13 px-7 text-rd-15 sm:text-rd-16' : 'h-10 px-4.5 text-rd-13-5 pointer-coarse:h-rd-tactil'
@@ -236,7 +238,7 @@ export const BotonLanding: React.FC<{
          lee como el enlace con flecha que usan Ramp y Superpower para «Learn more». */
       terciario: 'border-transparent bg-transparent px-0 text-rd-noche-tinta-2 hover:text-rd-noche-tinta focus-visible:outline-rd-ayuda',
     }[nivel]
-  }`;
+  }`} ${className}`;
 
   /* El icono va en su propia envoltura decorativa, como en el `Button` de la herramienta: el
      texto ya nombra la acción, así que el icono no se anuncia, y `shrink-0` evita que se

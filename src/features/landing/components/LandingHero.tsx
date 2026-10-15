@@ -52,7 +52,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
           porque queda a los 4 columnas y tanto los textos como botones se ven montados»): en la
           grilla de cuatro, su borde quedaba a 15 px del texto y de los botones. Desde 768 vuelve. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero max-md:hidden">
-        <div className="mx-auto h-full w-full max-w-360 px-5 sm:px-8 lg:px-12">
+        <div className="rd-contenedor-landing h-full">
           <div className="rd-fondo-hero rd-grano h-full rounded-rd-xl bg-rd-noche-lamina" />
         </div>
       </div>
@@ -63,7 +63,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
       <AnillosHero />
       <VentanaLiquida anfitrion={hero} texto={texto} />
 
-      <div ref={texto} className="relative mx-auto w-full max-w-360 px-5 py-20 sm:px-8 sm:py-28 lg:px-12 lg:py-36">
+      <div ref={texto} className="rd-contenedor-landing relative flex min-h-[calc(100svh-4.5rem)] flex-col justify-center py-10 sm:min-h-0 sm:py-28 lg:py-36">
         {/* La grilla real de 12, la misma que dibuja `Grilla12`: el bloque ocupa de la columna 2 a
             la 11 por posición en la grilla y no por un ancho máximo a mano. A 1440 eso da 1116 px
             —10 columnas de 90 más 9 huecos de 24— pero el número no está escrito en ninguna parte,
@@ -118,7 +118,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 de 2026—, así que cabe en un renglón en cuanto la caja pasa de eso, y la caja de las
                 columnas 2 a 11 da 769 a 1024, 983 a 1280 y 1116 a 1440. Debajo de 1024 no cabe:
                 a 768 la caja mide 583 y haría falta bajar a 13,5 px, por debajo del cuerpo. */}
-            <Parrafo className="mt-6 font-light text-balance max-sm:mt-5 max-sm:font-normal">{t('landingHeroSubtitle')}</Parrafo>
+            <Parrafo className="mt-6 font-light text-balance max-sm:mt-8 max-sm:px-2 max-sm:text-rd-16 max-sm:leading-relaxed max-sm:font-normal">{t('landingHeroSubtitle')}</Parrafo>
 
             {/* Los dos accesos, del mismo ancho. `inline-grid` con dos columnas `1fr` se encoge al
                 contenido y reparte ese ancho en dos partes iguales, así que las dos toman la medida
@@ -132,7 +132,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
 
                 `relative z-20` los sube sobre la capa de la gota (`z-10`): tienen fondo propio y
                 la gota pasa por debajo de ellos sin cambiarlos (6 de octubre de 2026). */}
-            <div className="relative z-20 mt-6 grid w-full grid-cols-1 gap-6 max-sm:mt-8 max-sm:grid-cols-2 max-sm:gap-3 sm:mt-10 sm:inline-grid sm:w-auto sm:grid-cols-2">
+            <div className="relative z-20 mt-6 grid w-full grid-cols-1 gap-6 max-sm:mt-12 max-sm:grid-cols-2 max-sm:gap-3 sm:mt-10 sm:inline-grid sm:w-auto sm:grid-cols-2">
               <BotonLanding nivel="pedir" tamano={telefono ? 'md' : 'lg'} ancho onClick={onOpenChat} icono={<Hand className="h-4.5 w-4.5" />}>
                 {t('landingHeroCtaNeed')}
               </BotonLanding>
