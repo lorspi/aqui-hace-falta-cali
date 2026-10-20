@@ -64,4 +64,32 @@ describe('Registro de persona natural', () => {
     expect(entidadGuardada('?entidad=individual')).toBe('individual');
     expect(nombrePanel('individual')).toBe('Mi cuenta');
   });
+
+  it('RGP-04: valida celular de persona natural (no acepta 21 dígitos ni letras)', () => {
+    const e = estadoInicial(false);
+    e.perfil = 'individual';
+    const pasoDatos = camino('individual')[1];
+
+    e.ind.nombre = 'Ana';
+    e.ind.apellido = 'Gómez';
+    e.ind.tipoDocumento = 'Cédula de ciudadanía';
+    e.ind.numeroDocumento = '1234567890';
+
+    // Celular con letras
+    e.ind.celular = 'abcdef';
+    expect(listo(pasoDatos, e, {})).toBe(false);
+
+    // Celular con 21 dígitos
+    e.ind.celular = '300123456789012345678';
+    expect(listo(pasoDatos, e, {})).toBe(false);
+
+    // Celular válido de 10 dígitos
+    e.ind.celular = '3001234567';
+    expect(listo(pasoDatos, e, {})).toBe(true);
+  });
+
+  it('RGP-06: el texto del botón final está unificado con TEXTOS.pie.crear ("Crear la cuenta")', async () => {
+    const { TEXTOS } = await import('../../src/pages/registro/textos');
+    expect(TEXTOS.pie.crear).toBe('Crear la cuenta');
+  });
 });

@@ -32,7 +32,11 @@ export function campoListo(c: CampoDetalle, d: RespuestasDetalle): boolean {
 
 export function itemListo(e: EstadoOfrecer, it: string): boolean {
   const d = e.det[it] ?? {};
-  if (d.disp === 'Hasta una fecha' && !d.fecha) return false;
+  if (d.disp === 'Hasta una fecha') {
+    if (!d.fecha) return false;
+    const hoy = new Date().toISOString().split('T')[0];
+    if (d.fecha < hoy) return false;
+  }
   return typeof e.cant[it] === 'number' && e.cant[it] > 0 && camposOferta(it).every((c) => campoListo(c, d));
 }
 

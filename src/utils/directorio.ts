@@ -7,6 +7,7 @@ import type { ClaseEntidad, ConsultaDirectorio, Entidad, EstadoComunidad } from 
 import type { Publicacion, Ubicacion } from '../types/publicacion';
 import { enCiudades, nombreCiudades, nombreCorto } from './lugares';
 import { cifra as miles, distanciaKm, estadoPublicacion } from './publicaciones';
+import { ORGANIZATION_TYPE_CONFIG } from '../constants/domainConstants';
 
 export function consultaVacia(): ConsultaDirectorio {
   return { texto: '', ciudades: [], recursos: [], verificadas: false, orden: 'cercania' };
@@ -91,15 +92,26 @@ export function recursosDeVista(entidades: Entidad[], pubs: Publicacion[]): stri
   return sinDuplicados(entidades.flatMap((e) => recursosDe(e, pubs))).sort((a, b) => a.localeCompare(b, 'es'));
 }
 
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
 /** Cada sección de la hoja acota; entre valores de una misma sección, cualquiera vale. */
 export function pasa(e: Entidad, pubs: Publicacion[], q: ConsultaDirectorio): boolean {
   if (!enCiudades(e, q.ciudades)) return false;
   const recs = recursosDe(e, pubs);
-  if (q.recursos.length && !q.recursos.some((r) => recs.includes(r))) return false;
+  if (q.recursos.length) {
+    const recsNorm = recs.map(normalizar);
+    if (!q.recursos.some((r) => recsNorm.includes(normalizar(r)))) return false;
+  }
   if (q.verificadas && !e.verificada) return false;
-  const texto = q.texto.trim().toLowerCase();
+  const texto = normalizar(q.texto);
   if (texto) {
-    const pajar = [e.nombre, e.tipo, e.zona, e.lider ?? '', ...recs].join(' ').toLowerCase();
+    const pajar = normalizar([e.nombre, e.tipo, e.zona, e.lider ?? '', ...recs].join(' '));
     if (!pajar.includes(texto)) return false;
   }
   return true;
@@ -165,3 +177,42 @@ export function conteoTexto(n: number, clase: ClaseEntidad): string {
 function sinDuplicados<T>(lista: T[]): T[] {
   return lista.filter((x, i) => lista.indexOf(x) === i);
 }
+
+const DICCIONARIO_TIPOS_CONOCIDOS: Record<string, string> = {
+  bomberos_defensa_civil: 'Bomberos / Defensa Civil / Socorristas',
+  organismo_rescate: 'Organismo de Rescate / Búsqueda',
+  ong_personas: 'ONG / Fundación de Ayuda Humanitaria',
+  ong_animal: 'ONG / Refugio / Protección Animal',
+  municipalidad_gobierno: 'Alcaldía / Gobernación / Entidad Pública',
+  junta_vecinal: 'Junta de Acción Comunal (JAC) / JAL',
+  apoyo_psicosocial: 'Salud Mental / Apoyo Psicosocial',
+  empresa_privada: 'Empresa Privada / Gremio Responsable',
+  profesional_individual: 'Profesional Independiente',
+};
+
+/**
+ * Traduce códigos técnicos o enums de base de datos a nombres legibles en español para el usuario.
+ */
+export function formatearTipoEntidad(tipo?: string, esComunidad?: boolean): string {
+  if (!tipo) return esComunidad ? 'Comunidad / Liderazgo' : 'Organización';
+
+  if (DICCIONARIO_TIPOS_CONOCIDOS[tipo]) {
+    return DICCIONARIO_TIPOS_CONOCIDOS[tipo];
+  }
+
+  const match = Object.values(ORGANIZATION_TYPE_CONFIG).find((c) => c.id === tipo);
+  if (match) {
+    return match.defaultLabel;
+  }
+
+  // Si tiene guiones bajos técnicos pero no estaba en el mapa, formatearlo limpiamente
+  if (tipo.includes('_')) {
+    return tipo
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  return tipo;
+}
+

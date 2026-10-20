@@ -37,6 +37,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile } from '../../lib/supabaseService';
 import { getStoredAuthUser, saveStoredAuthUser } from '../../utils/session';
 import { obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /**
  * Registro (mockup/registro-v2). Réplica de `Producto/src/registro-v2.html` del prototipo de
@@ -126,6 +127,9 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
   const [correoRecuperar, setCorreoRecuperar] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(modalRef, { isActive: isModal, onEscape: onCerrar });
 
   const paso = pasoActual(e);
   const c = camino(e.perfil);
@@ -186,9 +190,9 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
   const patchInd = (p: Partial<EstadoRegistro['ind']>) => setE((prev) => ({ ...prev, ind: { ...prev.ind, ...p } }));
 
   const error = (id: string) => errores[id] ?? null;
-  const alSalir = (id: string, reglas: Regla[], vacio?: string) => (valor: string) =>
+  const alSalir = (id: string, reglas: Regla[], vacio?: string, tipoDoc?: string) => (valor: string) =>
     setErrores((prev) => {
-      const msg = validar(valor, reglas, vacio);
+      const msg = validar(valor, reglas, vacio, tipoDoc);
       const sig = { ...prev };
       if (msg) sig[id] = msg;
       else delete sig[id];
@@ -609,7 +613,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar || cargandoAuth} onClick={terminar}>
           {cargandoAuth
             ? 'Creando cuenta...'
-            : (e.perfil === 'rapida' ? T.rapida.crear : e.perfil === 'individual' ? 'Registrar' : T.pie.crear)}
+            : (e.perfil === 'rapida' ? T.rapida.crear : T.pie.crear)}
         </Button>
       ) : (
         <Button nivel="primario" tamano="lg" ancho disabled={!puedeContinuar} onClick={siguiente}>
@@ -872,7 +876,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       {/* Sin iconos, como el prototipo: los cuatro datos hablan solos. */}
       <div ref={cuerpoRef} className="mt-5 space-y-3 text-left">
         <Field {...PILDORA} id="r-nombre" etiqueta={T.rapida.nombre} autoComplete="name" valor={e.per.nombre} onChange={alEscribir('r-nombre', (v) => patchPer({ nombre: v }))} onBlur={alSalir('r-nombre', ['requerido'], T.errores.nombre)} error={error('r-nombre')} />
-        <Field {...PILDORA} id="r-tel" etiqueta={T.rapida.celular} tipo="tel" autoComplete="tel" valor={e.per.tel} onChange={alEscribir('r-tel', (v) => patchPer({ tel: v }))} onBlur={alSalir('r-tel', ['requerido', 'celular'], T.errores.celular)} error={error('r-tel')} />
+        <Field {...PILDORA} id="r-tel" etiqueta={T.rapida.celular} tipo="tel" autoComplete="tel" inputMode="numeric" maxLength={10} valor={e.per.tel} onChange={alEscribir('r-tel', (v) => patchPer({ tel: v }))} onBlur={alSalir('r-tel', ['requerido', 'celular'], T.errores.celular)} error={error('r-tel')} />
         <Field {...PILDORA} id="r-correo" etiqueta={T.rapida.correo} tipo="email" autoComplete="username" valor={e.per.correo} onChange={alEscribir('r-correo', (v) => patchPer({ correo: v }))} onBlur={alSalir('r-correo', ['requerido', 'correo'], T.errores.correo)} error={error('r-correo')} />
         <div>
           <Field {...PILDORA} id="r-pass" etiqueta={T.rapida.contrasena} tipo="password" autoComplete="new-password" valorInicial={pass.current.rp} onChange={guardarPass('rp')} />
@@ -943,6 +947,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
             tipo="tel"
             icono={ico.celular}
             autoComplete="tel"
+            inputMode="numeric"
+            maxLength={10}
             valor={e.org.contacto.tel}
             onChange={alEscribir('o-tel', (v) => patchOrgContacto({ tel: v }))}
             onBlur={alSalir('o-tel', ['requerido', 'celular'], T.errores.celular)}
@@ -1020,6 +1026,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
             tipo="tel"
             icono={ico.celular}
             autoComplete="tel"
+            inputMode="numeric"
+            maxLength={10}
             valor={e.com.contacto.tel}
             onChange={alEscribir('c-tel', (v) => patchComContacto({ tel: v }))}
             onBlur={alSalir('c-tel', ['requerido', 'celular'], T.errores.celular)}
@@ -1056,17 +1064,28 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           tipo="select"
           opciones={TIPOS_DOC}
           valor={e.per.tipoDocumento}
-          onChange={(v) => patchPer({ tipoDocumento: v })}
+          onChange={(v) => {
+            patchPer({ tipoDocumento: v });
+            if (errores['p-cedula']) {
+              const msg = validar(e.per.cedula, ['requerido', 'documento'], T.errores.cedula, v);
+              setErrores((prev) => {
+                const sig = { ...prev };
+                if (msg) sig['p-cedula'] = msg;
+                else delete sig['p-cedula'];
+                return sig;
+              });
+            }
+          }}
         />
         <Field
           {...PILDORA}
           id="p-cedula"
           etiqueta={T.persona.cedula}
           icono={ico.documento}
-          inputMode="numeric"
+          inputMode={e.per.tipoDocumento === 'Pasaporte' ? 'text' : 'numeric'}
           valor={e.per.cedula}
           onChange={alEscribir('p-cedula', (v) => patchPer({ cedula: v }))}
-          onBlur={alSalir('p-cedula', ['requerido'], T.errores.cedula)}
+          onBlur={alSalir('p-cedula', ['requerido', 'documento'], T.errores.cedula, e.per.tipoDocumento)}
           error={error('p-cedula')}
         />
         {esOrg && (
@@ -1080,6 +1099,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           tipo="tel"
           icono={ico.celular}
           autoComplete="tel"
+          inputMode="numeric"
+          maxLength={10}
           ayuda={T.persona.ayudaCelular}
           valor={e.per.tel}
           onChange={alEscribir('p-tel', (v) => patchPer({ tel: v }))}
@@ -1176,17 +1197,28 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           tipo="select"
           opciones={TIPOS_DOC}
           valor={e.ind.tipoDocumento}
-          onChange={(v) => patchInd({ tipoDocumento: v })}
+          onChange={(v) => {
+            patchInd({ tipoDocumento: v });
+            if (errores['ind-num-doc']) {
+              const msg = validar(e.ind.numeroDocumento, ['requerido', 'documento'], T.individual.errorDoc, v);
+              setErrores((prev) => {
+                const sig = { ...prev };
+                if (msg) sig['ind-num-doc'] = msg;
+                else delete sig['ind-num-doc'];
+                return sig;
+              });
+            }
+          }}
         />
         <Field
           {...PILDORA}
           id="ind-num-doc"
           etiqueta={T.individual.numeroDoc}
           icono={ico.documento}
-          inputMode="numeric"
+          inputMode={e.ind.tipoDocumento === 'Pasaporte' ? 'text' : 'numeric'}
           valor={e.ind.numeroDocumento}
           onChange={alEscribir('ind-num-doc', (v) => patchInd({ numeroDocumento: v }))}
-          onBlur={alSalir('ind-num-doc', ['requerido'], T.individual.errorDoc)}
+          onBlur={alSalir('ind-num-doc', ['requerido', 'documento'], T.individual.errorDoc, e.ind.tipoDocumento)}
           error={error('ind-num-doc')}
         />
         <Field
@@ -1196,6 +1228,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           tipo="tel"
           icono={ico.celular}
           autoComplete="tel"
+          inputMode="numeric"
+          maxLength={10}
           valor={e.ind.celular}
           onChange={alEscribir('ind-tel', (v) => patchInd({ celular: v }))}
           onBlur={alSalir('ind-tel', ['requerido', 'celular'], T.errores.celular)}
@@ -1358,7 +1392,13 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         className="fixed inset-0 z-1000 flex items-center justify-center bg-rd-ink/40 p-3 sm:p-6 backdrop-blur-xs animate-fade-in"
         onClick={(ev) => ev.target === ev.currentTarget && onCerrar?.()}
       >
-        <div className="relative flex max-h-[92dvh] w-full max-w-140 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-rd-2 text-rd-ink font-rd">
+        <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={e.modo === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          className="relative flex max-h-[92dvh] w-full max-w-140 flex-col overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface shadow-rd-2 text-rd-ink font-rd"
+        >
           {onCerrar && (
             <button
               type="button"

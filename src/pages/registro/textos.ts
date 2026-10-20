@@ -160,6 +160,8 @@ export const TEXTOS = {
     nombreOrg: 'Escribe el nombre de la organización',
     nombreCom: 'Escribe el nombre de la comunidad',
     cedula: 'Escribe tu número de documento',
+    cedulaFormato: 'La cédula debe contener entre 5 y 10 dígitos numéricos',
+    docFormato: 'Número de documento no válido',
     celular: 'Escribe tu celular',
     celularFormato: 'Un celular tiene 10 dígitos',
     correo: 'Escribe tu correo',

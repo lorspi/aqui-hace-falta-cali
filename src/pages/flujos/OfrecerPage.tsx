@@ -643,14 +643,43 @@ const CamposCantidad: React.FC<{ it: string; e: EstadoOfrecer; onCantidad: (n: n
   const campos = camposOferta(it);
   const conTiempo = campos.some((c) => c.k === 'tiempo');
   const idC = `cant-${it}`;
+  const idFecha = `fecha-${it}`;
   const disp = String(d.disp ?? 'Hasta agotar');
+  const hoy = new Date().toISOString().split('T')[0];
   return (
     <>
       <CampoNumero id={idC} etiqueta="Cantidad disponible" unidad={unidadOferta(it)} valor={e.cant[it] ? cifra(e.cant[it]) : ''} onChange={(t) => { onCantidad(numero(t) || 0); errores.limpiar(idC); }} onBlur={(t) => errores.validar(idC, ['numero'], t)} error={errores.errores[idC]} />
       {!conTiempo && (
         <>
           <Chips nombre={`disp-${it}`} etiqueta="Disponible" opciones={DISPONIBLE} valor={disp} onChange={(v) => onDetalle({ disp: v })} className="mb-3" />
-          {disp === 'Hasta una fecha' && <Field id={`fecha-${it}`} etiqueta="Hasta qué día" tipo="date" valor={String(d.fecha ?? '')} onChange={(v) => onDetalle({ fecha: v })} className="mb-3 max-w-56" />}
+          {disp === 'Hasta una fecha' && (
+            <Field
+              id={idFecha}
+              etiqueta="Hasta qué día"
+              tipo="date"
+              min={hoy}
+              valor={String(d.fecha ?? '')}
+              onChange={(v) => {
+                onDetalle({ fecha: v });
+                if (v && v < hoy) {
+                  errores.poner(idFecha, 'La fecha no puede ser en el pasado');
+                } else {
+                  errores.limpiar(idFecha);
+                }
+              }}
+              onBlur={(v) => {
+                if (v && v < hoy) {
+                  errores.poner(idFecha, 'La fecha no puede ser en el pasado');
+                } else if (!v) {
+                  errores.poner(idFecha, 'Indica la fecha hasta la que estará disponible');
+                } else {
+                  errores.limpiar(idFecha);
+                }
+              }}
+              error={errores.errores[idFecha]}
+              className="mb-3 max-w-56"
+            />
+          )}
         </>
       )}
       {campos.map((c) => (

@@ -133,7 +133,12 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
       className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="need-modal-title"
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150"
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-200 flex items-start justify-between gap-3 sticky top-0 bg-white/95 backdrop-blur-xs z-10">
           <div className="space-y-1">
@@ -157,7 +162,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
               </span>
             </div>
 
-            <h2 className="text-xl font-black text-slate-900 leading-snug pt-1">{need.title}</h2>
+            <h2 id="need-modal-title" className="text-xl font-black text-slate-900 leading-snug pt-1">{need.title}</h2>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -222,7 +227,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
           {/* Situation Description */}
           <div>
-            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-1">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-1">
               {t('detailDescription')}
             </h4>
             <div className="text-slate-800 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
@@ -233,7 +238,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
           {/* What they need */}
           {need.resources && need.resources.length > 0 && (
             <div className="space-y-2">
-              <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
                 {t('cardResourcesNeeded')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -437,7 +442,7 @@ export const NeedDetailModal: React.FC<NeedDetailModalProps> = ({
 
           {/* Contact Direct Buttons */}
           <div className="space-y-2">
-            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
               {t('cardContactName')}
             </h4>
             <div className="flex flex-wrap gap-2">

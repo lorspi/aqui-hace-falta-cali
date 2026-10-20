@@ -114,7 +114,7 @@ export const DialogoCoincidencias: React.FC<{ abierto: boolean; onCerrar: () => 
   }, [abierto]);
   const pide = lista.publicacion.tipo === 'necesidad';
   return (
-    <dialog ref={ref} onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()} aria-labelledby="rd-coincidencias-t" className="font-rd m-auto max-h-dvh w-full max-w-170 rounded-rd-xl bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto max-sm:max-w-full">
+    <dialog ref={ref} role="dialog" aria-modal="true" onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()} aria-labelledby="rd-coincidencias-t" className="font-rd m-auto max-h-dvh w-full max-w-170 rounded-rd-xl bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto max-sm:max-w-full">
       {abierto && (
         <div className="flex max-h-dvh flex-col" onClick={(e) => e.stopPropagation()}>
           <div className="flex flex-none items-start gap-3 border-b border-rd-line p-5 pb-4">

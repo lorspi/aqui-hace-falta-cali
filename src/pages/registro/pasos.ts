@@ -44,7 +44,32 @@ export function primerIndiceDeFase(perfil: PerfilCuenta | '', fase: 1 | 2): numb
 
 export const lleno = (v: string | undefined): boolean => Boolean((v || '').trim());
 export const esCorreo = (v: string | undefined): boolean => /.+@.+\..+/.test(v || '');
-export const esCelular = (v: string | undefined): boolean => (v || '').replace(/\D/g, '').length >= 10;
+export const esCelular = (v: string | undefined): boolean => {
+  const limpio = (v || '').trim().replace(/[\s-]/g, '');
+  return /^\d{10}$/.test(limpio);
+};
+
+/** Valida el formato del número de documento según el tipo de documento. */
+export function esDocumentoValido(tipo: string | undefined, numero: string | undefined): boolean {
+  const num = (numero || '').trim();
+  if (!num) return false;
+  const t = (tipo || 'Cédula de ciudadanía').trim();
+
+  switch (t) {
+    case 'Cédula de ciudadanía':
+      return /^\d{5,10}$/.test(num);
+    case 'Tarjeta de identidad':
+      return /^\d{7,11}$/.test(num);
+    case 'Cédula de extranjería':
+      return /^\d{3,10}$/.test(num);
+    case 'Pasaporte':
+      return /^[A-Za-z0-9]{5,16}$/.test(num);
+    case 'PPT / PEP':
+      return /^[A-Za-z0-9]{5,15}$/.test(num);
+    default:
+      return /^[A-Za-z0-9]{5,20}$/.test(num);
+  }
+}
 
 /** ¿Se puede continuar desde este paso? Es lo que habilita el botón principal. */
 export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean {
@@ -70,7 +95,7 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
       return (
         lleno(e.per.nombre) &&
         lleno(e.per.tipoDocumento) &&
-        lleno(e.per.cedula) &&
+        esDocumentoValido(e.per.tipoDocumento, e.per.cedula) &&
         (!e.per.tel.trim() || esCelular(e.per.tel))
       );
     case 'cuenta': {
@@ -89,7 +114,7 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
         lleno(e.ind.nombre) &&
         lleno(e.ind.apellido) &&
         lleno(e.ind.tipoDocumento) &&
-        lleno(e.ind.numeroDocumento) &&
+        esDocumentoValido(e.ind.tipoDocumento, e.ind.numeroDocumento) &&
         esCelular(e.ind.celular)
       );
     case 'ind_cuenta': {
@@ -104,7 +129,7 @@ export function listo(paso: Paso, e: EstadoRegistro, pass: Contrasenas): boolean
       );
     }
     case 'rapida':
-      return lleno(e.per.nombre) && lleno(e.per.tel) && esCorreo(e.per.correo) && contrasenaCumple(pass.rp || '', e.per.correo);
+      return lleno(e.per.nombre) && esCelular(e.per.tel) && esCorreo(e.per.correo) && contrasenaCumple(pass.rp || '', e.per.correo);
     default:
       return true;
   }
@@ -114,13 +139,16 @@ export function loginListo(correo: string, pass: Contrasenas): boolean {
   return esCorreo(correo) && lleno(pass.lp);
 }
 
-/** Reglas de validación al salir del campo: requerido | correo | celular. */
-export type Regla = 'requerido' | 'correo' | 'celular';
+/** Reglas de validación al salir del campo: requerido | correo | celular | documento. */
+export type Regla = 'requerido' | 'correo' | 'celular' | 'documento';
 
-export function validar(valor: string, reglas: Regla[], mensajeVacio?: string): string | null {
+export function validar(valor: string, reglas: Regla[], mensajeVacio?: string, tipoDoc?: string): string | null {
   const v = (valor || '').trim();
   if (reglas.includes('requerido') && !v) return mensajeVacio || T.errores.requerido;
   if (v && reglas.includes('correo') && !esCorreo(v)) return T.errores.correoFormato;
   if (v && reglas.includes('celular') && !esCelular(v)) return T.errores.celularFormato;
+  if (v && reglas.includes('documento') && !esDocumentoValido(tipoDoc, v)) {
+    return tipoDoc === 'Cédula de ciudadanía' ? T.errores.cedulaFormato : T.errores.docFormato;
+  }
   return null;
 }

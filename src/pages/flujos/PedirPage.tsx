@@ -367,11 +367,16 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       const res = await geocodeAddress(direccion, undefined, 'Cali');
       if (res) {
         set({ lat: res.lat, lng: res.lng });
+        errores.limpiar('dir');
+      } else {
+        errores.poner('dir', 'No encontramos esta dirección. Ubica el punto en el mapa o escribe una dirección válida.');
       }
+    } catch {
+      errores.poner('dir', 'No encontramos esta dirección. Ubica el punto en el mapa o escribe una dirección válida.');
     } finally {
       setCargandoGeocodificacion(false);
     }
-  }, [set]);
+  }, [set, errores]);
 
   useEffect(() => {
     if (omitirAutoGeocodificacionRef.current) {
@@ -393,8 +398,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   /* Un número limpio, o nada: lo que no es número no se guarda, y la validación lo dice. */
   const fijarGrupo = (g: string, txt: string) => {
     if (txt && !/^[0-9.,\s]+$/.test(txt)) return set((p) => ({ grupo: { ...p.grupo, [g]: 0 } }));
-    const n = Math.min(TOPE_GRUPO, Math.round(numero(txt) || 0));
-    set((p) => ({ grupo: { ...p.grupo, [g]: n } }));
+    const n = numero(txt);
+    set((p) => ({ grupo: { ...p.grupo, [g]: isNaN(n) ? 0 : n } }));
   };
 
   const irMapa = useCallback(() => irA(RUTAS.radar), []);
@@ -482,7 +487,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
                     fijarGrupo(g, t);
                     errores.limpiar(id);
                   }}
-                  onBlur={(t) => errores.validar(id, ['numero'], t)}
+                  onBlur={(t) => errores.validar(id, ['numero', 'entero'], t)}
                   error={errores.errores[id]}
                 />
                 <Sugeridos
@@ -652,9 +657,39 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     set((p) => ({ fotos: p.fotos.filter((_, k) => k !== i) }));
   }
 
+  const hayErrorActivo = Object.values(errores.errores).some(Boolean);
+  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir));
+
+  const alContinuar = async () => {
+    if (sub?.id === 'donde') {
+      if (cargandoGeocodificacion) return;
+      if (errores.errores.dir) return;
+      if (e.dir && e.dir.trim().length >= 3 && !omitirAutoGeocodificacionRef.current) {
+        setTextoGeocodificacion('Buscando ubicación en el mapa...');
+        setCargandoGeocodificacion(true);
+        try {
+          const res = await geocodeAddress(e.dir, undefined, 'Cali');
+          if (res) {
+            set({ lat: res.lat, lng: res.lng });
+            errores.limpiar('dir');
+            f.siguiente();
+          } else {
+            errores.poner('dir', 'No encontramos esta dirección. Ubica el punto en el mapa o escribe una dirección válida.');
+          }
+        } catch {
+          errores.poner('dir', 'No encontramos esta dirección. Ubica el punto en el mapa o escribe una dirección válida.');
+        } finally {
+          setCargandoGeocodificacion(false);
+        }
+        return;
+      }
+    }
+    f.siguiente();
+  };
+
   return (
     <>
-      <MarcoFlujo nombre={t('publishNeed')} fases={[t('flowWhatNeeded'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar={t('btnPublishNeed')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('publishNeed')} fases={[t('flowWhatNeeded'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishNeed')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />

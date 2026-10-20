@@ -33,7 +33,7 @@ export const TituloPublicacion: React.FC<{
           <span aria-hidden="true" className="mx-2 inline-block h-3.5 w-px shrink-0 bg-rd-line align-middle" />
           <span className="inline-flex items-center gap-1 align-baseline">
             <span>{actorTraducido}</span>
-            {insignia && p.verificada && (
+            {insignia && p.verificada && p.perfil !== 'individual' && rawActor !== 'Ciudadano' && (
               <BadgeCheck role="img" aria-label={t('verifiedOrg')} className="h-3.5 w-3.5 shrink-0 text-rd-navy inline-block" />
             )}
           </span>

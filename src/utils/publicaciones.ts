@@ -4,6 +4,7 @@
  * aquí. Origen: `Producto/assets/datos.js` del prototipo de RaDAR.
  */
 import type { Publicacion, Recurso, TipoPublicacion, TipoTramo } from '../types/publicacion';
+import { translateItem, type Language } from '../i18n/catalogTranslations';
 
 /** Lo que ya se movió de un recurso en un tipo de tramo (hecho o en camino). */
 export function movido(recurso: Recurso, tipo: TipoTramo): number {
@@ -123,14 +124,37 @@ export function estadoPublicacion(p: Publicacion): EstadoPublicacion {
  * Determina el nombre del actor o punto territorial visible según el perfil de la cuenta,
  * protegiendo la privacidad y datos personales en el caso de personas naturales / hogares.
  */
-export function actorPublicacion(p: Publicacion): string {
+export function actorPublicacion(p: Publicacion, lang?: Language): string {
   const zona = p.zona || p.localidad || '';
 
   if (p.perfil === 'individual') {
+    if (lang === 'en') return 'Citizen';
+    if (lang === 'pt') return 'Cidadão';
+    if (lang === 'fr') return 'Citoyen';
     return 'Ciudadano';
   }
 
-  return p.punto?.trim() || p.org?.trim() || p.titulo?.trim() || (p.tipo === 'necesidad' ? (zona ? `Comunidad en ${zona}` : 'Comunidad') : 'Organización');
+  if (p.punto?.trim() || p.org?.trim() || p.titulo?.trim()) {
+    return p.punto?.trim() || p.org?.trim() || p.titulo?.trim() || '';
+  }
+
+  if (p.tipo === 'necesidad') {
+    if (zona) {
+      if (lang === 'en') return `Community in ${zona}`;
+      if (lang === 'pt') return `Comunidade em ${zona}`;
+      if (lang === 'fr') return `Communauté à ${zona}`;
+      return `Comunidad en ${zona}`;
+    }
+    if (lang === 'en') return 'Community';
+    if (lang === 'pt') return 'Comunidade';
+    if (lang === 'fr') return 'Communauté';
+    return 'Comunidad';
+  }
+
+  if (lang === 'en') return 'Organization';
+  if (lang === 'pt') return 'Organização';
+  if (lang === 'fr') return 'Organisation';
+  return 'Organización';
 }
 
 /**
@@ -148,12 +172,18 @@ export function actorPublicacion(p: Publicacion): string {
 /** El bloque de recursos del título, solo: «Agua potable», «Agua potable y Alimentos»,
  *  «Alimentos y 4 más». Aparte del título porque el globo del mapa pone los recursos y el
  *  actor en líneas distintas, y ahí el título entero no sirve. */
-export function recursosPublicacion(p: Publicacion): string {
+export function recursosPublicacion(p: Publicacion, lang?: Language): string {
   const recursos = p.recursos || [];
-  if (recursos.length === 0) return p.tipo === 'oferta' ? 'Ayuda disponible' : 'Ayuda requerida';
-  if (recursos.length === 1) return recursos[0].item;
-  if (recursos.length === 2) return `${recursos[0].item} y ${recursos[1].item}`;
-  return `${recursos[0].item} y ${recursos.length - 1} más`;
+  const itemNombre = (item: string) => (lang ? translateItem(item, lang) : item);
+  const yStr = lang === 'en' ? 'and' : lang === 'fr' ? 'et' : lang === 'pt' ? 'e' : 'y';
+  const masStr = lang === 'en' ? 'more' : lang === 'fr' ? 'de plus' : lang === 'pt' ? 'mais' : 'más';
+  const ayudaDisp = lang === 'en' ? 'Help available' : lang === 'fr' ? 'Aide disponible' : lang === 'pt' ? 'Ajuda disponível' : 'Ayuda disponible';
+  const ayudaReq = lang === 'en' ? 'Help requested' : lang === 'fr' ? 'Aide requise' : lang === 'pt' ? 'Ajuda solicitada' : 'Ayuda requerida';
+
+  if (recursos.length === 0) return p.tipo === 'oferta' ? ayudaDisp : ayudaReq;
+  if (recursos.length === 1) return itemNombre(recursos[0].item);
+  if (recursos.length === 2) return `${itemNombre(recursos[0].item)} ${yStr} ${itemNombre(recursos[1].item)}`;
+  return `${itemNombre(recursos[0].item)} ${yStr} ${recursos.length - 1} ${masStr}`;
 }
 
 /**
@@ -162,6 +192,7 @@ export function recursosPublicacion(p: Publicacion): string {
  * prohibió en toda la herramienta (16 de septiembre de 2026); ahí no cabe un divisor, que es
  * lo que se usa donde el título se pinta (`TituloPublicacion`).
  */
-export function tituloPublicacion(p: Publicacion): string {
-  return `${recursosPublicacion(p)}, de ${actorPublicacion(p)}`;
+export function tituloPublicacion(p: Publicacion, lang?: Language): string {
+  const deStr = lang === 'en' ? ', from' : lang === 'fr' ? ', de' : lang === 'pt' ? ', de' : ', de';
+  return `${recursosPublicacion(p, lang)}${deStr} ${actorPublicacion(p, lang)}`;
 }

@@ -32,7 +32,7 @@ import type { Aviso } from '../../types/aviso';
 import type { ClaseEntidad, ConsultaDirectorio, Entidad } from '../../types/directorio';
 import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { nombrePanel } from '../../utils/cuenta';
-import { chipsDe, cifrasDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, publicacionesDe, recursosDeVista, vacioDe } from '../../utils/directorio';
+import { chipsDe, cifrasDe, consultaVacia, conteoTexto, cuantosAplicados, entidadesDe, filtrar, formatearTipoEntidad, publicacionesDe, recursosDeVista, vacioDe } from '../../utils/directorio';
 import { directorioDeParams, escribirUrl, paramsActuales, paramsDeDirectorio } from '../../utils/enlace';
 import { conteoPorCiudad } from '../../utils/lugares';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
@@ -446,7 +446,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]
           <h2 className="font-rd m-0 min-w-0 truncate text-rd-15 font-semibold text-rd-ink">{e.nombre}</h2>
           {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4 w-4 shrink-0 text-rd-navy" />}
         </div>
-        <span className="text-rd-12 text-rd-ink-2">{e.tipo}</span>
+        <span className="text-rd-12 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com)}</span>
       </div>
     </div>
   );
@@ -597,7 +597,7 @@ const DialogoDetalleEntidad: React.FC<{
                   <p className="font-rd m-0 min-w-0 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{e.nombre}</p>
                   {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4.5 w-4.5 shrink-0 text-rd-navy" />}
                 </div>
-                <span className="text-rd-12-5 text-rd-ink-2">{e.tipo}</span>
+                <span className="text-rd-12-5 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com)}</span>
                 <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mt-1.5" />
               </div>
             </div>

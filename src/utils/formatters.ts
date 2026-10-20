@@ -78,7 +78,7 @@ export const CATEGORY_LABELS: Record<HelpCategory, { label: string; icon: string
   MANO_OBRA: { label: 'Mano de obra', icon: '👷' },
   TRANSPORTE: { label: 'Transporte / Flete', icon: '🚚' },
   ALIMENTOS: { label: 'Alimentos', icon: '🍞' },
-  AGUA: { label: 'Agua Potable', icon: '💧' },
+  AGUA: { label: 'Agua potable', icon: '💧' },
   ROPA: { label: 'Ropa y cobijas', icon: '👕' },
   MEDICAMENTOS: { label: 'Medicamentos / Botiquín', icon: '💊' },
   SANGRE: { label: 'Donar sangre', icon: '🩸' },

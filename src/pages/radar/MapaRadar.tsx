@@ -8,6 +8,7 @@ import type { Publicacion, Ubicacion } from '../../types/publicacion';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, recursosPublicacion, resumen, tituloPublicacion } from '../../utils/publicaciones';
 import { EtiquetaEstado, EtiquetaTipo } from '../../components/ui/Etiqueta';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { useAviso } from '../../components/ui/AvisoCorto';
 import { translateDistance, translateItem } from '../../i18n/catalogTranslations';
 import type { Language } from '../../i18n/translations';
 
@@ -53,11 +54,14 @@ type Punto = PointFeature<{ p: Publicacion }>;
 const CLASE_SELECCIONADO = ['after:absolute', 'after:-inset-2.5', 'after:-z-1', 'after:rounded-full', 'after:bg-current', 'after:opacity-15', 'scale-110'];
 const CLASE_RESALTADO = ['ring-3', 'ring-rd-navy', 'ring-offset-2', 'scale-115'];
 
-function nombrePunto(p: Publicacion): string {
-  return `${p.tipo === 'necesidad' ? 'Necesidad' : 'Oferta'}: ${tituloPublicacion(p)}`;
+function nombrePunto(p: Publicacion, lang: Language = 'es'): string {
+  const tipoStr = p.tipo === 'necesidad'
+    ? (lang === 'en' ? 'Need' : lang === 'fr' ? 'Besoin' : lang === 'pt' ? 'Necessidade' : 'Necesidad')
+    : (lang === 'en' ? 'Offer' : lang === 'fr' ? 'Offre' : lang === 'pt' ? 'Oferta' : 'Oferta');
+  return `${tipoStr}: ${tituloPublicacion(p, lang)}`;
 }
 
-function pinHTML(p: Publicacion): string {
+function pinHTML(p: Publicacion, lang: Language = 'es'): string {
   const { hecho, camino } = resumen(p);
   const completo = hecho >= 100;
   /* La clase de tipo le da al pin su color como currentColor: el halo de selección lo usa. */
@@ -66,7 +70,7 @@ function pinHTML(p: Publicacion): string {
      para que llene esa caja (a 13 quedaría a poco más de la mitad). */
   const icono = completo ? <Check color="white" size={24} strokeWidth={2.5} /> : p.tipo === 'necesidad' ? <Hand color="white" size={24} strokeWidth={2.5} /> : <HeartHandshake color="white" size={24} strokeWidth={2.5} />;
   return renderToStaticMarkup(
-    <span role="img" aria-label={nombrePunto(p)} title={nombrePunto(p)} className={`rd-pin relative block rounded-full transition-transform duration-150 ease-out ${tipo}`}>
+    <span role="img" aria-label={nombrePunto(p, lang)} title={nombrePunto(p, lang)} className={`rd-pin relative block rounded-full transition-transform duration-150 ease-out ${tipo}`}>
       <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true" className="drop-shadow-rd-pin">
         <circle cx="20" cy="20" r="14" fill="var(--color-rd-surface)" stroke="var(--color-rd-surface)" strokeWidth="7" />
         {completo ? (
@@ -277,7 +281,8 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   onMiUbicacion,
   className = '',
 }) => {
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
+  const avisar = useAviso();
   const nodo = useRef<HTMLDivElement>(null);
   const mapa = useRef<L.Map | null>(null);
   const capa = useRef<L.LayerGroup | null>(null);
@@ -461,7 +466,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
       if ('cluster' in f.properties && f.properties.cluster) {
         const { n, o } = f.properties;
         const idGrupo = f.properties.cluster_id;
-        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o, language), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `Grupo de ${n + o} publicaciones` });
+        const labelGroup = language === 'en' ? 'Group of' : language === 'fr' ? 'Groupe de' : language === 'pt' ? 'Grupo de' : 'Grupo de';
+        const labelPubs = language === 'en' ? 'publications' : language === 'fr' ? 'publications' : language === 'pt' ? 'publicações' : 'publicaciones';
+        const grupo = L.marker([lat, lng], { icon: L.divIcon({ html: grupoHTML(n, o, language), className: '', iconSize: [44, 44], iconAnchor: [22, 22] }), keyboard: true, title: `${labelGroup} ${n + o} ${labelPubs}` });
         (grupo as any)._posOriginal = L.latLng(lat, lng);
         (grupo as any)._pubTipo = n > 0 && o > 0 ? 'mixto' : n > 0 ? 'necesidad' : 'oferta';
 
@@ -498,7 +505,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
         return;
       }
       const p = (f.properties as { p: Publicacion }).p;
-      const marker = L.marker([lat, lng], { icon: L.divIcon({ html: pinHTML(p), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }), keyboard: true, title: nombrePunto(p) });
+      const marker = L.marker([lat, lng], { icon: L.divIcon({ html: pinHTML(p, language), className: '', iconSize: [40, 40], iconAnchor: [20, 20] }), keyboard: true, title: nombrePunto(p, language) });
       (marker as any)._posOriginal = L.latLng(lat, lng);
       (marker as any)._pubTipo = p.tipo;
       /* El globo con el resumen solo donde hay puntero: el `title` nativo sigue ahí para el
@@ -530,11 +537,35 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     const tam = m.getSize();
     if (tam.x === 0 || tam.y === 0) return;
     if (pubsRef.current.length === 0) return;
-    const limites = L.latLngBounds(pubsRef.current.map((p) => [p.lat, p.lng] as [number, number]));
-    if (limites.isValid()) {
+
+    // 1. Si el usuario tiene ubicación real concedida (no simulada): centrar en su ubicación
+    if (ubicacion && !ubicacion.simulada) {
       encuadrado.current = true;
-      m.fitBounds(limites.pad(0.15), { maxZoom: 13, animate: false });
+      m.setView([ubicacion.lat, ubicacion.lng], 13);
+      return;
     }
+
+    // 2. Filtrar publicaciones válidas dentro del territorio colombiano
+    // para evitar que datos de prueba en el extranjero (España, EE. UU., Perú) alejen el zoom
+    const pubsColombia = pubsRef.current.filter(
+      (p) => typeof p.lat === 'number' && typeof p.lng === 'number' && p.lat >= -4.5 && p.lat <= 13.5 && p.lng >= -82.0 && p.lng <= -66.0
+    );
+
+    if (pubsColombia.length > 0) {
+      const limites = L.latLngBounds(pubsColombia.map((p) => [p.lat, p.lng] as [number, number]));
+      if (limites.isValid()) {
+        encuadrado.current = true;
+        m.fitBounds(limites.pad(0.15), { maxZoom: 13, animate: false });
+        if (m.getZoom() < 6) {
+          m.setZoom(6);
+        }
+        return;
+      }
+    }
+
+    // Fallback: Centro geográfico de Colombia en zoom 6
+    encuadrado.current = true;
+    m.setView([4.5709, -74.2973], 6);
   };
 
   const irAMiUbicacion = () => {
@@ -542,7 +573,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     if (!m) return;
 
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-      alert('Tu navegador no soporta geolocalización.');
+      avisar('Tu navegador no soporta geolocalización.', { tipo: 'error' });
       return;
     }
 
@@ -588,7 +619,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
           botonUbicacionRef.current.classList.remove('animate-pulse');
         }
         console.warn('Error al obtener ubicación:', error);
-        alert('No pudimos acceder a tu ubicación. Verifica que los permisos de ubicación estén habilitados en tu navegador.');
+        avisar('No pudimos acceder a tu ubicación. Verifica que los permisos de ubicación estén habilitados en tu navegador.', { tipo: 'error' });
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
@@ -596,9 +627,10 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
 
   useEffect(() => {
     if (!nodo.current) return;
-    // Centro geográfico por defecto en Colombia (Zoom 6 para ver el país si está vacio)
-    const centroInicial: [number, number] = ubicacion ? [ubicacion.lat, ubicacion.lng] : [4.5709, -74.2973];
-    const m = L.map(nodo.current, { zoomControl: false, attributionControl: true }).setView(centroInicial, 6);
+    // Centro geográfico por defecto en Colombia o ubicación real del usuario
+    const centroInicial: [number, number] = ubicacion && !ubicacion.simulada ? [ubicacion.lat, ubicacion.lng] : [4.5709, -74.2973];
+    const zoomInicial = ubicacion && !ubicacion.simulada ? 13 : 6;
+    const m = L.map(nodo.current, { zoomControl: false, attributionControl: true }).setView(centroInicial, zoomInicial);
 
     // 1. Control de ubicación ("felchita") justo arriba del zoom
     const LocationControl = L.Control.extend({
@@ -608,12 +640,17 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.disableScrollPropagation(container);
 
-        const a = L.DomUtil.create('a', '', container);
+        const a = L.DomUtil.create('a', 'flex items-center justify-center', container);
         a.href = '#';
-        a.title = 'Ir a mi ubicación';
+        a.title = t('goToMyLocation');
         a.setAttribute('role', 'button');
-        a.setAttribute('aria-label', 'Ir a mi ubicación');
-        a.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+        a.setAttribute('aria-label', t('goToMyLocation'));
+        a.style.display = 'flex';
+        a.style.alignItems = 'center';
+        a.style.justifyContent = 'center';
+        a.style.padding = '0';
+        a.style.lineHeight = '0';
+        a.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0 text-rd-ink" style="display:block;margin:auto;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
 
         L.DomEvent.on(a, 'click', (ev) => {
           L.DomEvent.preventDefault(ev);
@@ -681,6 +718,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
         interactive: false,
         zIndexOffset: -100,
       }).addTo(m);
+    }
+    if (!encuadrarRef.current) {
+      m.setView([ubicacion.lat, ubicacion.lng], 13);
     }
   }, [ubicacion]);
 
@@ -752,5 +792,12 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encuadrarTodo?.n]);
 
-  return <div ref={nodo} aria-label="Mapa de necesidades y ofertas" className={`rd-mapa bg-rd-mapa ${className}`} />;
+  useEffect(() => {
+    if (botonUbicacionRef.current) {
+      botonUbicacionRef.current.title = t('goToMyLocation');
+      botonUbicacionRef.current.setAttribute('aria-label', t('goToMyLocation'));
+    }
+  }, [language, t]);
+
+  return <div ref={nodo} aria-label={t('mapNeedsAndOffers')} className={`rd-mapa bg-rd-mapa ${className}`} />;
 };

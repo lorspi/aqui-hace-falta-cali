@@ -4,9 +4,28 @@
  * qué recursos declaran su cifra a mano. Origen: `src/pedir.html` del prototipo.
  */
 import { BASES, DETALLE, EQUIV, SIN_META } from '../mocks/equivalenciasMock';
-import { NOMBRE_GRUPO } from '../mocks/flujosMock';
+import { NOMBRE_GRUPO, TOPE_GRUPO } from '../mocks/flujosMock';
 import type { EstadoPedir, SubPaso } from '../types/flujo';
-import { calcularMetas, declarado } from './equivalencias';
+import { calcularMetas, declarado, numero } from './equivalencias';
+import { cifra } from './publicaciones';
+
+/* ---------- validación de campos de flujos (`data-valida` del prototipo) ---------- */
+export type Regla = 'requerido' | 'telefono' | 'numero' | 'entero' | 'nombre';
+
+export function mensajeDe(reglas: Regla[], v: string, vacio = 'Este dato hace falta'): string | null {
+  const t = v.trim();
+  if (reglas.includes('requerido') && !t) return vacio;
+  if (reglas.includes('nombre') && t && t.length < 2) return 'Escribe un nombre de al menos 2 caracteres';
+  if (t && reglas.includes('telefono') && !esTelefonoValido(t)) return 'Un celular tiene 10 dígitos, más el +57';
+  if (reglas.includes('numero') && t !== '' && !/^[0-9.,\s]+$/.test(t)) return 'Escribe solo el número, sin palabras';
+  if (reglas.includes('numero') && (t === '' || !(parseFloat(t.replace(/\./g, '').replace(',', '.')) > 0))) return 'Escribe una cantidad mayor que cero';
+  if (reglas.includes('entero') && t !== '') {
+    const val = numero(t);
+    if (!Number.isInteger(val)) return 'Escribe un número entero, sin decimales';
+    if (val > TOPE_GRUPO) return `La cantidad no puede superar ${cifra(TOPE_GRUPO)}`;
+  }
+  return null;
+}
 
 export function gruposNecesarios(sel: string[]): string[] {
   const g: Record<string, true> = {};
@@ -61,8 +80,23 @@ export function faltanCantidades(e: EstadoPedir): string[] {
     .map((m) => m.item);
 }
 
+/** Valida si una cadena es un número celular válido (Colombia: 10 dígitos o 12 con prefijo +57). */
+export function esTelefonoValido(v: string | undefined): boolean {
+  if (!v) return false;
+  const t = v.trim();
+  // Solo se permiten dígitos, espacios, guiones, paréntesis y opcional '+' al inicio
+  if (!/^\+?[\d\s\-()]+$/.test(t)) return false;
+  const digitos = t.replace(/\D/g, '');
+  // Con prefijo internacional Colombia (+57): exactamente 12 dígitos
+  if (t.startsWith('+57') || (digitos.startsWith('57') && digitos.length === 12)) {
+    return digitos.length === 12;
+  }
+  // Formato local estándar: exactamente 10 dígitos (ej: 3001234567)
+  return digitos.length === 10;
+}
+
 export function contactoListo(e: { contacto: string; tel: string }): boolean {
-  return !!e.contacto.trim() && !!e.tel.trim();
+  return (e.contacto || '').trim().length >= 2 && esTelefonoValido(e.tel);
 }
 
 /** Si ese sub-paso ya puede dejar continuar. «Cantidades» solo responde por lo que pregunta;
@@ -70,10 +104,14 @@ export function contactoListo(e: { contacto: string; tel: string }): boolean {
 export function listoPedir(e: EstadoPedir, sub: SubPaso): boolean {
   if (sub.id === 'recursos') return e.sel.length > 0;
   if (sub.id === 'afectacion' || sub.id === 'grupos' || sub.id.startsWith('grupo:')) {
-    const necesarios = gruposNecesarios(e.sel);
+    const necesarios = sub.id.startsWith('grupo:') ? [sub.id.split(':')[1]] : gruposNecesarios(e.sel);
     const gruposListos = necesarios.every((g) => {
       const v = e.grupo[g];
-      return BASES[g]?.libre ? Number(v) > 0 : !!v;
+      if (BASES[g]?.libre) {
+        const n = Number(v);
+        return Number.isInteger(n) && n > 0 && n <= TOPE_GRUPO;
+      }
+      return !!v;
     });
     const tieneDiarios = hayDiarios(e.sel);
     const diasListo = !tieneDiarios || (e.dias != null && e.dias > 0);

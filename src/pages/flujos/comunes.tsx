@@ -28,6 +28,7 @@ import { numero } from '../../utils/equivalencias';
 import { RadarPage } from '../radar/RadarPage';
 import { cifra } from '../../utils/publicaciones';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /** «Mis necesidades y Seguimiento»; con tres o más, comas y la última con «y». */
 function lista(partes: string[]): string {
@@ -79,17 +80,8 @@ function useTexto(valor: string, onChange: (t: string) => void, onBlur?: (t: str
  * Cada página define su estado, su camino, `listo(sub)` y sus pantallas.
  */
 
-/* ---------- validación al salir del campo (`data-valida` del prototipo) ---------- */
-export type Regla = 'requerido' | 'telefono' | 'numero';
-
-export function mensajeDe(reglas: Regla[], v: string, vacio = 'Este dato hace falta'): string | null {
-  const t = v.trim();
-  if (reglas.includes('requerido') && !t) return vacio;
-  if (t && reglas.includes('telefono') && t.replace(/\D/g, '').length < 10) return 'Un celular tiene 10 dígitos, más el +57';
-  if (reglas.includes('numero') && t !== '' && !/^[0-9.,\s]+$/.test(t)) return 'Escribe solo el número, sin palabras';
-  if (reglas.includes('numero') && (t === '' || !(parseFloat(t.replace(/\./g, '').replace(',', '.')) > 0))) return 'Escribe una cantidad mayor que cero';
-  return null;
-}
+import { type Regla, mensajeDe } from '../../utils/pedir';
+export { type Regla, mensajeDe };
 
 /** Los errores de los campos de una pantalla, por id: se ponen al salir, se quitan al corregir
  *  y se olvidan al cambiar de pantalla (`clave`). */
@@ -135,6 +127,8 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
   const tarjeta = useRef<HTMLElement>(null);
   /* El alto que tenía la tarjeta en el último paso del formulario, para animar desde ahí. */
   const altoFormulario = useRef<number | null>(null);
+
+  useFocusTrap(tarjeta, { isActive: isModal, onEscape: onCerrar });
 
   /* El alto de partida se mide al cambiar de paso, no solo al montar: si la ventana cambió de
      tamaño por el camino, sigue siendo el que se ve. Va declarado antes del que anima, que es
@@ -206,7 +200,13 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
           <div className="absolute inset-0 z-2000 bg-rd-ink/50" />
         </div>
       )}
-      <section ref={tarjeta} aria-label={nombre} className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2">
+      <section
+        ref={tarjeta}
+        role={isModal ? 'dialog' : undefined}
+        aria-modal={isModal ? 'true' : undefined}
+        aria-label={nombre}
+        className="relative flex h-dvh w-full flex-col overflow-hidden bg-rd-surface lg:h-auto lg:max-h-full lg:max-w-170 lg:rounded-rd-xl lg:border lg:border-rd-line lg:shadow-rd-2"
+      >
         <button type="button" aria-label={t('close')} onClick={onCerrar} className="absolute top-2 right-2 z-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-surface text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy lg:top-3 lg:right-3 lg:h-10 lg:w-10">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
@@ -531,7 +531,7 @@ export const CamposContacto: React.FC<{
           onChange('contacto', v);
           errores.limpiar('ct');
         }}
-        onBlur={(v) => errores.validar('ct', ['requerido'], v, t('flowFieldRequired'))}
+        onBlur={(v) => errores.validar('ct', ['requerido', 'nombre'], v, t('flowFieldRequired'))}
         error={errores.errores.ct}
         className="mb-3"
       />
@@ -542,6 +542,7 @@ export const CamposContacto: React.FC<{
         valor={tel}
         autoComplete="tel"
         placeholder="+57 3.. ... ...."
+        maxLength={17}
         requerido
         ayuda={t('phoneHelp') || 'Se usará para llamadas y coordinación por WhatsApp.'}
         onChange={(v) => {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EllipsisVertical } from 'lucide-react';
 import { Button, type NivelBoton } from './Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El ⋮ de una tarjeta (`rd-mas-acc` del prototipo): las acciones que no merecen un botón a la
@@ -30,7 +31,7 @@ export interface MenuAccionesProps {
 
 export const MenuAcciones: React.FC<MenuAccionesProps> = ({
   items,
-  etiqueta = 'Más acciones',
+  etiqueta,
   tamano = 'md',
   flotante = false,
   /* `secundario` y no `terciario`: el ⋮ vive al lado de botones de segunda jerarquía («Ver»,
@@ -40,6 +41,8 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
   nivel = 'secundario',
   className = '',
 }) => {
+  const { t } = useTranslation();
+  const textoEtiqueta = etiqueta || t('moreActions');
   const [abierto, setAbierto] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number; arriba?: boolean } | null>(null);
   const raiz = useRef<HTMLSpanElement>(null);
@@ -98,7 +101,7 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
     <div
       ref={menuRef}
       role="menu"
-      aria-label={etiqueta}
+      aria-label={textoEtiqueta}
       style={flotante && pos ? { top: pos.top, right: pos.right, transform: pos.arriba ? 'translateY(-100%)' : undefined } : undefined}
       className={`z-50 flex min-w-50 flex-col gap-0.5 rounded-rd-lg border border-rd-line bg-rd-surface p-1 shadow-rd-2 ${flotante ? 'fixed' : 'absolute right-0 bottom-full mb-2'}`}
       onClick={(ev) => ev.stopPropagation()}
@@ -125,7 +128,8 @@ export const MenuAcciones: React.FC<MenuAccionesProps> = ({
         ref={dots}
         nivel={nivel}
         tamano={tamano}
-        aria-label={etiqueta}
+        aria-label={textoEtiqueta}
+        title={textoEtiqueta}
         aria-haspopup="menu"
         aria-expanded={abierto}
         soloIcono

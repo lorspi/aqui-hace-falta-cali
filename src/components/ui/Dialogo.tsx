@@ -30,6 +30,8 @@ export const Dialogo: React.FC<DialogoProps> = ({ abierto, titulo, accion, nivel
   return (
     <dialog
       ref={ref}
+      role="dialog"
+      aria-modal="true"
       aria-labelledby={idTitulo}
       onClose={onCerrar}
       onClick={(e) => e.target === ref.current && onCerrar()}

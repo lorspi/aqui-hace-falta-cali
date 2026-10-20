@@ -730,18 +730,18 @@ const Radar: React.FC<RadarProps> = ({
               <button
                 type="button"
                 onClick={() => setPanelDerechoMinimizado((p) => !p)}
-                aria-label={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel'}
-                title={panelDerechoMinimizado ? 'Mostrar panel derecho' : 'Minimizar panel'}
+                aria-label={panelDerechoMinimizado ? t('showRightPanel') : t('minimizePanel')}
+                title={panelDerechoMinimizado ? t('showRightPanel') : t('minimizePanel')}
                 className="absolute top-4 right-4 z-[1000] inline-flex items-center gap-2 rounded-full border border-rd-line bg-rd-surface/95 px-3 py-1.5 text-rd-12-5 font-semibold text-rd-ink shadow-rd-2 ring-1 ring-rd-ink/10 backdrop-blur-md transition-all hover:bg-rd-surface hover:text-rd-navy active:scale-95 cursor-pointer max-lg:hidden"
               >
                 {panelDerechoMinimizado ? (
                   <>
                     <ChevronLeft className="h-4 w-4 text-rd-navy" />
-                    <span>Mostrar panel</span>
+                    <span>{t('showPanel')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Minimizar panel</span>
+                    <span>{t('minimizePanel')}</span>
                     <ChevronRight className="h-4 w-4 text-rd-ink-3" />
                   </>
                 )}
@@ -791,7 +791,7 @@ const Radar: React.FC<RadarProps> = ({
           <div
             role="group"
             aria-label="Vista"
-            className="fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
+            className="rd-vista-flotante fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
           >
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta={t('mapView')} icono={<MapIcon className="h-5 w-5" />} />
             <VistaBtn actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta={t('listView')} icono={<List className="h-5 w-5" />} />

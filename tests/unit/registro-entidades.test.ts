@@ -147,5 +147,46 @@ describe('Registro de Organizacion y Comunidad', () => {
       expect(listo(pasoCuenta, e, { cp: 'ClaveSegura1!', cq: 'ClaveSegura1!' })).toBe(true);
     }
   });
+
+  it('RGO-04 y RGC-05: valida que celular no acepte letras ni más de 10 dígitos en org y com', async () => {
+    const { esCelular, validar } = await import('../../src/pages/registro/pasos');
+
+    // No debe aceptar letras
+    expect(esCelular('abcdef')).toBe(false);
+    expect(esCelular('300abc1234')).toBe(false);
+    // No debe aceptar más de 10 dígitos
+    expect(esCelular('300123456789012345678')).toBe(false);
+    expect(esCelular('30012345671')).toBe(false);
+    // Debe aceptar exactamente 10 dígitos
+    expect(esCelular('3001234567')).toBe(true);
+    expect(esCelular('300 123 4567')).toBe(true);
+
+    // Mensaje de validación al salir
+    expect(validar('abcdef', ['requerido', 'celular'])).toBe('Un celular tiene 10 dígitos');
+    expect(validar('300123456789012345678', ['requerido', 'celular'])).toBe('Un celular tiene 10 dígitos');
+  });
+
+  it('RGO-06: valida número de documento según tipo (Cédula rechaza letras y < 5 dígitos; Pasaporte acepta letras)', async () => {
+    const { esDocumentoValido, validar } = await import('../../src/pages/registro/pasos');
+
+    // Cédula de ciudadanía
+    expect(esDocumentoValido('Cédula de ciudadanía', 'ABC123')).toBe(false);
+    expect(esDocumentoValido('Cédula de ciudadanía', '12')).toBe(false);
+    expect(esDocumentoValido('Cédula de ciudadanía', '1234567890')).toBe(true);
+    expect(esDocumentoValido('Cédula de ciudadanía', '52123456')).toBe(true);
+
+    // Pasaporte (acepta letras y números)
+    expect(esDocumentoValido('Pasaporte', 'AB123456')).toBe(true);
+    expect(esDocumentoValido('Pasaporte', '12')).toBe(false);
+
+    // Mensajes de validación
+    expect(validar('ABC123', ['requerido', 'documento'], undefined, 'Cédula de ciudadanía')).toBe(
+      'La cédula debe contener entre 5 y 10 dígitos numéricos'
+    );
+    expect(validar('12', ['requerido', 'documento'], undefined, 'Cédula de ciudadanía')).toBe(
+      'La cédula debe contener entre 5 y 10 dígitos numéricos'
+    );
+    expect(validar('AB123456', ['requerido', 'documento'], undefined, 'Pasaporte')).toBeNull();
+  });
 });
 

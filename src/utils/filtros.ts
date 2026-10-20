@@ -7,7 +7,7 @@
  */
 import type { Publicacion, TipoPublicacion, Ubicacion } from '../types/publicacion';
 import { enCiudades, nombreCiudades, nombreCorto } from './lugares';
-import { distanciaKm, estadoPublicacion, type EstadoPublicacion } from './publicaciones';
+import { actorPublicacion, distanciaKm, estadoPublicacion, type EstadoPublicacion } from './publicaciones';
 
 export type Orden = 'falta' | 'cerca' | 'reciente';
 
@@ -58,18 +58,31 @@ export function conDistancia(f: Filtros, km: number | null): Filtros {
   return { ...f, distancia: km, orden: km === null ? f.orden : 'cerca' };
 }
 
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
 function textosDe(p: Publicacion): string[] {
-  return [p.titulo, p.org, p.zona, p.localidad, p.dir, ...p.recursos.map((r) => r.item)].filter(Boolean).map((s) => String(s).toLowerCase());
+  return [p.titulo, p.org, p.zona, p.localidad, p.dir, ...p.recursos.map((r) => r.item)]
+    .filter(Boolean)
+    .map((s) => normalizar(String(s)));
 }
 
 /** Todo menos el tipo: es lo que cuentan los tres números del segmentado. */
 export function pasaResto(p: Publicacion, f: Filtros, ubicacion: Ubicacion, busqueda: string): boolean {
   if (!enCiudades(p, f.ciudades)) return false;
   if (f.distancia !== null && !(distanciaKm(ubicacion, p) < f.distancia)) return false;
-  if (f.recursos.length && !p.recursos.some((r) => f.recursos.includes(r.item))) return false;
+  if (f.recursos.length) {
+    const recursosFiltro = f.recursos.map(normalizar);
+    if (!p.recursos.some((r) => recursosFiltro.includes(normalizar(r.item)))) return false;
+  }
   if (f.estados.length && !f.estados.includes(estadoPublicacion(p))) return false;
-  if (f.verificadas && !p.verificada) return false;
-  const q = busqueda.trim().toLowerCase();
+  if (f.verificadas && (!p.verificada || p.perfil === 'individual' || actorPublicacion(p) === 'Ciudadano')) return false;
+  const q = normalizar(busqueda);
   if (q && !textosDe(p).some((s) => s.includes(q))) return false;
   return true;
 }

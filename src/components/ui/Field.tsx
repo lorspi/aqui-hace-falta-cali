@@ -43,6 +43,9 @@ export interface FieldProps {
   onFocus?: (e: React.FocusEvent<HTMLTextAreaElement | HTMLInputElement>) => void;
   /** `aria-required` en lo obligatorio que no se dice con asterisco. */
   requerido?: boolean;
+  min?: string;
+  max?: string;
+  maxLength?: number;
   placeholder?: string;
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
@@ -79,6 +82,9 @@ export const Field: React.FC<FieldProps> = ({
   placeholder,
   autoComplete,
   inputMode,
+  min,
+  max,
+  maxLength,
   valorInicial,
   list,
   forma = 'base',
@@ -316,6 +322,9 @@ export const Field: React.FC<FieldProps> = ({
             placeholder={placeholderFinal}
             autoComplete={autoComplete}
             inputMode={inputMode}
+            min={min}
+            max={max}
+            maxLength={maxLength}
             list={list}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}

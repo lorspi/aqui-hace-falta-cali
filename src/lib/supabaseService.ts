@@ -9,6 +9,7 @@ import {
   type ChatbotSortOption,
 } from '../utils/chatbotReportUtils';
 import type { DocumentoVerificacion } from '../types/panel';
+import { formatearTipoEntidad } from '../utils/directorio';
 
 export interface AdminReport {
   id: string;
@@ -1345,7 +1346,7 @@ export async function fetchDirectorioEntidades(): Promise<any[]> {
       return {
         id: o.id,
         nombre: o.name,
-        tipo: o.organizationType || (isComunidad ? 'Comunidad / Liderazgo' : 'Organización'),
+        tipo: formatearTipoEntidad(o.organizationType, isComunidad),
         clase: isComunidad ? 'comunidad' : 'organizacion',
         verificada: o.isVerified,
         ciudad: 'cali',

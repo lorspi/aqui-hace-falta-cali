@@ -54,12 +54,15 @@ export const DialogoDetallePublicacion: React.FC<DialogoDetallePublicacionProps>
   return (
     <dialog
       ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rd-detalle-titulo"
       onClose={onCerrar}
       onClick={(e) => e.target === ref.current && onCerrar()}
       className="font-rd m-auto flex max-h-[90dvh] w-full max-w-lg flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
     >
       <div className="flex flex-none items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-sunken/40">
-        <span className="text-rd-13 font-semibold text-rd-ink">{t('postDetailTitle')}</span>
+        <span id="rd-detalle-titulo" className="text-rd-13 font-semibold text-rd-ink">{t('postDetailTitle')}</span>
         <Button nivel="terciario" tamano="md" soloIcono aria-label={t('closeDetail')} onClick={onCerrar}>
           <X aria-hidden="true" className="h-5 w-5" />
         </Button>

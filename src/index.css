@@ -739,6 +739,18 @@ header {
     bottom: 4rem;
   }
 }
+.rd-mapa .leaflet-control-location a,
+.leaflet-control-location a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+}
+.leaflet-control-location a svg {
+  display: block;
+  margin: auto;
+}
 /* El grupo de pines al alejarse: anillo partido por color (coral lo que se pide, navy lo que
    se ofrece; `--p` lo escribe el mapa con el porcentaje) y el conteo en el centro. Regla plana
    porque el gradiente cónico con una parada variable no tiene utilidad canónica. */
@@ -855,6 +867,9 @@ header {
 body.modal-open {
   overflow: hidden;
   overscroll-behavior: contain;
+}
+body.modal-open .rd-vista-flotante {
+  display: none !important;
 }
 
 /* Evitar zoom automático en iOS Safari al enfocar inputs */

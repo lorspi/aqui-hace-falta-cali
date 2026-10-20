@@ -568,9 +568,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           <button
             type="button"
             onClick={() => setPlegado((p) => !p)}
-            aria-label={plegado ? 'Desplegar el menú' : 'Plegar el menú'}
+            aria-label={plegado ? t('expandMenu') : t('collapseMenu')}
             aria-expanded={!plegado}
-            title={plegado ? 'Desplegar el menú' : 'Plegar el menú'}
+            title={plegado ? t('expandMenu') : t('collapseMenu')}
             className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-rd-sm text-rd-ink-3 hover:bg-rd-fondo hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
           >
             <ChevronLeft aria-hidden="true" className={`h-4.5 w-4.5 transition-transform duration-200 ${plegado ? 'rotate-180' : ''}`} />

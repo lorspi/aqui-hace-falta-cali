@@ -63,6 +63,9 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="radar-match-title"
         className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
@@ -78,7 +81,7 @@ export const RadarMatchModal: React.FC<RadarMatchModalProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {t('radarMatchTagPublished')}
               </span>
             </div>
-            <h2 className="text-lg font-black text-slate-900 leading-tight">
+            <h2 id="radar-match-title" className="text-lg font-black text-slate-900 leading-tight">
               {isNeed ? t('radarMatchTitleNeed') : t('radarMatchTitleOffer')}
             </h2>
             <p className="text-xs text-slate-600 leading-normal">

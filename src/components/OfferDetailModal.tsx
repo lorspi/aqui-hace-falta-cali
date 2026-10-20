@@ -285,7 +285,12 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
       className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offer-modal-title"
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto modal-scroll shadow-2xl border border-slate-200 flex flex-col justify-between animate-in zoom-in-95 duration-150"
+      >
         {/* Header — matches NeedDetailModal */}
         <div className="p-5 border-b border-slate-200 flex items-start justify-between gap-3 sticky top-0 bg-white/95 backdrop-blur-xs z-10">
           <div className="space-y-1">
@@ -300,7 +305,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                 {verificationInfo.icon} {verificationInfo.label}
               </span>
             </div>
-            <h2 className="text-xl font-black text-slate-900 leading-snug pt-1">{offer.title}</h2>
+            <h2 id="offer-modal-title" className="text-xl font-black text-slate-900 leading-snug pt-1">{offer.title}</h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
