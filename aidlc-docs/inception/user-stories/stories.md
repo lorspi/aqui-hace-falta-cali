@@ -683,3 +683,88 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-4 — Transición de estado de revisión (aprobar / rechazar)
+Como operador de RaDAR de Ayuda, quiero poder aprobar o rechazar un reporte ya revisado, para confirmar cuáles necesidades son reales y cuáles no, dejando todas marcadas como revisadas.
+
+**Decisión de diseño — Opción A (alineada al código ya construido):**
+- El registro en `needs` siempre existe tras completar la conversación (US-2/S5, con `verification_status = PENDING_VERIFICATION`). No se modifica US-2 ni el modelo.
+- "Aprobar" transiciona `verification_status` a `VERIFIED`; "Rechazar" lo transiciona a `REJECTED` (permanece en la tabla para trazabilidad, pero se excluye de las vistas/consultas de necesidades "oficiales").
+- Se guarda quién revisó, cuándo y, opcionalmente, el motivo. El esquema S1 ya contempla las columnas `verified_by`, `verified_at` y `verification_notes`.
+
+**Criterios de aceptación:**
+- Dado un need con `verification_status = PENDING_VERIFICATION`, aprobar lo transiciona a `VERIFIED` y guarda quién aprobó y cuándo; a partir de ahí el need cuenta como necesidad real para el resto del sistema.
+- Dado un need con `verification_status = PENDING_VERIFICATION`, rechazar lo transiciona a `REJECTED`, guarda quién rechazó, cuándo y opcionalmente el motivo; el registro queda excluido de las vistas/consultas "oficiales" pero no se borra.
+- Ante un need con `verification_status` distinto de `PENDING_VERIFICATION`, el endpoint de revisión rechaza la operación e informa el estado actual, sin modificar el registro.
+- Un need inexistente o con id inválido devuelve un error estructurado (404).
+- Una decisión que no sea "aprobar"/"rechazar" devuelve un error de validación (400) y no modifica el registro.
+- La decisión debe identificar al operador que la toma; sin esa identificación, la operación se rechaza (400) para poder cumplir con la trazabilidad de quién revisó.
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: Aprobar un reporte pendiente lo convierte en necesidad real
+  Given un need con id 'need_1' y verification_status = 'PENDING_VERIFICATION'
+  When un operador envía la decisión "aprobar" para 'need_1'
+  Then verification_status pasa a 'VERIFIED'
+  And se guarda quién aprobó (verified_by) y cuándo (verified_at)
+  And a partir de ahí el need cuenta como necesidad real para el resto del sistema
+  And el need deja de aparecer en el listado de pendientes de verificación
+
+Scenario: Aprobar un reporte con nota opcional
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+  When un operador envía la decisión "aprobar" incluyendo un motivo o nota
+  Then verification_status pasa a 'VERIFIED'
+  And la nota se guarda en verification_notes
+  And se guarda quién aprobó y cuándo
+
+Scenario: Rechazar un reporte pendiente lo excluye de las vistas oficiales sin borrarlo
+  Given un need con id 'need_2' y verification_status = 'PENDING_VERIFICATION'
+  When un operador envía la decisión "rechazar" para 'need_2'
+  Then verification_status pasa a 'REJECTED'
+  And se guarda quién rechazó (verified_by), cuándo (verified_at) y opcionalmente el motivo (verification_notes)
+  And el registro queda excluido de las vistas/consultas de necesidades "oficiales"
+  And el registro no se borra y permanece disponible para trazabilidad
+
+Scenario: Rechazar un reporte sin motivo es válido
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+  When un operador envía la decisión "rechazar" sin incluir motivo
+  Then verification_status pasa a 'REJECTED'
+  And verification_notes queda vacío o nulo
+  And la operación se completa correctamente
+
+Scenario: Reintentar aprobar un reporte ya revisado es rechazado
+  Given un need con verification_status distinto de 'PENDING_VERIFICATION' (p. ej. 'VERIFIED')
+  When un operador envía la decisión "aprobar" para ese need
+  Then el endpoint rechaza la operación
+  And informa el estado actual del need
+  And el registro no se modifica
+
+Scenario: Reintentar rechazar un reporte ya revisado es rechazado
+  Given un need con verification_status distinto de 'PENDING_VERIFICATION' (p. ej. 'REJECTED')
+  When un operador envía la decisión "rechazar" para ese need
+  Then el endpoint rechaza la operación
+  And informa el estado actual del need
+  And el registro no se modifica
+
+Scenario: Un need inexistente devuelve error estructurado
+  Given no existe un need con id 'need_999'
+  When un operador envía la decisión "aprobar" o "rechazar" para 'need_999'
+  Then el endpoint devuelve un error estructurado (404)
+  And no se modifica ningún registro
+
+Scenario: Una decisión inválida devuelve error de validación
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+  When un operador envía una decisión que no es "aprobar" ni "rechazar" (p. ej. "quizás")
+  Then el endpoint devuelve un error de validación (400)
+  And el registro no se modifica
+
+Scenario: Una decisión sin operador identificado devuelve error de validación
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+  When se envía la decisión "aprobar" o "rechazar" sin identificar al operador
+  Then el endpoint devuelve un error de validación (400)
+  And no se puede registrar quién aprobó o rechazó
+  And el registro no se modifica
+```
+
+> ⚠️ **Nota de dominio**: el frontend actual tipa `VerificationStatus = VERIFIED | PENDING_VERIFICATION | REPORTED | ARCHIVED` (sin `REJECTED`) y las vistas públicas ya excluyen `ARCHIVED`. Los criterios asumen `REJECTED` tal como pide la card; al implementar, confirmar si `REJECTED` se agrega al enum/filtros del frontend o se mapea a `ARCHIVED`, que el resto del sistema ya reconoce como "descartado por moderador".
