@@ -683,3 +683,103 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-3 — Endpoint de reconstrucción de conversación para el frontend
+Como frontend de validación, quiero un endpoint que devuelva, para un `conversation_id` o un `need.id`, los mensajes de la conversación en orden cronológico junto con los datos ya estructurados del incidente, para poder mostrar la conversación formateada sin que el frontend tenga que interpretar `raw_event`.
+
+**Criterios de aceptación:**
+- `GET /needs/{id}/conversation` reconstruye la conversación de un need: devuelve todas las filas de `ingest_responses` con su `conversation_id`, ordenadas por `received_at` ascendente, con cada `raw_event` normalizado a un formato uniforme de mensaje.
+- La reconstrucción también se puede consultar por `conversation_id` (sin need asociado aún), para conversaciones en curso previas al evento de completado.
+- Formato uniforme de mensaje: `sender`, `content`, `type` (message_type canónico), `attachments` y `received_at`; conserva `event_id` para trazabilidad.
+- La respuesta incluye los datos ya mapeados en `needs`: `title`, `description`, `contact_whatsapp`, `address`, `neighborhood`, `priority`, `status`, `verification_status`, junto con `conversation_id` y `source_event_id`.
+- La normalización reutiliza la lógica de `mapEventToNeedDraft` (S3): misma clasificación canónica de `message_type` y extracción de contenido/ubicación desde el `raw_event`.
+- Soporta adjuntos de imagen y de ubicación, extrayéndolos del `raw_event` (no existen tablas `messages`/`attachments` separadas; los adjuntos viajan dentro de `raw_event`).
+- Conversación sin evento de completado: se devuelven los mensajes disponibles indicando que aún no existe un need asociado.
+- `need.id` inexistente → `404` con error estructurado; la reconstrucción nunca interpreta `raw_event` en el frontend.
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: La conversación de un need se reconstruye con los mensajes en orden cronológico
+  Given existe un registro en needs con id 'need_123' y conversation_id 'conv_X'
+  And existen filas en ingest_responses con conversation_id 'conv_X' recibidas en distinto orden
+  When el frontend solicita GET /needs/need_123/conversation
+  Then la respuesta incluye todas las filas de ingest_responses con conversation_id 'conv_X'
+  And los mensajes están ordenados por received_at ascendente
+  And cada mensaje está normalizado al formato uniforme (sender, content, type, attachments, received_at, event_id)
+
+Scenario: La reconstrucción incluye los datos estructurados del incidente
+  Given un need en needs con title, description, contact_whatsapp, address, neighborhood, priority, status y verification_status
+  When el frontend solicita GET /needs/{id}/conversation
+  Then la respuesta incluye esos campos del need
+  And el frontend no necesita interpretar raw_event para mostrar la conversación
+
+Scenario: Una conversación sin evento de completado devuelve los mensajes disponibles sin need asociado
+  Given existen eventos en ingest_responses de una conversación 'conv_X' que aún no recibió el evento de cierre
+  When el frontend consulta su reconstrucción por conversation_id 'conv_X'
+  Then se devuelven los mensajes disponibles normalizados
+  And la respuesta indica que aún no existe un need asociado a esa conversación
+  And los campos del incidente vienen vacíos o nulos
+
+Scenario: Un mensaje de texto se normaliza a un mensaje uniforme sin adjuntos
+  Given una fila en ingest_responses cuyo raw_event es message.received con data.body de texto y data.message_type 'text'
+  When se reconstruye la conversación
+  Then el mensaje se devuelve con type='TEXT'
+  And content es el texto del body
+  And sender es data.from cuando está presente
+  And attachments es una lista vacía
+
+Scenario: Un mensaje con imagen expone su adjunto de imagen extraído del raw_event
+  Given una fila en ingest_responses cuyo raw_event incluye un mensaje de imagen con una URL en el body
+  When se reconstruye la conversación
+  Then el mensaje se devuelve con type='IMAGE'
+  And attachments incluye un adjunto de tipo 'image' con la URL extraída del raw_event
+
+Scenario: Un mensaje de ubicación expone su adjunto de coordenadas
+  Given una fila en ingest_responses cuyo raw_event incluye latitud, longitud y address
+  When se reconstruye la conversación
+  Then el mensaje se devuelve con type='LOCATION'
+  And attachments incluye un adjunto de tipo 'location' con latitude, longitude y address
+
+Scenario: Un adjunto de ubicación sin coordenadas no rompe la reconstrucción
+  Given una fila en ingest_responses cuyo raw_event menciona ubicación pero sin lat/lng válidos
+  When se reconstruye la conversación
+  Then el mensaje se devuelve con un adjunto de tipo 'location' sin coordenadas (o con address solamente)
+  And el resto de los mensajes de la conversación se siguen devolviendo
+
+Scenario: Un evento con message_type desconocido o ausente se normaliza como tipo genérico
+  Given una fila en ingest_responses cuyo raw_event no trae message_type o trae uno desconocido
+  When se reconstruye la conversación
+  Then el mensaje se clasifica como type='UNKNOWN'
+  And no invalida la reconstrucción de la conversación
+
+Scenario: Un evento con campos faltantes en el raw_event se normaliza de forma tolerante
+  Given una fila en ingest_responses cuyo raw_event no trae body ni data.from
+  When se reconstruye la conversación
+  Then el mensaje se devuelve con content por defecto y sender nulo
+  And la fila no se pierde de la reconstrucción (auditoría)
+
+Scenario: Un reenvío con el mismo event.id aparece una sola vez en la reconstrucción
+  Given la capa de ingestión deduplicó un evento reenviado (UNIQUE event_id en ingest_responses)
+  When se reconstruye la conversación
+  Then cada event_id aparece una sola vez entre los mensajes
+  And la reconstrucción lee las filas de ingest_responses sin requerir una tabla messages normalizada
+
+Scenario: El evento de completado no se lista como un mensaje del ciudadano
+  Given una conversación que acumuló mensajes y luego recibió el evento de completado
+  When se reconstruye la conversación del need
+  Then los mensajes listados son los eventos message.received
+  And el evento de completado no aparece como mensaje con contenido
+  And su event.id queda disponible en source_event_id del need
+
+Scenario: Un need.id inexistente responde 404
+  Given no existe un need con id 'need_999'
+  When el frontend solicita GET /needs/need_999/conversation
+  Then la respuesta es 404 con error estructurado
+
+Scenario: Una conversación sin mensajes devuelve una lista vacía sin romper el contrato
+  Given un conversation_id sin filas en ingest_responses
+  When el frontend consulta su reconstrucción
+  Then la respuesta devuelve una lista de mensajes vacía con los metadatos de la conversación
+  And no se normaliza ningún mensaje
+```
