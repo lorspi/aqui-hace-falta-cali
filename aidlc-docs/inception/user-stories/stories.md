@@ -683,3 +683,85 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-7 — Acciones de aprobar / rechazar en la pantalla de detalle (Frontend)
+
+Como operador de RaDAR de Ayuda, quiero aprobar o rechazar el reporte directamente desde la pantalla de validación, para cerrar la revisión en el mismo lugar donde verifiqué la información.
+
+**Criterios de aceptación:**
+- Aprobar desde el detalle: dado un need con `verification_status = PENDING_VERIFICATION`, presionar "Aprobar" llama al endpoint de revisión de US-4 y `verification_status` pasa a `VERIFIED`; el reporte deja de aparecer como pendiente en el listado (US-5).
+- Rechazar desde el detalle: dado un need con `verification_status = PENDING_VERIFICATION`, presionar "Rechazar" llama al endpoint de revisión de US-4 y `verification_status` pasa a `REJECTED`; el reporte deja de aparecer como pendiente en el listado (US-5).
+- Reporte ya revisado: dado un need con `verification_status` distinto de `PENDING_VERIFICATION`, las acciones "Aprobar"/"Rechazar" aparecen deshabilitadas y se muestra quién lo revisó (`verified_by`) y cuándo (`verified_at`).
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: Aprobar un reporte pendiente desde el detalle
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+    And el operador está en la pantalla de detalle del reporte (US-6)
+  When presiona "Aprobar"
+  Then la pantalla llama al endpoint de revisión de US-4 con la decisión "aprobar"
+    And verification_status pasa a 'VERIFIED'
+    And la pantalla refleja el nuevo estado y deshabilita las acciones
+    And el reporte deja de aparecer como pendiente en el listado (US-5)
+
+Scenario: Rechazar un reporte pendiente desde el detalle
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+    And el operador está en la pantalla de detalle del reporte (US-6)
+  When presiona "Rechazar"
+  Then la pantalla llama al endpoint de revisión de US-4 con la decisión "rechazar"
+    And verification_status pasa a 'REJECTED'
+    And la pantalla refleja el nuevo estado y deshabilita las acciones
+    And el reporte deja de aparecer como pendiente en el listado (US-5)
+
+Scenario: La decisión identifica al operador autenticado
+  Given un need con verification_status = 'PENDING_VERIFICATION'
+    And el operador tiene una sesión autenticada en el panel (rol MODERATOR/ADMIN)
+  When presiona "Aprobar" o "Rechazar"
+  Then la llamada al endpoint de US-4 incluye la identidad del operador
+    And US-4 guarda verified_by con esa identidad
+    And si la identidad no está disponible, la operación se rechaza (400) y la pantalla muestra el error sin modificar el estado
+
+Scenario: Un reporte ya revisado muestra las acciones deshabilitadas y quién lo revisó
+  Given un need con verification_status distinto de 'PENDING_VERIFICATION' (p. ej. 'VERIFIED' o 'REJECTED')
+    And el need tiene verified_by y verified_at registrados
+  When el operador abre el detalle del reporte
+  Then las acciones "Aprobar" y "Rechazar" aparecen deshabilitadas
+    And se muestra quién lo revisó (verified_by) y cuándo (verified_at)
+
+Scenario: Un reporte ya revisado sin datos de quién/cuándo se muestra de forma tolerante
+  Given un need con verification_status = 'VERIFIED' o 'REJECTED'
+    And el need no tiene verified_by ni verified_at
+  When el operador abre el detalle del reporte
+  Then las acciones "Aprobar" y "Rechazar" aparecen deshabilitadas
+    And la información de quién/cuándo se muestra con un valor por defecto ("no disponible")
+    And la pantalla no falla por datos incompletos
+
+Scenario: El endpoint responde con error y la pantalla conserva el estado pendiente
+  Given el endpoint de US-4 responde con un error (p. ej. 500, red caída o need inexistente 404)
+  When el operador presiona "Aprobar" o "Rechazar"
+  Then la pantalla muestra un estado de error claro
+    And el need conserva verification_status = 'PENDING_VERIFICATION'
+    And el operador puede reintentar la decisión
+
+Scenario: Un doble clic durante la petición no duplica la llamada
+  Given el operador presionó "Aprobar" y la petición está en curso
+  When vuelve a presionar el botón antes de recibir la respuesta
+  Then la pantalla evita duplicar la llamada al endpoint de US-4
+    And el botón queda en estado de carga/deshabilitado mientras se procesa
+    And se procesa una sola decisión
+
+Scenario: Tras aprobar o rechazar, la pantalla no permite una segunda decisión
+  Given el operador acaba de aprobar un reporte (verification_status = 'VERIFIED')
+  When intenta presionar "Aprobar" o "Rechazar" de nuevo
+  Then las acciones aparecen deshabilitadas
+    And no se vuelve a llamar al endpoint de US-4
+
+Scenario: El reporte aprobado o rechazado deja de aparecer como pendiente en el listado
+  Given un reporte que el operador aprobó ('VERIFIED') o rechazó ('REJECTED') desde el detalle
+  When el operador vuelve al listado de reportes del chatbot (US-5)
+  Then el reporte no aparece bajo el filtro PENDING_VERIFICATION
+    And aparece bajo su nuevo estado si filtra por VERIFIED o REJECTED
+```
+
+> ⚠️ **Nota de dominio**: las acciones consumen el endpoint de revisión de US-4 (DEV-43), que exige identificar al operador (`verified_by`) y transiciona `verification_status` a `VERIFIED`/`REJECTED`. El panel ya autentica a moderadores/administradores (sesión con token en `localStorage`, rol `MODERATOR`/`ADMIN`), de donde se obtiene la identidad del operador. El frontend actual tipa `VerificationStatus = VERIFIED | PENDING_VERIFICATION | REPORTED | ARCHIVED` (sin `REJECTED`); al implementar, confirmar si `REJECTED` se agrega al enum/filtros del frontend (US-5) o se mapea a `ARCHIVED`. La pantalla de detalle (US-6) ya muestra `verification_status` y puede mostrar `verified_by`/`verified_at`; esta historia agrega las acciones y su manejo de estados.
