@@ -683,3 +683,85 @@ Scenario: E10 — La persistencia se verifica con SQL directo
     And no hay filas duplicadas para el mismo `event.id`
     And los datos de prueba con prefijo `e2e_%` se limpian al final de la suite
 ```
+
+## US-5 — Listado de reportes pendientes de revisión (Frontend)
+Como operador de RaDAR de Ayuda, quiero ver una lista de los reportes generados por el chatbot, para priorizar cuáles revisar primero.
+
+**Criterios de aceptación:**
+- El listado muestra cada reporte del chatbot (registro en `needs` con `source = 'WhatsApp'`) con: `contact_whatsapp`, tipo/título de la necesidad, fecha y `verification_status`.
+- El operador puede filtrar por estado (`PENDING_VERIFICATION` / `VERIFIED` / `REJECTED`).
+- El operador puede ordenar o filtrar por `priority` y por tipo de necesidad para identificar rápido los casos más urgentes.
+- El listado lee `needs` con los datos ya persistidos por el receptor (S1/S5): `source = 'WhatsApp'`, `source_event_id`/`conversation_id` para trazabilidad y `location_enrichment_status` cuando aplica. La UI no interpreta `raw_event` crudos (esa interpretación la hace el backend, ver US-3).
+- Si aún no hay reportes del chatbot, se muestra un estado vacío claro (no rompe la pantalla).
+
+**Escenarios (Gherkin):**
+
+```gherkin
+Scenario: El operador ve los reportes del chatbot con los datos esenciales
+  Given existen registros en needs con source = 'WhatsApp' (reportes del chatbot) y otros con source distinto (reportes de la app)
+  When el operador abre la pantalla de listado de reportes del chatbot
+  Then el listado muestra solo los reportes del chatbot (source = 'WhatsApp')
+  And cada reporte muestra contact_whatsapp, el tipo/título de la necesidad, la fecha y verification_status
+  And el listado no muestra los reportes de la app (source distinto de 'WhatsApp')
+
+Scenario: El listado por defecto prioriza los reportes pendientes de verificación
+  Given existen reportes del chatbot con verification_status PENDING_VERIFICATION, VERIFIED y REJECTED
+  When el operador abre la pantalla de listado sin aplicar filtros
+  Then los reportes con PENDING_VERIFICATION aparecen primero
+  And el operador puede identificar cuántos reportes quedan por revisar
+
+Scenario: El operador filtra los reportes por estado
+  Given el operador está en el listado de reportes del chatbot
+  When selecciona el filtro PENDING_VERIFICATION
+  Then la lista muestra solo los reportes con verification_status = 'PENDING_VERIFICATION'
+  When cambia el filtro a VERIFIED
+  Then la lista muestra solo los reportes con verification_status = 'VERIFIED'
+  When cambia el filtro a REJECTED
+  Then la lista muestra solo los reportes con verification_status = 'REJECTED'
+  And los reportes que no coinciden con el filtro seleccionado no aparecen
+
+Scenario: El operador prioriza los reportes por urgencia
+  Given el operador está en el listado de reportes del chatbot
+  When ordena o filtra por priority
+  Then los reportes con prioridad más alta (p. ej. CRITICAL, HIGH) aparecen primero o quedan como único resultado
+  And puede identificar rápido los casos más urgentes
+
+Scenario: El operador filtra los reportes por tipo de necesidad
+  Given el operador está en el listado de reportes del chatbot
+  When selecciona un tipo de necesidad (categoría o place_type)
+  Then la lista muestra solo los reportes que coinciden con ese tipo
+  And los reportes de otros tipos no aparecen
+
+Scenario: El listado respeta el estado de enriquecimiento de ubicación
+  Given existen reportes del chatbot con location_enrichment_status RESOLVED y otros con PENDING
+  When el operador abre el listado de reportes del chatbot
+  Then el listado funciona igual para ambos casos
+  And un reporte con ubicación pendiente (PENDING) no rompe el listado ni su tarjeta
+
+Scenario: Un reporte del chatbot sin algún campo opcional se muestra de forma tolerante
+  Given existe un reporte del chatbot sin contact_whatsapp o sin tipo/título legible
+  When el operador abre la pantalla de listado
+  Then el reporte se muestra igualmente en la lista
+  And los campos ausentes se presentan con un valor por defecto o vacío claro
+  And el listado no falla por datos incompletos
+
+Scenario: El listado muestra los reportes en orden cronológico
+  Given existen reportes del chatbot creados en fechas distintas
+  When el operador abre la pantalla de listado sin orden explícito
+  Then los reportes se ordenan por fecha (created_at) de más reciente a más antiguo
+
+Scenario: No hay reportes del chatbot todavía
+  Given no existen registros en needs con source = 'WhatsApp'
+  When el operador abre la pantalla de listado de reportes del chatbot
+  Then el listado está vacío
+  And se muestra un mensaje claro de que no hay reportes pendientes por revisar
+  And no se rompe la pantalla ni se muestran errores
+
+Scenario: Fallo al cargar el listado desde la base de datos
+  Given el servicio de datos no está disponible o responde con error
+  When el operador abre la pantalla de listado de reportes del chatbot
+  Then se muestra un estado de error claro en la pantalla
+  And no se bloquea el resto de la aplicación
+```
+
+> ⚠️ **Nota de dominio**: el frontend actual tipa `VerificationStatus = VERIFIED | PENDING_VERIFICATION | REPORTED | ARCHIVED` (sin `REJECTED`) y las vistas públicas ya excluyen `ARCHIVED`. Los criterios asumen `REJECTED` tal como pide la card y como lo define US-4 (DEV-43). Al implementar, confirmar si `REJECTED` se agrega al enum/filtros del frontend o se mapea a `ARCHIVED`, que el resto del sistema ya reconoce como "descartado por moderador". El listado reutiliza la lectura de `needs` que ya hace el frontend (`useNeeds`); el endpoint de listado para reportes del chatbot no está definido aún en las historias del receptor y queda como dependencia para esta historia.
