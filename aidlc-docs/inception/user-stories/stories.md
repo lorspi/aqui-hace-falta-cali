@@ -294,6 +294,9 @@ Como operador, quiero que al recibir el evento de completado (otro `type`) se cr
 - Incidente con `source=WhatsApp`, `contact_whatsapp` desde `from` y pendiente de verificación.
 - Si faltan coordenadas, se enriquece con geocoding + ciudad.
 - Depende del schema del evento de completado.
+- Un solo registro de `needs` por conversación completada (no uno por cada tipo de necesidad); separar necesidades múltiples en registros distintos es un ajuste a definir aparte.
+- Errores del flujo de completado: `400 missing_conversation_id`, `400 invalid_from`, `409 no_messages` y `409 duplicate_event`; el evento crudo queda igualmente guardado en `ingest_responses` para auditoría.
+- Sin coordenadas o geocoding no disponible: el incidente se crea igual con `latitude`/`longitude` NULL y `location_enrichment_status=PENDING`; el ACK responde 200 (la confirmación no depende del geocoding).
 
 **Escenarios (Gherkin):**
 
@@ -306,7 +309,17 @@ Scenario: El evento de completado crea el incidente con los datos acumulados de 
   And source = 'WhatsApp'
   And contact_whatsapp = '573001234567' tomado de data.from
   And verification_status = 'PENDING_VERIFICATION'
-  And aplican los defaults del mapeo: priority = 'MEDIUM', status = 'NEED_HELP_NOW', emergency_id = 'terremoto-cali-2026'
+  And aplican los defaults de priority = 'MEDIUM' y status = 'NEED_HELP_NOW'
+  And source_event_id referencia el event.id del evento de completado
+```
+
+```gherkin
+Scenario: Una conversación completada genera un solo registro de needs aunque acumule varias necesidades
+  Given una conversación 'conv_123' cuyos mensajes acumulados mencionan más de una necesidad distinta
+  When llega el evento de completado para 'conv_123'
+  Then se crea un único registro en needs para 'conv_123'
+  And title y description consolidan la información acumulada de la conversación
+  And no se genera un registro por cada tipo de necesidad
 ```
 
 ```gherkin
@@ -319,12 +332,14 @@ Scenario: El evento de completado con coordenadas crea el incidente sin geocodin
 ```
 
 ```gherkin
-Scenario: El evento de completado sin coordenadas dispara el enriquecimiento con geocoding + ciudad
+Scenario: El evento de completado sin coordenadas crea el incidente con geocoding pendiente
   Given una conversación 'conv_123' cuyos mensajes acumulados no incluyen latitud ni longitud pero sí address/neighborhood
   When llega el evento de completado para 'conv_123'
-  Then se crea el incidente en needs con las coordenadas pendientes de geocoding
+  Then se crea el incidente en needs con latitude/longitude NULL
+  And location_enrichment_status = 'PENDING'
   And se invoca el flujo de enriquecimiento de geocoding + detección de ciudad
   And el incidente se actualiza con latitud, longitud y city_id cuando el geocoding resuelve la dirección
+  And el ACK del evento responde 200 (la confirmación no depende del geocoding)
 ```
 
 ```gherkin
@@ -332,41 +347,43 @@ Scenario: El geocoding no disponible no bloquea la creación del incidente
   Given una conversación 'conv_123' sin coordenadas y sin datos de dirección para geocoding
   When llega el evento de completado para 'conv_123' y el geocoding no puede resolver una ubicación
   Then el incidente se crea igualmente en needs con latitud/longitud NULL
-  And la ubicación queda marcada como pendiente de enriquecimiento
+  And location_enrichment_status = 'PENDING'
+  And el ACK del evento responde 200
   And el flujo no rechaza el evento de completado
 ```
 
 ```gherkin
-Scenario: Un reenvío del mismo evento de completado no crea un incidente duplicado
+Scenario: Un reenvío del mismo evento de completado responde 409 duplicate_event sin duplicar el incidente
   Given ya se creó el incidente en needs para el evento de completado con id 'evt_999' de la conversación 'conv_123'
   When llega un reenvío del evento de completado con el mismo id 'evt_999'
-  Then no se crea un segundo incidente en needs para 'conv_123'
-  And se devuelve el incidente existente (idempotencia por event.id)
+  Then la capa de idempotencia responde 409 con code = 'duplicate_event'
+  And no se crea un segundo incidente en needs para 'conv_123'
+  And se devuelve la fila existente de ingest_responses en details.record
 ```
 
 ```gherkin
-Scenario: Un evento de completado sin conversation_id no crea incidente
+Scenario: Un evento de completado sin conversation_id responde 400 missing_conversation_id
   Given un evento de completado sin data.conversation_id o con data.conversation_id vacío
   When el receptor procesa el evento de completado
-  Then la validación devuelve un error 400 detallando el campo faltante
+  Then responde 400 con code = 'missing_conversation_id'
   And no se crea ningún registro en needs
 ```
 
 ```gherkin
-Scenario: Un evento de completado sin mensajes acumulados previos no crea incidente
-  Given un evento de completado para 'conv_999' del que no se acumularon eventos message.received previos
+Scenario: Un evento de completado con from inválido responde 400 invalid_from y conserva la auditoría
+  Given un evento de completado para 'conv_123' cuyo data.from no es un número de WhatsApp válido
   When el receptor procesa el evento de completado
-  Then no se crea un incidente en needs
-  And se devuelve un error (400/409) señalando que no hay mensajes acumulados para armar el incidente
+  Then responde 400 con code = 'invalid_from'
+  And no se crea el incidente en needs
+  And el evento crudo queda igualmente guardado en ingest_responses para auditoría
 ```
 
 ```gherkin
-Scenario: Un evento de completado con from inválido se rechaza
-  Given un evento de completado para 'conv_123' cuyo data.from no es un número de WhatsApp válido
+Scenario: Un evento de completado sin mensajes acumulados previos responde 409 no_messages
+  Given un evento de completado para 'conv_999' del que no se acumularon eventos message.received previos
   When el receptor procesa el evento de completado
-  Then la validación devuelve un error 400
-  And no se crea el incidente en needs
-  And el evento queda registrado en ingest_responses para auditoría
+  Then responde 409 con code = 'no_messages'
+  And no se crea un incidente en needs
 ```
 
 ```gherkin
@@ -378,7 +395,7 @@ Scenario: Conversaciones distintas no mezclan sus mensajes acumulados
   And 'conv_B' permanece sin incidente hasta que llegue su propio evento de completado
 ```
 
-> ⚠️ **Dependencia**: el schema del evento de completado (nombre del `type` y campos) está pendiente de confirmación por el equipo de conversación. Esta historia no incluye autenticación del webhook (ver S8, deuda de seguridad).
+> ℹ️ **Schema**: el evento de completado es un `type` distinto de `message.received` (p. ej. `conversation_completed`), confirmado en la implementación (DEV-35) y documentado en el contrato de integración (S8). Esta historia no incluye autenticación del webhook (ver S8, deuda de seguridad).
 
 ## S6 — Idempotencia / deduplicación
 Como operador, quiero que reenvíos del mismo evento no generen duplicados.
