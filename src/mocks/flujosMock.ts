@@ -4,6 +4,7 @@
  * `src/ofrecer-v2.html` del prototipo. Nada de esto se quema en el JSX.
  */
 import type { CuentaFlujo, EstadoOfrecer, EstadoPedir, ModoEntrega } from '../types/flujo';
+import type { Language } from '../i18n/translations';
 
 /* ---------- pedir ---------- */
 
@@ -58,6 +59,98 @@ export const DIAS_OPCIONES = [1, 3, 7, 15, 30];
 export const TIPOS_LUGAR = ['Comunidad afectada', 'Edificio o vivienda afectada', 'Albergue temporal', 'Centro de acopio barrial', 'Salón comunal o refugio', 'Punto aislado o vía bloqueada', 'Hospital o centro médico', 'Otro tipo de lugar'];
 
 export const PARA_QUIEN = ['Comité comunitario o vecinos', 'Líder o lideresa comunitaria', 'Persona o familia', 'Organización u ONG', 'Fundación', 'Empresa', 'Institución (colegio, centro de salud)'];
+
+export const MAPA_TIPOS_LUGAR: Record<Language, Record<string, string>> = {
+  es: {
+    'Comunidad afectada': 'Comunidad afectada',
+    'Edificio o vivienda afectada': 'Edificio o vivienda afectada',
+    'Albergue temporal': 'Albergue temporal',
+    'Centro de acopio barrial': 'Centro de acopio barrial',
+    'Salón comunal o refugio': 'Salón comunal o refugio',
+    'Punto aislado o vía bloqueada': 'Punto aislado o vía bloqueada',
+    'Hospital o centro médico': 'Hospital o centro médico',
+    'Otro tipo de lugar': 'Otro tipo de lugar',
+  },
+  en: {
+    'Comunidad afectada': 'Affected community',
+    'Edificio o vivienda afectada': 'Affected building or home',
+    'Albergue temporal': 'Temporary shelter',
+    'Centro de acopio barrial': 'Neighborhood collection center',
+    'Salón comunal o refugio': 'Community hall or refuge',
+    'Punto aislado o vía bloqueada': 'Isolated point or blocked road',
+    'Hospital o centro médico': 'Hospital or medical center',
+    'Otro tipo de lugar': 'Other place type',
+  },
+  pt: {
+    'Comunidad afectada': 'Comunidade afetada',
+    'Edificio o vivienda afectada': 'Edifício ou moradia afetada',
+    'Albergue temporal': 'Abrigo temporário',
+    'Centro de acopio barrial': 'Centro de arrecadação do bairro',
+    'Salón comunal o refugio': 'Salão comunitário ou refúgio',
+    'Punto aislado o vía bloqueada': 'Ponto isolado ou via bloqueada',
+    'Hospital o centro médico': 'Hospital ou centro médico',
+    'Otro tipo de lugar': 'Outro tipo de local',
+  },
+  fr: {
+    'Comunidad afectada': 'Communauté touchée',
+    'Edificio o vivienda afectada': 'Bâtiment ou logement touché',
+    'Albergue temporal': 'Refuge temporaire',
+    'Centro de acopio barrial': 'Centre de collecte de quartier',
+    'Salón comunal o refugio': 'Salle municipale ou abri',
+    'Punto aislado o vía bloqueada': 'Point isolé ou route bloquée',
+    'Hospital o centro médico': 'Hôpital ou centre médical',
+    'Otro tipo de lugar': 'Autre type de lieu',
+  },
+};
+
+export const MAPA_PARA_QUIEN: Record<Language, Record<string, string>> = {
+  es: {
+    'Comité comunitario o vecinos': 'Comité comunitario o vecinos',
+    'Líder o lideresa comunitaria': 'Líder o lideresa comunitaria',
+    'Persona o familia': 'Persona o familia',
+    'Organización u ONG': 'Organización u ONG',
+    Fundación: 'Fundación',
+    Empresa: 'Empresa',
+    'Institución (colegio, centro de salud)': 'Institución (colegio, centro de salud)',
+  },
+  en: {
+    'Comité comunitario o vecinos': 'Community committee or neighbors',
+    'Líder o lideresa comunitaria': 'Community leader',
+    'Persona o familia': 'Individual or family',
+    'Organización u ONG': 'Organization or NGO',
+    Fundación: 'Foundation',
+    Empresa: 'Company',
+    'Institución (colegio, centro de salud)': 'Institution (school, healthcare center)',
+  },
+  pt: {
+    'Comité comunitario o vecinos': 'Comitê comunitário ou vizinhos',
+    'Líder o lideresa comunitaria': 'Líder comunitário',
+    'Persona o familia': 'Pessoa ou família',
+    'Organización u ONG': 'Organização ou ONG',
+    Fundación: 'Fundação',
+    Empresa: 'Empresa',
+    'Institución (colegio, centro de salud)': 'Instituição (escola, centro de saúde)',
+  },
+  fr: {
+    'Comité comunitario o vecinos': 'Comité de quartier ou voisins',
+    'Líder o lideresa comunitaria': 'Leader communautaire',
+    'Persona o familia': 'Personne ou famille',
+    'Organización u ONG': 'Organisation ou ONG',
+    Fundación: 'Fondation',
+    Empresa: 'Entreprise',
+    'Institución (colegio, centro de salud)': 'Institution (école, centre de santé)',
+  },
+};
+
+export function opcionesTiposLugar(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  const map = MAPA_TIPOS_LUGAR[lang] || MAPA_TIPOS_LUGAR.es;
+  return TIPOS_LUGAR.map((tl) => ({ valor: tl, etiqueta: map[tl] || tl }));
+}
+
+export function opcionesParaQuien(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  const map = MAPA_PARA_QUIEN[lang] || MAPA_PARA_QUIEN.es;
+  return PARA_QUIEN.map((pq) => ({ valor: pq, etiqueta: map[pq] || pq }));
+}
 
 /** Texto elegido por Alejandro para la caja de cálculo. */
 export const AVISO_GUIA = 'Al final puedes cambiar las cantidades y agregar detalles.';
@@ -122,6 +215,77 @@ export const ENVIOS = ['Gratis', 'Contraentrega', 'A convenir'];
 export const CANALES = ['WhatsApp', 'Llamada', 'Videollamada', 'Correo'];
 export const TIPOS_ORG_OFERTA = ['Organización u ONG', 'Fundación', 'Empresa', 'Cuerpo de socorro', 'Comité comunitario', 'Persona o voluntariado independiente'];
 export const DISPONIBLE = ['Hasta agotar', 'Hasta una fecha'];
+
+export const MAPA_TIPOS_ORG_OFERTA: Record<Language, Record<string, string>> = {
+  es: {
+    'Organización u ONG': 'Organización u ONG',
+    Fundación: 'Fundación',
+    Empresa: 'Empresa',
+    'Cuerpo de socorro': 'Cuerpo de socorro',
+    'Comité comunitario': 'Comité comunitario',
+    'Persona o voluntariado independiente': 'Persona o voluntariado independiente',
+  },
+  en: {
+    'Organización u ONG': 'Organization or NGO',
+    Fundación: 'Foundation',
+    Empresa: 'Company',
+    'Cuerpo de socorro': 'Emergency relief agency',
+    'Comité comunitario': 'Community committee',
+    'Persona o voluntariado independiente': 'Independent volunteer or person',
+  },
+  pt: {
+    'Organización u ONG': 'Organização ou ONG',
+    Fundación: 'Fundação',
+    Empresa: 'Empresa',
+    'Cuerpo de socorro': 'Corpo de socorro',
+    'Comité comunitario': 'Comitê comunitário',
+    'Persona o voluntariado independiente': 'Voluntário independente',
+  },
+  fr: {
+    'Organización u ONG': 'Organisation ou ONG',
+    Fundación: 'Fondation',
+    Empresa: 'Entreprise',
+    'Cuerpo de socorro': 'Organisme de secours',
+    'Comité comunitario': 'Comité communautaire',
+    'Persona o voluntariado independiente': 'Bénévole indépendant',
+  },
+};
+
+export const MAPA_ENVIOS: Record<Language, Record<string, string>> = {
+  es: { Gratis: 'Gratis', Contraentrega: 'Contraentrega', 'A convenir': 'A convenir' },
+  en: { Gratis: 'Free', Contraentrega: 'Cash on delivery', 'A convenir': 'To be agreed' },
+  pt: { Gratis: 'Grátis', Contraentrega: 'A pagar na entrega', 'A convenir': 'A combinar' },
+  fr: { Gratis: 'Gratuit', Contraentrega: 'Paiement à la livraison', 'A convenir': 'À convenir' },
+};
+
+export const MAPA_DISPONIBLE: Record<Language, Record<string, string>> = {
+  es: { 'Hasta agotar': 'Hasta agotar', 'Hasta una fecha': 'Hasta una fecha' },
+  en: { 'Hasta agotar': 'While supplies last', 'Hasta una fecha': 'Until a date' },
+  pt: { 'Hasta agotar': 'Até esgotar', 'Hasta una fecha': 'Até uma data' },
+  fr: { 'Hasta agotar': 'Jusqu\'à épuisement', 'Hasta una fecha': 'Jusqu\'à une date' },
+};
+
+export function opcionesTiposOrgOferta(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  const map = MAPA_TIPOS_ORG_OFERTA[lang] || MAPA_TIPOS_ORG_OFERTA.es;
+  return TIPOS_ORG_OFERTA.map((to) => ({ valor: to, etiqueta: map[to] || to }));
+}
+
+export function opcionesRadios(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  return RADIOS.map((r) => ({
+    valor: r,
+    etiqueta: r === 'Todo el país' ? (lang === 'en' ? 'Nationwide' : lang === 'pt' ? 'Todo o país' : lang === 'fr' ? 'Tout le pays' : r) : r,
+  }));
+}
+
+export function opcionesEnvios(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  const map = MAPA_ENVIOS[lang] || MAPA_ENVIOS.es;
+  return ENVIOS.map((env) => ({ valor: env, etiqueta: map[env] || env }));
+}
+
+export function opcionesDisponible(lang: Language = 'es'): { valor: string; etiqueta: string }[] {
+  const map = MAPA_DISPONIBLE[lang] || MAPA_DISPONIBLE.es;
+  return DISPONIBLE.map((d) => ({ valor: d, etiqueta: map[d] || d }));
+}
 
 export function estadoInicialOfrecer(): EstadoOfrecer {
   return {

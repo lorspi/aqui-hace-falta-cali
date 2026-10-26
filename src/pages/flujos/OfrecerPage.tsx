@@ -4,7 +4,7 @@ import { Field } from '../../components/ui/Field';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { IconoRecursoDe, iconoDe } from '../../components/ui/Recursos';
 import { RUTAS } from '../../mocks/cuentasMock';
-import { CANALES, CUENTA_OFRECER, DISPONIBLE, ENVIOS, MODOS_ENTREGA, RADIOS, REGISTRADO, TIPOS_ORG_OFERTA, estadoInicialOfrecer } from '../../mocks/flujosMock';
+import { CANALES, CUENTA_OFRECER, DISPONIBLE, ENVIOS, MODOS_ENTREGA, RADIOS, REGISTRADO, TIPOS_ORG_OFERTA, estadoInicialOfrecer, opcionesDisponible, opcionesEnvios, opcionesRadios, opcionesTiposOrgOferta } from '../../mocks/flujosMock';
 import { PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, Foto, ModoEntrega, RespuestasDetalle } from '../../types/flujo';
@@ -19,6 +19,7 @@ import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
 import { useTranslation } from '../../i18n/LanguageContext';
+import type { Language } from '../../i18n/LanguageContext';
 import { createOfferWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
 import type { HelpCategory, Offer } from '../../types';
@@ -33,7 +34,6 @@ import { geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseG
  * hasta cuándo; luego cómo se entrega, dónde, contacto, fotos y revisar. `?insumo=&cant=&u=
  * &origen=` precarga un aporte que llega de una donación.
  */
-const FASES = ['Qué ofreces', 'Revisar y publicar'];
 const ICONO_MODO = { truck: <Truck className="h-5.5 w-5.5" />, pin: <MapPin className="h-5.5 w-5.5" />, monitor: <Monitor className="h-5.5 w-5.5" /> };
 
 /** Lo registrado se precarga solo cuando la persona lo marca. */
@@ -107,7 +107,7 @@ export const OfrecerPage: React.FC<OfrecerProps> = (props) => (
 );
 
 /** La oferta tal como se publicaría: es lo que se cruza contra lo que hay cerca. */
-function publicacionDe(e: EstadoOfrecer): Publicacion {
+function publicacionDe(e: EstadoOfrecer, lang?: Language): Publicacion {
   const recursos = e.sel.filter((it) => e.cant[it] > 0).map((it) => ({ item: it, unidad: unidadOferta(it), total: e.cant[it], tramos: [] }));
   const base: Publicacion = {
     id: 'oferta-creada',
@@ -122,13 +122,13 @@ function publicacionDe(e: EstadoOfrecer): Publicacion {
     propia: true,
     modoEntrega: e.entrega,
     radio: e.radio,
-    comoEntrega: textoEntrega(e),
+    comoEntrega: textoEntrega(e, lang),
   };
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
 export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [createdOffer, setCreatedOffer] = useState<Offer | undefined>(undefined);
   const [nombreOrg, setNombreOrg] = useState<string>('');
   const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
@@ -144,7 +144,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
 
-    const pub = publicacionDe(estado);
+    const pub = publicacionDe(estado, language);
 
     // Subir fotos a Supabase Storage
     const photoUrls = await uploadEvidencePhotos(estado.fotos);
@@ -217,7 +217,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       contactoWa: true,
       contactoEmail: user?.email,
       horario: estado.horario || 'Lunes a domingo 8:00 a 18:00',
-      comoEntrega: textoEntrega(estado),
+      comoEntrega: textoEntrega(estado, language),
     };
     setPublicacionPublicada(pubFinal);
 
@@ -250,7 +250,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       descripcion: estado.condiciones || 'Recursos disponibles para apoyo comunitario.',
       personaContacto: estado.contacto || CUENTA_OFRECER.contacto,
       telContacto: estado.tel || CUENTA_OFRECER.telefono,
-      comoEntrega: textoEntrega(estado),
+      comoEntrega: textoEntrega(estado, language),
       horario: estado.horario || 'Lunes a domingo 8:00 a 18:00',
       recursos: recursosPanel.map((r) => ({
         item: r.n,
@@ -352,7 +352,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   const [barrioSector, setBarrioSector] = useState<string>('');
   const [direccionNum, setDireccionNum] = useState<string>('');
   const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
-  const [textoGeocodificacion, setTextoGeocodificacion] = useState('Buscando ubicación en el mapa...');
+  const [textoGeocodificacion, setTextoGeocodificacion] = useState(t('flowSearchingLocationOnMap'));
   const [cargandoGps, setCargandoGps] = useState(false);
   const [coordsGps, setCoordsGps] = useState<{ lat: number; lng: number } | null>(null);
   const [errorGps, setErrorGps] = useState<string | null>(null);
@@ -372,7 +372,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
   const obtenerUbicacionGPS = useCallback(() => {
     if (!navigator.geolocation) {
-      setErrorGps('Tu navegador no soporta geolocalización por GPS.');
+      setErrorGps(t('flowGpsNotSupported'));
       return;
     }
     setCargandoGps(true);
@@ -403,20 +403,20 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       (err) => {
         setCargandoGps(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setErrorGps('Ubicación desactivada en tu navegador. Toca el candado o icono de permisos arriba (al lado de la URL) para permitirla, o escribe tu dirección/localidad.');
+          setErrorGps(t('flowGpsPermissionDenied'));
         } else {
-          setErrorGps('No se pudo obtener tu ubicación actual por GPS.');
+          setErrorGps(t('flowGpsFailed'));
         }
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [set, errores]);
+  }, [set, errores, t]);
 
   const manejarMovimientoMapa = useCallback(async (lat: number, lng: number) => {
     const timestampActual = Date.now();
     ultimoMovimientoRef.current = timestampActual;
     set({ lat, lng });
-    setTextoGeocodificacion('Obteniendo dirección del punto seleccionado...');
+    setTextoGeocodificacion(t('flowGettingAddressFromPin'));
     setCargandoGeocodificacion(true);
     setAvisoAproximacion(null);
 
@@ -436,7 +436,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
         setCargandoGeocodificacion(false);
       }
     }
-  }, [set, errores.limpiar]);
+  }, [set, errores.limpiar, t]);
 
   const geocodificarUbicacion = useCallback(async (sector: string, dir: string) => {
     const s = sector.trim();
@@ -446,7 +446,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       setAvisoAproximacion(null);
       return;
     }
-    setTextoGeocodificacion('Buscando ubicación en el mapa...');
+    setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
     setCargandoGeocodificacion(true);
     setAvisoAproximacion(null);
     try {
@@ -461,16 +461,16 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           setAvisoAproximacion(null);
         }
       } else {
-        errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+        errores.poner('dir', t('flowLocationNotFoundError'));
         setAvisoAproximacion(null);
       }
     } catch {
-      errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+      errores.poner('dir', t('flowLocationNotFoundError'));
       setAvisoAproximacion(null);
     } finally {
       setCargandoGeocodificacion(false);
     }
-  }, [set, errores.limpiar, errores.poner]);
+  }, [set, errores.limpiar, errores.poner, t]);
 
   useEffect(() => {
     if (sub?.id === 'donde') {
@@ -526,8 +526,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     pantalla = (
       <>
         <Pregunta titulo={t('flowWhatOffered')} sub={t('flowWhatOfferedSub')} />
-        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo="Viene de una donación o acopio" texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3 shrink-0" />}
-        {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo="Todavía no tienen recursos registrados" texto="Marca aquí lo que tengan hoy. Lo que publiques queda registrado para la próxima." className="mb-3 shrink-0" />}
+        {e.origenDonacion && <InlineNotice variante="info" icono={<Package className="h-4 w-4" />} titulo={t('flowFromDonationTitle')} texto={`Recurso recibido de ${e.origenDonacion}${e.origenCant ? ` · ${e.origenCant}` : ''}. Revisa la cantidad y publícalo como oferta.`} className="mb-3 shrink-0" />}
+        {!registrados.length && <InlineNotice variante="info" icono={<Info className="h-4 w-4" />} titulo={t('flowNoRegisteredResourcesTitle')} texto={t('flowNoRegisteredResourcesText')} className="mb-3 shrink-0" />}
         <ListaRecursos
           q={e.q}
           onBuscar={(q) => set({ q })}
@@ -535,8 +535,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           onToggle={toggle}
           abiertos={e.abiertos}
           onAbrir={(g, a) => set((p) => ({ abiertos: { ...p.abiertos, [g]: a } }))}
-          primero={{ nombre: REGISTRADO, items: registrados, sugerido: false, linea: (it) => `${cifra(CUENTA_OFRECER.inventario?.[it]?.cantidad ?? 0)} ${unidadOferta(it)} registrados` }}
-          vacioTexto="Prueba con otra palabra o busca la categoría que más se parezca."
+          primero={{ nombre: t('flowRegisteredBadge'), items: registrados, sugerido: false, linea: (it) => `${cifra(CUENTA_OFRECER.inventario?.[it]?.cantidad ?? 0)} ${unidadOferta(it)} ${t('flowRegisteredBadge').toLowerCase()}` }}
+          vacioTexto={t('flowTryAnotherWord')}
         />
       </>
     );
@@ -562,19 +562,19 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     pantalla = (
       <>
         <Pregunta titulo={t('flowHowDelivered')} />
-        <TarjetasOpcion nombre={t('flowHowDelivered')} opciones={MODOS_ENTREGA.map((m) => ({ id: m.id, nombre: m.nombre, icono: ICONO_MODO[m.icono] }))} valor={e.entrega} onChange={(id) => set({ entrega: id as ModoEntrega })} />
+        <TarjetasOpcion nombre={t('flowHowDelivered')} opciones={MODOS_ENTREGA.map((m) => ({ id: m.id, nombre: m.id === 'llevamos' ? t('flowDeliveryWeBring') : m.id === 'sitio' ? t('flowDeliveryOnSite') : t('flowDeliveryRemote'), icono: ICONO_MODO[m.icono] }))} valor={e.entrega} onChange={(id) => set({ entrega: id as ModoEntrega })} />
         <div className="mt-5">
           {e.entrega === 'llevamos' && (
             <>
-              <Chips nombre="radio" etiqueta="Hasta dónde llegan" opciones={RADIOS} valor={e.radio} onChange={(v) => set({ radio: v })} className="mb-3" />
-              <Chips nombre="envio" etiqueta="El envío" opciones={ENVIOS} valor={e.envio} onChange={(v) => set({ envio: v })} />
+              <Chips nombre="radio" etiqueta={t('flowDeliveryRadius')} opciones={opcionesRadios(language)} valor={e.radio} onChange={(v) => set({ radio: v })} className="mb-3" />
+              <Chips nombre="envio" etiqueta={t('flowDeliveryShipping')} opciones={opcionesEnvios(language)} valor={e.envio} onChange={(v) => set({ envio: v })} />
             </>
           )}
-          {e.entrega === 'sitio' && <p className="m-0 text-rd-13 text-rd-ink-2">Quien lo necesite pasa a recogerlo. La dirección va en el siguiente paso.</p>}
+          {e.entrega === 'sitio' && <p className="m-0 text-rd-13 text-rd-ink-2">{t('flowPickupDescription')}</p>}
           {e.entrega === 'remoto' && (
             <>
-              <Chips nombre="canal" etiqueta="Por dónde atienden" opciones={CANALES} valor={e.canales} multi onChange={(v, on) => set((p) => ({ canales: on ? [...p.canales, v] : p.canales.filter((x) => x !== v) }))} className="mb-3" />
-              <Field id="hor" etiqueta={<>Horario<Opt /></>} valor={e.horario} placeholder="Por ejemplo: lunes a viernes de 8:00 a. m. a 6:00 p. m." onChange={(v) => set({ horario: v })} />
+              <Chips nombre="canal" etiqueta={t('flowRemoteChannels')} opciones={CANALES} valor={e.canales} multi onChange={(v, on) => set((p) => ({ canales: on ? [...p.canales, v] : p.canales.filter((x) => x !== v) }))} className="mb-3" />
+              <Field id="hor" etiqueta={<>{t('flowSchedule')}<Opt /></>} valor={e.horario} placeholder={t('flowSchedulePlaceholder')} onChange={(v) => set({ horario: v })} />
             </>
           )}
         </div>
@@ -596,7 +596,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           ) : (
             <Compass className="h-4 w-4 text-rd-navy" />
           )}
-          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS) (Recomendado)'}</span>
+          <span>{cargandoGps ? t('flowGpsLoading') : t('flowGpsButton')}</span>
         </button>
         {errorGps && (
           <div className="mb-3 flex items-start gap-1.5 rounded-rd-md border border-rd-coral/30 bg-rd-coral/5 p-2.5 text-rd-12 text-rd-coral">
@@ -608,8 +608,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 mb-3">
           <Field
             id="barrio_sector"
-            etiqueta="Ciudad, localidad o barrio"
-            placeholder="Ej. Chapinero, San Antonio o El Poblado"
+            etiqueta={t('flowCitySectorLabel')}
+            placeholder={t('flowCitySectorPlaceholder')}
             valor={barrioSector}
             onChange={(v) => actualizarUbicacionCompuesta(v, direccionNum)}
             onBlur={() => {
@@ -620,8 +620,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           />
           <Field
             id="dir_num"
-            etiqueta="Dirección o número"
-            placeholder="Ej. Calle 45 # 13-25 o Cra 7"
+            etiqueta={t('flowAddressNumberLabel')}
+            placeholder={t('flowAddressNumberPlaceholder')}
             valor={direccionNum}
             autoComplete="street-address"
             onChange={(v) => actualizarUbicacionCompuesta(barrioSector, v)}
@@ -660,13 +660,13 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
         <Pregunta titulo={t('flowContactTitle')} sub={t('flowContactSub')} />
         <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoOfrecer>)} errores={errores} />
         <label className="mb-4 flex cursor-pointer items-center justify-between gap-3 rounded-rd-md border border-rd-line px-3 py-2.5 text-rd-13-5 text-rd-ink">
-          <span>Mostrar el nombre de {nombreOrg || CUENTA_OFRECER.organizacion || 'tu organización'} en el mapa</span>
+          <span>{language === 'es' && (nombreOrg || CUENTA_OFRECER.organizacion) ? `Mostrar el nombre de ${nombreOrg || CUENTA_OFRECER.organizacion} en el mapa` : t('flowShowOrgOnMap')}</span>
           <input type="checkbox" role="switch" checked={e.mostrarNombre} onChange={(ev) => set({ mostrarNombre: ev.target.checked })} className="m-0 h-4.5 w-4.5 shrink-0 cursor-pointer accent-rd-sel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy" />
         </label>
-        <AlgoMas titulo="Algo más sobre la oferta">
-          <Field id="to" etiqueta="Tipo de organización" tipo="select" opciones={TIPOS_ORG_OFERTA} placeholder="Sin especificar" valor={e.tipoOrg} onChange={(v) => set({ tipoOrg: v })} className="mb-3" />
-          <Field id="cond" etiqueta="Condiciones" tipo="textarea" valor={e.condiciones} placeholder="Por ejemplo: viene en cajas de 12, se recoge con carta de la organización, vence el 30 de septiembre" onChange={(v) => set({ condiciones: v })} className="mb-3" />
-          <Field id="ta" etiqueta="Otro número de contacto" tipo="tel" valor={e.telAlt} placeholder="+57 310 987 6543" onChange={(v) => set({ telAlt: v })} className="mb-1" />
+        <AlgoMas titulo={t('flowSomethingMoreOffer')}>
+          <Field id="to" etiqueta={t('flowOrgType')} tipo="select" opciones={opcionesTiposOrgOferta(language)} placeholder={t('flowUnspecified')} valor={e.tipoOrg} onChange={(v) => set({ tipoOrg: v })} className="mb-3" />
+          <Field id="cond" etiqueta={t('flowConditions')} tipo="textarea" valor={e.condiciones} placeholder={t('flowConditionsPlaceholder')} onChange={(v) => set({ condiciones: v })} className="mb-3" />
+          <Field id="ta" etiqueta={t('flowAltPhone')} tipo="tel" valor={e.telAlt} placeholder="+57 310 987 6543" onChange={(v) => set({ telAlt: v })} className="mb-1" />
         </AlgoMas>
       </>
     );
@@ -691,10 +691,10 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             return <MetaPub key={it} item={it} valor={e.cant[it] ? cifra(e.cant[it]) : ''} unidad={unidadOferta(it)} onChange={(t) => cantidad(it, numero(t) || 0)} linea={linea || undefined} />;
           })}
         </ResumenPub>
-        <FilaRevisar clave={t('flowDeliveryMethod')} valor={textoEntrega(e)} onClick={() => f.irA('entrega')} />
+        <FilaRevisar clave={t('flowDeliveryMethod')} valor={textoEntrega(e, language)} onClick={() => f.irA('entrega')} />
         {e.entrega !== 'remoto' && <FilaRevisar clave={t('flowWhereTitle')} valor={e.dir} onClick={() => f.irA('donde')} />}
         <FilaRevisar clave={t('flowContactTitle')} valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
-        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} fotos` : 'Sin fotos'} accion={e.fotos.length ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} fotos` : t('flowNoPhotos')} accion={e.fotos.length ? t('btnChange') : t('flowAdd')} onClick={() => f.irA('fotos')} />
       </>
     );
   }
@@ -722,13 +722,13 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     if (sub?.id === 'donde') {
       if (cargandoGeocodificacion) return;
       if (!barrioSector.trim() && !direccionNum.trim()) {
-        errores.poner('dir', 'Ingresa tu ciudad, barrio o dirección para ubicar la ayuda.');
+        errores.poner('dir', t('flowAddressRequired'));
         return;
       }
       if (errores.errores.dir) return;
       const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
       if (compuesta && compuesta.length >= 3 && compuesta !== direccionDelPinRef.current) {
-        setTextoGeocodificacion('Buscando ubicación en el mapa...');
+        setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
         setCargandoGeocodificacion(true);
         try {
           const res = await geocodeAddressStructured(direccionNum, barrioSector);
@@ -737,10 +737,10 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             errores.limpiar('dir');
             f.siguiente();
           } else {
-            errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+            errores.poner('dir', t('flowLocationNotFoundError'));
           }
         } catch {
-          errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+          errores.poner('dir', t('flowLocationNotFoundError'));
         } finally {
           setCargandoGeocodificacion(false);
         }
@@ -752,7 +752,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 
   return (
     <>
-      <MarcoFlujo nombre={t('offerHelp')} fases={[t('flowWhatOffered'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishOffer')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('offerHelp')} fases={[t('flowPhaseWhatOffered'), t('flowPhaseReviewAndPublish')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishOffer')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />
@@ -763,6 +763,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
 /** Los campos de un recurso ofrecido: la cantidad con su unidad, hasta cuándo, y lo que la
  *  oferta declara (presentación, perfil, vehículo, tiempo…). */
 const CamposCantidad: React.FC<{ it: string; e: EstadoOfrecer; onCantidad: (n: number) => void; onDetalle: (c: RespuestasDetalle) => void; errores: ReturnType<typeof useErrores> }> = ({ it, e, onCantidad, onDetalle, errores }) => {
+  const { t, language } = useTranslation();
   const d = e.det[it] ?? {};
   const campos = camposOferta(it);
   const conTiempo = campos.some((c) => c.k === 'tiempo');
@@ -772,30 +773,30 @@ const CamposCantidad: React.FC<{ it: string; e: EstadoOfrecer; onCantidad: (n: n
   const hoy = new Date().toISOString().split('T')[0];
   return (
     <>
-      <CampoNumero id={idC} etiqueta="Cantidad disponible" unidad={unidadOferta(it)} valor={e.cant[it] ? cifra(e.cant[it]) : ''} onChange={(t) => { onCantidad(numero(t) || 0); errores.limpiar(idC); }} onBlur={(t) => errores.validar(idC, ['numero'], t)} error={errores.errores[idC]} />
+      <CampoNumero id={idC} etiqueta={t('flowAvailableQuantity')} unidad={unidadOferta(it)} valor={e.cant[it] ? cifra(e.cant[it]) : ''} onChange={(tVal) => { onCantidad(numero(tVal) || 0); errores.limpiar(idC); }} onBlur={(tVal) => errores.validar(idC, ['numero'], tVal)} error={errores.errores[idC]} />
       {!conTiempo && (
         <>
-          <Chips nombre={`disp-${it}`} etiqueta="Disponible" opciones={DISPONIBLE} valor={disp} onChange={(v) => onDetalle({ disp: v })} className="mb-3" />
+          <Chips nombre={`disp-${it}`} etiqueta={t('flowAvailability')} opciones={opcionesDisponible(language)} valor={disp} onChange={(v) => onDetalle({ disp: v })} className="mb-3" />
           {disp === 'Hasta una fecha' && (
             <Field
               id={idFecha}
-              etiqueta="Hasta qué día"
+              etiqueta={t('flowAvailableUntilDate')}
               tipo="date"
               min={hoy}
               valor={String(d.fecha ?? '')}
               onChange={(v) => {
                 onDetalle({ fecha: v });
                 if (v && v < hoy) {
-                  errores.poner(idFecha, 'La fecha no puede ser en el pasado');
+                  errores.poner(idFecha, t('flowDatePastError'));
                 } else {
                   errores.limpiar(idFecha);
                 }
               }}
               onBlur={(v) => {
                 if (v && v < hoy) {
-                  errores.poner(idFecha, 'La fecha no puede ser en el pasado');
+                  errores.poner(idFecha, t('flowDatePastError'));
                 } else if (!v) {
-                  errores.poner(idFecha, 'Indica la fecha hasta la que estará disponible');
+                  errores.poner(idFecha, t('flowDateRequiredError'));
                 } else {
                   errores.limpiar(idFecha);
                 }

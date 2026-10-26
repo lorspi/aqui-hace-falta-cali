@@ -470,7 +470,7 @@ export function translateResourcesTitle(recursos: Recurso[], tipo: TipoPublicaci
     return `${r0} ${conjuncion} ${r1}`;
   }
 
-  const masStr = lang === 'en' ? 'more' : lang === 'fr' ? 'de plus' : 'más';
+  const masStr = lang === 'en' ? 'more' : lang === 'fr' ? 'de plus' : lang === 'pt' ? 'mais' : 'más';
   return `${r0} ${conjuncion} ${recursos.length - 1} ${masStr}`;
 }
 

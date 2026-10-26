@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Hand, HeartHandshake } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { ListaAvisos } from '../../components/ui/Avisos';
 import { Button } from '../../components/ui/Button';
@@ -48,6 +49,7 @@ export const AvisosPage: React.FC<AvisosPageProps> = ({ authUser }) => (
 );
 
 const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
+  const { t } = useTranslation();
   const [localAuth, setLocalAuth] = useState(() => {
     if (authUser === null) return null;
     if (authUser !== undefined) return authUser;
@@ -81,7 +83,7 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const [cajon, setCajon] = useState(false);
 
   useEffect(() => {
-    document.title = 'Avisos, RaDAR de ayuda';
+    document.title = `${t('navNotices')}, RaDAR de ayuda`;
 
     async function cargarAvisosReal() {
       if (usuarioEfectivo?.id) {
@@ -94,7 +96,7 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
       }
     }
     cargarAvisosReal();
-  }, [usuarioEfectivo?.id]);
+  }, [usuarioEfectivo?.id, t]);
 
   const sinLeer = avisos.filter((a) => !a.leido).length;
   const lista = filtro === 'nuevos' ? avisos.filter((a) => !a.leido) : avisos;
@@ -149,14 +151,14 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
     >
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Avisos</h1>
+          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('navNotices')}</h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => irA(RUTAS.pedir)}>
-                Pedir ayuda
+                {t('publishNeed')}
               </Button>
               <Button nivel="primario" tamano="md" icono={<HeartHandshake className="h-4 w-4" />} onClick={() => irA(RUTAS.ofrecer)}>
-                Ofrecer ayuda
+                {t('offerHelp')}
               </Button>
             </span>
             <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
@@ -166,22 +168,22 @@ const Avisos: React.FC<{ authUser?: any }> = ({ authUser }) => {
         {/* ---- consulta: Todos y Sin leer, y marcar todos ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
           <Segmented<Filtro>
-            etiquetaGrupo="Qué avisos ver"
+            etiquetaGrupo={t('whatNoticesToSee')}
             valor={filtro}
             onChange={setFiltro}
             opciones={[
-              { id: 'todos', etiqueta: 'Todos', n: avisos.length },
-              { id: 'nuevos', etiqueta: 'Sin leer', n: sinLeer },
+              { id: 'todos', etiqueta: t('filterAll'), n: avisos.length },
+              { id: 'nuevos', etiqueta: t('unread'), n: sinLeer },
             ]}
           />
           <Button nivel="terciario" tamano="md" className="ml-auto" onClick={leerTodos} disabled={sinLeer === 0}>
-            Marcar leídos
+            {t('markAsRead')}
           </Button>
         </div>
 
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-3 pt-3 pb-24 sm:px-6 sm:pt-4 lg:px-8 lg:pb-6">
           <section className="mx-auto max-w-3xl rounded-rd-xl border border-rd-line bg-rd-surface p-1.5 sm:py-2 sm:px-2">
-            {lista.length === 0 ? <Vacio icono={<Bell className="h-6.5 w-6.5" />} titulo={filtro === 'nuevos' ? 'Nada sin leer' : 'Nada nuevo'} texto="Cuando pase algo con lo tuyo, aparece aquí." /> : <ListaAvisos avisos={lista} onAccion={accionDeAviso} />}
+            {lista.length === 0 ? <Vacio icono={<Bell className="h-6.5 w-6.5" />} titulo={filtro === 'nuevos' ? t('nothingUnread') : t('nothingNew')} texto={t('noticesEmpty')} /> : <ListaAvisos avisos={lista} onAccion={accionDeAviso} />}
           </section>
         </main>
       </div>

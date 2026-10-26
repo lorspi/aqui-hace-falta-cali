@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, Bell, Check, Clock, Hand, HeartHandshake, RefreshCw, TriangleAlert, Truck } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { DIAS } from '../../mocks/avisosMock';
 import type { Aviso, TipoAviso } from '../../types/aviso';
 import { Button } from './Button';
@@ -33,6 +34,7 @@ export interface FilaAvisoProps {
 }
 
 export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false, onAccion }) => {
+  const { t } = useTranslation();
   const ic = ICONO[a.tipo];
   const Icono = ic.icono;
   /* Bajo 640 la acción baja a su propia línea también en la fila completa: al lado del texto
@@ -54,18 +56,19 @@ export const FilaAviso: React.FC<FilaAvisoProps> = ({ aviso: a, compacta = false
           </Button>
         </div>
       )}
-      {!a.leido && <span role="img" aria-label="Sin leer" className="absolute top-7.5 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
+      {!a.leido && <span role="img" aria-label={t('unread')} className="absolute top-7.5 left-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-rd-navy" />}
     </article>
   );
 };
 
 /** Los avisos agrupados por día (Hoy · Ayer · Antes). */
 export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAccion?: (aviso: Aviso) => void }> = ({ avisos, compacta = false, onAccion }) => {
+  const { t } = useTranslation();
   if (avisos.length === 0)
     return (
       <p className="flex flex-col items-center gap-2 px-4 py-6 text-center text-rd-13 text-rd-ink-meta">
         <Bell aria-hidden="true" className="h-7 w-7 text-rd-line" />
-        Nada nuevo. Cuando pase algo con lo tuyo, aparece aquí.
+        {t('noticesEmpty')}
       </p>
     );
   return (
@@ -73,10 +76,11 @@ export const ListaAvisos: React.FC<{ avisos: Aviso[]; compacta?: boolean; onAcci
       {DIAS.map((d) => {
         const del = avisos.filter((a) => a.dia === d.id);
         if (!del.length) return null;
+        const nombreDia = d.id === 'hoy' ? t('today') : d.id === 'ayer' ? t('yesterday') : t('earlier');
         return (
           <React.Fragment key={d.id}>
             {/* Sin `uppercase`: ningún rótulo de la herramienta va en altas (decisión 242). */}
-            <h3 className={`${ROTULO_GRUPO} mx-3 mt-3 mb-1 first:mt-0`}>{d.nombre}</h3>
+            <h3 className={`${ROTULO_GRUPO} mx-3 mt-3 mb-1 first:mt-0`}>{nombreDia}</h3>
             {del.map((a) => (
               <FilaAviso key={a.id} aviso={a} compacta={compacta} onAccion={onAccion} />
             ))}
@@ -101,6 +105,7 @@ export interface CampanaAvisosProps {
 }
 
 export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos, onLeerTodos, onAccion, className = '' }) => {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'nuevos'>('todos');
   const raiz = useRef<HTMLSpanElement>(null);
@@ -132,7 +137,7 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
       <button
         ref={campana}
         type="button"
-        aria-label={sinLeer ? `Avisos: ${sinLeer} sin leer` : 'Avisos'}
+        aria-label={sinLeer ? `${t('navNotices')}: ${sinLeer} ${t('unread')}` : t('navNotices')}
         aria-haspopup="dialog"
         aria-expanded={abierto}
         onClick={() => setAbierto((a) => !a)}
@@ -142,16 +147,16 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
         {sinLeer > 0 && <Contador n={sinLeer} className="absolute -top-1 -right-1 h-4.5 min-w-4.5 px-1.25 text-rd-10-5 ring-2 ring-rd-surface" />}
       </button>
       {abierto && (
-        <div role="dialog" aria-label="Avisos" className="absolute top-full right-0 z-900 mt-2 w-100 overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface text-left shadow-rd-2">
+        <div role="dialog" aria-label={t('navNotices')} className="absolute top-full right-0 z-900 mt-2 w-100 overflow-hidden rounded-rd-xl border border-rd-line bg-rd-surface text-left shadow-rd-2">
           <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
-            <h2 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink">Avisos</h2>
+            <h2 className="font-rd m-0 text-rd-16 font-semibold text-rd-ink">{t('navNotices')}</h2>
             <Segmented<'todos' | 'nuevos'>
-              etiquetaGrupo="Qué avisos ver"
+              etiquetaGrupo={t('whatNoticesToSee')}
               valor={filtro}
               onChange={setFiltro}
               opciones={[
-                { id: 'todos', etiqueta: 'Todos' },
-                { id: 'nuevos', etiqueta: `Sin leer ${sinLeer}` },
+                { id: 'todos', etiqueta: t('filterAll') },
+                { id: 'nuevos', etiqueta: `${t('unread')} ${sinLeer}` },
               ]}
             />
           </div>
@@ -160,10 +165,10 @@ export const CampanaAvisos: React.FC<CampanaAvisosProps> = ({ avisos, rutaAvisos
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-rd-line px-3 py-2">
             <Button nivel="terciario" tamano="sm" onClick={onLeerTodos} disabled={sinLeer === 0}>
-              Marcar leídos
+              {t('markAsRead')}
             </Button>
             <a href={rutaAvisos} className="font-rd inline-flex h-rd-h-sm items-center rounded-rd-sm px-2.75 text-rd-12-5 font-semibold text-rd-ink-2 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy">
-              Ver todos
+              {t('viewAllNotices')}
             </a>
           </div>
         </div>

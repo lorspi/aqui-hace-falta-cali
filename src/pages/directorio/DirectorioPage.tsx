@@ -92,7 +92,7 @@ export const DirectorioPage: React.FC<DirectorioPageProps> = ({ authUser, onOpen
 );
 
 const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal, onOpenProfileModal }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const avisar = useAviso();
   const [localAuth, setLocalAuth] = useState(() => {
     if (authUser === null) return null;
@@ -205,7 +205,13 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
 
   const deVista = useMemo(() => entidadesDe(clase, entidadesBase, ENTIDAD_PROPIA), [clase, entidadesBase]);
   const lista = useMemo(() => filtrar(deVista, publicacionesBase, q, UBICACION_BASE), [deVista, publicacionesBase, q]);
-  const pestanas = PESTANAS;
+  const pestanas = useMemo(
+    () => [
+      { id: 'organizacion' as ClaseEntidad, nombre: t('organizationsTab') },
+      { id: 'comunidad' as ClaseEntidad, nombre: t('communitiesTab') },
+    ],
+    [t]
+  );
   const chips = chipsDe(q);
   const aplicados = cuantosAplicados(q);
 
@@ -218,14 +224,14 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   /* --- lo que pasa al tocar una fila --- */
   const compartir = (e: Entidad) => {
     const url = `${window.location.origin}${RUTAS.directorio}${e.clase === 'comunidad' ? '?vista=comunidades' : ''}#${e.id}`;
-    const listo = () => avisar('Enlace copiado', { tipo: 'ok' });
+    const listo = () => avisar(t('linkCopiedOk'), { tipo: 'ok' });
     if (navigator.share) navigator.share({ title: `${e.nombre}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
     else listo();
   };
   const enviarReporte = () => {
     setReporte(null);
-    avisar('Reporte enviado. Lo revisa moderación', { tipo: 'ok' });
+    avisar(t('reportSentOk'), { tipo: 'ok' });
   };
   const abrirCompromiso = (pub: Publicacion) => {
     const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
@@ -267,7 +273,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     else irA(a.accion.al);
   };
 
-  const estado = conteoTexto(lista.length, clase);
+  const estado = conteoTexto(lista.length, clase, language);
   /* El vacío nombra el filtro que más acota y ofrece soltar ese, no «quita todo». */
   const vacio = vacioDe(q, clase);
 
@@ -322,7 +328,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
           </span>
         </header>
 
-        <Pestanas etiqueta="Qué quieres ver" pestanas={pestanas} actual={clase} onCambiar={cambiarVista} />
+        <Pestanas etiqueta={t('whatToSee')} pestanas={pestanas} actual={clase} onCambiar={cambiarVista} />
 
         {/* ---- consulta ---- */}
         <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
@@ -339,7 +345,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
               <QuitarTodos onClick={() => setQ({ ...consultaVacia(), orden: q.orden })} />
             </ZonaChips>
           )}
-          <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? 'Buscar comunidad, barrio o necesidad' : 'Buscar organización, barrio o recurso'} abierto={buscando} />
+          <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? t('searchCommunityPlaceholder') : t('searchOrgPlaceholder')} abierto={buscando} />
         </div>
 
         {/* ---- la lista ---- */}
@@ -359,15 +365,15 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
             ) : (
               <Vacio
                 icono={<Users className="h-6.5 w-6.5" />}
-                titulo={clase === 'comunidad' ? 'Todavía ninguna comunidad publicó lo que necesita' : 'Todavía ninguna organización publicó lo que ofrece'}
+                titulo={clase === 'comunidad' ? t('emptyCommunityNeeds') : t('emptyOrgOffers')}
                 accion={
                   clase === 'comunidad' ? (
                     <Button nivel="pedir" tamano="md" onClick={() => irA(RUTAS.pedir)}>
-                      Pedir ayuda
+                      {t('publishNeed')}
                     </Button>
                   ) : (
                     <Button nivel="primario" tamano="md" onClick={() => irA(RUTAS.ofrecer)}>
-                      Ofrecer ayuda
+                      {t('offerHelp')}
                     </Button>
                   )
                 }
@@ -384,10 +390,10 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
                 {/* Cabecera de columnas, solo en la tabla: rótulo suelto, sin caja, porque cada
                     fila es una tarjeta aparte (Alejandro, 22 de septiembre de 2026). */}
                 <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_220px] xl:items-center xl:gap-6">
-                  <span className="text-rd-13 font-semibold text-rd-ink">{clase === 'comunidad' ? 'Comunidad y zona' : 'Organización y zona'}</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">Actividad y recursos</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">Contacto</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">Acciones</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">{clase === 'comunidad' ? t('communityAndZone') : t('organizationAndZone')}</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">{t('activityAndResources')}</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">{t('contact')}</span>
+                  <span className="text-rd-13 font-semibold text-rd-ink">{t('actions')}</span>
                 </div>
                 {lista.map((e) => (
                   <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
@@ -421,17 +427,18 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
  * la izquierda, de mayor a menor jerarquía, y el ⋮ se va al extremo derecho.
  */
 const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, publicacionesBase, onVerDetalle, onCompartir, onReportar }) => {
+  const { t, language } = useTranslation();
   const com = e.clase === 'comunidad';
   const km = distanciaKm(UBICACION_BASE, e);
-  const datos = cifrasDe(e, publicacionesBase);
+  const datos = cifrasDe(e, publicacionesBase, language);
   const pubs = publicacionesDe(e, publicacionesBase);
   const primerPunto = pubs[0]?.id;
   const verEnMapa = () => irA(primerPunto ? `${RUTAS.radar}?punto=${encodeURIComponent(primerPunto)}&vista=mapa` : `${RUTAS.radar}?vista=mapa`);
   const menu = [
-    ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
-    { texto: 'Llamar', icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
-    { texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir },
-    { texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: onReportar },
+    ...(e.wa ? [{ texto: t('writeWhatsApp'), icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
+    { texto: t('call'), icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
+    { texto: t('shareLink'), icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir },
+    { texto: t('reportIssue'), icono: <Flag className="h-4 w-4" />, onElegir: onReportar },
   ];
 
   /* Las piezas que las dos maquetaciones comparten tal cual. */
@@ -444,9 +451,9 @@ const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]
       <div className="flex min-w-0 flex-col">
         <div className="flex min-w-0 items-center gap-1.5">
           <h2 className="font-rd m-0 min-w-0 truncate text-rd-15 font-semibold text-rd-ink">{e.nombre}</h2>
-          {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4 w-4 shrink-0 text-rd-navy" />}
+          {e.verificada && <BadgeCheck role="img" aria-label={com ? t('verifiedCommunity') : t('verifiedOrg')} className="h-4 w-4 shrink-0 text-rd-navy" />}
         </div>
-        <span className="text-rd-12 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com)}</span>
+        <span className="text-rd-12 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com, language)}</span>
       </div>
     </div>
   );
@@ -457,7 +464,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]
         <a href={`tel:${e.tel.replace(/\s/g, '')}`} className="truncate font-medium text-rd-ink tabular-nums no-underline hover:underline">
           {e.tel}
         </a>
-        {e.wa && <IconoWhatsApp titulo="También por WhatsApp" className="h-3.5 w-3.5 shrink-0 text-rd-green" />}
+        {e.wa && <IconoWhatsApp titulo={t('writeWhatsApp')} className="h-3.5 w-3.5 shrink-0 text-rd-green" />}
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-ink-3" />
@@ -476,16 +483,16 @@ const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]
   const acciones = (
     <>
       <Button nivel="secundario" tamano="md" className="shadow-2xs" onClick={onVerDetalle}>
-        Ver detalle
+        {t('viewDetail')}
       </Button>
-      <Button nivel="secundario" tamano="md" soloIcono aria-label="Ver en el mapa" className="shadow-2xs" onClick={verEnMapa}>
+      <Button nivel="secundario" tamano="md" soloIcono aria-label={t('viewOnMap')} className="shadow-2xs" onClick={verEnMapa}>
         <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
       </Button>
       {/* Bajo 1280 es tarjeta y el ⋮ se va al extremo; desde 1280 es fila de tabla y va
           pegado al grupo. El empuje va en el contenedor: `MenuAcciones` pasa su `className`
           al botón de dentro. */}
       <span className="flex max-xl:ml-auto">
-        <MenuAcciones items={menu} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
+        <MenuAcciones items={menu} etiqueta={`${t('moreActions')} ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
       </span>
     </>
   );
@@ -496,7 +503,7 @@ const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]
       <article id={e.id} className="flex min-w-0 flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-4 max-sm:p-3.5 transition duration-200 hover:border-rd-navy-line hover:shadow-xs xl:hidden">
         <div className="mb-3 max-sm:mb-2">{quien}</div>
         <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mb-3.5 max-sm:mb-2.5" />
-        <CajaDatos titulo="En RaDAR" filas={datos} className="mb-3.5 max-sm:mb-2.5" />
+        <CajaDatos titulo={t('inRadar')} filas={datos} className="mb-3.5 max-sm:mb-2.5" />
         <div className="mb-3.5 max-sm:mb-2.5">{contacto}</div>
         <div className="mt-auto flex min-w-0 items-center gap-1 border-t border-rd-line-soft pt-3 max-sm:pt-2.5">{acciones}</div>
       </article>
@@ -535,6 +542,7 @@ const DialogoDetalleEntidad: React.FC<{
   onCompartir?: () => void;
   onReportar?: () => void;
 }> = ({ abierto, entidad: e, publicacionesBase, onCerrar, onCompromiso, onCompartir, onReportar }) => {
+  const { t, language } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -549,17 +557,17 @@ const DialogoDetalleEntidad: React.FC<{
   const com = e.clase === 'comunidad';
   const km = distanciaKm(UBICACION_BASE, e);
   const publicaciones = publicacionesDe(e, publicacionesBase);
-  const datos = cifrasDe(e, publicacionesBase);
+  const datos = cifrasDe(e, publicacionesBase, language);
 
   const verEnMapa = (puntoId?: string) => {
     const id = puntoId || publicaciones[0]?.id;
     irA(id ? `${RUTAS.radar}?punto=${encodeURIComponent(id)}&vista=mapa` : `${RUTAS.radar}?vista=mapa`);
   };
   const menuEntidad = [
-    ...(e.wa ? [{ texto: 'Escribir por WhatsApp', icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
-    { texto: 'Llamar', icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
-    ...(onCompartir ? [{ texto: 'Compartir', icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir }] : []),
-    ...(onReportar ? [{ texto: 'Reportar', icono: <Flag className="h-4 w-4" />, onElegir: onReportar }] : []),
+    ...(e.wa ? [{ texto: t('writeWhatsApp'), icono: <IconoWhatsApp className="h-4 w-4" />, onElegir: () => window.open(`https://wa.me/${e.tel.replace(/\D/g, '')}`, '_blank', 'noopener') }] : []),
+    { texto: t('call'), icono: <Phone className="h-4 w-4" />, onElegir: () => irA(`tel:${e.tel.replace(/\s/g, '')}`) },
+    ...(onCompartir ? [{ texto: t('shareLink'), icono: <Share2 className="h-4 w-4" />, onElegir: onCompartir }] : []),
+    ...(onReportar ? [{ texto: t('reportIssue'), icono: <Flag className="h-4 w-4" />, onElegir: onReportar }] : []),
   ];
 
   return (
@@ -577,13 +585,13 @@ const DialogoDetalleEntidad: React.FC<{
               contenido, debajo de su línea. */}
           <div className="flex flex-none items-center gap-2 border-b border-rd-line px-5 py-3">
             <h2 id="detalle-entidad-titulo" className="font-rd m-0 flex-1 text-rd-12-5 font-semibold text-rd-ink-meta">
-              {com ? 'Comunidad' : 'Organización'}
+              {com ? t('community') : t('organization')}
             </h2>
-            <Button nivel="terciario" tamano="md" soloIcono aria-label="Ver en el mapa" onClick={() => verEnMapa()}>
+            <Button nivel="terciario" tamano="md" soloIcono aria-label={t('viewOnMap')} onClick={() => verEnMapa()}>
               <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
             </Button>
-            <MenuAcciones items={menuEntidad} etiqueta={`Más acciones de ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
-            <Button nivel="terciario" tamano="md" soloIcono aria-label="Cerrar" onClick={onCerrar}>
+            <MenuAcciones items={menuEntidad} etiqueta={`${t('moreActions')} ${e.nombre}`} tamano="md" nivel="secundario" className="shadow-2xs" flotante />
+            <Button nivel="terciario" tamano="md" soloIcono aria-label={t('detailClose')} onClick={onCerrar}>
               <X aria-hidden="true" className="h-5 w-5" />
             </Button>
           </div>
@@ -595,23 +603,23 @@ const DialogoDetalleEntidad: React.FC<{
               <div className="flex min-w-0 flex-col">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <p className="font-rd m-0 min-w-0 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">{e.nombre}</p>
-                  {e.verificada && <BadgeCheck role="img" aria-label={com ? 'Comunidad verificada' : 'Organización verificada'} className="h-4.5 w-4.5 shrink-0 text-rd-navy" />}
+                  {e.verificada && <BadgeCheck role="img" aria-label={com ? t('verifiedCommunity') : t('verifiedOrg')} className="h-4.5 w-4.5 shrink-0 text-rd-navy" />}
                 </div>
-                <span className="text-rd-12-5 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com)}</span>
+                <span className="text-rd-12-5 text-rd-ink-2">{formatearTipoEntidad(e.tipo, com, language)}</span>
                 <Donde lugar={e.zona} distancia={distanciaTexto(km)} className="mt-1.5" />
               </div>
             </div>
 
             {/* 2. Contacto en dos columnas, no en lista: cada dato ocupa su celda. */}
             <section className="mt-5 border-t border-rd-line-soft pt-5">
-              <h3 className={ROTULO}>Contacto</h3>
+              <h3 className={ROTULO}>{t('contact')}</h3>
               <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 text-rd-12-5 text-rd-ink-2 sm:grid-cols-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <Phone aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-rd-ink-3" />
                   <a href={`tel:${e.tel.replace(/\s/g, '')}`} className="truncate font-medium text-rd-ink tabular-nums no-underline hover:underline">
                     {e.tel}
                   </a>
-                  {e.wa && <IconoWhatsApp titulo="También por WhatsApp" className="h-3.5 w-3.5 shrink-0 text-rd-green" />}
+                  {e.wa && <IconoWhatsApp titulo={t('writeWhatsApp')} className="h-3.5 w-3.5 shrink-0 text-rd-green" />}
                 </div>
                 {e.correo && (
                   <div className="flex min-w-0 items-center gap-2">
@@ -640,17 +648,17 @@ const DialogoDetalleEntidad: React.FC<{
 
             {/* 3. Las cifras, en la misma caja que la tarjeta de la lista. */}
             <section className="mt-5">
-              <CajaDatos titulo="En RaDAR" filas={datos} />
+              <CajaDatos titulo={t('inRadar')} filas={datos} />
             </section>
 
             <section className="mt-5 border-t border-rd-line-soft pt-5">
               <h3 className={ROTULO}>
-                {com ? 'Lo que pide' : 'Lo que publica'}
+                {com ? t('whatRequests') : t('whatPublishes')}
                 <Conteo n={publicaciones.length} />
               </h3>
               {publicaciones.length === 0 ? (
                 <p className="m-0 text-rd-13 text-rd-ink-2">
-                  Todavía no tiene publicaciones en la Radar. {com ? 'Cuando pida algo, aparece aquí.' : 'Cuando ofrezca algo, aparece aquí.'}
+                  {t('noPublicationsInRadar')} {com ? t('whenNeedsAppear') : t('whenOffersAppear')}
                 </p>
               ) : (
                 <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
@@ -690,7 +698,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
         <EtiquetaTipo tipo={pub.tipo} />
         <EtiquetaEstado estado={est} />
         <span className="ml-auto flex">
-          <Button nivel="terciario" tamano="md" soloIcono aria-label={`Ver ${pub.titulo} en el mapa`} onClick={onVerEnMapa}>
+          <Button nivel="terciario" tamano="md" soloIcono aria-label={`${t('viewOnMap')}: ${pub.titulo}`} onClick={onVerEnMapa}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         </span>
@@ -716,6 +724,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
 
 
 const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta: ConsultaDirectorio; entidades: Entidad[]; publicacionesBase: Publicacion[]; onCambiar: (q: ConsultaDirectorio) => void; onCerrar: () => void; resultados: number }> = ({ abierta, clase, consulta: q, entidades, publicacionesBase, onCambiar, onCerrar, resultados }) => {
+  const { t, tItem } = useTranslation();
   const hoja = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!abierta) return;
@@ -732,53 +741,53 @@ const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta
   const com = clase === 'comunidad';
   return (
     <>
-      <button type="button" aria-label="Cerrar los filtros" onClick={onCerrar} className="fixed inset-0 z-900 cursor-default bg-rd-ink/32" />
+      <button type="button" aria-label={t('closeFilters')} onClick={onCerrar} className="fixed inset-0 z-900 cursor-default bg-rd-ink/32" />
       <aside ref={hoja} role="dialog" aria-modal="true" aria-labelledby="hoja-dir-t" className="font-rd fixed top-0 right-0 bottom-0 z-901 flex w-full max-w-110 flex-col bg-rd-surface shadow-rd-2">
         <div className="flex items-center gap-2 border-b border-rd-line px-4 py-3">
           <h2 id="hoja-dir-t" className="m-0 flex-1 text-rd-16 font-semibold tracking-tight text-rd-ink">
-            Filtrar y ordenar
+            {t('filterAndSort')}
           </h2>
-          <Button nivel="terciario" tamano="md" aria-label="Cerrar" soloIcono onClick={onCerrar}>
+          <Button nivel="terciario" tamano="md" aria-label={t('detailClose')} soloIcono onClick={onCerrar}>
             <X aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         </div>
         <div className="sin-barra min-h-0 flex-1 overflow-y-auto px-4">
           <section className="border-b border-rd-line-soft py-4">
-            <h3 className={ROTULO}>Lugar</h3>
+            <h3 className={ROTULO}>{t('cardLocation').replace(':', '')}</h3>
             {/* El mismo selector que la Radar: Cerca de mí, Seleccionar todo, ciudades por departamento. */}
             <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={UBICACION_BASE} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
           </section>
           <section className="border-b border-rd-line-soft py-4">
-            <h3 className={ROTULO}>Qué recurso</h3>
+            <h3 className={ROTULO}>{t('whatResource')}</h3>
             <div className="flex flex-wrap gap-2">
               {recursosDeVista(entidades, publicacionesBase).map((r) => (
                 <Opcion key={r} tipo="checkbox" nombre="recurso" marcada={q.recursos.includes(r)} onChange={() => onCambiar({ ...q, recursos: alternar(q.recursos, r) })}>
-                  {r}
+                  {tItem(r)}
                 </Opcion>
               ))}
             </div>
           </section>
           <section className="border-b border-rd-line-soft py-4">
-            <FilaSwitch id="dir-verificadas" rotulo={com ? 'Solo comunidades verificadas' : 'Solo organizaciones verificadas'} encendido={q.verificadas} onCambiar={(v) => onCambiar({ ...q, verificadas: v })} />
+            <FilaSwitch id="dir-verificadas" rotulo={com ? t('onlyVerifiedCommunities') : t('onlyVerifiedOrganizations')} encendido={q.verificadas} onCambiar={(v) => onCambiar({ ...q, verificadas: v })} />
           </section>
           <section className="py-4">
-            <h3 className={ROTULO}>Ordenar por</h3>
+            <h3 className={ROTULO}>{t('sortBy')}</h3>
             <div className="flex flex-wrap gap-2">
               <Opcion tipo="radio" nombre="orden" marcada={q.orden === 'cercania'} onChange={() => onCambiar({ ...q, orden: 'cercania' })}>
-                Más cerca
+                {t('sortDistance')}
               </Opcion>
               <Opcion tipo="radio" nombre="orden" marcada={q.orden === 'cifra'} onChange={() => onCambiar({ ...q, orden: 'cifra' })}>
-                {com ? 'Más solicitudes' : 'Más entregas confirmadas'}
+                {com ? t('moreRequests') : t('moreDeliveries')}
               </Opcion>
             </div>
           </section>
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-rd-line bg-rd-surface px-4 py-3">
           <Button nivel="terciario" tamano="md" onClick={() => onCambiar({ ...consultaVacia(), orden: q.orden })} disabled={cuantosAplicados(q) === 0}>
-            Quitar todos
+            {t('clearAll')}
           </Button>
           <Button nivel="primario" tamano="md" onClick={onCerrar}>
-            Ver {resultados} {resultados === 1 ? 'resultado' : 'resultados'}
+            {t('viewResults')} {resultados} {resultados === 1 ? t('resultSingular') : t('resultPlural')}
           </Button>
         </div>
       </aside>

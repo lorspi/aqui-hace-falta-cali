@@ -5,6 +5,7 @@
  */
 import { TAXONOMIA } from '../mocks/publicacionesMock';
 import type { CampoDetalle, EstadoOfrecer, RespuestasDetalle, SubPaso } from '../types/flujo';
+import type { Language } from '../i18n/translations';
 import { camposOferta } from './equivalencias';
 import { contactoListo } from './pedir';
 
@@ -53,10 +54,30 @@ export function listoOfrecer(e: EstadoOfrecer, sub: SubPaso): boolean {
   return true;
 }
 
-export function textoEntrega(e: EstadoOfrecer): string {
-  if (e.entrega === 'llevamos') return `Lo llevamos · ${e.radio} · envío ${e.envio.toLowerCase()}`;
-  if (e.entrega === 'remoto') return `Remoto · ${e.canales.join(', ')}${e.horario ? ` · ${e.horario}` : ''}`;
-  return 'En sitio';
+export function textoEntrega(e: EstadoOfrecer, lang: Language = 'es'): string {
+  const radioTraducido = e.radio === 'Todo el país'
+    ? (lang === 'en' ? 'Nationwide' : lang === 'pt' ? 'Todo o país' : lang === 'fr' ? 'Tout le pays' : 'Todo el país')
+    : e.radio;
+  const enviosMap: Record<Language, Record<string, string>> = {
+    es: { Gratis: 'gratis', Contraentrega: 'contraentrega', 'A convenir': 'a convenir' },
+    en: { Gratis: 'free', Contraentrega: 'cash on delivery', 'A convenir': 'to be agreed' },
+    pt: { Gratis: 'grátis', Contraentrega: 'a pagar na entrega', 'A convenir': 'a combinar' },
+    fr: { Gratis: 'gratuit', Contraentrega: 'paiement à la livraison', 'A convenir': 'à convenir' },
+  };
+  const envioTraducido = enviosMap[lang]?.[e.envio] || (e.envio ? e.envio.toLowerCase() : '');
+
+  if (e.entrega === 'llevamos') {
+    if (lang === 'en') return `We deliver · ${radioTraducido} · shipping ${envioTraducido}`;
+    if (lang === 'pt') return `Nós levamos · ${radioTraducido} · frete ${envioTraducido}`;
+    if (lang === 'fr') return `Nous livrons · ${radioTraducido} · livraison ${envioTraducido}`;
+    return `Lo llevamos · ${e.radio} · envío ${e.envio.toLowerCase()}`;
+  }
+  if (e.entrega === 'remoto') {
+    const prefijo = lang === 'en' ? 'Remote' : lang === 'pt' ? 'Remoto' : lang === 'fr' ? 'À distance' : 'Remoto';
+    return `${prefijo} · ${e.canales.join(', ')}${e.horario ? ` · ${e.horario}` : ''}`;
+  }
+  const enSitio = lang === 'en' ? 'On site' : lang === 'pt' ? 'No local' : lang === 'fr' ? 'Sur place' : 'En sitio';
+  return enSitio;
 }
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

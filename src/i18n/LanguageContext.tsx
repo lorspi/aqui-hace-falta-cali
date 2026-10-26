@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Language, translations, TranslationKey } from './translations';
+export type { Language, TranslationKey };
 
 import type { Recurso, TipoPublicacion } from '../types/publicacion';
 import {

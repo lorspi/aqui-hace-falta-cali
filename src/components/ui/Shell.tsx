@@ -539,7 +539,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           {s.icono}
         </span>
         <span className={`min-w-0 flex-1 truncate ${plegado && !grande ? 'sr-only' : ''}`}>{s.nombre}</span>
-        {s.n ? <Contador n={s.n} titulo={`${s.n} pendientes`} className={plegado && !grande ? 'absolute top-1 right-1 h-4 min-w-4 px-1 text-rd-10' : 'ml-auto'} /> : null}
+        {s.n ? <Contador n={s.n} titulo={`${s.n} ${t('pendingPlural')}`} className={plegado && !grande ? 'absolute top-1 right-1 h-4 min-w-4 px-1 text-rd-10' : 'ml-auto'} /> : null}
       </a>
     );
   };
@@ -548,15 +548,15 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     <div className={`rd-app font-rd flex h-dvh max-h-dvh w-full max-w-full overflow-hidden gap-3 bg-rd-fondo p-3 text-rd-15 leading-relaxed tracking-rd-cuerpo text-rd-ink antialiased max-lg:flex-col max-lg:gap-0 max-lg:bg-rd-surface max-lg:p-0 ${plegado ? 'is-plegado' : ''}`}>
       {/* ---- side nav (solo ≥ 1024) ---- */}
       <nav
-        aria-label="Secciones"
+        aria-label={t('sections')}
         className={`flex h-full shrink-0 flex-col rounded-rd-md border border-rd-line bg-rd-surface py-4 transition-all duration-200 max-lg:hidden ${plegado ? 'w-16 px-2' : 'w-58 px-3'}`}
       >
         <div className={`flex shrink-0 ${plegado ? 'flex-col items-center gap-2 mb-2' : 'items-center justify-between px-1 mb-2'}`}>
           <a
             href={rutas.inicio}
             onClick={(e) => handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades')}
-            aria-label="RaDAR de ayuda, inicio"
-            title="RaDAR de ayuda, inicio"
+            aria-label={t('radarHome')}
+            title={t('radarHome')}
             className="flex items-center justify-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy hover:opacity-90 transition-opacity"
           >
             {plegado ? (
@@ -597,7 +597,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                 }}
                 aria-current={seccion === 'perfil' ? 'page' : undefined}
                 className={`flex items-start gap-2 rounded-rd-lg p-2 text-rd-ink text-left no-underline hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy cursor-pointer w-full ${plegado ? 'justify-center p-1' : ''}`}
-                title="Ver perfil de usuario"
+                title={t('viewUserProfile')}
+                aria-label={t('viewUserProfile')}
               >
                 <Avatar iniciales={cuentaFinal.iniciales} tamano="md" />
                 {!plegado && (
@@ -670,7 +671,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
       {/* ---- píldora móvil (solo < 1024) ---- */}
       <nav
-        aria-label="Secciones"
+        aria-label={t('sections')}
         className="fixed right-4 bottom-2 left-4 z-800 box-border flex h-14 items-center rounded-full border border-rd-line bg-rd-surface px-2 shadow-rd-2 lg:hidden"
       >
         <TabItem href={rutas.radar} actual={seccion === 'radar'} nombre={t('navRadar')} icono={<MapPin className="h-6 w-6" />} />
@@ -693,7 +694,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             </div>
           )}
         </div>
-        <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre={t('navNotices')} icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`${t('navNotices')}, ${avisosNuevos} nuevos`} />
+        <TabItem href={rutas.avisos} actual={seccion === 'avisos'} nombre={t('navNotices')} icono={<Bell className="h-6 w-6" />} n={avisosNuevos} etiqueta={`${t('navNotices')}, ${avisosNuevos} ${avisosNuevos === 1 ? t('newSingular') : t('newPlural')}`} />
         <TabItem
           href={tabPerfil.href}
           actual={tabPerfil.actual}
@@ -707,8 +708,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       {/* ---- cajón lateral (solo < 1024) ---- */}
       {cajonAbierto && (
         <div className="fixed inset-0 z-900 lg:hidden">
-          <button type="button" aria-label="Cerrar el menú" onClick={onCerrarCajon} className="absolute inset-0 cursor-default bg-rd-ink/40" />
-          <div role="dialog" aria-modal="true" aria-label="Menú" className="absolute top-0 right-0 bottom-0 flex w-4/5 max-w-90 flex-col overflow-auto rounded-l-rd-md bg-rd-surface shadow-rd-2">
+          <button type="button" aria-label={t('closeMenu')} onClick={onCerrarCajon} className="absolute inset-0 cursor-default bg-rd-ink/40" />
+          <div role="dialog" aria-modal="true" aria-label={t('menu')} className="absolute top-0 right-0 bottom-0 flex w-4/5 max-w-90 flex-col overflow-auto rounded-l-rd-md bg-rd-surface shadow-rd-2">
             <div className="flex min-h-16 items-center justify-between border-b border-rd-line px-4 py-3 sm:px-6">
               <a
                 href={rutas.inicio}
@@ -716,11 +717,11 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
                   onCerrarCajon?.();
                   handleClickNav(e, rutas.inicio || '/mapa-ayudas-necesidades');
                 }}
-                aria-label="RaDAR de ayuda, inicio"
+                aria-label={t('radarHome')}
               >
                 <img src="/logo-radar.svg" alt="" className="block h-7.5 w-auto" />
               </a>
-              <button type="button" onClick={onCerrarCajon} aria-label="Cerrar el menú" className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-sunken text-rd-ink focus-visible:outline-2 focus-visible:outline-rd-navy">
+              <button type="button" onClick={onCerrarCajon} aria-label={t('closeMenu')} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-rd-md bg-rd-sunken text-rd-ink focus-visible:outline-2 focus-visible:outline-rd-navy">
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
@@ -845,14 +846,17 @@ const FichaMas: React.FC<{ nombre: string; color: string; icono: React.ReactNode
 );
 
 /** El ☰ de la cabecera móvil (40; 44 con el dedo). */
-export const BotonMenu: React.FC<{ onClick: () => void; abierto: boolean }> = ({ onClick, abierto }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    aria-label="Menú"
-    aria-expanded={abierto}
-    className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
-  >
-    <Menu aria-hidden="true" className="h-5 w-5" />
-  </button>
-);
+export const BotonMenu: React.FC<{ onClick: () => void; abierto: boolean }> = ({ onClick, abierto }) => {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t('menu')}
+      aria-expanded={abierto}
+      className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
+    >
+      <Menu aria-hidden="true" className="h-5 w-5" />
+    </button>
+  );
+};

@@ -47,14 +47,17 @@ export const BotonFiltros: React.FC<{
 };
 
 /** Un chip aplicado con su ×. */
-export const ChipAplicado: React.FC<{ texto: string; onQuitar: () => void }> = ({ texto, onQuitar }) => (
-  <span className="inline-flex h-7 flex-none items-center gap-1.5 rounded-full border border-rd-line bg-rd-line-soft pr-1.25 pl-2.5 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink max-lg:h-9">
-    {texto}
-    <button type="button" aria-label={`Quitar ${texto}`} onClick={onQuitar} className="flex cursor-pointer rounded-full p-0.5 hover:bg-rd-line focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rd-navy">
-      <X aria-hidden="true" className="h-3 w-3" />
-    </button>
-  </span>
-);
+export const ChipAplicado: React.FC<{ texto: string; onQuitar: () => void }> = ({ texto, onQuitar }) => {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex h-7 flex-none items-center gap-1.5 rounded-full border border-rd-line bg-rd-line-soft pr-1.25 pl-2.5 text-rd-12-5 font-semibold whitespace-nowrap text-rd-ink max-lg:h-9">
+      {texto}
+      <button type="button" aria-label={`${t('removeFilter')} ${texto}`} onClick={onQuitar} className="flex cursor-pointer rounded-full p-0.5 hover:bg-rd-line focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rd-navy">
+        <X aria-hidden="true" className="h-3 w-3" />
+      </button>
+    </span>
+  );
+};
 
 export const QuitarTodos: React.FC<{ onClick: () => void; texto?: string }> = ({ onClick, texto }) => {
   const { t } = useTranslation();
@@ -71,6 +74,7 @@ export const QuitarTodos: React.FC<{ onClick: () => void; texto?: string }> = ({
  *  septiembre de 2026), porque desde 1024 la fila también se desborda cuando pasa bajo el
  *  buscador y sin el › no hay forma de saber que hay más. */
 export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
   const zona = useRef<HTMLDivElement>(null);
   const [desborda, setDesborda] = useState(false);
   useEffect(() => {
@@ -139,7 +143,7 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
       {desborda && (
         <button
           type="button"
-          aria-label="Ver más filtros aplicados"
+          aria-label={t('seeMoreFiltersApplied')}
           onPointerDown={(e) => {
             e.preventDefault();
             barrer();
@@ -173,33 +177,39 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
  *  Al foco el marco va en tinta (`rd-sel`), el mismo negro con el que Filtros marca que tiene
  *  algo aplicado, porque comparten fila y el navy desentonaba (Alejandro, 24 de septiembre de
  *  2026). El halo acompaña en tinta al 10 %, no en navy. */
-export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => (
-  <label className={`flex h-10 shrink-0 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-64 xl:w-80 min-w-[160px] flex-1 max-w-xs'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
-    <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
-    <span className="sr-only">Buscar</span>
-    <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
-  </label>
-);
+export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => {
+  const { t } = useTranslation();
+  return (
+    <label className={`flex h-10 shrink-0 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-64 xl:w-80 min-w-[160px] flex-1 max-w-xs'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
+      <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span className="sr-only">{t('searchKeyword')}</span>
+      <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+    </label>
+  );
+};
 
 /** El buscador que vive dentro de una hoja o de un bloque, no en la barra de consulta: el mismo
  *  dibujo de `CampoBuscar` —alto 40, esquina redonda, marco en tinta al foco— sin la lógica de
  *  sitio de la barra. Las hojas de filtros y el selector de recursos de los flujos tenían cada
  *  uno su propio campo, los dos enfocando en navy contra la decisión del 24 de septiembre, con
  *  la lupa a 14 en uno y a 16 en el otro (Alejandro, 25 de septiembre de 2026). */
-export const CampoBuscarEnBloque: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; etiqueta: string; className?: string }> = ({ valor, onChange, placeholder, etiqueta, className = '' }) => (
-  <label className={`flex h-11 sm:h-12 w-full shrink-0 items-center gap-2.5 rounded-full border border-rd-line bg-rd-surface px-4 text-rd-ink-3 transition-colors focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
-    <Search aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-rd-ink-3" />
-    <span className="sr-only">{etiqueta}</span>
-    <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-14 sm:text-rd-14-5 text-rd-ink outline-none placeholder:text-rd-ink-3" />
-    {valor && (
-      <button
-        type="button"
-        onClick={() => onChange('')}
-        aria-label="Borrar búsqueda"
-        className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 hover:bg-rd-line hover:text-rd-ink transition-colors"
-      >
-        <X aria-hidden="true" className="h-3 w-3" />
-      </button>
-    )}
-  </label>
-);
+export const CampoBuscarEnBloque: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; etiqueta: string; className?: string }> = ({ valor, onChange, placeholder, etiqueta, className = '' }) => {
+  const { t } = useTranslation();
+  return (
+    <label className={`flex h-11 sm:h-12 w-full shrink-0 items-center gap-2.5 rounded-full border border-rd-line bg-rd-surface px-4 text-rd-ink-3 transition-colors focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
+      <Search aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-rd-ink-3" />
+      <span className="sr-only">{etiqueta}</span>
+      <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-14 sm:text-rd-14-5 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+      {valor && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          aria-label={t('clearSearch')}
+          className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 hover:bg-rd-line hover:text-rd-ink transition-colors"
+        >
+          <X aria-hidden="true" className="h-3 w-3" />
+        </button>
+      )}
+    </label>
+  );
+};

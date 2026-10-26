@@ -134,8 +134,38 @@ export function actorPublicacion(p: Publicacion, lang?: Language): string {
     return 'Ciudadano';
   }
 
-  if (p.punto?.trim() || p.org?.trim() || p.titulo?.trim()) {
-    return p.punto?.trim() || p.org?.trim() || p.titulo?.trim() || '';
+  const rawActor =
+    p.punto?.trim() ||
+    p.org?.trim() ||
+    (p.titulo && !p.titulo.includes(', de ') && !p.titulo.includes(', from ') ? p.titulo.trim() : '');
+
+  if (rawActor) {
+    const lower = rawActor.toLowerCase();
+    if (lower === 'ciudadano' || lower === 'citizen') {
+      if (lang === 'en') return 'Citizen';
+      if (lang === 'pt') return 'Cidadão';
+      if (lang === 'fr') return 'Citoyen';
+      return 'Ciudadano';
+    }
+    if (lower === 'comunidad' || lower === 'community') {
+      if (zona) {
+        if (lang === 'en') return `Community in ${zona}`;
+        if (lang === 'pt') return `Comunidade em ${zona}`;
+        if (lang === 'fr') return `Communauté à ${zona}`;
+        return `Comunidad en ${zona}`;
+      }
+      if (lang === 'en') return 'Community';
+      if (lang === 'pt') return 'Comunidade';
+      if (lang === 'fr') return 'Communauté';
+      return 'Comunidad';
+    }
+    if (lower === 'organización' || lower === 'organizacion' || lower === 'organization') {
+      if (lang === 'en') return 'Organization';
+      if (lang === 'pt') return 'Organização';
+      if (lang === 'fr') return 'Organisation';
+      return 'Organización';
+    }
+    return rawActor;
   }
 
   if (p.tipo === 'necesidad') {

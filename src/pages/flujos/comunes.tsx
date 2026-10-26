@@ -129,11 +129,25 @@ export interface MarcoFlujoProps {
   children: React.ReactNode;
 }
 
+function traducirTramo(tItem: SubPaso, t: (k: any) => string, tCategory: (c: string) => string): string {
+  if (tItem.id === 'evento') return t('flowStepEmergency');
+  if (tItem.id === 'recursos') return tItem.nombre.toLowerCase().includes('ofre') ? t('flowStepWhatOffered') : t('flowStepWhatNeeded');
+  if (tItem.id === 'afectacion' || tItem.id.startsWith('grupo:')) return t('flowStepPopulationAndDays');
+  if (tItem.id === 'declarar') return t('flowStepQuantities');
+  if (tItem.id === 'entrega') return t('flowStepDelivery');
+  if (tItem.id === 'donde') return t('flowStepWhere');
+  if (tItem.id === 'contacto') return t('flowStepContact');
+  if (tItem.id === 'fotos') return t('flowStepPhotos');
+  if (tItem.id === 'revisar') return t('flowStepReview');
+  if (tItem.id.startsWith('cantidad:')) return tCategory(tItem.id.replace('cantidad:', ''));
+  return tItem.nombre;
+}
+
 /** El marco: la ventana del flujo (a ≥ 1024, una tarjeta de 680 centrada sobre el fondo,
  *  como el modal del prototipo; bajo 1024, la pantalla entera), el progreso fijo arriba,
  *  el cuerpo que desplaza y el pie fijo abajo. Al cambiar de paso el foco va al `h1`. */
 export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, sub, publicado, listo, textoPublicar, onIrAFase, onIrA, onAtras, onSiguiente, onPublicar, onCerrar, isModal = false, guardando = false, errorPublicar, children }) => {
-  const { t } = useTranslation();
+  const { t, tCategory } = useTranslation();
   const cuerpo = useRef<HTMLDivElement>(null);
   const tarjeta = useRef<HTMLElement>(null);
   /* El alto que tenía la tarjeta en el último paso del formulario, para animar desde ahí. */
@@ -229,7 +243,7 @@ export const MarcoFlujo: React.FC<MarcoFlujoProps> = ({ nombre, fases, camino, s
         ) : (
           <>
             <div className="flex-none px-4 pt-5 pr-14 sm:px-6 sm:pr-16">
-              <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((tItem, j) => ({ nombre: tItem.nombre, hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
+              <Stepper fases={fases} faseActual={sub.paso} tramos={tramos.map((tItem, j) => ({ nombre: traducirTramo(tItem, t, tCategory), hecho: j < idx, actual: j === idx }))} onIrAFase={onIrAFase} onIrATramo={(j) => onIrA(tramos[j].id)} className="mb-0 pb-5" />
             </div>
             <div ref={cuerpo} className="sin-barra flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] px-4 pb-5 sm:px-6">
               {errorPublicar && (
@@ -320,7 +334,7 @@ export const SalidaDialogo: React.FC<{ abierto: boolean; onSeguir: () => void; o
 export const Chips: React.FC<{
   nombre: string;
   etiqueta?: React.ReactNode;
-  opciones: string[];
+  opciones: (string | { valor: string; etiqueta: string })[];
   valor: string | string[];
   onChange: (valor: string, marcado: boolean) => void;
   multi?: boolean;
@@ -331,12 +345,14 @@ export const Chips: React.FC<{
     {etiqueta && <legend className="font-rd mb-1.5 p-0 text-rd-12 font-medium text-rd-ink-2">{etiqueta}</legend>}
     <div className={`flex flex-wrap gap-2 ${columna ? 'flex-col items-start' : ''}`}>
       {opciones.map((o) => {
-        const marcada = multi ? (valor as string[]).includes(o) : valor === o;
+        const optVal = typeof o === 'string' ? o : o.valor;
+        const optLabel = typeof o === 'string' ? o : o.etiqueta;
+        const marcada = multi ? (valor as string[]).includes(optVal) : valor === optVal;
         return (
-          <label key={o} className="relative inline-flex">
-            <input type={multi ? 'checkbox' : 'radio'} name={nombre} checked={marcada} onChange={(e) => onChange(o, e.target.checked)} className="peer absolute inset-0 m-0 cursor-pointer opacity-0" />
+          <label key={optVal} className="relative inline-flex">
+            <input type={multi ? 'checkbox' : 'radio'} name={nombre} checked={marcada} onChange={(e) => onChange(optVal, e.target.checked)} className="peer absolute inset-0 m-0 cursor-pointer opacity-0" />
             <span className="font-rd inline-flex h-8 items-center rounded-full border border-rd-line bg-rd-surface px-3 text-rd-13 font-medium text-rd-ink peer-checked:border-rd-sel peer-checked:bg-rd-sel peer-checked:text-white peer-hover:border-rd-ink-3 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-rd-navy pointer-coarse:h-rd-tactil">
-              {o}
+              {optLabel}
             </span>
           </label>
         );
@@ -595,6 +611,7 @@ export const MiniMapa: React.FC<{
   marcada?: boolean;
   coordsGps?: { lat: number; lng: number } | null;
 }> = ({ lat, lng, onMover, tipo = 'necesidad', marcada = false, coordsGps = null }) => {
+  const { t } = useTranslation();
   const nodo = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<L.Map | null>(null);
   const pinRef = useRef<L.Marker | null>(null);
@@ -632,9 +649,9 @@ export const MiniMapa: React.FC<{
         // 1. Botón Acercar (+)
         const btnIn = L.DomUtil.create('a', '', container);
         btnIn.href = '#';
-        btnIn.title = 'Acercar';
+        btnIn.title = t('zoomIn');
         btnIn.setAttribute('role', 'button');
-        btnIn.setAttribute('aria-label', 'Acercar');
+        btnIn.setAttribute('aria-label', t('zoomIn'));
         btnIn.style.display = 'flex';
         btnIn.style.alignItems = 'center';
         btnIn.style.justifyContent = 'center';
@@ -653,9 +670,9 @@ export const MiniMapa: React.FC<{
         // 2. Botón Alejar (−)
         const btnOut = L.DomUtil.create('a', '', container);
         btnOut.href = '#';
-        btnOut.title = 'Alejar';
+        btnOut.title = t('zoomOut');
         btnOut.setAttribute('role', 'button');
-        btnOut.setAttribute('aria-label', 'Alejar');
+        btnOut.setAttribute('aria-label', t('zoomOut'));
         btnOut.style.display = 'flex';
         btnOut.style.alignItems = 'center';
         btnOut.style.justifyContent = 'center';
@@ -674,9 +691,9 @@ export const MiniMapa: React.FC<{
         // 3. Botón de brújula/flecha (Centrar en pin / mi ubicación)
         const btnLoc = L.DomUtil.create('a', '', container);
         btnLoc.href = '#';
-        btnLoc.title = 'Centrar en mi ubicación o pin';
+        btnLoc.title = t('flowCenterLocationOrPin');
         btnLoc.setAttribute('role', 'button');
-        btnLoc.setAttribute('aria-label', 'Centrar en mi ubicación o pin');
+        btnLoc.setAttribute('aria-label', t('flowCenterLocationOrPin'));
         btnLoc.style.display = 'flex';
         btnLoc.style.alignItems = 'center';
         btnLoc.style.justifyContent = 'center';
@@ -749,7 +766,7 @@ export const MiniMapa: React.FC<{
     const pin = L.marker([safeLat, safeLng], {
       icon: pinIcon,
       draggable: true,
-      title: 'El punto donde llega la ayuda; arrástralo si es otro'
+      title: t('flowPinDragTooltip')
     }).addTo(m);
     
     pin.on('dragend', () => {
@@ -787,7 +804,7 @@ export const MiniMapa: React.FC<{
     }
   }, [lat, lng]);
 
-  return <div ref={nodo} aria-label="Mapa para ajustar el punto" className="rd-mapa mt-2 min-h-70 flex-1 overflow-hidden rounded-rd-md border border-rd-line bg-rd-mapa relative z-0" />;
+  return <div ref={nodo} aria-label={t('flowMapAdjustPointAria')} className="rd-mapa mt-2 min-h-70 flex-1 overflow-hidden rounded-rd-md border border-rd-line bg-rd-mapa relative z-0" />;
 };
 
 /** Fotos: el input de archivo no se rellena desde el estado; la lista vive aparte y la

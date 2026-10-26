@@ -614,7 +614,7 @@ const Radar: React.FC<RadarProps> = ({
           {/* Fila 1 en móvil: Tabs Todo / Necesidades / Ofertas (+ Mapa/Lista en desktop) */}
           <div className="flex items-center gap-2 overflow-x-auto max-lg:w-full lg:shrink-0">
             <Segmented<Tipo>
-              etiquetaGrupo="Qué quieres ver"
+              etiquetaGrupo={t('whatToSee')}
               valor={tipo}
               onChange={setTipo}
               className="shrink-0 max-lg:w-full max-lg:justify-between"
@@ -627,7 +627,7 @@ const Radar: React.FC<RadarProps> = ({
             {/* Cómo lo ves, junto a qué ves: desde 1024 el conmutador Mapa | Lista vive en la barra
                 de consulta, no en la cabecera (Alejandro, 21 de septiembre de 2026). Bajo 1024 sigue
                 la píldora flotante de abajo. */}
-            <div role="group" aria-label="Vista" className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
+            <div role="group" aria-label={t('viewSelector')} className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-rd-line bg-rd-surface p-1 max-lg:hidden">
               <VistaBtn compacto actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta={t('mapView')} icono={<MapIcon className="h-5 w-5" />} />
               <VistaBtn compacto actual={vista === 'lista'} onClick={() => setVista('lista')} etiqueta={t('listView')} icono={<List className="h-5 w-5" />} />
             </div>
@@ -656,7 +656,7 @@ const Radar: React.FC<RadarProps> = ({
         {vista === 'lista' ? (
           <main
             role="region"
-            aria-label="Lista de publicaciones"
+            aria-label={t('publicationsList')}
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6"
           >
             {visibles.length === 0 ? (
@@ -790,7 +790,7 @@ const Radar: React.FC<RadarProps> = ({
         {(!hojaPin || hojaPin.cerrando) && (
           <div
             role="group"
-            aria-label="Vista"
+            aria-label={t('viewSelector')}
             className="rd-vista-flotante fixed bottom-20 left-1/2 z-780 inline-flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-rd-line/90 bg-rd-surface/98 p-1 shadow-[0_2px_6px_rgb(23_27_43/0.14),0_8px_24px_rgb(23_27_43/0.20),0_16px_36px_rgb(23_27_43/0.16)] ring-1 ring-rd-ink/15 backdrop-blur-md lg:hidden"
           >
             <VistaBtn actual={vista === 'mapa'} onClick={() => setVista('mapa')} etiqueta={t('mapView')} icono={<MapIcon className="h-5 w-5" />} />

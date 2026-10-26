@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export type DialogVariant = 'confirm' | 'success' | 'error' | 'info';
 
@@ -29,11 +30,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   variant = 'confirm',
   confirmLabel,
-  cancelLabel = 'Cancelar',
+  cancelLabel,
   onConfirm,
   onCancel,
   isAlert = false,
 }) => {
+  const { t } = useTranslation();
+  const effectiveCancelLabel = cancelLabel ?? t('cancelButton');
   // Block body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +59,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   const config = VARIANT_CONFIG[variant];
   const Icon = config.icon;
-  const defaultConfirmLabel = isAlert ? 'Aceptar' : (variant === 'confirm' ? 'Confirmar' : 'Aceptar');
+  const defaultConfirmLabel = t('confirmAccept');
 
   return (
     <div
@@ -83,7 +86,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <button
             onClick={onCancel}
             className="btn-icon shrink-0 -mt-1 -mr-1"
-            aria-label="Cerrar"
+            aria-label={t('detailClose')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -96,7 +99,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onClick={onCancel}
               className="btn-ghost"
             >
-              {cancelLabel}
+              {effectiveCancelLabel}
             </button>
           )}
           <button

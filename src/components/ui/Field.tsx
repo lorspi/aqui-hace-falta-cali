@@ -34,7 +34,7 @@ export interface FieldProps {
   /** Icono Lucide (20) a la izquierda del control. Decorativo. */
   icono?: React.ReactNode;
   /** Opciones del select; la primera opción es la etiqueta, sin valor. */
-  opciones?: string[];
+  opciones?: (string | { valor: string; etiqueta: string })[];
   /** Filas del textarea (3 por defecto). */
   filas?: number;
   /** Si debe autoexpandir de 1 línea a multilínea interactiva al enfocar/escribir. */
@@ -219,11 +219,15 @@ export const Field: React.FC<FieldProps> = ({
               <option value="" disabled hidden>
                 {placeholder ?? textoEtiqueta}
               </option>
-              {opciones.map((o) => (
-                <option key={o} value={o} className="text-rd-ink font-normal bg-rd-surface">
-                  {o}
-                </option>
-              ))}
+              {opciones.map((o) => {
+                const optVal = typeof o === 'string' ? o : o.valor;
+                const optLabel = typeof o === 'string' ? o : o.etiqueta;
+                return (
+                  <option key={optVal} value={optVal} className="text-rd-ink font-normal bg-rd-surface">
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
             <span
               aria-hidden="true"

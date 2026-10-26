@@ -4,7 +4,7 @@ import { Divisor } from '../../components/ui/Divisor';
 import { Field } from '../../components/ui/Field';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
-import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, NOMBRE_GRUPO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, type IconoEvento } from '../../mocks/flujosMock';
+import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, MAPA_TIPOS_LUGAR, NOMBRE_GRUPO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, opcionesParaQuien, opcionesTiposLugar, type IconoEvento } from '../../mocks/flujosMock';
 import { PUERTAS } from '../../mocks/panelMock';
 import { TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { EstadoPedir, Foto, Meta, RespuestasDetalle } from '../../types/flujo';
@@ -88,7 +88,7 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
 }
 
 export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
-  const { t, tCategory, tItem, tEvento } = useTranslation();
+  const { t, tCategory, tItem, tEvento, language } = useTranslation();
   const [createdNeed, setCreatedNeed] = useState<Need | undefined>(undefined);
   const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
 
@@ -301,7 +301,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   }, [set]);
 
   const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
-  const [textoGeocodificacion, setTextoGeocodificacion] = useState('Buscando ubicación en el mapa...');
+  const [textoGeocodificacion, setTextoGeocodificacion] = useState(t('flowSearchingLocationOnMap'));
   const [cargandoGps, setCargandoGps] = useState(false);
   const [coordsGps, setCoordsGps] = useState<{ lat: number; lng: number } | null>(null);
   const [errorGps, setErrorGps] = useState<string | null>(null);
@@ -321,7 +321,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   const obtenerUbicacionGPS = useCallback(() => {
     if (!navigator.geolocation) {
-      setErrorGps('Tu navegador no soporta geolocalización por GPS.');
+      setErrorGps(t('flowGpsNotSupported'));
       return;
     }
     setCargandoGps(true);
@@ -352,20 +352,20 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       (err) => {
         setCargandoGps(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setErrorGps('Ubicación desactivada en tu navegador. Toca el candado o icono de permisos arriba (al lado de la URL) para permitirla, o escribe tu dirección/localidad.');
+          setErrorGps(t('flowGpsPermissionDenied'));
         } else {
-          setErrorGps('No se pudo obtener tu ubicación actual por GPS.');
+          setErrorGps(t('flowGpsFailed'));
         }
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [set, errores]);
+  }, [set, errores, t]);
 
   const manejarMovimientoMapa = useCallback(async (lat: number, lng: number) => {
     const timestampActual = Date.now();
     ultimoMovimientoRef.current = timestampActual;
     set({ lat, lng });
-    setTextoGeocodificacion('Obteniendo dirección del punto seleccionado...');
+    setTextoGeocodificacion(t('flowGettingAddressFromPin'));
     setCargandoGeocodificacion(true);
     setAvisoAproximacion(null);
 
@@ -385,7 +385,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         setCargandoGeocodificacion(false);
       }
     }
-  }, [set, errores.limpiar]);
+  }, [set, errores.limpiar, t]);
 
   const geocodificarUbicacion = useCallback(async (sector: string, dir: string) => {
     const s = sector.trim();
@@ -395,7 +395,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       setAvisoAproximacion(null);
       return;
     }
-    setTextoGeocodificacion('Buscando ubicación en el mapa...');
+    setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
     setCargandoGeocodificacion(true);
     setAvisoAproximacion(null);
     try {
@@ -410,16 +410,16 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           setAvisoAproximacion(null);
         }
       } else {
-        errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+        errores.poner('dir', t('flowLocationNotFoundError'));
         setAvisoAproximacion(null);
       }
     } catch {
-      errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+      errores.poner('dir', t('flowLocationNotFoundError'));
       setAvisoAproximacion(null);
     } finally {
       setCargandoGeocodificacion(false);
     }
-  }, [set, errores.limpiar, errores.poner]);
+  }, [set, errores.limpiar, errores.poner, t]);
 
   useEffect(() => {
     if (sub?.id === 'donde') {
@@ -505,41 +505,62 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   } else if (sub.id === 'afectacion' || sub.id === 'grupos' || sub.id.startsWith('grupo:')) {
     const necesarios = sub.id.startsWith('grupo:') ? [sub.id.split(':')[1]] : gruposNecesarios(e.sel);
     const tieneDiarios = hayDiarios(e.sel);
-    const nombres = necesarios.map((g) => NOMBRE_GRUPO[g] ?? g);
+
+    const PREGUNTA_GRUPO_I18N: Record<string, string> = {
+      personas: t('flowGroupPeopleQuestion'),
+      inmuebles: t('flowGroupHomesQuestion'),
+      animales: t('flowGroupAnimalsQuestion'),
+    };
+    const NOMBRE_GRUPO_I18N: Record<string, string> = {
+      personas: t('flowGroupPeople'),
+      inmuebles: t('flowGroupHomes'),
+      animales: t('flowGroupAnimals'),
+    };
+    const UNIDAD_GRUPO_I18N: Record<string, string> = {
+      personas: t('unitPeople'),
+      viviendas: t('unitHomes'),
+      animales: t('unitAnimals'),
+    };
+
+    const nombres = necesarios.map((g) => NOMBRE_GRUPO_I18N[g] ?? NOMBRE_GRUPO[g] ?? g);
     const tituloPregunta = necesarios.length === 1
-      ? PREGUNTA_GRUPO[necesarios[0]]
+      ? (PREGUNTA_GRUPO_I18N[necesarios[0]] ?? PREGUNTA_GRUPO[necesarios[0]])
+      : language === 'en'
+      ? `How many ${nombres.map((n) => n.toLowerCase()).join(' and ')} are you assisting?`
       : `¿A cuántas ${listaY(nombres.map((n) => n.toLowerCase()))} atiendes?`;
+
     pantalla = (
       <>
-        <Pregunta titulo={tituloPregunta} sub="Con esto calculamos cuánto hace falta. Un aproximado sirve." />
+        <Pregunta titulo={tituloPregunta} sub={t('flowGroupSub')} />
         <div className="space-y-6">
           {necesarios.map((g, idx) => {
             const base = BASES[g];
             const v = e.grupo[g];
             const id = `gv-${g}`;
-            const etiqueta = base.unidad.charAt(0).toUpperCase() + base.unidad.slice(1);
+            const unidadTraducida = UNIDAD_GRUPO_I18N[base.unidad] ?? base.unidad;
+            const etiqueta = unidadTraducida.charAt(0).toUpperCase() + unidadTraducida.slice(1);
             return (
               <div key={g} className={idx > 0 ? 'border-t border-rd-line pt-5' : ''}>
                 {necesarios.length > 1 && (
                   <h3 className="font-rd mb-2 text-rd-13-5 font-semibold text-rd-ink">
-                    {PREGUNTA_GRUPO[g]}
+                    {PREGUNTA_GRUPO_I18N[g] ?? PREGUNTA_GRUPO[g]}
                   </h3>
                 )}
                 <CampoNumero
                   id={id}
                   etiqueta={etiqueta}
-                  unidad={base.unidad}
+                  unidad={unidadTraducida}
                   valor={v ? cifra(v) : ''}
-                  onChange={(t) => {
-                    fijarGrupo(g, t);
+                  onChange={(tVal) => {
+                    fijarGrupo(g, tVal);
                     errores.limpiar(id);
                   }}
-                  onBlur={(t) => errores.validar(id, ['numero', 'entero'], t)}
+                  onBlur={(tVal) => errores.validar(id, ['numero', 'entero'], tVal)}
                   error={errores.errores[id]}
                 />
                 <Sugeridos
                   cifras={base.sugeridos ?? []}
-                  unidad={base.unidad}
+                  unidad={unidadTraducida}
                   valor={v}
                   onElegir={(n) => {
                     set((p) => ({ grupo: { ...p.grupo, [g]: n } }));
@@ -552,12 +573,15 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         </div>
         {tieneDiarios && (
           <div className="mt-6 border-t border-rd-line pt-5">
-            <label className="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink">¿Por cuántos días?</label>
-            <p className="mb-2 text-rd-12-5 text-rd-ink-2">Si tienes dudas, elige menos días: siempre puedes volver a pedir.</p>
+            <label className="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink">{t('flowHowManyDays')}</label>
+            <p className="mb-2 text-rd-12-5 text-rd-ink-2">{t('flowHowManyDaysSub')}</p>
             <Chips
               nombre="dias"
-              opciones={DIAS_OPCIONES.map((d) => `${d} ${d === 1 ? 'día' : 'días'}`)}
-              valor={e.dias > 0 ? `${e.dias} ${e.dias === 1 ? 'día' : 'días'}` : ''}
+              opciones={DIAS_OPCIONES.map((d) => ({
+                valor: String(d),
+                etiqueta: `${d} ${d === 1 ? t('daySingular') : t('dayPlural')}`,
+              }))}
+              valor={e.dias > 0 ? String(e.dias) : ''}
               onChange={(v) => set({ dias: parseInt(v, 10) })}
             />
           </div>
@@ -569,28 +593,28 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     const pendientes = aDeclarar(e.sel);
     pantalla = (
       <>
-        <Pregunta titulo="¿Cuánto hace falta de cada uno?" />
+        <Pregunta titulo={t('flowHowMuchNeededEach')} />
         {TAXONOMIA.map((cat) => {
           const items = cat.items.filter((it) => pendientes.includes(it));
           if (!items.length) return null;
           return (
             <section key={cat.nombre} className="mb-6">
-              <h2 className="font-rd mb-3 flex items-center gap-2 text-rd-13 font-semibold tracking-wide text-rd-ink-meta uppercase">{cat.nombre}</h2>
+              <h2 className="font-rd mb-3 flex items-center gap-2 text-rd-13 font-semibold tracking-wide text-rd-ink-meta uppercase">{tCategory(cat.nombre)}</h2>
               {items.map((it) => {
                 const campo = DETALLE[it].campos.find((c) => c.k === 'num');
                 const v = e.det[it]?.num;
                 const id = `dec-${it}`;
                 return (
                   <div key={it}>
-                    <CampoNumero id={id} etiqueta={it} etiquetaClase="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink" ayuda={campo?.l} unidad={campo?.u ?? ''} valor={typeof v === 'number' && v ? cifra(v) : ''} onChange={(t) => { detalle(it, { num: numero(t) || 0 }); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} />
-                    {campo?.sug && <Sugeridos cifras={campo.sug} unidad={campo.u ?? ''} valor={typeof v === 'number' ? v : undefined} onElegir={(n) => { detalle(it, { num: n }); errores.limpiar(id); }} etiqueta={`Cifras sugeridas para ${it}`} />}
+                    <CampoNumero id={id} etiqueta={tItem(it)} etiquetaClase="font-rd mb-0.5 block text-rd-13-5 font-semibold text-rd-ink" ayuda={campo?.l} unidad={campo?.u ?? ''} valor={typeof v === 'number' && v ? cifra(v) : ''} onChange={(t) => { detalle(it, { num: numero(t) || 0 }); errores.limpiar(id); }} onBlur={(t) => errores.validar(id, ['numero'], t)} error={errores.errores[id]} />
+                    {campo?.sug && <Sugeridos cifras={campo.sug} unidad={campo.u ?? ''} valor={typeof v === 'number' ? v : undefined} onElegir={(n) => { detalle(it, { num: n }); errores.limpiar(id); }} etiqueta={`Cifras sugeridas para ${tItem(it)}`} />}
                   </div>
                 );
               })}
             </section>
           );
         })}
-        <AvisoLinea className="mt-2">{AVISO_GUIA}</AvisoLinea>
+        <AvisoLinea className="mt-2">{t('flowGuideNotice')}</AvisoLinea>
       </>
     );
   } else if (sub.id === 'donde') {
@@ -609,7 +633,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           ) : (
             <Compass className="h-4 w-4 text-rd-navy" />
           )}
-          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS) (Recomendado)'}</span>
+          <span>{cargandoGps ? t('flowGpsLoading') : t('flowGpsButton')}</span>
         </button>
         {errorGps && (
           <div className="mb-3 flex items-start gap-1.5 rounded-rd-md border border-rd-coral/30 bg-rd-coral/5 p-2.5 text-rd-12 text-rd-coral">
@@ -621,8 +645,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 mb-3">
           <Field
             id="barrio_sector"
-            etiqueta="Ciudad, localidad o barrio"
-            placeholder="Ej. Chapinero, San Antonio o El Poblado"
+            etiqueta={t('flowCitySectorLabel')}
+            placeholder={t('flowCitySectorPlaceholder')}
             valor={barrioSector}
             onChange={(v) => actualizarUbicacionCompuesta(v, direccionNum)}
             onBlur={() => {
@@ -633,8 +657,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           />
           <Field
             id="dir_num"
-            etiqueta="Dirección o número"
-            placeholder="Ej. Calle 45 # 13-25 o Cra 7"
+            etiqueta={t('flowAddressNumberLabel')}
+            placeholder={t('flowAddressNumberPlaceholder')}
             valor={direccionNum}
             autoComplete="street-address"
             onChange={(v) => actualizarUbicacionCompuesta(barrioSector, v)}
@@ -651,7 +675,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         {avisoAproximacion && !errores.errores.dir && (
           <AvisoLinea className="mb-3">{avisoAproximacion}</AvisoLinea>
         )}
-        <Field id="tl" etiqueta="Tipo de lugar o referencia" tipo="select" opciones={TIPOS_LUGAR} placeholder="Elige uno" valor={e.tipoLugar} onChange={(v) => set({ tipoLugar: v })} className="mb-3" />
+        <Field id="tl" etiqueta={t('flowPlaceTypeLabel')} tipo="select" opciones={opcionesTiposLugar(language)} placeholder={t('flowPlaceTypePlaceholder')} valor={e.tipoLugar} onChange={(v) => set({ tipoLugar: v })} className="mb-3" />
         {cargandoGeocodificacion && (
           <div className="flex items-center gap-1.5 text-rd-12 text-rd-navy animate-pulse mb-1.5">
             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
@@ -666,7 +690,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           marcada={Boolean(coordsGps || barrioSector || direccionNum || e.dir)}
           coordsGps={coordsGps}
         />
-        <Field id="cl" etiqueta={<>Cómo llegar<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder="Por ejemplo: subiendo por la estación, casa esquinera azul, la vía solo sirve para moto…" onChange={(v) => set({ comoLlegar: v })} className="mt-3" />
+        <Field id="cl" etiqueta={<>{t('flowHowToGetThere')}<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder={t('flowHowToGetTherePlaceholder')} onChange={(v) => set({ comoLlegar: v })} className="mt-3" />
       </>
     );
   } else if (sub.id === 'contacto') {
@@ -674,10 +698,10 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       <>
         <Pregunta titulo={t('flowContactTitle')} sub={t('flowContactSub')} />
         <CamposContacto contacto={e.contacto} tel={e.tel} onChange={(campo, v) => set({ [campo]: v } as Partial<EstadoPedir>)} errores={errores} />
-        <AlgoMas titulo="Algo más sobre la necesidad">
-          <Field id="pq" etiqueta="Para quién es la ayuda" tipo="select" opciones={PARA_QUIEN} placeholder="Sin especificar" valor={e.paraQuien} onChange={(v) => set({ paraQuien: v })} className="mb-3" />
-          <Field id="det" etiqueta="Detalles de la necesidad" tipo="textarea" valor={e.detalles} placeholder="Por ejemplo: hay personas mayores y niños pequeños, recibimos hasta las 6:00 p. m." onChange={(v) => set({ detalles: v })} className="mb-3" />
-          <Field id="ta" etiqueta="Otro número de contacto" tipo="tel" valor={e.telAlt} placeholder="+57 310 987 6543" onChange={(v) => set({ telAlt: v })} className="mb-1" />
+        <AlgoMas titulo={t('flowSomethingMoreNeed')}>
+          <Field id="pq" etiqueta={t('flowWhoIsHelpFor')} tipo="select" opciones={opcionesParaQuien(language)} placeholder={t('flowUnspecified')} valor={e.paraQuien} onChange={(v) => set({ paraQuien: v })} className="mb-3" />
+          <Field id="det" etiqueta={t('flowNeedDetails')} tipo="textarea" valor={e.detalles} placeholder={t('flowNeedDetailsPlaceholder')} onChange={(v) => set({ detalles: v })} className="mb-3" />
+          <Field id="ta" etiqueta={t('flowAltPhone')} tipo="tel" valor={e.telAlt} placeholder="+57 310 987 6543" onChange={(v) => set({ telAlt: v })} className="mb-1" />
         </AlgoMas>
       </>
     );
@@ -689,12 +713,12 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         <div className="mt-6 border-t border-rd-line pt-5">
           <Field
             id="sourceUrl"
-            etiqueta="Enlace de campaña, video o fuente oficial"
+            etiqueta={t('flowOfficialCampaignLink')}
             opcional
             tipo="text"
             valor={e.sourceUrl}
-            placeholder="Ej: https://vaki.co/..., video de YouTube o noticia"
-            ayuda="Si tienes un enlace externo de campaña (Vaki, GoFundMe), video de YouTube o noticia oficial, pégalo aquí para que aparezca en tu tarjeta."
+            placeholder={t('flowOfficialCampaignLinkPlaceholder')}
+            ayuda={t('flowOfficialCampaignLinkHint')}
             onChange={(v) => set({ sourceUrl: v })}
           />
         </div>
@@ -709,10 +733,10 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             <FilaMeta key={m.item} m={m} e={e} onMeta={(n) => set((p) => ({ metas: { ...p.metas, [m.item]: n } }))} onDetalle={(cambio) => detalle(m.item, cambio)} errores={errores} />
           ))}
         </ResumenPub>
-        <FilaRevisar clave={t('flowWhereTitle')} valor={`${e.dir}${e.tipoLugar ? `, ${e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
+        <FilaRevisar clave={t('flowWhereTitle')} valor={`${e.dir}${e.tipoLugar ? `, ${MAPA_TIPOS_LUGAR[language]?.[e.tipoLugar] ?? e.tipoLugar}` : ''}`} onClick={() => f.irA('donde')} />
         <FilaRevisar clave={t('flowContactTitle')} valor={`${e.contacto}, ${e.tel}`} onClick={() => f.irA('contacto')} />
-        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'archivo' : 'archivos'}` : 'Sin fotos'} accion={e.fotos.length ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
-        <FilaRevisar clave="Enlace" valor={e.sourceUrl?.trim() || 'Sin enlace'} accion={e.sourceUrl?.trim() ? t('btnChange') : 'Agregar'} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave={t('flowPhotosTitle')} valor={e.fotos.length ? `${e.fotos.length} ${e.fotos.length === 1 ? 'foto' : 'fotos'}` : t('flowNoPhotos')} accion={e.fotos.length ? t('btnChange') : t('flowAdd')} onClick={() => f.irA('fotos')} />
+        <FilaRevisar clave={t('flowLink')} valor={e.sourceUrl?.trim() || t('flowNoLink')} accion={e.sourceUrl?.trim() ? t('btnChange') : t('flowAdd')} onClick={() => f.irA('fotos')} />
       </>
     );
   }
@@ -740,13 +764,13 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     if (sub?.id === 'donde') {
       if (cargandoGeocodificacion) return;
       if (!barrioSector.trim() && !direccionNum.trim()) {
-        errores.poner('dir', 'Ingresa tu ciudad, barrio o dirección para ubicar la ayuda.');
+        errores.poner('dir', t('flowAddressRequired'));
         return;
       }
       if (errores.errores.dir) return;
       const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
       if (compuesta && compuesta.length >= 3 && compuesta !== direccionDelPinRef.current) {
-        setTextoGeocodificacion('Buscando ubicación en el mapa...');
+        setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
         setCargandoGeocodificacion(true);
         try {
           const res = await geocodeAddressStructured(direccionNum, barrioSector);
@@ -755,10 +779,10 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             errores.limpiar('dir');
             f.siguiente();
           } else {
-            errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+            errores.poner('dir', t('flowLocationNotFoundError'));
           }
         } catch {
-          errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+          errores.poner('dir', t('flowLocationNotFoundError'));
         } finally {
           setCargandoGeocodificacion(false);
         }
@@ -770,7 +794,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 
   return (
     <>
-      <MarcoFlujo nombre={t('publishNeed')} fases={[t('flowWhatNeeded'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishNeed')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('publishNeed')} fases={[t('flowPhaseWhatNeeded'), t('flowPhaseReviewAndPublish')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishNeed')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />
@@ -781,14 +805,15 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
 /** La caja del cálculo, mientras se responde: solo lo que sale del número que se está
  *  respondiendo ahora, cada cifra con su fórmula detrás de un botón de ayuda. */
 const BloqueVivo: React.FC<{ metas: Meta[]; base?: string }> = ({ metas, base }) => {
+  const { t, tItem, tUnit } = useTranslation();
   const [abierta, setAbierta] = useState<string | null>(null);
   const [anuncio, setAnuncio] = useState('');
   const visibles = metas.filter((m) => m.meta != null && (!base || EQUIV[m.item]?.base === base));
   /* Se anuncia un resumen, y solo cuando la persona deja de escribir. */
   useEffect(() => {
-    const t = window.setTimeout(() => setAnuncio(visibles.length ? `Calculado: ${visibles.map((m) => `${m.item}, ${cifra(m.meta as number)} ${unidad(m.meta as number, m.unidad ?? '')}`).join('; ')}` : ''), 700);
-    return () => window.clearTimeout(t);
-  }, [visibles.map((m) => `${m.item}:${m.meta}`).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+    const timer = window.setTimeout(() => setAnuncio(visibles.length ? `${t('flowCalculated')}: ${visibles.map((m) => `${tItem(m.item)}, ${cifra(m.meta as number)} ${tUnit(m.meta as number, m.unidad ?? '')}`).join('; ')}` : ''), 700);
+    return () => window.clearTimeout(timer);
+  }, [visibles.map((m) => `${m.item}:${m.meta}`).join('|'), t, tItem, tUnit]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const alTeclear = (ev: KeyboardEvent) => ev.key === 'Escape' && setAbierta(null);
     document.addEventListener('keydown', alTeclear);
@@ -804,11 +829,11 @@ const BloqueVivo: React.FC<{ metas: Meta[]; base?: string }> = ({ metas, base })
               const abierto = abierta === m.item;
               return (
                 <li key={m.item} className="flex flex-wrap items-center gap-3 text-rd-13-5">
-                  <span className="min-w-0 flex-1 font-semibold text-rd-ink">{m.item}</span>
+                  <span className="min-w-0 flex-1 font-semibold text-rd-ink">{tItem(m.item)}</span>
                   <b className="text-right whitespace-nowrap tabular-nums">
-                    {cifra(m.meta as number)} {unidad(m.meta as number, m.unidad ?? '')}
+                    {cifra(m.meta as number)} {tUnit(m.meta as number, m.unidad ?? '')}
                   </b>
-                  <button type="button" aria-expanded={abierto} aria-controls={idA} aria-label={`Cómo se calculó ${m.item}`} onClick={() => setAbierta(abierto ? null : m.item)} className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${abierto ? 'text-rd-navy' : 'text-rd-ink-3 hover:text-rd-ink-2'}`}>
+                  <button type="button" aria-expanded={abierto} aria-controls={idA} aria-label={`${t('flowHowCalculated')} ${tItem(m.item)}`} onClick={() => setAbierta(abierto ? null : m.item)} className={`flex h-5 w-5 cursor-pointer items-center justify-center rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${abierto ? 'text-rd-navy' : 'text-rd-ink-3 hover:text-rd-ink-2'}`}>
                     <Info aria-hidden="true" className="h-3.75 w-3.75" />
                   </button>
                   <p id={idA} hidden={!abierto} className="m-0 mt-2 basis-full rounded-rd-md border border-rd-line bg-rd-surface p-3 text-rd-12-5 leading-relaxed text-rd-ink-2">
@@ -818,7 +843,7 @@ const BloqueVivo: React.FC<{ metas: Meta[]; base?: string }> = ({ metas, base })
               );
             })}
           </ul>
-          <p className="mt-3 border-t border-rd-line pt-3 text-rd-12 text-rd-ink-meta">{AVISO_GUIA}</p>
+          <p className="mt-3 border-t border-rd-line pt-3 text-rd-12 text-rd-ink-meta">{t('flowGuideNotice')}</p>
         </div>
       )}
       <p aria-live="polite" aria-atomic="true" className="sr-only">
@@ -832,6 +857,7 @@ const BloqueVivo: React.FC<{ metas: Meta[]; base?: string }> = ({ metas, base })
  *  detalle en texto libre. Si la cifra se escribió a mano y no coincide con el cálculo, se
  *  marca «editada» y al lado va lo que dio la cuenta. */
 const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void; onDetalle: (c: RespuestasDetalle) => void; errores: ReturnType<typeof useErrores> }> = ({ m, e, onMeta, onDetalle, errores }) => {
+  const { t, tUnit } = useTranslation();
   const D = DETALLE[m.item];
   const dt = detalleTexto(m.item, e.det[m.item]);
   let v: number | undefined;
@@ -853,7 +879,7 @@ const FilaMeta: React.FC<{ m: Meta; e: EstadoPedir; onMeta: (n: number) => void;
         <>
           <MarcaEditada />
           <Divisor />
-          calculamos {cifra(m.meta)} {m.unidad}
+          {t('flowWeCalculated')} {cifra(m.meta)} {tUnit(m.meta, m.unidad ?? '')}
           <Divisor />
           {m.formula}
         </>

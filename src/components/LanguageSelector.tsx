@@ -22,7 +22,7 @@ export const LanguageSelector: React.FC<{
   variant?: 'default' | 'ghost' | 'sidebar';
   dropUp?: boolean;
 }> = ({ className = '', iconOnly = false, variant = 'default', dropUp = false }) => {
-  const { language, setLanguage } = useTranslation();
+  const { language, setLanguage, t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +58,8 @@ export const LanguageSelector: React.FC<{
         onClick={() => setIsOpen(!isOpen)}
         className={buttonClass}
         id="btn-language-selector"
-        title={`Idioma: ${currentLang.label}`}
+        title={`${t('languageSelector')}: ${currentLang.label}`}
+        aria-label={`${t('languageSelector')}: ${currentLang.label}`}
       >
         <span className="flex items-center gap-2">
           <img src={currentLang.flag} alt={currentLang.label} className="w-4 h-4 rounded-xs object-cover shrink-0" />

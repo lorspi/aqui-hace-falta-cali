@@ -126,11 +126,11 @@ function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): stri
     recs = `${primeros}${yMas}`;
   }
 
-  const actor = actorPublicacion(p);
+  const actor = actorPublicacion(p, lang);
   const localizedActor =
-    actor === 'Ciudadano'
+    actor === 'Ciudadano' || actor === 'Citizen'
       ? (lang === 'en' ? 'Citizen' : lang === 'pt' ? 'Cidadão' : lang === 'fr' ? 'Citoyen' : 'Ciudadano')
-      : actor === 'Comunidad'
+      : actor === 'Comunidad' || actor === 'Community'
       ? (lang === 'en' ? 'Community' : lang === 'pt' ? 'Comunidade' : lang === 'fr' ? 'Communauté' : 'Comunidad')
       : actor;
 
@@ -295,6 +295,8 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   onMiUbicacionRef.current = onMiUbicacion;
   const marcadorUbicacion = useRef<L.Marker | null>(null);
   const botonUbicacionRef = useRef<HTMLAnchorElement | null>(null);
+  const botonZoomInRef = useRef<HTMLAnchorElement | null>(null);
+  const botonZoomOutRef = useRef<HTMLAnchorElement | null>(null);
   /* Lo pintado: por id de publicación, y por grupo con las publicaciones que esconde. */
   const pines = useRef<Map<string, L.Marker>>(new Map());
   const grupos = useRef<{ marker: L.Marker; ids: string[] }[]>([]);
@@ -632,40 +634,122 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     const zoomInicial = ubicacion && !ubicacion.simulada ? 13 : 6;
     const m = L.map(nodo.current, { zoomControl: false, attributionControl: true }).setView(centroInicial, zoomInicial);
 
-    // 1. Control de ubicación ("felchita") justo arriba del zoom
-    const LocationControl = L.Control.extend({
+    // Controles táctiles y estables (+, −, ir a mi ubicación)
+    const ControlPanel = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-location');
+        const container = L.DomUtil.create('div', 'leaflet-bar');
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.disableScrollPropagation(container);
 
-        const a = L.DomUtil.create('a', 'flex items-center justify-center', container);
-        a.href = '#';
-        a.title = t('goToMyLocation');
-        a.setAttribute('role', 'button');
-        a.setAttribute('aria-label', t('goToMyLocation'));
-        a.style.display = 'flex';
-        a.style.alignItems = 'center';
-        a.style.justifyContent = 'center';
-        a.style.padding = '0';
-        a.style.lineHeight = '0';
-        a.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0 text-rd-ink" style="display:block;margin:auto;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.backgroundColor = '#ffffff';
+        container.style.borderRadius = '8px';
+        container.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+        container.style.border = '1px solid rgba(0, 0, 0, 0.12)';
+        container.style.overflow = 'hidden';
+        container.style.margin = '10px';
 
-        L.DomEvent.on(a, 'click', (ev) => {
+        // 1. Botón Acercar (+)
+        const btnIn = L.DomUtil.create('a', '', container);
+        btnIn.href = '#';
+        btnIn.title = t('zoomIn');
+        btnIn.setAttribute('role', 'button');
+        btnIn.setAttribute('aria-label', t('zoomIn'));
+        btnIn.style.display = 'flex';
+        btnIn.style.alignItems = 'center';
+        btnIn.style.justifyContent = 'center';
+        btnIn.style.width = '36px';
+        btnIn.style.height = '36px';
+        btnIn.style.lineHeight = '36px';
+        btnIn.style.fontSize = '20px';
+        btnIn.style.fontWeight = 'bold';
+        btnIn.style.color = '#1e293b';
+        btnIn.style.textDecoration = 'none';
+        btnIn.style.borderBottom = '1px solid rgba(0, 0, 0, 0.08)';
+        btnIn.style.cursor = 'pointer';
+        btnIn.style.userSelect = 'none';
+        btnIn.innerHTML = '+';
+
+        // 2. Botón Alejar (−)
+        const btnOut = L.DomUtil.create('a', '', container);
+        btnOut.href = '#';
+        btnOut.title = t('zoomOut');
+        btnOut.setAttribute('role', 'button');
+        btnOut.setAttribute('aria-label', t('zoomOut'));
+        btnOut.style.display = 'flex';
+        btnOut.style.alignItems = 'center';
+        btnOut.style.justifyContent = 'center';
+        btnOut.style.width = '36px';
+        btnOut.style.height = '36px';
+        btnOut.style.lineHeight = '36px';
+        btnOut.style.fontSize = '22px';
+        btnOut.style.fontWeight = 'bold';
+        btnOut.style.color = '#1e293b';
+        btnOut.style.textDecoration = 'none';
+        btnOut.style.borderBottom = '1px solid rgba(0, 0, 0, 0.08)';
+        btnOut.style.cursor = 'pointer';
+        btnOut.style.userSelect = 'none';
+        btnOut.innerHTML = '−';
+
+        // 3. Botón de brújula/flecha (Ir a mi ubicación)
+        const btnLoc = L.DomUtil.create('a', '', container);
+        btnLoc.href = '#';
+        btnLoc.title = t('goToMyLocation');
+        btnLoc.setAttribute('role', 'button');
+        btnLoc.setAttribute('aria-label', t('goToMyLocation'));
+        btnLoc.style.display = 'flex';
+        btnLoc.style.alignItems = 'center';
+        btnLoc.style.justifyContent = 'center';
+        btnLoc.style.width = '36px';
+        btnLoc.style.height = '36px';
+        btnLoc.style.lineHeight = '36px';
+        btnLoc.style.color = '#1e293b';
+        btnLoc.style.textDecoration = 'none';
+        btnLoc.style.borderBottom = 'none';
+        btnLoc.style.cursor = 'pointer';
+        btnLoc.style.userSelect = 'none';
+        btnLoc.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+
+        [btnIn, btnOut, btnLoc].forEach((btn) => {
+          L.DomEvent.on(btn, 'mousedown touchstart pointerdown click dblclick', (ev) => {
+            L.DomEvent.stopPropagation(ev);
+          });
+          btn.addEventListener('mouseenter', () => {
+            btn.style.backgroundColor = '#f1f5f9';
+          });
+          btn.addEventListener('mouseleave', () => {
+            btn.style.backgroundColor = '#ffffff';
+          });
+        });
+
+        L.DomEvent.on(btnIn, 'click', (ev) => {
           L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
+          m.zoomIn();
+        });
+
+        L.DomEvent.on(btnOut, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
+          m.zoomOut();
+        });
+
+        L.DomEvent.on(btnLoc, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
           irAMiUbicacion();
         });
 
-        botonUbicacionRef.current = a;
+        botonZoomInRef.current = btnIn;
+        botonZoomOutRef.current = btnOut;
+        botonUbicacionRef.current = btnLoc;
         return container;
       },
     });
 
-    new LocationControl().addTo(m);
-
-    // 2. Control de Zoom de Leaflet debajo del botón de ubicación
-    L.control.zoom({ position: 'bottomright' }).addTo(m);
+    new ControlPanel().addTo(m);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     capaLineas.current = L.layerGroup().addTo(m);
@@ -695,6 +779,8 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
       mapa.current = null;
       marcadorUbicacion.current = null;
       botonUbicacionRef.current = null;
+      botonZoomInRef.current = null;
+      botonZoomOutRef.current = null;
     };
     // El mapa se crea una vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -796,6 +882,14 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     if (botonUbicacionRef.current) {
       botonUbicacionRef.current.title = t('goToMyLocation');
       botonUbicacionRef.current.setAttribute('aria-label', t('goToMyLocation'));
+    }
+    if (botonZoomInRef.current) {
+      botonZoomInRef.current.title = t('zoomIn');
+      botonZoomInRef.current.setAttribute('aria-label', t('zoomIn'));
+    }
+    if (botonZoomOutRef.current) {
+      botonZoomOutRef.current.title = t('zoomOut');
+      botonZoomOutRef.current.setAttribute('aria-label', t('zoomOut'));
     }
   }, [language, t]);
 

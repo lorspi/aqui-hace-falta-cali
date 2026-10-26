@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 import type { FotoPublicada } from '../../types/publicacion';
 import { Divisor } from './Divisor';
 
@@ -67,6 +68,7 @@ export interface VisorFotosProps {
 }
 
 export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial = 0, titulo, onCerrar }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   const lista = grupos.flatMap((g) => g.fotos.map((f) => ({ ...f, grupo: g.titulo })));
   const [i, setI] = useState(inicial);
@@ -110,7 +112,7 @@ export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial
                 ) : null}
               </p>
             </div>
-            <button type="button" aria-label="Cerrar" onClick={onCerrar} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-rd-md text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
+            <button type="button" aria-label={t('detailClose')} onClick={onCerrar} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-rd-md text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
           </div>
@@ -118,10 +120,10 @@ export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial
             <img key={f.url + i} src={f.url} alt={f.alt} className="max-h-full max-w-full rounded-rd-md object-contain" />
             {lista.length > 1 && (
               <>
-                <button type="button" aria-label="Foto anterior" onClick={() => ir(-1)} className={FLECHA + ' left-2'}>
+                <button type="button" aria-label={t('previousPhoto')} onClick={() => ir(-1)} className={FLECHA + ' left-2'}>
                   <ChevronLeft aria-hidden="true" className="h-5 w-5" />
                 </button>
-                <button type="button" aria-label="Foto siguiente" onClick={() => ir(1)} className={FLECHA + ' right-2'}>
+                <button type="button" aria-label={t('nextPhoto')} onClick={() => ir(1)} className={FLECHA + ' right-2'}>
                   <ChevronRight aria-hidden="true" className="h-5 w-5" />
                 </button>
               </>

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Info, X } from 'lucide-react';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El aviso corto abajo (`rd-toast` del prototipo, `rdAviso()` de `acciones.js`): siempre
@@ -39,6 +40,7 @@ const ICONO: Record<Exclude<TipoAviso, 'cargando'>, React.ReactNode> = {
 };
 
 export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [visible, setVisible] = useState(false);
   const cuenta = useRef(0);
@@ -93,7 +95,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               </button>
             )}
             {tipo !== 'cargando' && (
-              <button type="button" aria-label="Cerrar" onClick={cerrar} className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
+              <button type="button" aria-label={t('detailClose')} onClick={cerrar} className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white">
                 <X aria-hidden="true" className="h-3.5 w-3.5" />
               </button>
             )}

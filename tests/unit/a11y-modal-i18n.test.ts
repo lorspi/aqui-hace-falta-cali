@@ -13,9 +13,101 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
       'showPanel',
       'showRightPanel',
       'goToMyLocation',
+      'zoomIn',
+      'zoomOut',
       'mapNeedsAndOffers',
       'mapMarkerNeed',
       'mapMarkerOffer',
+      'sections',
+      'radarHome',
+      'languageSelector',
+      'whatToSee',
+      'viewSelector',
+      'publicationsList',
+      'newPlural',
+      'newSingular',
+      'hideNotice',
+      'devModeNotice',
+      'closeMenu',
+      'menu',
+      'unread',
+      'markAsRead',
+      'viewAllNotices',
+      'whatNoticesToSee',
+      'noticesEmpty',
+      'nothingUnread',
+      'nothingNew',
+      'verifiedCommunity',
+      'today',
+      'yesterday',
+      'earlier',
+      'pendingPlural',
+      'viewUserProfile',
+      'closeFilters',
+      'seeMoreFiltersApplied',
+      'clearSearch',
+      'removeFilter',
+      'previousPhoto',
+      'nextPhoto',
+      'organizationsTab',
+      'communitiesTab',
+      'communityAndZone',
+      'activityAndResources',
+      'flowGroupPeopleQuestion',
+      'flowGroupHomesQuestion',
+      'flowGroupAnimalsQuestion',
+      'unitPeople',
+      'unitHomes',
+      'unitAnimals',
+      'flowHowManyDays',
+      'flowHowMuchNeededEach',
+      'flowGpsLoading',
+      'flowGpsButton',
+      'flowCitySectorLabel',
+      'flowAddressNumberLabel',
+      'flowAddressRequired',
+      'flowSearchingLocationOnMap',
+      'flowLocationNotFoundError',
+      'flowPlaceTypeLabel',
+      'flowHowToGetThere',
+      'flowMapAdjustPointAria',
+      'flowCenterLocationOrPin',
+      'flowPinDragTooltip',
+      'flowSomethingMoreNeed',
+      'flowSomethingMoreOffer',
+      'flowWhoIsHelpFor',
+      'flowUnspecified',
+      'flowNoPhotos',
+      'flowNoLink',
+      'flowLink',
+      'flowAdd',
+      'flowHowCalculated',
+      'flowGuideNotice',
+      'flowWeCalculated',
+      'flowCalculated',
+      'flowDeliveryRadius',
+      'flowDeliveryShipping',
+      'flowPickupDescription',
+      'flowRemoteChannels',
+      'flowSchedule',
+      'flowSchedulePlaceholder',
+      'flowShowOrgOnMap',
+      'flowOrgType',
+      'flowConditions',
+      'flowConditionsPlaceholder',
+      'flowAvailableQuantity',
+      'flowAvailability',
+      'flowAvailableUntilDate',
+      'flowDatePastError',
+      'flowDateRequiredError',
+      'flowRegisteredBadge',
+      'flowFromDonationTitle',
+      'flowNoRegisteredResourcesTitle',
+      'flowNoRegisteredResourcesText',
+      'flowGettingAddressFromPin',
+      'flowGpsNotSupported',
+      'flowGpsPermissionDenied',
+      'flowGpsFailed',
     ] as const;
 
     const langs = ['es', 'en', 'pt', 'fr'] as const;
@@ -28,7 +120,7 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     }
   });
 
-  it('verifica que las traducciones en inglés no tengan textos en español', () => {
+  it('verifica que las traducciones en inglés no tengan textos en español para los casos de QA (23 oct)', () => {
     expect(translations.en.moreActions).toBe('More actions');
     expect(translations.en.collapseMenu).toBe('Collapse menu');
     expect(translations.en.expandMenu).toBe('Expand menu');
@@ -36,9 +128,24 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     expect(translations.en.showPanel).toBe('Show panel');
     expect(translations.en.showRightPanel).toBe('Show right panel');
     expect(translations.en.goToMyLocation).toBe('Go to my location');
+    expect(translations.en.zoomIn).toBe('Zoom in');
+    expect(translations.en.zoomOut).toBe('Zoom out');
     expect(translations.en.mapNeedsAndOffers).toBe('Map of needs and offers');
     expect(translations.en.mapMarkerNeed).toBe('Need');
     expect(translations.en.mapMarkerOffer).toBe('Offer');
+
+    // 8 etiquetas reportadas por QA el 23 oct 2026:
+    expect(translations.en.sections).toBe('Sections');
+    expect(translations.en.radarHome).toBe('RaDAR de ayuda, home');
+    expect(translations.en.languageSelector).toBe('Language');
+    expect(translations.en.whatToSee).toBe('What you want to see');
+    expect(translations.en.viewSelector).toBe('View');
+    expect(translations.en.newPlural).toBe('new');
+    expect(translations.en.hideNotice).toBe('Hide notice');
+    expect(translations.en.unread).toBe('Unread');
+    expect(translations.en.markAsRead).toBe('Mark as read');
+    expect(translations.en.viewAllNotices).toBe('View all');
+    expect(translations.en.closeFilters).toBe('Close filters');
   });
 
   it('traduce tituloPublicacion en inglés sin romper retrocompatibilidad en español', () => {
@@ -101,5 +208,27 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     expect(actorPublicacion(pub, 'es')).toBe('Ciudadano');
     expect(actorPublicacion(pub, 'en')).toBe('Citizen');
     expect(tituloPublicacion(pub, 'en')).toBe('Food, from Citizen');
+  });
+
+  it('maneja publicaciones comunitarias con titulo inicializado en español sin propagar frases compuestas a actorPublicacion', () => {
+    // Caso QA: publicaciones con titulo mock "Agua potable, de Comunidad" pero org/punto vacíos
+    const pub: Publicacion = {
+      id: 'p4',
+      tipo: 'necesidad',
+      perfil: 'comunitario',
+      titulo: 'Agua potable, de Comunidad',
+      org: '',
+      punto: '',
+      verificada: false,
+      lat: 4.6,
+      lng: -74.1,
+      zona: 'Bosa',
+      recursos: [{ item: 'Agua potable', unidad: 'L', total: 100, tramos: [] }],
+    };
+
+    // actorPublicacion no debe devolver la frase en español "Agua potable, de Comunidad"
+    expect(actorPublicacion(pub, 'es')).toBe('Comunidad en Bosa');
+    expect(actorPublicacion(pub, 'en')).toBe('Community in Bosa');
+    expect(tituloPublicacion(pub, 'en')).toBe('Drinking water, from Community in Bosa');
   });
 });

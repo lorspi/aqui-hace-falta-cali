@@ -14,14 +14,14 @@ export const TituloPublicacion: React.FC<{
   actor?: boolean;
   insignia?: boolean;
 }> = ({ publicacion: p, actor = true, insignia = true }) => {
-  const { t, tResourcesTitle } = useTranslation();
-  const rawActor = actorPublicacion(p);
+  const { language, t, tResourcesTitle } = useTranslation();
+  const rawActor = actorPublicacion(p, language);
   const actorTraducido =
-    rawActor === 'Ciudadano'
+    rawActor === 'Ciudadano' || rawActor === 'Citizen'
       ? t('citizen')
-      : rawActor === 'Comunidad'
+      : rawActor === 'Comunidad' || rawActor === 'Community'
       ? t('community')
-      : rawActor === 'Organización'
+      : rawActor === 'Organización' || rawActor === 'Organization'
       ? t('organization')
       : rawActor;
 
@@ -33,7 +33,7 @@ export const TituloPublicacion: React.FC<{
           <span aria-hidden="true" className="mx-2 inline-block h-3.5 w-px shrink-0 bg-rd-line align-middle" />
           <span className="inline-flex items-center gap-1 align-baseline">
             <span>{actorTraducido}</span>
-            {insignia && p.verificada && p.perfil !== 'individual' && rawActor !== 'Ciudadano' && (
+            {insignia && p.verificada && p.perfil !== 'individual' && rawActor !== 'Ciudadano' && rawActor !== 'Citizen' && (
               <BadgeCheck role="img" aria-label={t('verifiedOrg')} className="h-3.5 w-3.5 shrink-0 text-rd-navy inline-block" />
             )}
           </span>

@@ -66,7 +66,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
   onReportar,
   onVerDetalle,
 }) => {
-  const { t, tDistance } = useTranslation();
+  const { language, t, tDistance } = useTranslation();
   const esOferta = p.tipo === 'oferta';
   const dist = tDistance(distanciaKm);
   const estado = estadoPublicacion(p);
@@ -182,11 +182,11 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
         >
           <TituloPublicacion publicacion={p} actor />
         </h3>
-        {p.org && p.perfil !== 'individual' && p.org !== actorPublicacion(p) && (
+        {p.org && p.perfil !== 'individual' && p.org !== actorPublicacion(p, language) && (
           <div className="mt-1 flex items-center gap-1.5">
             <Avatar iniciales={iniciales(p.org)} tamano="xs" />
             <span className="truncate text-rd-11-5 font-medium text-rd-ink-2">{p.org}</span>
-            {p.verificada && <BadgeCheck role="img" aria-label="Organización verificada" className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
+            {p.verificada && <BadgeCheck role="img" aria-label={t('verifiedOrg')} className="h-3.5 w-3.5 shrink-0 text-rd-navy" />}
           </div>
         )}
       </div>

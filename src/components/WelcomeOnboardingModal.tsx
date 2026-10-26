@@ -102,7 +102,7 @@ export const WelcomeOnboardingModal: React.FC<WelcomeOnboardingModalProps> = ({
           <button
             type="button"
             onClick={handleGoToMap}
-            aria-label="Cerrar"
+            aria-label={t('detailClose')}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-rd-md text-rd-ink-3 hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy transition-colors"
           >
             <X aria-hidden="true" className="h-5 w-5" />
