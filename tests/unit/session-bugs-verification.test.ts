@@ -3,8 +3,8 @@ import { filtrosVacios, pasaResto } from '../../src/utils/filtros';
 import { CATEGORY_LABELS } from '../../src/utils/formatters';
 import type { Publicacion, Ubicacion } from '../../src/types/publicacion';
 import { contactoListo, esTelefonoValido, listoPedir, mensajeDe } from '../../src/utils/pedir';
-import { estadoInicialPedir } from '../../src/mocks/flujosMock';
-import { geocodeAddress } from '../../src/utils/geocoding';
+import { estadoInicialOfrecer, estadoInicialPedir } from '../../src/mocks/flujosMock';
+import { extractColombianIntersection, geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeStructured } from '../../src/utils/geocoding';
 
 describe('Verificación de solución de bugs (BUS-05, FYO-03, FYO-06)', () => {
   const dummyUbi: Ubicacion = { lat: 4.5, lng: -74.1, ciudad: 'bogota', zona: 'Centro', simulada: false };
@@ -137,6 +137,90 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(res).toBeNull();
   });
 
+  it('PDA-10: Direcciones vacías o menores a 3 caracteres no ejecutan geocodificación', async () => {
+    expect(await geocodeAddress('', undefined, 'Cali')).toBeNull();
+    expect(await geocodeAddress('   ', undefined, 'Cali')).toBeNull();
+    expect(await geocodeAddress('A', undefined, 'Cali')).toBeNull();
+    expect(await geocodeAddress('12', undefined, 'Cali')).toBeNull();
+  });
+
+  it('PDA-11: extractColombianIntersection descompone correctamente nomenclaturas viales colombianas', () => {
+    // 1. Carrera con número estándar
+    expect(extractColombianIntersection('Carrera 18 #123-43')).toEqual({
+      via1: 'Carrera 18',
+      via2: 'Calle 123',
+      viaPrincipal: 'Carrera 18',
+    });
+
+    // 2. Abreviaciones comunes (cra, cll)
+    expect(extractColombianIntersection('Cra 15 # 85-30')).toEqual({
+      via1: 'Carrera 15',
+      via2: 'Calle 85',
+      viaPrincipal: 'Carrera 15',
+    });
+
+    expect(extractColombianIntersection('Calle 72 # 11-20')).toEqual({
+      via1: 'Calle 72',
+      via2: 'Carrera 11',
+      viaPrincipal: 'Calle 72',
+    });
+
+    // 3. Diagonal y transversal
+    expect(extractColombianIntersection('Diag 45 # 20-10')).toEqual({
+      via1: 'Diagonal 45',
+      via2: 'Transversal 20',
+      viaPrincipal: 'Diagonal 45',
+    });
+
+    // 4. Intersección explícita con "con"
+    expect(extractColombianIntersection('Calle 100 con Cra 15')).toEqual({
+      via1: 'Calle 100',
+      via2: 'Carrera 15',
+      viaPrincipal: 'Calle 100',
+    });
+
+    // 5. Avenida
+    expect(extractColombianIntersection('Av 19 # 100-05')).toEqual({
+      via1: 'Avenida 19',
+      via2: 'Calle 100',
+      viaPrincipal: 'Avenida 19',
+    });
+
+    // 6. Con letras y espacios (ej. Calle 72 B)
+    expect(extractColombianIntersection('Calle 72 B # 11-20')).toEqual({
+      via1: 'Calle 72 B',
+      via2: 'Carrera 11',
+      viaPrincipal: 'Calle 72 B',
+    });
+
+    // 7. Texto no vial retorna null
+    expect(extractColombianIntersection('Parque Simón Bolívar')).toBeNull();
+  });
+
+  it('PDA-12: isAddressIncomplete detecta cadenas a medio escribir para evitar consultas erráticas', () => {
+    // Incompletas (no deben disparar geocodificación automática)
+    expect(isAddressIncomplete('')).toBe(true);
+    expect(isAddressIncomplete('   ')).toBe(true);
+    expect(isAddressIncomplete('cra')).toBe(true);
+    expect(isAddressIncomplete('calle')).toBe(true);
+    expect(isAddressIncomplete('carrera 23 #')).toBe(true);
+    expect(isAddressIncomplete('cra 23 # ')).toBe(true);
+    expect(isAddressIncomplete('cra 23 # 100 -')).toBe(true);
+    expect(isAddressIncomplete('cra 23 # 100 - ')).toBe(true);
+    expect(isAddressIncomplete('calle 72 con')).toBe(true);
+    expect(isAddressIncomplete('calle 72 con ')).toBe(true);
+    expect(isAddressIncomplete('cra 15 no')).toBe(true);
+
+    // Completas (listas para geocodificar)
+    expect(isAddressIncomplete('cra 23 # 100 - 32')).toBe(false);
+    expect(isAddressIncomplete('Calle 72 # 11-20')).toBe(false);
+    expect(isAddressIncomplete('Calle 100 con Cra 15')).toBe(false);
+    expect(isAddressIncomplete('Usaquén')).toBe(false);
+    expect(isAddressIncomplete('Usaquén Bogotá')).toBe(false);
+    expect(isAddressIncomplete('La Castellana')).toBe(false);
+    expect(isAddressIncomplete('El Poblado')).toBe(false);
+  });
+
   it('PDA-09: Validación de teléfono celular y datos de contacto', () => {
     // 1. esTelefonoValido
     expect(esTelefonoValido('300123456789012345678')).toBe(false); // 21 dígitos
@@ -163,5 +247,51 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(contactoListo({ contacto: 'P', tel: '3001234567' })).toBe(false);
     expect(contactoListo({ contacto: 'Pedro', tel: '3001234567' })).toBe(true);
     expect(contactoListo({ contacto: 'Pedro', tel: '+57 300 123 4567' })).toBe(true);
+  });
+
+  it('PDA-13: geocodeAddressStructured geocodifica "calle 72 # 10-34" en Bogotá y descarta centroide de Puerto López', async () => {
+    const res = await geocodeAddressStructured('calle 72 # 10-34', 'Bogotá');
+    expect(res).not.toBeNull();
+    if (res) {
+      // Debe estar en Bogotá (lat ~4.68, lon ~-74.05), NUNCA en Puerto López (lat ~4.09, lon ~-72.90)
+      expect(res.lat).toBeGreaterThan(4.5);
+      expect(res.lat).toBeLessThan(4.8);
+      expect(res.lng).toBeGreaterThan(-74.2);
+      expect(res.lng).toBeLessThan(-74.0);
+    }
+  });
+
+  it('PDA-14: geocodeAddressStructured funciona solo con sector (Usaquén) sin botar a Puerto López', async () => {
+    const res = await geocodeAddressStructured('', 'Usaquén');
+    expect(res).not.toBeNull();
+    if (res) {
+      expect(res.lat).toBeGreaterThan(4.6);
+      expect(res.lat).toBeLessThan(4.8);
+      expect(res.lng).toBeGreaterThan(-74.15);
+      expect(res.lng).toBeLessThan(-74.0);
+    }
+  });
+
+  it('PDA-15: reverseGeocodeStructured separa correctamente vía/número y sector', async () => {
+    const res = await reverseGeocodeStructured(4.6857, -74.0563);
+    expect(res).not.toBeNull();
+    if (res) {
+      expect(res.direccionCompleta).toBeTruthy();
+      expect(typeof res.direccionNum).toBe('string');
+      expect(typeof res.barrioSector).toBe('string');
+    }
+  });
+
+  it('PDA-16: estadoInicialPedir y estadoInicialOfrecer inician por defecto en Bogotá, no en Cali', () => {
+    const pedir = estadoInicialPedir();
+    const ofrecer = estadoInicialOfrecer();
+    // Debe estar en Bogotá (lat ~4.6097, lng ~-74.0817), NUNCA en Cali (lat ~3.4516, lng ~-76.5320)
+    expect(pedir.lat).toBeCloseTo(4.6097, 2);
+    expect(pedir.lng).toBeCloseTo(-74.0817, 2);
+    expect(pedir.lat).not.toBeCloseTo(3.4516, 2);
+
+    expect(ofrecer.lat).toBeCloseTo(4.6097, 2);
+    expect(ofrecer.lng).toBeCloseTo(-74.0817, 2);
+    expect(ofrecer.lat).not.toBeCloseTo(3.4516, 2);
   });
 });

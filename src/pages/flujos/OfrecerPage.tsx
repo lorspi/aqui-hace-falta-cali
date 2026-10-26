@@ -14,18 +14,17 @@ import { publicacionSaleVerificada } from '../../utils/cuenta';
 import { camposOferta, camposTexto, numero, unidadOferta } from '../../utils/equivalencias';
 import { caminoOfrecer, fechaCorta, listoOfrecer, textoEntrega } from '../../utils/ofrecer';
 import { cifra, tituloPublicacion } from '../../utils/publicaciones';
-import { AlgoMas, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
+import { AlgoMas, AvisoLinea, CampoFotos, CampoNumero, CamposContacto, Chips, Coincidencias, ExitoFlujo, FilaRevisar, ListaRecursos, MarcoFlujo, MetaPub, MiniMapa, Opt, Pregunta, ResumenPub, SalidaDialogo, TarjetasOpcion, useErrores } from './comunes';
 import { AvisosProvider } from '../../components/ui/AvisoCorto';
 import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
 import { useTranslation } from '../../i18n/LanguageContext';
-
 import { createOfferWithItems } from '../../lib/supabaseService';
 import { supabase } from '../../lib/supabaseClient';
 import type { HelpCategory, Offer } from '../../types';
 import { mapItemToCatalog, mapItemsToHelpCategories } from '../../utils/enumMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
-import { geocodeAddress, reverseGeocodeAddress } from '../../utils/geocoding';
+import { geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeAddress, reverseGeocodeStructured } from '../../utils/geocoding';
 
 /**
  * Ofrecer ayuda (mockup/*): `src/ofrecer-v2.html` del prototipo. Una organización registrada
@@ -324,6 +323,22 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       const orgName = org?.org_name || profile?.cargo || '';
       if (orgName) setNombreOrg(orgName);
 
+      if (profile?.city) {
+        setCiudadRef(profile.city);
+      }
+
+      if (direccion) {
+        const partes = direccion.split(',').map((p: string) => p.trim());
+        if (partes.length > 1) {
+          setDireccionNum(partes[0]);
+          setBarrioSector(partes.slice(1).join(', '));
+        } else {
+          setDireccionNum(direccion);
+        }
+      } else if (profile?.city) {
+        setBarrioSector(profile.city);
+      }
+
       set((prev) => ({
         contacto: prev.contacto || nombreContacto,
         tel: prev.tel || telefono,
@@ -333,12 +348,27 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     autocompletarPerfil();
   }, [set]);
 
+  const [ciudadRef, setCiudadRef] = useState<string>(initialCityId || '');
+  const [barrioSector, setBarrioSector] = useState<string>('');
+  const [direccionNum, setDireccionNum] = useState<string>('');
   const [cargandoGeocodificacion, setCargandoGeocodificacion] = useState(false);
   const [textoGeocodificacion, setTextoGeocodificacion] = useState('Buscando ubicación en el mapa...');
   const [cargandoGps, setCargandoGps] = useState(false);
+  const [coordsGps, setCoordsGps] = useState<{ lat: number; lng: number } | null>(null);
   const [errorGps, setErrorGps] = useState<string | null>(null);
-  const omitirAutoGeocodificacionRef = useRef(false);
+  const [avisoAproximacion, setAvisoAproximacion] = useState<string | null>(null);
+  const direccionDelPinRef = useRef<string>('');
   const ultimoMovimientoRef = useRef<number>(0);
+
+  const actualizarUbicacionCompuesta = (nuevoSector: string, nuevoDir: string) => {
+    direccionDelPinRef.current = '';
+    setAvisoAproximacion(null);
+    setBarrioSector(nuevoSector);
+    setDireccionNum(nuevoDir);
+    const combinada = [nuevoDir.trim(), nuevoSector.trim()].filter(Boolean).join(', ');
+    set({ dir: combinada });
+    errores.limpiar('dir');
+  };
 
   const obtenerUbicacionGPS = useCallback(() => {
     if (!navigator.geolocation) {
@@ -347,17 +377,21 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     }
     setCargandoGps(true);
     setErrorGps(null);
+    setAvisoAproximacion(null);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        omitirAutoGeocodificacionRef.current = true;
+        setCoordsGps({ lat: latitude, lng: longitude });
         set({ lat: latitude, lng: longitude });
 
         try {
-          const direccionFormateada = await reverseGeocodeAddress(latitude, longitude);
-          if (direccionFormateada) {
-            set({ dir: direccionFormateada });
+          const structured = await reverseGeocodeStructured(latitude, longitude);
+          if (structured) {
+            direccionDelPinRef.current = structured.direccionCompleta;
+            set({ dir: structured.direccionCompleta });
+            setDireccionNum(structured.direccionNum);
+            setBarrioSector(structured.barrioSector);
             errores.limpiar('dir');
           }
         } catch {
@@ -369,7 +403,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       (err) => {
         setCargandoGps(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setErrorGps('Permiso de ubicación denegado. Escribe la dirección o mueve el mapa manualmente.');
+          setErrorGps('Ubicación desactivada en tu navegador. Toca el candado o icono de permisos arriba (al lado de la URL) para permitirla, o escribe tu dirección/localidad.');
         } else {
           setErrorGps('No se pudo obtener tu ubicación actual por GPS.');
         }
@@ -381,16 +415,18 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   const manejarMovimientoMapa = useCallback(async (lat: number, lng: number) => {
     const timestampActual = Date.now();
     ultimoMovimientoRef.current = timestampActual;
-    omitirAutoGeocodificacionRef.current = true;
     set({ lat, lng });
     setTextoGeocodificacion('Obteniendo dirección del punto seleccionado...');
     setCargandoGeocodificacion(true);
+    setAvisoAproximacion(null);
 
     try {
-      const direccionFormateada = await reverseGeocodeAddress(lat, lng);
-      if (ultimoMovimientoRef.current === timestampActual && direccionFormateada) {
-        omitirAutoGeocodificacionRef.current = true;
-        set({ dir: direccionFormateada });
+      const structured = await reverseGeocodeStructured(lat, lng);
+      if (ultimoMovimientoRef.current === timestampActual && structured) {
+        direccionDelPinRef.current = structured.direccionCompleta;
+        set({ dir: structured.direccionCompleta });
+        setDireccionNum(structured.direccionNum);
+        setBarrioSector(structured.barrioSector);
         errores.limpiar('dir');
       }
     } catch (err) {
@@ -400,34 +436,58 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
         setCargandoGeocodificacion(false);
       }
     }
-  }, [set, errores]);
+  }, [set, errores.limpiar]);
 
-  const geocodificarDireccion = useCallback(async (direccion: string) => {
-    if (!direccion || direccion.trim().length < 3) return;
+  const geocodificarUbicacion = useCallback(async (sector: string, dir: string) => {
+    const s = sector.trim();
+    const d = dir.trim();
+    if (!s && !d) {
+      setCargandoGeocodificacion(false);
+      setAvisoAproximacion(null);
+      return;
+    }
     setTextoGeocodificacion('Buscando ubicación en el mapa...');
     setCargandoGeocodificacion(true);
+    setAvisoAproximacion(null);
     try {
-      const res = await geocodeAddress(direccion, undefined, 'Cali');
+      const res = await geocodeAddressStructured(d, s);
       if (res) {
         set({ lat: res.lat, lng: res.lng });
+        errores.limpiar('dir');
+        if (res.isApproximation) {
+          const nombreLugar = s || res.displayName?.split(',')[0] || 'la zona';
+          setAvisoAproximacion(`Ubicamos ${nombreLugar} en el mapa. Puedes ajustar el pin si deseas mayor precisión.`);
+        } else {
+          setAvisoAproximacion(null);
+        }
+      } else {
+        errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+        setAvisoAproximacion(null);
       }
+    } catch {
+      errores.poner('dir', 'No encontramos esta ubicación en el mapa. Ubica el punto en el mapa o verifica los datos.');
+      setAvisoAproximacion(null);
     } finally {
       setCargandoGeocodificacion(false);
     }
-  }, [set]);
+  }, [set, errores.limpiar, errores.poner]);
 
   useEffect(() => {
-    if (omitirAutoGeocodificacionRef.current) {
-      omitirAutoGeocodificacionRef.current = false;
-      return;
-    }
-    if (sub?.id === 'donde' && e.dir && e.dir.trim().length >= 3) {
+    if (sub?.id === 'donde') {
+      if (!barrioSector.trim() && (!direccionNum.trim() || isAddressIncomplete(direccionNum))) {
+        setCargandoGeocodificacion(false);
+        return;
+      }
+      const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
+      if (compuesta === direccionDelPinRef.current) {
+        return;
+      }
       const timer = setTimeout(() => {
-        geocodificarDireccion(e.dir);
-      }, 500);
+        geocodificarUbicacion(barrioSector, direccionNum);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [sub?.id, e.dir, geocodificarDireccion]);
+  }, [sub?.id, barrioSector, direccionNum, geocodificarUbicacion]);
 
   const toggle = (it: string) =>
     set((p) => {
@@ -438,14 +498,14 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
   const cantidad = (it: string, n: number) => set((p) => ({ cant: { ...p.cant, [it]: n } }));
   const irMapa = useCallback(() => irA(RUTAS.radar), []);
 
-  const alCerrar = () => {
+  const alCerrar = useCallback(() => {
     if (e.publicado) {
       if (onClose) onClose();
       else irMapa();
       return;
     }
     f.cerrar();
-  };
+  }, [e.publicado, onClose, irMapa, f]);
 
   const registrados = Object.keys(CUENTA_OFRECER.inventario ?? {});
 
@@ -529,40 +589,69 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           type="button"
           onClick={obtenerUbicacionGPS}
           disabled={cargandoGps}
-          className="mb-3.5 flex w-full items-center justify-center gap-2 rounded-rd-md border border-rd-navy/30 bg-rd-navy/5 px-3 py-2.5 text-rd-13 font-semibold text-rd-navy transition-colors hover:bg-rd-navy/10 disabled:opacity-60 cursor-pointer"
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-rd-md border border-rd-navy/30 bg-rd-navy/5 px-3 py-2.5 text-rd-13 font-semibold text-rd-navy transition-colors hover:bg-rd-navy/10 disabled:opacity-60 cursor-pointer"
         >
           {cargandoGps ? (
             <Loader2 className="h-4 w-4 animate-spin text-rd-navy" />
           ) : (
             <Compass className="h-4 w-4 text-rd-navy" />
           )}
-          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS)'}</span>
+          <span>{cargandoGps ? 'Obteniendo tu ubicación GPS...' : 'Usar mi ubicación actual (GPS) (Recomendado)'}</span>
         </button>
-        {errorGps && <p className="mb-2 text-rd-12 text-rd-coral">{errorGps}</p>}
+        {errorGps && (
+          <div className="mb-3 flex items-start gap-1.5 rounded-rd-md border border-rd-coral/30 bg-rd-coral/5 p-2.5 text-rd-12 text-rd-coral">
+            <Info className="h-4 w-4 shrink-0 mt-0.5 text-rd-coral" />
+            <span>{errorGps}</span>
+          </div>
+        )}
 
-        <Field
-          id="dir"
-          etiqueta="Dirección o sector"
-          valor={e.dir}
-          autoComplete="street-address"
-          requerido
-          onChange={(v) => { omitirAutoGeocodificacionRef.current = false; set({ dir: v }); errores.limpiar('dir'); }}
-          onBlur={(v) => {
-            errores.validar('dir', ['requerido'], v, 'Sin dirección no podemos ubicar la ayuda');
-            if (v && v.trim().length >= 3) {
-              geocodificarDireccion(v);
-            }
-          }}
-          error={errores.errores.dir}
-          className="mb-3"
-        />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 mb-3">
+          <Field
+            id="barrio_sector"
+            etiqueta="Ciudad, localidad o barrio"
+            placeholder="Ej. Chapinero, San Antonio o El Poblado"
+            valor={barrioSector}
+            onChange={(v) => actualizarUbicacionCompuesta(v, direccionNum)}
+            onBlur={() => {
+              if (barrioSector || direccionNum) {
+                geocodificarUbicacion(barrioSector, direccionNum);
+              }
+            }}
+          />
+          <Field
+            id="dir_num"
+            etiqueta="Dirección o número"
+            placeholder="Ej. Calle 45 # 13-25 o Cra 7"
+            valor={direccionNum}
+            autoComplete="street-address"
+            onChange={(v) => actualizarUbicacionCompuesta(barrioSector, v)}
+            onBlur={() => {
+              if ((barrioSector || direccionNum) && !isAddressIncomplete(direccionNum)) {
+                geocodificarUbicacion(barrioSector, direccionNum);
+              }
+            }}
+          />
+        </div>
+        {errores.errores.dir && (
+          <p className="mb-3 text-rd-12 text-rd-coral">{errores.errores.dir}</p>
+        )}
+        {avisoAproximacion && !errores.errores.dir && (
+          <AvisoLinea className="mb-3">{avisoAproximacion}</AvisoLinea>
+        )}
         {cargandoGeocodificacion && (
           <div className="flex items-center gap-1.5 text-rd-12 text-rd-navy animate-pulse mb-1.5">
             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
             <span>{textoGeocodificacion}</span>
           </div>
         )}
-        <MiniMapa lat={e.lat} lng={e.lng} onMover={manejarMovimientoMapa} tipo="oferta" />
+        <MiniMapa
+          lat={e.lat}
+          lng={e.lng}
+          onMover={manejarMovimientoMapa}
+          tipo="oferta"
+          marcada={Boolean(coordsGps || barrioSector || direccionNum || e.dir)}
+          coordsGps={coordsGps}
+        />
       </>
     );
   } else if (sub.id === 'contacto') {
@@ -626,9 +715,44 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     set((p) => ({ fotos: p.fotos.filter((_, k) => k !== i) }));
   }
 
+  const hayErrorActivo = Object.values(errores.errores).some(Boolean);
+  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir && Boolean(barrioSector.trim() || direccionNum.trim())));
+
+  const alContinuar = async () => {
+    if (sub?.id === 'donde') {
+      if (cargandoGeocodificacion) return;
+      if (!barrioSector.trim() && !direccionNum.trim()) {
+        errores.poner('dir', 'Ingresa tu ciudad, barrio o dirección para ubicar la ayuda.');
+        return;
+      }
+      if (errores.errores.dir) return;
+      const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
+      if (compuesta && compuesta.length >= 3 && compuesta !== direccionDelPinRef.current) {
+        setTextoGeocodificacion('Buscando ubicación en el mapa...');
+        setCargandoGeocodificacion(true);
+        try {
+          const res = await geocodeAddressStructured(direccionNum, barrioSector);
+          if (res) {
+            set({ lat: res.lat, lng: res.lng });
+            errores.limpiar('dir');
+            f.siguiente();
+          } else {
+            errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+          }
+        } catch {
+          errores.poner('dir', 'No encontramos esta ubicación. Ubica el punto en el mapa o escribe una dirección válida.');
+        } finally {
+          setCargandoGeocodificacion(false);
+        }
+        return;
+      }
+    }
+    f.siguiente();
+  };
+
   return (
     <>
-      <MarcoFlujo nombre={t('offerHelp')} fases={[t('flowWhatOffered'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={f.listoActual} textoPublicar={t('btnPublishOffer')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={f.siguiente} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
+      <MarcoFlujo nombre={t('offerHelp')} fases={[t('flowWhatOffered'), t('flowReviewTitle')]} camino={f.pasos} sub={sub} publicado={e.publicado} listo={estaListo} textoPublicar={t('btnPublishOffer')} onIrAFase={f.irAFase} onIrA={f.irA} onAtras={f.atras} onSiguiente={alContinuar} onPublicar={f.publicar} onCerrar={alCerrar} isModal={isModal} guardando={f.guardando} errorPublicar={f.errorPublicar}>
         {pantalla}
       </MarcoFlujo>
       <SalidaDialogo abierto={f.salida} onSeguir={() => f.setSalida(false)} onBorrador={() => { f.guardarBorrador(); f.setSalida(false); f.salir(); }} onSalir={f.descartarYSalir} />

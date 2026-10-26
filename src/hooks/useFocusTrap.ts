@@ -21,35 +21,61 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(
 ) {
   const { isActive, onEscape, initialFocusRef } = options;
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const wasActiveRef = useRef(false);
+
+  // Mantener referencias actualizadas de callbacks y refs sin re-disparar efectos
+  const onEscapeRef = useRef(onEscape);
+  onEscapeRef.current = onEscape;
+
+  const initialFocusRefRef = useRef(initialFocusRef);
+  initialFocusRefRef.current = initialFocusRef;
 
   useEffect(() => {
-    if (!isActive) return;
-
-    // Guardar el elemento que tenía el foco antes de abrir el modal
-    previousActiveElement.current = document.activeElement as HTMLElement | null;
+    if (!isActive) {
+      if (wasActiveRef.current) {
+        wasActiveRef.current = false;
+        if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
+          previousActiveElement.current.focus();
+          previousActiveElement.current = null;
+        }
+      }
+      return;
+    }
 
     const container = containerRef.current;
     if (!container) return;
 
-    // Dar foco inicial
-    const focusTimer = setTimeout(() => {
-      if (initialFocusRef?.current) {
-        initialFocusRef.current.focus();
-      } else {
-        const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (focusables.length > 0) {
-          focusables[0].focus();
-        } else {
-          container.focus();
-        }
+    let timerId: ReturnType<typeof setTimeout> | undefined;
+
+    // Solo al abrir el modal (transición de inactivo a activo)
+    if (!wasActiveRef.current) {
+      wasActiveRef.current = true;
+      previousActiveElement.current = document.activeElement as HTMLElement | null;
+
+      // Solo dar foco inicial si el foco actual no está ya dentro del contenedor
+      if (!container.contains(document.activeElement)) {
+        timerId = setTimeout(() => {
+          if (container.contains(document.activeElement)) return;
+
+          if (initialFocusRefRef.current?.current) {
+            initialFocusRefRef.current.current.focus();
+          } else {
+            const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+            if (focusables.length > 0) {
+              focusables[0].focus();
+            } else {
+              container.focus();
+            }
+          }
+        }, 50);
       }
-    }, 50);
+    }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && onEscape) {
+      if (event.key === 'Escape' && onEscapeRef.current) {
         event.preventDefault();
         event.stopPropagation();
-        onEscape();
+        onEscapeRef.current();
         return;
       }
 
@@ -83,12 +109,17 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(
     document.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
-      clearTimeout(focusTimer);
+      if (timerId) clearTimeout(timerId);
       document.removeEventListener('keydown', handleKeyDown, true);
-      // Restaurar foco al elemento previo al cerrar
-      if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
+    };
+  }, [isActive, containerRef]);
+
+  // Al desmontar el componente si aún estaba activo, restaurar foco previo
+  useEffect(() => {
+    return () => {
+      if (wasActiveRef.current && previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
         previousActiveElement.current.focus();
       }
     };
-  }, [isActive, onEscape, initialFocusRef, containerRef]);
+  }, []);
 }

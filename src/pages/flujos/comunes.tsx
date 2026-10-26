@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Check, ChevronDown, ChevronLeft, CircleAlert, CircleDashed, House, Info, Map as MapIcon, Monitor, Package, Radar, Search, Share2, X, Zap } from 'lucide-react';
@@ -83,17 +83,28 @@ function useTexto(valor: string, onChange: (t: string) => void, onBlur?: (t: str
 import { type Regla, mensajeDe } from '../../utils/pedir';
 export { type Regla, mensajeDe };
 
-/** Los errores de los campos de una pantalla, por id: se ponen al salir, se quitan al corregir
- *  y se olvidan al cambiar de pantalla (`clave`). */
 export function useErrores(clave?: string) {
   const [errores, setErrores] = useState<Record<string, string | null>>({});
   useEffect(() => setErrores({}), [clave]);
-  return {
+
+  const validar = useCallback((id: string, reglas: Regla[], v: string, vacio?: string) => {
+    setErrores((e) => ({ ...e, [id]: mensajeDe(reglas, v, vacio) }));
+  }, []);
+
+  const limpiar = useCallback((id: string) => {
+    setErrores((e) => (e[id] ? { ...e, [id]: null } : e));
+  }, []);
+
+  const poner = useCallback((id: string, mensaje: string | null) => {
+    setErrores((e) => ({ ...e, [id]: mensaje }));
+  }, []);
+
+  return useMemo(() => ({
     errores,
-    validar: (id: string, reglas: Regla[], v: string, vacio?: string) => setErrores((e) => ({ ...e, [id]: mensajeDe(reglas, v, vacio) })),
-    limpiar: (id: string) => setErrores((e) => (e[id] ? { ...e, [id]: null } : e)),
-    poner: (id: string, mensaje: string | null) => setErrores((e) => ({ ...e, [id]: mensaje })),
-  };
+    validar,
+    limpiar,
+    poner,
+  }), [errores, validar, limpiar, poner]);
 }
 
 /* ---------- el marco ---------- */
@@ -581,21 +592,141 @@ export const MiniMapa: React.FC<{
   lng: number;
   onMover: (lat: number, lng: number) => void;
   tipo?: 'necesidad' | 'oferta';
-}> = ({ lat, lng, onMover, tipo = 'necesidad' }) => {
+  marcada?: boolean;
+  coordsGps?: { lat: number; lng: number } | null;
+}> = ({ lat, lng, onMover, tipo = 'necesidad', marcada = false, coordsGps = null }) => {
   const nodo = useRef<HTMLDivElement>(null);
   const mapaRef = useRef<L.Map | null>(null);
   const pinRef = useRef<L.Marker | null>(null);
   const alMover = useRef(onMover);
   alMover.current = onMover;
+  const coordsGpsRef = useRef(coordsGps);
+  coordsGpsRef.current = coordsGps;
 
   useEffect(() => {
     if (!nodo.current) return;
-    const safeLat = typeof lat === 'number' && !isNaN(lat) && lat !== 0 ? lat : 3.4516;
-    const safeLng = typeof lng === 'number' && !isNaN(lng) && lng !== 0 ? lng : -76.5320;
+    const safeLat = typeof lat === 'number' && !isNaN(lat) && lat !== 0 ? lat : 4.6097;
+    const safeLng = typeof lng === 'number' && !isNaN(lng) && lng !== 0 ? lng : -74.0817;
+    const zoomInicial = marcada ? 15 : 6;
 
-    const m = L.map(nodo.current, { zoomControl: true, attributionControl: false }).setView([safeLat, safeLng], 15);
-    m.zoomControl?.setPosition('topright');
+    const m = L.map(nodo.current, { zoomControl: false, attributionControl: false }).setView([safeLat, safeLng], zoomInicial);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+
+    // Controles táctiles y estables (+, -, centrar pin / mi ubicación)
+    const ControlPanel = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar');
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.backgroundColor = '#ffffff';
+        container.style.borderRadius = '8px';
+        container.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+        container.style.border = '1px solid rgba(0, 0, 0, 0.12)';
+        container.style.overflow = 'hidden';
+        container.style.margin = '10px';
+
+        // 1. Botón Acercar (+)
+        const btnIn = L.DomUtil.create('a', '', container);
+        btnIn.href = '#';
+        btnIn.title = 'Acercar';
+        btnIn.setAttribute('role', 'button');
+        btnIn.setAttribute('aria-label', 'Acercar');
+        btnIn.style.display = 'flex';
+        btnIn.style.alignItems = 'center';
+        btnIn.style.justifyContent = 'center';
+        btnIn.style.width = '36px';
+        btnIn.style.height = '36px';
+        btnIn.style.lineHeight = '36px';
+        btnIn.style.fontSize = '20px';
+        btnIn.style.fontWeight = 'bold';
+        btnIn.style.color = '#1e293b';
+        btnIn.style.textDecoration = 'none';
+        btnIn.style.borderBottom = '1px solid rgba(0, 0, 0, 0.08)';
+        btnIn.style.cursor = 'pointer';
+        btnIn.style.userSelect = 'none';
+        btnIn.innerHTML = '+';
+
+        // 2. Botón Alejar (−)
+        const btnOut = L.DomUtil.create('a', '', container);
+        btnOut.href = '#';
+        btnOut.title = 'Alejar';
+        btnOut.setAttribute('role', 'button');
+        btnOut.setAttribute('aria-label', 'Alejar');
+        btnOut.style.display = 'flex';
+        btnOut.style.alignItems = 'center';
+        btnOut.style.justifyContent = 'center';
+        btnOut.style.width = '36px';
+        btnOut.style.height = '36px';
+        btnOut.style.lineHeight = '36px';
+        btnOut.style.fontSize = '22px';
+        btnOut.style.fontWeight = 'bold';
+        btnOut.style.color = '#1e293b';
+        btnOut.style.textDecoration = 'none';
+        btnOut.style.borderBottom = '1px solid rgba(0, 0, 0, 0.08)';
+        btnOut.style.cursor = 'pointer';
+        btnOut.style.userSelect = 'none';
+        btnOut.innerHTML = '−';
+
+        // 3. Botón de brújula/flecha (Centrar en pin / mi ubicación)
+        const btnLoc = L.DomUtil.create('a', '', container);
+        btnLoc.href = '#';
+        btnLoc.title = 'Centrar en mi ubicación o pin';
+        btnLoc.setAttribute('role', 'button');
+        btnLoc.setAttribute('aria-label', 'Centrar en mi ubicación o pin');
+        btnLoc.style.display = 'flex';
+        btnLoc.style.alignItems = 'center';
+        btnLoc.style.justifyContent = 'center';
+        btnLoc.style.width = '36px';
+        btnLoc.style.height = '36px';
+        btnLoc.style.lineHeight = '36px';
+        btnLoc.style.color = '#1e293b';
+        btnLoc.style.textDecoration = 'none';
+        btnLoc.style.cursor = 'pointer';
+        btnLoc.style.userSelect = 'none';
+        btnLoc.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`;
+
+        [btnIn, btnOut, btnLoc].forEach((btn) => {
+          L.DomEvent.on(btn, 'mousedown touchstart pointerdown click dblclick', (ev) => {
+            L.DomEvent.stopPropagation(ev);
+          });
+          btn.addEventListener('mouseenter', () => {
+            btn.style.backgroundColor = '#f1f5f9';
+          });
+          btn.addEventListener('mouseleave', () => {
+            btn.style.backgroundColor = '#ffffff';
+          });
+        });
+
+        L.DomEvent.on(btnIn, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
+          m.zoomIn();
+        });
+
+        L.DomEvent.on(btnOut, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
+          m.zoomOut();
+        });
+
+        L.DomEvent.on(btnLoc, 'click', (ev) => {
+          L.DomEvent.preventDefault(ev);
+          L.DomEvent.stopPropagation(ev);
+          const target = coordsGpsRef.current ?? (pinRef.current ? pinRef.current.getLatLng() : null);
+          if (target) {
+            m.flyTo([target.lat, target.lng], 16, { duration: 0.5 });
+          }
+        });
+
+        return container;
+      },
+    });
+
+    new ControlPanel().addTo(m);
 
     const pinColor = tipo === 'oferta' ? '#1d4ed8' : '#e11d48';
     const pinShadow = tipo === 'oferta' ? 'rgba(29, 78, 216, 0.45)' : 'rgba(225, 29, 72, 0.45)';
@@ -650,7 +781,8 @@ export const MiniMapa: React.FC<{
       const actualPos = pinRef.current.getLatLng();
       if (Math.abs(actualPos.lat - lat) > 0.00001 || Math.abs(actualPos.lng - lng) > 0.00001) {
         pinRef.current.setLatLng([lat, lng]);
-        mapaRef.current.setView([lat, lng], 15, { animate: true });
+        const targetZoom = Math.max(mapaRef.current.getZoom(), 15);
+        mapaRef.current.flyTo([lat, lng], targetZoom, { duration: 0.5 });
       }
     }
   }, [lat, lng]);
@@ -830,9 +962,9 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
       titulo: '',
       org: '',
       verificada: false,
-      lat: 3.4516,
-      lng: -76.5320,
-      zona: 'Cali',
+      lat: 4.6097,
+      lng: -74.0817,
+      zona: 'Bogotá',
       recursos: [],
     };
   }, [publicacion, tipo]);
