@@ -1963,7 +1963,6 @@ export async function fetchOrganizationMembers(orgId: string): Promise<any[]> {
         full_name,
         email,
         phone,
-        cargo,
         role
       )
     `)
@@ -2119,6 +2118,24 @@ export async function removeOrganizationMember(memberId: string): Promise<void> 
 
   if (error) {
     console.error('Error al eliminar miembro del equipo:', error);
+    throw error;
+  }
+}
+
+/**
+ * Desvincula a un usuario de una organización (abandono voluntario de equipo o salida de la organización)
+ */
+export async function leaveOrganization(userId: string, orgId?: string): Promise<void> {
+  if (!userId) return;
+
+  let query = supabase.from('organization_members').delete().eq('user_id', userId);
+  if (orgId) {
+    query = query.eq('organization_id', orgId);
+  }
+
+  const { error } = await query;
+  if (error) {
+    console.error('Error al salir de la organización:', error);
     throw error;
   }
 }

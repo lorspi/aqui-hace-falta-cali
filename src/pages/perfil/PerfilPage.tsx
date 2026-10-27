@@ -14,14 +14,14 @@ import { RUTAS, RUTAS_SHELL, TIPOS_DOC } from '../../mocks/cuentasMock';
 import { CANALES } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import type { DatosOrg, Invitado } from '../../types/panel';
-import { entidadActual, formatearRol, formatearTipoDocumento, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
+import { entidadActual, formatearRol, formatearTipoDocumento, guardarVerificacion, nombrePanel, guardarEntidad } from '../../utils/cuenta';
 import { formatearTipoEntidad } from '../../utils/directorio';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
-import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
+import { fetchUserProfile, updateUserProfile, fetchOrganizationByUserId, leaveOrganization } from '../../lib/supabaseService';
 import { DocumentosVerificacionSection } from '../../components/perfil/DocumentosVerificacionSection';
-import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 export interface PersonaExt extends Persona {
@@ -106,6 +106,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
   });
   const [confirmando, setConfirmando] = useState<'salir' | 'eliminar' | null>(null);
   const [dbUserId, setDbUserId] = useState<string | null>(null);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Perfil, RaDAR de ayuda';
@@ -200,6 +201,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
           if (org) {
             setHasOrg(true);
+            setCurrentOrgId(org.id);
             setOrgData({
               nombre: org.org_name || 'Mi Organización',
               tipo: org.organization_type || (tipoPerfil === 'lider' ? 'Comunidad' : 'Organización'),
@@ -445,10 +447,37 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
           nivelAccion="secundario"
           textoAlterno="Dejar como está"
           onCerrar={() => setConfirmando(null)}
-          onEnviar={() => {
+          onEnviar={async () => {
             const que = confirmando;
             setConfirmando(null);
-            avisar(que === 'salir' ? 'Saliste de la organización' : 'Cuenta eliminada', { tipo: 'ok' });
+            if (que === 'salir') {
+              try {
+                if (dbUserId) {
+                  await leaveOrganization(dbUserId, currentOrgId || undefined);
+                }
+                setHasOrg(false);
+                setOrgData(null);
+                setCurrentOrgId(null);
+                guardarEntidad('individual');
+
+                const stored = getStoredAuthUser();
+                if (stored) {
+                  const updated = {
+                    ...stored,
+                    profile_type: 'persona',
+                    org_name: undefined,
+                    organization: undefined,
+                  };
+                  saveStoredAuthUser(updated);
+                }
+                avisar('Saliste de la organización exitosamente', { tipo: 'ok' });
+              } catch (err) {
+                console.error('Error al salir de la organización:', err);
+                avisar('Error al salir de la organización. Intenta nuevamente.', { tipo: 'error' });
+              }
+            } else {
+              avisar('Cuenta eliminada', { tipo: 'ok' });
+            }
           }}
         >
           <p className="m-0 mb-4 text-rd-14 text-rd-ink-2">{confirmando === 'salir' ? 'Dejas de administrar sus solicitudes y entregas. Otra persona de tu equipo debe quedar como administradora.' : 'Se borran tus datos personales. El histórico de la organización y las actas emitidas se conservan.'}</p>

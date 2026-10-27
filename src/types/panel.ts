@@ -213,6 +213,7 @@ export type DisponibilidadMiembro = 'tiempo_completo' | 'entre_semana' | 'fines_
 export interface MiembroEquipo {
   id: number;
   dbId?: string;
+  userId?: string;
   n: string;
   rolPlataforma: RolPlataforma;
   rol: string;

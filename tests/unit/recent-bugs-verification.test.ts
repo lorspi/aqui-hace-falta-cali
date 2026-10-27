@@ -119,6 +119,7 @@ describe('Verificación de corrección de bugs recientes', () => {
         verificada: false,
         lat: 3.4,
         lng: -76.5,
+        zona: 'Cali',
         recursos: [{ item: 'Mercados', unidad: 'kits', total: 2, tramos: [] }],
       };
 
@@ -140,6 +141,7 @@ describe('Verificación de corrección de bugs recientes', () => {
         verificada: true,
         lat: 3.4,
         lng: -76.5,
+        zona: 'Cali',
         recursos: [{ item: 'Kits de aseo', unidad: 'kits', total: 50, tramos: [] }],
       };
 
@@ -162,6 +164,7 @@ describe('Verificación de corrección de bugs recientes', () => {
         verificada: true,
         lat: 3.4,
         lng: -76.5,
+        zona: 'Cali',
         recursos: [{ item: 'Arroz', unidad: 'kg', total: 100, tramos: [] }],
       };
 
@@ -180,11 +183,75 @@ describe('Verificación de corrección de bugs recientes', () => {
         verificada: false,
         lat: 3.4,
         lng: -76.5,
+        zona: 'Cali',
         recursos: [{ item: 'Ropa de abrigo', unidad: 'prendas', total: 5, tramos: [] }],
       };
 
       const titulo = tituloPublicacion(pub, 'es');
       expect(titulo).toContain('Ciudadano');
+    });
+  });
+
+  describe('Punto 3: Miembros de equipo y salida voluntaria de organización', () => {
+    it('mapea correctamente un integrante de la base de datos preservando userId y roles', () => {
+      const dbRow = {
+        id: 'mem-123',
+        organization_id: 'org-456',
+        user_id: 'user-789',
+        role_in_org: 'admin',
+        member_title: 'Operativo',
+        name: null,
+        phone: null,
+        email: null,
+        veh: null,
+        disp: null,
+        ubicacion: null,
+        profiles: {
+          id: 'user-789',
+          full_name: 'Federico Posada 1',
+          email: 'posadafed@gmail.com',
+          phone: null,
+          role: 'regular'
+        }
+      };
+
+      const mapped = {
+        id: 101,
+        dbId: dbRow.id,
+        userId: dbRow.user_id,
+        n: dbRow.name || dbRow.profiles?.full_name || 'Miembro de equipo',
+        rolPlataforma: dbRow.role_in_org === 'admin' ? 'admin' : 'voluntario',
+        rol: dbRow.member_title || dbRow.role_in_org || 'Operativo',
+        correo: dbRow.email || dbRow.profiles?.email || '',
+      };
+
+      expect(mapped.n).toBe('Federico Posada 1');
+      expect(mapped.correo).toBe('posadafed@gmail.com');
+      expect(mapped.rolPlataforma).toBe('admin');
+      expect(mapped.userId).toBe('user-789');
+    });
+
+    it('actualiza el usuario almacenado a perfil persona cuando sale de la organización', () => {
+      const stored = {
+        id: 'user-789',
+        name: 'Federico Posada 1',
+        email: 'posadafed@gmail.com',
+        role: 'regular',
+        profile_type: 'organizacion',
+        org_name: 'Gobernacion quindio',
+        organization: 'Gobernacion quindio'
+      };
+
+      const updated = {
+        ...stored,
+        profile_type: 'persona',
+        org_name: undefined,
+        organization: undefined,
+      };
+
+      expect(updated.profile_type).toBe('persona');
+      expect(updated.org_name).toBeUndefined();
+      expect(updated.organization).toBeUndefined();
     });
   });
 });

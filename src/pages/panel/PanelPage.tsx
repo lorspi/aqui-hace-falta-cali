@@ -28,7 +28,7 @@ import type { Foto } from '../../types/flujo';
 import type { Acta, DatosOrg, EntregaRecibida, Kpi, MiembroEquipo, OfrecimientoEnviado, Pendiente, PestanaPanel, RecursoOfrecido, RecursoPedido, RolPlataforma, Solicitud, SolicitudEnviada } from '../../types/panel';
 import type { FotoPublicada, Publicacion } from '../../types/publicacion';
 import { actasDe, activarModulo, archivarViejas, cantidadPorEstado, desactivarModulo, kpisDe, modulosGuardados, nuevas, pendientesCuenta, pendientesDe, pestanasDe, porConfirmar, quedan, recibidasPorConfirmar, resumenActas, textoCertificar, textoCierre } from '../../utils/panel';
-import { nombrePanel } from '../../utils/cuenta';
+import { nombrePanel, guardarEntidad } from '../../utils/cuenta';
 import { cifra, iniciales, tituloPublicacion, unidad } from '../../utils/publicaciones';
 import { Tabla } from '../../components/ui/Tabla';
 import { MenuAcciones } from '../../components/ui/MenuAcciones';
@@ -40,7 +40,7 @@ import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, updateOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
 import { commitmentToSolicitud, commitmentToEntregaRecibida, commitmentToSolicitudEnviada, commitmentToOfrecimientoEnviado, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
-import { clearStoredAuthUser, getStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from '../../utils/session';
 import { registrarCompromisoPublicacion } from '../../utils/compromisoHandler';
 import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
 import { useTranslation } from '../../i18n/LanguageContext';
@@ -698,6 +698,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
             const mappedEquipo: MiembroEquipo[] = dbMembers.map((m: any, idx: number) => ({
               id: idx + 100,
               dbId: m.id,
+              userId: m.user_id,
               n: m.name || m.profiles?.full_name || 'Miembro de equipo',
               rolPlataforma: (m.role_in_org === 'admin' ? 'admin' : 'voluntario') as RolPlataforma,
               rol: m.member_title || m.role_in_org || 'Operativo',
@@ -1332,6 +1333,20 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     if ((m as any)?.dbId) {
       try {
         await removeOrganizationMember((m as any).dbId);
+        const active = getStoredAuthUser();
+        const esUsuarioActual = (m as any).userId === active?.id || (m?.correo && active?.email && m.correo.toLowerCase() === active.email.toLowerCase());
+        if (esUsuarioActual) {
+          guardarEntidad('individual');
+          if (active) {
+            saveStoredAuthUser({
+              ...active,
+              profile_type: 'persona',
+              org_name: undefined,
+              organization: undefined,
+            });
+          }
+          window.location.href = '/mi-actividad';
+        }
       } catch (e) {
         console.warn('Error eliminando miembro en Supabase:', e);
       }
