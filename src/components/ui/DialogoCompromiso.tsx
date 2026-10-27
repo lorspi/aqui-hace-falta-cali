@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import type { Publicacion } from '../../types/publicacion';
 import { cifra, restante } from '../../utils/publicaciones';
 import { cantidadDe, type Compromiso } from '../../utils/compromiso';
+import { numero } from '../../utils/equivalencias';
 import { Casilla } from './Casilla';
 import { Dialogo } from './Dialogo';
 import { useTranslation } from '../../i18n/LanguageContext';
@@ -41,15 +43,46 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
   const cambiar = (i: number, cambio: Partial<EstadoFila>) => setEstado((e) => ({ ...e, [i]: { ...filaDe(i, 0), ...e[i], ...cambio } }));
   const elegidas = filas.filter((f) => filaDe(f.i, f.queda).marcado);
 
+  const validarFila = (i: number, queda: number, unidadStr: string) => {
+    const f = filaDe(i, queda);
+    if (!f.marcado) return { valida: true, error: null, puedeAjustar: false };
+    const val = (f.cantidad ?? '').trim();
+    if (val === '') {
+      return { valida: false, error: t('commitmentErrorRequired'), puedeAjustar: false };
+    }
+    const n = numero(val);
+    if (!Number.isFinite(n)) {
+      return { valida: false, error: t('commitmentErrorInvalid'), puedeAjustar: false };
+    }
+    if (n <= 0) {
+      return { valida: false, error: t('commitmentErrorPositive'), puedeAjustar: false };
+    }
+    if (n > queda) {
+      const uFmt = tUnit(queda, unidadStr);
+      const plantilla = esNecesidad ? t('commitmentErrorExceedsNeed') : t('commitmentErrorExceedsOffer');
+      const msg = plantilla.replace('{max}', `${cifra(queda)} ${uFmt}`);
+      return { valida: false, error: msg, puedeAjustar: true };
+    }
+    return { valida: true, error: null, puedeAjustar: false };
+  };
+
+  const validaciones = filas.map(({ i, r, queda }) => ({ i, ...validarFila(i, queda, r.unidad) }));
+  const todasElegidasValidas =
+    elegidas.length > 0 &&
+    elegidas.every(({ i }) => {
+      const v = validaciones.find((item) => item.i === i);
+      return v?.valida;
+    });
+
   return (
     <Dialogo
       abierto={p !== null}
       titulo={p ? `${esNecesidad ? t('commitmentHelpTitle') : t('commitmentRequestTitle')} ${p.org}?` : ''}
       accion={esNecesidad ? t('radarMatchActionCommit') : t('radarMatchActionRequest')}
-      accionActiva={elegidas.length > 0}
+      accionActiva={todasElegidasValidas}
       onCerrar={onCerrar}
       onEnviar={() => {
-        if (!p || elegidas.length === 0) return;
+        if (!p || !todasElegidasValidas) return;
         onEnviar(p, {
           partes: elegidas.map(({ i, r, queda }) => ({ item: r.item, cantidad: cantidadDe(filaDe(i, queda).cantidad, queda), unidad: r.unidad })),
         });
@@ -63,12 +96,13 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
         <ul className="m-0 mb-3 flex list-none flex-col p-0">
           {filas.map(({ i, r, queda }) => {
             const f = filaDe(i, queda);
-            const unidadFila = tUnit(cantidadDe(f.cantidad, queda), r.unidad);
-            /* Bajo 640 el campo baja a su propio renglón, sangrado hasta el texto: con él al
-               lado, «Plantas eléctricas / Generadores» se parte en tres. Abajo sigue en columna
-               con los demás, que es lo que se quería. */
+            const valInfo = validaciones.find((v) => v.i === i);
+            const tieneError = f.marcado && !valInfo?.valida;
+            const unidadFila = tUnit(cantidadDe(f.cantidad, queda) || queda, r.unidad);
+            const idError = `err-compromiso-${i}`;
+
             return (
-              <li key={r.item} className="flex items-center gap-x-3 gap-y-2 border-b border-rd-line-soft py-2.5 last:border-b-0 max-sm:flex-wrap">
+              <li key={r.item} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-rd-line-soft py-2.5 last:border-b-0">
                 <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2.5 max-sm:basis-full">
                   <input
                     type="checkbox"
@@ -82,27 +116,56 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
                     <span className="block text-rd-12-5 text-rd-ink-meta tabular-nums">{p ? tResourceStatus(r, p.tipo) : ''}</span>
                   </span>
                 </label>
-                {/* La caja de ancho fijo con la unidad dentro es lo que mantiene los números en
-                    columna, midan lo que midan los nombres de los recursos. */}
                 <span
-                  className={`flex h-rd-h-md w-36 shrink-0 items-center rounded-rd-sm border transition-colors max-sm:ml-6.5 pointer-coarse:h-rd-tactil focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft ${f.marcado ? 'border-rd-line bg-rd-surface hover:not-focus-within:border-rd-ink-3' : 'border-rd-line-soft bg-rd-sunken'}`}
+                  className={`flex h-rd-h-md w-36 shrink-0 items-center rounded-rd-sm border transition-colors max-sm:ml-6.5 pointer-coarse:h-rd-tactil ${
+                    !f.marcado
+                      ? 'border-rd-line-soft bg-rd-sunken'
+                      : tieneError
+                      ? 'border-rd-coral bg-rd-surface focus-within:border-rd-coral focus-within:ring-3 focus-within:ring-rd-coral-soft'
+                      : 'border-rd-line bg-rd-surface hover:not-focus-within:border-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft'
+                  }`}
                 >
-                  {/* Texto, no `type="number"`: la etiqueta de al lado dice «faltan 1.500 L» y un
-                      campo numérico nativo no acepta ese punto de miles, así que daba el valor
-                      por inválido y lo enviaba vacío. Se escribe como se lee y `numero()` lo
-                      interpreta (el mismo trato que `CampoNumero` en los flujos). */}
                   <input
                     type="text"
                     inputMode="decimal"
                     disabled={!f.marcado}
                     value={f.cantidad}
+                    aria-invalid={tieneError ? true : undefined}
+                    aria-describedby={tieneError && valInfo?.error ? idError : undefined}
                     onChange={(e) => cambiar(i, { cantidad: e.target.value })}
-                    onBlur={() => cambiar(i, { cantidad: cifra(cantidadDe(f.cantidad, queda)) })}
+                    onBlur={() => {
+                      const num = numero(f.cantidad);
+                      if (Number.isFinite(num) && num > queda) {
+                        cambiar(i, { cantidad: cifra(queda) });
+                      } else if (Number.isFinite(num) && num > 0) {
+                        cambiar(i, { cantidad: cifra(num) });
+                      }
+                    }}
                     aria-label={`${t('commitmentHowMuchOf')} ${tItem(r.item)}`}
                     className="font-rd min-w-0 flex-1 bg-transparent px-2 text-right text-rd-13-5 text-rd-ink tabular-nums focus:outline-none disabled:text-rd-ink-meta"
                   />
-                  <span className={`shrink-0 pr-2.5 pl-1 text-rd-12-5 font-semibold ${f.marcado ? 'text-rd-ink-2' : 'text-rd-ink-meta'}`}>{unidadFila}</span>
+                  <span className={`shrink-0 pr-2.5 pl-1 text-rd-12-5 font-semibold ${!f.marcado ? 'text-rd-ink-meta' : tieneError ? 'text-rd-coral' : 'text-rd-ink-2'}`}>{unidadFila}</span>
                 </span>
+
+                {tieneError && valInfo?.error && (
+                  <div
+                    id={idError}
+                    role="alert"
+                    className="basis-full flex items-center justify-end max-sm:justify-start max-sm:pl-6.5 text-rd-12 text-rd-coral"
+                  >
+                    <CircleAlert aria-hidden="true" className="h-3.5 w-3.5 shrink-0 mr-1" />
+                    <span>{valInfo.error}</span>
+                    {valInfo.puedeAjustar && (
+                      <button
+                        type="button"
+                        onClick={() => cambiar(i, { cantidad: cifra(queda) })}
+                        className="ml-1.5 font-semibold underline hover:text-rd-coral-ink cursor-pointer"
+                      >
+                        {t('commitmentAdjustToMax')}
+                      </button>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}

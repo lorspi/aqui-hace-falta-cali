@@ -6,7 +6,7 @@ import { LanguageSelector } from '../LanguageSelector';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId } from '../../lib/supabaseService';
-import { entidadActual } from '../../utils/cuenta';
+import { entidadActual, formatearRol } from '../../utils/cuenta';
 import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**
@@ -53,7 +53,7 @@ const ITEM = 'font-rd flex h-9.5 shrink-0 items-center gap-3 rounded-rd-lg px-3 
 const ITEM_ACTUAL = 'bg-rd-navy-soft font-semibold text-rd-navy hover:bg-rd-navy-soft hover:text-rd-navy';
 
 export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, isModeratorOrAdmin = false, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onOpenProfileModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [plegado, setPlegado] = useState(false);
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
@@ -114,7 +114,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           try {
             const { data: p } = await supabase
               .from('profiles')
-              .select('id, role, profile_type, organization, full_name, moderation_status')
+              .select('id, role, full_name, moderation_status')
               .eq('id', user.id)
               .maybeSingle();
             profileData = p;
@@ -139,9 +139,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
               ...user,
               name: profileData?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
               role: profileData?.role || user.user_metadata?.role || (isAdmin ? 'admin' : user.role),
-              profile_type: profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType,
-              org_name: orgData?.name || profileData?.organization || user.user_metadata?.org_name,
-              organization: orgData?.name || profileData?.organization || user.user_metadata?.organization,
+              profile_type: (orgData ? 'organizacion' : null) || profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType,
+              org_name: orgData?.org_name || orgData?.name || profileData?.organization || user.user_metadata?.org_name,
+              organization: orgData?.org_name || orgData?.name || profileData?.organization || user.user_metadata?.organization,
               user_metadata: user.user_metadata,
             };
 
@@ -227,14 +227,16 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   const cuentaFinal = useMemo(() => {
     if (!activeUser) return cuenta;
     const name = activeUser.name || activeUser.full_name || activeUser.user_metadata?.full_name || activeUser.email || cuenta.entidad;
-    const inicialesStr = name.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || cuenta.iniciales;
+    const entidadNombre = activeUser.org_name || activeUser.organization || name;
+    const inicialesStr = entidadNombre.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || cuenta.iniciales;
+    const rawRol = activeUser.role || activeUser.user_metadata?.role || cuenta.rol;
     return {
-      entidad: activeUser.org_name || activeUser.organization || name,
+      entidad: entidadNombre,
       persona: activeUser.email || cuenta.persona,
-      rol: activeUser.role || activeUser.user_metadata?.role || cuenta.rol,
+      rol: formatearRol(rawRol, language),
       iniciales: inicialesStr
     };
-  }, [activeUser, cuenta]);
+  }, [activeUser, cuenta, language]);
 
   const handleLogoutAction = async () => {
     // 1. Limpiar inmediatamente el estado visual en Shell
@@ -311,12 +313,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       try {
         const [orgRes, profRes] = await Promise.all([
           fetchOrganizationByUserId(activeUser.id),
-          supabase.from('profiles').select('profile_type, role').eq('id', activeUser.id).maybeSingle()
+          supabase.from('profiles').select('role').eq('id', activeUser.id).maybeSingle()
         ]);
         if (!isMounted) return;
         setHasOrg(Boolean(orgRes));
-        if (profRes.data) {
-          setDbProfileType((profRes.data.profile_type || profRes.data.role || '').toLowerCase());
+        if (orgRes) {
+          setDbProfileType('organizacion');
+        } else if (profRes?.data) {
+          setDbProfileType((profRes.data.role || '').toLowerCase());
         }
       } catch {}
     }
@@ -354,19 +358,19 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     activeUser?.email?.toLowerCase().includes('moderador')
   );
 
-  // 1. ¿Es persona natural / voluntario / ciudadano?
-  const esIndividual = Boolean(
-    normProfileType === 'persona' ||
-    normProfileType === 'individual' ||
-    normUserRole === 'voluntario' ||
-    normUserRole === 'regular' ||
-    normUserRole === 'ciudadano' ||
-    normUserRole === 'user' ||
-    (!estaLogueado && (entidadStorage === 'individual' || entidadActual() === 'individual'))
+  // 1. ¿Tiene organización asociada (dueño o miembro del equipo)?
+  const tieneOrg = Boolean(
+    hasOrg ||
+    Boolean(activeUser?.org_name) ||
+    Boolean(activeUser?.organization) ||
+    normProfileType === 'organizacion' ||
+    normProfileType === 'entidad_profesional' ||
+    normUserRole === 'organizacion' ||
+    normUserRole === 'entidad_profesional'
   );
 
-  // 2. ¿Es comunidad / líder comunitario? (siempre que no sea individual)
-  const esComunidad = !esIndividual && Boolean(
+  // 2. ¿Es comunidad / líder comunitario?
+  const esComunidad = Boolean(
     normProfileType === 'comunidad' ||
     normProfileType === 'liderazgo' ||
     normProfileType === 'lider' ||
@@ -377,15 +381,23 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     (!estaLogueado && (entidadStorage === 'liderazgo' || entidadStorage === 'comunidad' || entidadActual() === 'liderazgo'))
   );
 
-  // 3. ¿Es organización? (siempre que no sea individual ni comunidad)
-  const esOrganizacion = !esIndividual && !esComunidad && Boolean(
-    hasOrg ||
-    normProfileType === 'organizacion' ||
-    normProfileType === 'entidad_profesional' ||
-    normUserRole === 'organizacion' ||
-    normUserRole === 'entidad_profesional' ||
+  // 3. ¿Es organización? (siempre que no sea comunidad)
+  const esOrganizacion = !esComunidad && Boolean(
+    tieneOrg ||
     (!estaLogueado && (entidadStorage === 'organizacion' || entidadActual() === 'organizacion')) ||
-    (estaLogueado && !esAdminOModerador)
+    (estaLogueado && !esAdminOModerador && !normProfileType.includes('persona') && !normProfileType.includes('individual') && !normUserRole.includes('voluntario'))
+  );
+
+  // 4. ¿Es persona natural / voluntario / ciudadano? (siempre que no tenga organización ni sea comunidad)
+  const esIndividual = !tieneOrg && !esComunidad && Boolean(
+    normProfileType === 'persona' ||
+    normProfileType === 'individual' ||
+    normUserRole === 'voluntario' ||
+    normUserRole === 'regular' ||
+    normUserRole === 'ciudadano' ||
+    normUserRole === 'user' ||
+    (!estaLogueado && (entidadStorage === 'individual' || entidadActual() === 'individual')) ||
+    (estaLogueado && !esOrganizacion)
   );
 
   const secciones: { id: Seccion; nombre: string; href: string; icono: React.ReactNode; n?: number }[] = [
@@ -560,9 +572,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             className="flex items-center justify-center focus-visible:rounded-rd-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rd-navy hover:opacity-90 transition-opacity"
           >
             {plegado ? (
-              <img src="/simbolo-radar.svg" alt="Radar de Ayuda" className="block h-7.5 w-7.5 shrink-0 object-contain" />
+              <img src="/simbolo-radar.svg" alt="" className="block h-7.5 w-7.5 shrink-0 object-contain" />
             ) : (
-              <img src="/logo-radar.svg" alt="Radar de Ayuda" className="block h-8 w-auto min-w-0" />
+              <img src="/logo-radar.svg" alt="" className="block h-8 w-auto min-w-0" />
             )}
           </a>
           <button

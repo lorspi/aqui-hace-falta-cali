@@ -35,7 +35,7 @@ export const BotonFiltros: React.FC<{
       type="button"
       onClick={onClick}
       aria-expanded={abierta}
-      aria-label={aplicados ? `${labelFinal}, ${aplicados} aplicados` : labelFinal}
+      aria-label={aplicados ? `${labelFinal}, ${aplicados} ${t('appliedPlural')}` : labelFinal}
       className={`font-rd inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full border bg-rd-surface px-3 text-rd-13-5 font-medium whitespace-nowrap text-rd-ink hover:bg-rd-fondo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${aplicados ? 'border-rd-sel' : 'border-rd-line'}`}
     >
       <Funnel aria-hidden="true" className="h-3.75 w-3.75 text-rd-ink-3" />

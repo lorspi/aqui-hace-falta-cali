@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { Publicacion } from '../../types/publicacion';
 import type { CoincidenciaPublicacion } from '../../utils/cruce';
 import { Tarjeta, type TarjetaProps } from './Tarjeta';
+import { useTranslation } from '../../i18n/LanguageContext';
+import { tituloPublicacion } from '../../utils/publicaciones';
 
 /**
  * La hoja del pin (`rd-hoja-pin` del prototipo, T4), solo bajo 1024. Al tocar un pin sube
@@ -39,6 +41,7 @@ const DURACION = 200;
 const MAX_PUNTOS = 10;
 
 export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distancias, coincidencias, expandida, cerrando = false, onExpandir, onCerrar, onIr, ...tarjeta }) => {
+  const { t, language } = useTranslation();
   const hoja = useRef<HTMLDivElement>(null);
   const pista = useRef<HTMLDivElement>(null);
   const ranura = useRef<HTMLDivElement>(null);
@@ -148,14 +151,14 @@ export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distanci
       ref={hoja}
       tabIndex={-1}
       role="dialog"
-      aria-label={`${publicacion.tipo === 'necesidad' ? 'Necesidad' : 'Oferta'}: ${publicacion.titulo}`}
+      aria-label={`${publicacion.tipo === 'necesidad' ? t('mapMarkerNeed') : t('mapMarkerOffer')}: ${tituloPublicacion(publicacion, language)}`}
       className={`fixed right-0 bottom-0 left-0 z-805 mx-auto flex max-w-130 flex-col transition-all duration-300 ease-out outline-none lg:hidden ${expandida ? 'h-rd-hoja-2' : 'h-rd-hoja-1'} ${fuera ? 'translate-y-full' : 'translate-y-0'}`}
     >
       {/* La flecha vive fuera de la hoja, como un botón que flota sobre su borde: dice hacia
           dónde va (arriba = se expande, abajo = se colapsa). */}
       <button
         type="button"
-        aria-label={expandida ? 'Colapsar' : 'Expandir'}
+        aria-label={expandida ? t('collapse') : t('expand')}
         aria-expanded={expandida}
         onClick={() => onExpandir(!expandida)}
         className="absolute -top-9 left-1/2 z-1 flex h-8 w-8 -translate-x-1/2 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink-2 shadow-xs transition-colors hover:bg-rd-sunken hover:text-rd-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
@@ -166,7 +169,7 @@ export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distanci
       <div className="flex flex-none items-center pl-12">
         <button
           type="button"
-          aria-label={expandida ? 'Colapsar la hoja' : 'Expandir la hoja'}
+          aria-label={expandida ? t('collapseSheet') : t('expandSheet')}
           onClick={() => onExpandir(!expandida)}
           onPointerDown={alEmpezar}
           onPointerUp={alSoltar}
@@ -174,7 +177,7 @@ export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distanci
         >
           <span aria-hidden="true" className="h-1 w-9 rounded-full bg-rd-ink-3" />
         </button>
-        <button type="button" aria-label="Cerrar" onClick={onCerrar} className="mr-1 flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-rd-md text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy">
+        <button type="button" aria-label={t('close')} onClick={onCerrar} className="mr-1 flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-rd-md text-rd-ink-2 hover:bg-rd-sunken focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy">
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
       </div>
@@ -206,12 +209,12 @@ export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distanci
       </div>
 
       {carrusel && vecinas.length <= MAX_PUNTOS && (
-        <div role="group" aria-label="Publicaciones" className="mx-auto mt-2 mb-3 flex w-max flex-none rounded-full bg-rd-ink px-2">
+        <div role="group" aria-label={t('publications')} className="mx-auto mt-2 mb-3 flex w-max flex-none rounded-full bg-rd-ink px-2">
           {vecinas.map((p, k) => (
             <button
               key={p.id}
               type="button"
-              aria-label={`Publicación ${k + 1} de ${vecinas.length}`}
+              aria-label={`${t('publicationSingular')} ${k + 1} ${t('ofPreposition')} ${vecinas.length}`}
               aria-current={k === i ? 'true' : undefined}
               onClick={() => k !== i && ir(k - i)}
               className="flex h-6 w-6 cursor-pointer items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy"
@@ -223,7 +226,7 @@ export const HojaPin: React.FC<HojaPinProps> = ({ publicacion, vecinas, distanci
       )}
       {carrusel && vecinas.length > MAX_PUNTOS && (
         <p aria-live="polite" className="font-rd mx-auto mt-2 mb-3 flex h-6 w-max flex-none items-center rounded-full bg-rd-ink px-3 text-rd-11-5 font-semibold text-white tabular-nums">
-          {i + 1} de {vecinas.length}
+          {i + 1} {t('ofPreposition')} {vecinas.length}
         </p>
       )}
       </div>

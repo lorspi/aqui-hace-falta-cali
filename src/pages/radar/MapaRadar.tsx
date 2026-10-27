@@ -109,7 +109,7 @@ function tipHTML(p: Publicacion, km: number | null, lang: Language = 'es'): stri
   const recursosList = (p.recursos || []).map((r) => translateItem(r.item, lang)).filter(Boolean);
   let recs = '';
   if (recursosList.length === 0) {
-    recs = recursosPublicacion(p);
+    recs = recursosPublicacion(p, lang);
   } else if (recursosList.length <= 3) {
     recs = recursosList.join(', ');
   } else {

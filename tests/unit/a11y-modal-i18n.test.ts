@@ -49,6 +49,27 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
       'removeFilter',
       'previousPhoto',
       'nextPhoto',
+      'collapse',
+      'expand',
+      'collapseSheet',
+      'expandSheet',
+      'appliedPlural',
+      'cities',
+      'nearMe',
+      'searchCityOrDept',
+      'selectAll',
+      'publicationSingular',
+      'publications',
+      'ofPreposition',
+      'photosOf',
+      'viewPhoto',
+      'filterOrSort',
+      'tabFilter',
+      'tabSort',
+      'openOptions',
+      'closeOptions',
+      'step',
+      'backTo',
       'organizationsTab',
       'communitiesTab',
       'communityAndZone',
@@ -124,7 +145,7 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     expect(translations.en.moreActions).toBe('More actions');
     expect(translations.en.collapseMenu).toBe('Collapse menu');
     expect(translations.en.expandMenu).toBe('Expand menu');
-    expect(translations.en.minimizePanel).toBe('Minimize panel');
+    expect(translations.en.minimizePanel).toBe('Collapse panel');
     expect(translations.en.showPanel).toBe('Show panel');
     expect(translations.en.showRightPanel).toBe('Show right panel');
     expect(translations.en.goToMyLocation).toBe('Go to my location');
@@ -134,9 +155,9 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     expect(translations.en.mapMarkerNeed).toBe('Need');
     expect(translations.en.mapMarkerOffer).toBe('Offer');
 
-    // 8 etiquetas reportadas por QA el 23 oct 2026:
+    // Etiquetas reportadas por QA:
     expect(translations.en.sections).toBe('Sections');
-    expect(translations.en.radarHome).toBe('RaDAR de ayuda, home');
+    expect(translations.en.radarHome).toBe('Help RaDAR, home');
     expect(translations.en.languageSelector).toBe('Language');
     expect(translations.en.whatToSee).toBe('What you want to see');
     expect(translations.en.viewSelector).toBe('View');
@@ -146,6 +167,9 @@ describe('Pruebas unitarias para A11y e i18n (A11-01, A11-02, A11-06)', () => {
     expect(translations.en.markAsRead).toBe('Mark as read');
     expect(translations.en.viewAllNotices).toBe('View all');
     expect(translations.en.closeFilters).toBe('Close filters');
+    expect(translations.en.collapseSheet).toBe('Collapse sheet');
+    expect(translations.en.cities).toBe('Cities');
+    expect(translations.en.nearMe).toBe('Near me');
   });
 
   it('traduce tituloPublicacion en inglés sin romper retrocompatibilidad en español', () => {

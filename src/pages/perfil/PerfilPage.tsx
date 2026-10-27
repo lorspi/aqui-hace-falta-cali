@@ -14,7 +14,8 @@ import { RUTAS, RUTAS_SHELL, TIPOS_DOC } from '../../mocks/cuentasMock';
 import { CANALES } from '../../mocks/perfilMock';
 import type { CanalAviso, Persona, PestanaPerfil, Sesion } from '../../types/perfil';
 import type { DatosOrg, Invitado } from '../../types/panel';
-import { entidadActual, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
+import { entidadActual, formatearRol, formatearTipoDocumento, guardarVerificacion, nombrePanel } from '../../utils/cuenta';
+import { formatearTipoEntidad } from '../../utils/directorio';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { iniciales } from '../../utils/publicaciones';
 import { supabase } from '../../lib/supabaseClient';
@@ -69,7 +70,7 @@ export const PerfilPage: React.FC<PerfilPageProps> = ({ authUser }) => (
 );
 
 const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const avisar = useAviso();
   const pestanas = useMemo(() => [
     { id: 'datos' as PestanaPerfil, nombre: t('profileTabInfo') },
@@ -147,7 +148,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
               ? 'Líder Comunitario' 
               : 'Voluntario / Ciudadano';
 
-          const cargo = profile?.cargo || cargoDefault;
+          const cargo = profile?.cargo ? formatearRol(profile.cargo, language) : cargoDefault;
 
           const tel = profile?.phone ||
             profile?.whatsapp ||
@@ -159,7 +160,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
           const pais = profile?.country || 'Colombia';
           const ciudad = profile?.city || 'Cali';
           const departamento = profile?.department || 'Valle del Cauca';
-          const tipoDocumento = profile?.document_type || 'Cédula de ciudadanía';
+          const tipoDocumento = profile?.document_type ? formatearTipoDocumento(profile.document_type, language) : 'Cédula de ciudadanía';
           const numeroDocumento = profile?.document_number || '';
           const tipoComunidad = profile?.community_type || 'Junta de Acción Comunal';
 
@@ -242,16 +243,16 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
       }
     }
     loadProfile();
-  }, []);
+  }, [language]);
 
   const cuentaUsuario: Cuenta = useMemo(() => {
     return {
       entidad: orgData?.nombre || yo.nombre || 'Mi Cuenta',
       persona: yo.nombre || 'Usuario',
-      rol: yo.cargo || 'Miembro',
+      rol: formatearRol(yo.cargo || 'Miembro', language),
       iniciales: iniciales(yo.nombre || 'U'),
     };
-  }, [orgData, yo]);
+  }, [orgData, yo, language]);
 
   const cambiarTab = (id: string) => {
     setActual(id as PestanaPerfil);
@@ -460,6 +461,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
 /* ---------- Tus datos: ver y editar en la misma caja ---------- */
 
 const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: (p: PersonaExt) => void }> = ({ yo, dbUserId, onGuardar }) => {
+  const { language } = useTranslation();
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState<PersonaExt>(yo);
 
@@ -468,7 +470,10 @@ const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: 
   }, [yo]);
 
   const empezar = () => {
-    setBorrador(yo);
+    setBorrador({
+      ...yo,
+      tipoDocumento: formatearTipoDocumento(yo.tipoDocumento, language),
+    });
     setEditando(true);
   };
 
@@ -527,9 +532,9 @@ const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: 
       ) : (
         <>
           <FilaDato rotulo="Nombre">{yo.nombre}</FilaDato>
-          <FilaDato rotulo="Cargo / Rol">{yo.cargo || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
+          <FilaDato rotulo="Cargo / Rol">{formatearRol(yo.cargo, language) || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
           <FilaDato rotulo="Celular">{yo.tel}</FilaDato>
-          {yo.numeroDocumento && <FilaDato rotulo="Documento">{`${yo.tipoDocumento || 'Documento'}: ${yo.numeroDocumento}`}</FilaDato>}
+          {yo.numeroDocumento && <FilaDato rotulo="Documento">{`${formatearTipoDocumento(yo.tipoDocumento, language)}: ${yo.numeroDocumento}`}</FilaDato>}
           <FilaDato rotulo="Ubicación">{`${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}, ${yo.pais || 'Colombia'}`}</FilaDato>
         </>
       )}
@@ -608,6 +613,7 @@ const DatosOrganizacion: React.FC<{
   dbUserId?: string | null;
   onGuardarOrg?: (org: DatosOrg) => void;
 }> = ({ orgInicial, dbUserId, onGuardarOrg }) => {
+  const { language } = useTranslation();
   const avisar = useAviso();
   const [org, setOrg] = useState<DatosOrg>(orgInicial || DEFAULT_ORG);
   const [directorio, setDirectorio] = useState(orgInicial?.directorio ?? false);
@@ -688,7 +694,7 @@ const DatosOrganizacion: React.FC<{
         <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
           {[
             ['Nombre', org.nombre],
-            ['Tipo', org.tipo],
+            ['Tipo', formatearTipoEntidad(org.tipo, false, language)],
             ['NIT / Registro', org.nit],
             ['Dirección', org.dir],
             ['Contacto público', `${org.contacto.tel}, ${org.contacto.correo}`],
@@ -712,6 +718,7 @@ const DatosComunidad: React.FC<{
   dbUserId?: string | null;
   onGuardarOrg?: (org: DatosOrg) => void;
 }> = ({ orgInicial, dbUserId, onGuardarOrg }) => {
+  const { language } = useTranslation();
   const avisar = useAviso();
   const [com, setCom] = useState<DatosOrg>(
     orgInicial || {
@@ -796,7 +803,7 @@ const DatosComunidad: React.FC<{
         <dl className="m-0 grid gap-x-6 gap-y-3 sm:grid-cols-3">
           {[
             ['Comunidad o sector', com.nombre],
-            ['Tipo de representación', com.tipo],
+            ['Tipo de representación', formatearTipoEntidad(com.tipo, true, language)],
             ['Ubicación', com.dir],
             ['Contacto comunitario', `${com.contacto.tel || 'Sin teléfono'}, ${com.contacto.correo || 'Sin correo'}`],
           ].map(([k, v]) => (

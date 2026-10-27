@@ -529,10 +529,12 @@ export async function submitNeedReport(params: {
   reason: string;
   description: string;
   reporterContact?: string;
+  needTitle?: string;
 }): Promise<void> {
   const { error } = await supabase.from('reports').insert([
     {
       need_id: params.needId,
+      need_title: params.needTitle || null,
       reason: params.reason,
       description: params.description,
       reporter_contact: params.reporterContact || null,
@@ -548,10 +550,12 @@ export async function submitOfferReport(params: {
   reason: string;
   description: string;
   reporterContact?: string;
+  offerTitle?: string;
 }): Promise<void> {
   const { error } = await supabase.from('offer_reports').insert([
     {
       offer_id: params.offerId,
+      offer_title: params.offerTitle || null,
       reason: params.reason,
       description: params.description,
       reporter_contact: params.reporterContact || null,
@@ -744,7 +748,7 @@ export async function fetchAdminReports(): Promise<AdminReport[]> {
       list.push({
         id: r.id,
         needId: r.need_id,
-        needTitle: r.need_title || r.need_id,
+        needTitle: (r.need_title && r.need_title !== r.need_id) ? r.need_title : undefined,
         reason: r.reason,
         description: r.description,
         reporterContact: r.reporter_contact,
@@ -760,7 +764,7 @@ export async function fetchAdminReports(): Promise<AdminReport[]> {
       list.push({
         id: r.id,
         offerId: r.offer_id,
-        offerTitle: r.offer_title || r.offer_id,
+        offerTitle: (r.offer_title && r.offer_title !== r.offer_id) ? r.offer_title : undefined,
         reason: r.reason,
         description: r.description,
         reporterContact: r.reporter_contact,

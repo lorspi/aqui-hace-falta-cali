@@ -18,7 +18,7 @@ describe('Traducciones de catálogo y datos estructurados (catalogTranslations.t
     expect(translateCategory(cat, 'fr')).toBe('Vivres et bien-être de base');
   });
 
-  it('traduce ítems de recursos individuales', () => {
+  it('traduce ítems de recursos individuales y variantes de categorías', () => {
     expect(translateItem('Agua potable', 'es')).toBe('Agua potable');
     expect(translateItem('Agua potable', 'en')).toBe('Drinking water');
     expect(translateItem('Agua potable', 'pt')).toBe('Água potável');
@@ -26,6 +26,20 @@ describe('Traducciones de catálogo y datos estructurados (catalogTranslations.t
 
     expect(translateItem('Alimentos', 'en')).toBe('Food');
     expect(translateItem('Alimentos', 'fr')).toBe('Nourriture');
+
+    // Categorías y variantes comunes (ej. Maquinaria pesada, Remover escombros)
+    expect(translateItem('Maquinaria pesada', 'en')).toBe('Heavy machinery');
+    expect(translateItem('Maquinaria pesada', 'pt')).toBe('Maquinário pesado');
+    expect(translateItem('Maquinaria pesada', 'fr')).toBe('Engins lourds');
+    expect(translateItem('Maquinaria pesada y operarios', 'en')).toBe('Heavy machinery & Operators');
+
+    expect(translateItem('Remover escombros', 'en')).toBe('Debris removal');
+    expect(translateItem('Mano de obra', 'en')).toBe('Labor / Volunteers');
+    expect(translateItem('Aporte económico', 'en')).toBe('Financial contribution');
+
+    // Resiliencia a espacios en blanco y mayúsculas/minúsculas
+    expect(translateItem('  maquinaria pesada  ', 'en')).toBe('Heavy machinery');
+    expect(translateItem('agua potable', 'en')).toBe('Drinking water');
   });
 
   it('traduce y pluraliza unidades de medida', () => {

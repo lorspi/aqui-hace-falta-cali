@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { showAlert } from "./components/ConfirmDialog";
-import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed, fetchUserProfile } from "./lib/supabaseService";
+import { useNeeds, useOffers, useCityCounts, createNeed, submitNeedReport, addNeedUpdateNote, getNeedById, getOfferById, updateNeed, fetchUserProfile, fetchOrganizationByUserId } from "./lib/supabaseService";
 import {
   Map,
   List,
@@ -364,43 +364,48 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       if (!sessionUser) return;
 
       // 1. Establecer el usuario INMEDIATAMENTE con los metadatos de la sesión
-      const metaName = sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Usuario';
+      const local = getStoredAuthUser();
+      const metaName = local?.name || sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Usuario';
       const immediateUserObj = {
         id: sessionUser.id,
         name: metaName,
         email: sessionUser.email,
-        role: sessionUser.user_metadata?.role || sessionUser.role,
-        profile_type: sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
-        org_name: sessionUser.user_metadata?.org_name,
-        organization: sessionUser.user_metadata?.org_name || sessionUser.user_metadata?.organization,
+        role: local?.role || sessionUser.user_metadata?.role || sessionUser.role,
+        profile_type: local?.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
+        org_name: local?.org_name || sessionUser.user_metadata?.org_name,
+        organization: local?.organization || sessionUser.user_metadata?.org_name || sessionUser.user_metadata?.organization,
         user_metadata: sessionUser.user_metadata,
       };
       setAuthUser(immediateUserObj);
-      localStorage.setItem('ahf_auth_user', JSON.stringify(immediateUserObj));
+      saveStoredAuthUser(immediateUserObj);
 
       // 2. Limpiar `#` o `#access_token` de la URL una vez procesada la sesión por Supabase (excepto recovery)
       if (typeof window !== 'undefined' && window.location.hash && !window.location.hash.includes('type=recovery')) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
 
-      // 3. Consultar perfil en DB en segundo plano
+      // 3. Consultar perfil y organización en DB en segundo plano
       try {
-        const profile = await fetchUserProfile(sessionUser.id);
-        if (profile) {
-          setUserProfile(profile);
-          const dbName = profile.full_name || profile.name || metaName;
+        const [profile, orgData] = await Promise.all([
+          fetchUserProfile(sessionUser.id),
+          fetchOrganizationByUserId(sessionUser.id)
+        ]);
+        if (profile || orgData) {
+          if (profile) setUserProfile(profile);
+          const dbName = profile?.full_name || profile?.name || local?.name || metaName;
+          const resolvedOrgName = orgData?.org_name || orgData?.name || local?.org_name || sessionUser.user_metadata?.org_name;
           const updatedUserObj = {
             id: sessionUser.id,
             name: dbName,
             email: sessionUser.email,
-            role: profile.role || sessionUser.user_metadata?.role || sessionUser.role,
-            profile_type: profile.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
-            org_name: profile.organization || sessionUser.user_metadata?.org_name,
-            organization: profile.organization || sessionUser.user_metadata?.org_name,
+            role: profile?.role || sessionUser.user_metadata?.role || sessionUser.role,
+            profile_type: (orgData ? 'organizacion' : null) || profile?.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
+            org_name: resolvedOrgName,
+            organization: resolvedOrgName,
             user_metadata: sessionUser.user_metadata,
           };
           setAuthUser(updatedUserObj);
-          localStorage.setItem('ahf_auth_user', JSON.stringify(updatedUserObj));
+          saveStoredAuthUser(updatedUserObj);
 
           const normRole = profile.role?.toString().trim().toUpperCase();
           const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
@@ -1174,6 +1179,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     try {
       await submitNeedReport({
         needId,
+        needTitle: selectedForReport?.title,
         reason,
         description,
         reporterContact: contact,

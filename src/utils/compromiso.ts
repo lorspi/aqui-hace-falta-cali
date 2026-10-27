@@ -49,10 +49,10 @@ export function avisoCompromiso(org: string, tipo: TipoPublicacion, c: Compromis
 }
 
 /** Lo que vale de verdad lo escrito en el campo: nunca más de lo que falta, nunca cero ni
- *  basura. Sin número legible, se entiende que va por todo lo que falta. */
+ *  negativo. Con valor no numérico, cero o negativo devuelve 0. */
 export function cantidadDe(escrito: string, queda: number): number {
   const n = numero(escrito);
-  if (!Number.isFinite(n) || n <= 0) return queda;
+  if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.min(n, queda);
 }
 

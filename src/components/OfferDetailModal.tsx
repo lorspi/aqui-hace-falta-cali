@@ -265,6 +265,7 @@ export const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
     try {
       await submitOfferReport({
         offerId: offer.id,
+        offerTitle: offer.title,
         reason: reportReason,
         description: reportDescription,
         reporterContact: reporterContact || undefined,

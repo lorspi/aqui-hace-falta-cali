@@ -36,7 +36,7 @@ import { chipsDe, cifrasDe, consultaVacia, conteoTexto, cuantosAplicados, entida
 import { directorioDeParams, escribirUrl, paramsActuales, paramsDeDirectorio } from '../../utils/enlace';
 import { conteoPorCiudad } from '../../utils/lugares';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
-import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante } from '../../utils/publicaciones';
+import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
@@ -679,7 +679,7 @@ const DialogoDetalleEntidad: React.FC<{
  *  ofrece o pide con sus cantidades, y las acciones. Antes repetía el nombre de la entidad como
  *  título y no se entendía qué era (Alejandro, 22 de septiembre de 2026). */
 const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entidad; onCompromiso?: (pub: Publicacion) => void; onVerEnMapa: () => void }> = ({ publicacion: pub, entidad: e, onCompromiso, onVerEnMapa }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const est = estadoPublicacion(pub);
   const esPropia = pub.propia || pub.org === ENTIDAD_PROPIA || e.nombre === ENTIDAD_PROPIA;
   const esOferta = pub.tipo === 'oferta';
@@ -698,7 +698,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
         <EtiquetaTipo tipo={pub.tipo} />
         <EtiquetaEstado estado={est} />
         <span className="ml-auto flex">
-          <Button nivel="terciario" tamano="md" soloIcono aria-label={`${t('viewOnMap')}: ${pub.titulo}`} onClick={onVerEnMapa}>
+          <Button nivel="terciario" tamano="md" soloIcono aria-label={`${t('viewOnMap')}: ${tituloPublicacion(pub, language)}`} onClick={onVerEnMapa}>
             <MapIcon aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         </span>

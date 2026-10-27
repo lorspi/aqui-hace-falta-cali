@@ -126,3 +126,43 @@ const EMERGENCY_EVENT_MAP: Record<string, string> = {
 export function mapEmergencyEventToId(eventoStr: string): string {
   return EMERGENCY_EVENT_MAP[eventoStr] || 'inundacion';
 }
+
+/**
+ * Mapea los códigos de motivo de reporte ciudadano a sus textos amigables o claves i18n.
+ */
+export function formatReportReason(reason: string, t?: (key: any) => string): string {
+  if (t) {
+    switch (reason) {
+      case 'NOT_NEEDED_ANYMORE':
+        return t('reportReasonNotNeeded');
+      case 'WRONG_LOCATION':
+        return t('reportReasonWrongLocation');
+      case 'FALSE_INFORMATION':
+        return t('reportReasonFalseInfo');
+      case 'BAD_CONTACT':
+        return t('reportReasonBadContact');
+      case 'OUTDATED':
+        return t('reportReasonOutdated');
+      case 'OTHER':
+        return t('reportReasonOther');
+    }
+  }
+
+  // Fallback directo en español si t no está disponible
+  switch (reason) {
+    case 'NOT_NEEDED_ANYMORE':
+      return 'Ya no necesitan ayuda / La ayuda fue cubierta';
+    case 'WRONG_LOCATION':
+      return 'La ubicación o dirección es incorrecta';
+    case 'FALSE_INFORMATION':
+      return 'La información es falsa o engañosa';
+    case 'BAD_CONTACT':
+      return 'El teléfono o WhatsApp no funciona';
+    case 'OUTDATED':
+      return 'La información está desactualizada';
+    case 'OTHER':
+      return 'Otro motivo';
+    default:
+      return reason;
+  }
+}

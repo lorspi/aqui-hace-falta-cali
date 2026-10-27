@@ -1504,7 +1504,9 @@ export const DialogoDetallePublicacionPanel: React.FC<{
   publicacion: Publicacion | null;
   onCerrar: () => void;
   onVerEnMapa?: (id: string) => void;
-}> = ({ publicacion: p, onCerrar, onVerEnMapa }) => {
+  onPrimaria?: (id: string, pub: Publicacion) => void;
+  enProceso?: boolean;
+}> = ({ publicacion: p, onCerrar, onVerEnMapa, onPrimaria, enProceso = false }) => {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -1519,11 +1521,13 @@ export const DialogoDetallePublicacionPanel: React.FC<{
   return (
     <dialog
       ref={ref}
+      role="dialog"
+      aria-modal="true"
       onClose={onCerrar}
       onClick={(e) => e.target === ref.current && onCerrar()}
-      className="font-rd m-auto w-full max-w-lg rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
+      className="font-rd m-auto flex max-h-[90dvh] w-full max-w-lg flex-col rounded-rd-xl border border-rd-line bg-rd-surface p-0 text-rd-ink shadow-rd-2 backdrop:bg-rd-ink/30 max-sm:mx-4 max-sm:w-auto overflow-hidden"
     >
-      <div className="flex items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-surface">
+      <div className="flex flex-none items-center justify-between border-b border-rd-line px-5 py-3 bg-rd-surface">
         <span className="text-rd-13 font-semibold text-rd-ink">Publicación en RaDAR</span>
         <button
           type="button"
@@ -1534,10 +1538,15 @@ export const DialogoDetallePublicacionPanel: React.FC<{
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="p-4 sm:p-5 bg-rd-fondo/40">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 bg-rd-fondo/40">
         <Tarjeta
           publicacion={p}
           completa
+          enProceso={enProceso}
+          onPrimaria={(id) => {
+            onCerrar();
+            onPrimaria?.(id, p);
+          }}
           onVerEnMapa={(id) => {
             if (onVerEnMapa) {
               onVerEnMapa(id);
@@ -1555,3 +1564,4 @@ export const DialogoDetallePublicacionPanel: React.FC<{
     </dialog>
   );
 };
+

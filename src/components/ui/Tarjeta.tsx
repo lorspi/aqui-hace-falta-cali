@@ -219,7 +219,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
       {p.fotos && p.fotos.length > 0 && (
         <>
           <TiraFotos fotos={p.fotos} onAbrir={setFoto} etiqueta className="mb-3 max-sm:mb-2.5" />
-          <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`Fotos de ${p.org}`} onCerrar={() => setFoto(null)} />
+          <VisorFotos abierto={foto !== null} inicial={foto ?? 0} grupos={[{ fotos: p.fotos }]} titulo={`${t('photosOf')} ${p.org || actorPublicacion(p, language)}`} onCerrar={() => setFoto(null)} />
         </>
       )}
 

@@ -21,7 +21,8 @@ import { publicacionSaleVerificada } from '../../utils/cuenta';
 import { useFlujo } from './useFlujo';
 import { useTranslation } from '../../i18n/LanguageContext';
 
-import { createNeedWithItems } from '../../lib/supabaseService';
+import { createNeedWithItems, fetchOrganizationByUserId, fetchUserProfile } from '../../lib/supabaseService';
+import { getStoredAuthUser } from '../../utils/session';
 import { supabase } from '../../lib/supabaseClient';
 import type { HelpCategory, Need, PlaceType } from '../../types';
 import { mapEmergencyEventToId, mapItemToCatalog, mapItemsToHelpCategories, mapTipoLugarToPlaceType } from '../../utils/enumMappers';
@@ -87,7 +88,7 @@ function publicacionDe(e: EstadoPedir, metas: Meta[]): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth, authUser }) => {
   const { t, tCategory, tItem, tEvento, language } = useTranslation();
   const [createdNeed, setCreatedNeed] = useState<Need | undefined>(undefined);
   const [publicacionPublicada, setPublicacionPublicada] = useState<Publicacion | null>(null);
@@ -100,8 +101,17 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       }
       throw new Error('AUTH_REQUIRED');
     }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
+    const [profile, org] = await Promise.all([
+      fetchUserProfile(user.id),
+      fetchOrganizationByUserId(user.id)
+    ]);
+
+    const localUser = getStoredAuthUser();
+    const activeOrgName = org?.org_name || org?.name || authUser?.org_name || localUser?.org_name;
+    const isOrgOrCom = Boolean(activeOrgName && activeOrgName.trim());
+    const orgType = (org?.organization_type || '').toLowerCase();
+    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo';
+    const requesterType = isOrgOrCom ? (isCom ? 'COMUNIDAD' : 'ORGANIZACION') : 'PERSONA';
 
     const metas = calcularMetas(estado.sel, estado.grupo, estado.dias);
     const pub = publicacionDe(estado, metas);
@@ -134,6 +144,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       title: pub.titulo,
       description: estado.detalles || estado.comoLlegar || pub.titulo,
       placeType: placeTypeEnum,
+      requesterType: requesterType,
       categories: categoriesList,
       resources: metas.map((m) => {
         const cat = mapItemToCatalog(m.item);
@@ -155,14 +166,14 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       contactPhone: estado.tel,
       contactWhatsapp: estado.telAlt || estado.tel,
       contactEmail: user?.email,
-      organizationName: org?.org_name || profile?.cargo || 'Organización / Comunidad',
+      organizationName: isOrgOrCom ? activeOrgName : undefined,
       comoLlegar: estado.comoLlegar,
       paraQuien: estado.paraQuien,
       userId: user?.id,
       evidenceUrl: photoUrls.join(','),
       sourceUrl: estado.sourceUrl?.trim() || undefined,
       verificationStatus: (org?.is_verified || profile?.is_verified) ? 'VERIFIED' : 'PENDING_VERIFICATION',
-      verifiedBy: (org?.is_verified || profile?.is_verified) ? (org?.org_name || profile?.full_name || 'Entidad verificada') : undefined,
+      verifiedBy: (org?.is_verified || profile?.is_verified) ? (activeOrgName || profile?.full_name || 'Entidad verificada') : undefined,
     };
 
     const inserted = await createNeedWithItems(needPayload, itemsPayload);
@@ -176,7 +187,8 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       id: idPub,
       userId: user?.id,
       propia: true,
-      org: org?.org_name || profile?.full_name || CUENTA_PEDIR.organizacion || 'Mi Organización',
+      perfil: isOrgOrCom ? (isCom ? 'liderazgo' : 'organizacion') : 'individual',
+      org: isOrgOrCom ? activeOrgName : '',
       verificada: publicacionSaleVerificada(),
       sourceUrl: estado.sourceUrl?.trim() || undefined,
       contactoNombre: estado.contacto || profile?.full_name || CUENTA_PEDIR.contacto,

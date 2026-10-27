@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El armazón de una hoja de filtros (`rd-hoja` del prototipo): velo, panel de 440 pegado a la
@@ -26,6 +27,7 @@ export const Hoja: React.FC<{
   pie: React.ReactNode;
   children: React.ReactNode;
 }> = ({ abierta, titulo, idTitulo, onCerrar, pestanas, pie, children }) => {
+  const { t } = useTranslation();
   const hoja = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -46,13 +48,13 @@ export const Hoja: React.FC<{
 
   return (
     <>
-      <button type="button" aria-label="Cerrar los filtros" onClick={onCerrar} className="fixed inset-0 z-900 cursor-default bg-rd-ink/32" />
+      <button type="button" aria-label={t('closeFilters')} onClick={onCerrar} className="fixed inset-0 z-900 cursor-default bg-rd-ink/32" />
       <aside ref={hoja} role="dialog" aria-modal="true" aria-labelledby={idTitulo} className="font-rd fixed top-0 right-0 bottom-0 z-901 flex w-full max-w-110 flex-col bg-rd-surface shadow-rd-2">
         <div className="flex items-center gap-2 border-b border-rd-line px-4 py-3">
           <h2 id={idTitulo} className="m-0 flex-1 text-rd-18 leading-snug font-semibold tracking-rd-titulo text-rd-ink">
             {titulo}
           </h2>
-          <Button nivel="terciario" tamano="sm" aria-label="Cerrar" soloIcono onClick={onCerrar}>
+          <Button nivel="terciario" tamano="sm" aria-label={t('close')} soloIcono onClick={onCerrar}>
             <X aria-hidden="true" className="h-4.5 w-4.5" />
           </Button>
         </div>

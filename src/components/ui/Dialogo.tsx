@@ -44,6 +44,7 @@ export const Dialogo: React.FC<DialogoProps> = ({ abierto, titulo, accion, nivel
           onClick={(e) => e.stopPropagation()}
           onSubmit={(e) => {
             e.preventDefault();
+            if (!accionActiva) return;
             onEnviar(e.currentTarget);
           }}
         >

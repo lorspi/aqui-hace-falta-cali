@@ -57,6 +57,7 @@ import { DialogoCoincidencias } from "./ui/Coincidencias";
 import { AvisosProvider } from "./ui/AvisoCorto";
 import { needToPublicacion, offerToPublicacion } from "../utils/supabaseMappers";
 import { coincidenciasDe, type CoincidenciaPublicacion } from "../utils/cruce";
+import { formatReportReason } from "../utils/enumMappers";
 import type { Publicacion } from "../types/publicacion";
 import { ChatbotReportsList } from "./ChatbotReportsList";
 import { Avatar } from "./ui/Etiqueta";
@@ -217,7 +218,7 @@ export const AdminPanelPage: React.FC = () => {
   const [adminSortOrder, setAdminSortOrder] = useState<"RECENT" | "OLDEST">("RECENT");
 
   // Reports tab filters
-  const [reportStatusFilter, setReportStatusFilter] = useState<string>("ALL");
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>("PENDING");
   const [reportTypeFilter, setReportTypeFilter] = useState<string>("ALL");
 
   // User management state
@@ -1643,14 +1644,21 @@ export const AdminPanelPage: React.FC = () => {
             if (reportTypeFilter === 'OFFERS' && !repIsOffer) return false;
             return true;
           });
-          const hasActiveFilters = reportStatusFilter !== 'ALL' || reportTypeFilter !== 'ALL';
+          const hasActiveFilters = reportStatusFilter !== 'PENDING' || reportTypeFilter !== 'ALL';
+
+          const getReportsHeaderTitle = () => {
+            if (reportStatusFilter === 'PENDING') return t('pendingReports');
+            if (reportStatusFilter === 'RESOLVED') return t('resolvedReports');
+            if (reportStatusFilter === 'DISMISSED') return t('dismissedReports');
+            return t('allReports');
+          };
 
           return (
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-rd-surface p-3.5 rounded-rd-xl border border-rd-line shadow-xs">
                 <h3 className="font-bold text-rd-ink text-rd-14 flex items-center gap-2">
                   <Flag className="w-4 h-4 text-rd-coral" />
-                  {t('pendingReports')} ({filteredReports.length}{hasActiveFilters ? ` de ${reports.length}` : ''})
+                  {getReportsHeaderTitle()} ({filteredReports.length}{hasActiveFilters && filteredReports.length !== reports.length ? ` de ${reports.length}` : ''})
                 </h3>
 
                 <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
@@ -1684,7 +1692,7 @@ export const AdminPanelPage: React.FC = () => {
                   {hasActiveFilters && (
                     <button
                       onClick={() => {
-                        setReportStatusFilter('ALL');
+                        setReportStatusFilter('PENDING');
                         setReportTypeFilter('ALL');
                       }}
                       className="text-rd-12 text-rd-coral font-semibold hover:underline ml-1 cursor-pointer"
@@ -1698,7 +1706,9 @@ export const AdminPanelPage: React.FC = () => {
               {filteredReports.length === 0 ? (
                 <div className="bg-rd-surface rounded-rd-xl border border-rd-line p-10 text-center space-y-2">
                   <CheckCircle2 className="w-10 h-10 text-rd-green mx-auto opacity-70" />
-                  <h4 className="font-bold text-rd-ink text-rd-15">¡Sin reportes pendientes!</h4>
+                  <h4 className="font-bold text-rd-ink text-rd-15">
+                    {reportStatusFilter === 'PENDING' ? '¡Sin reportes pendientes!' : 'No hay reportes'}
+                  </h4>
                   <p className="text-rd-ink-meta text-rd-12">
                     {reports.length === 0
                       ? 'No hay reportes registrados por los usuarios.'
@@ -1708,13 +1718,16 @@ export const AdminPanelPage: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                 {filteredReports.map((rep) => {
-                  const isOffer = !!rep.offerId;
+                  const isOffer = !rep.offerId;
                   const relatedNeed = rep.needId ? needs.find((n) => n.id === rep.needId) : undefined;
                   const relatedOffer = rep.offerId ? offers.find((o) => o.id === rep.offerId) : undefined;
-                  const entryTitle = isOffer
-                    ? (rep.offerTitle || relatedOffer?.title)
-                    : (rep.needTitle || relatedNeed?.title);
-                  const canOpen = isOffer ? !!relatedOffer : !!relatedNeed;
+                  const resolvedTitle = isOffer
+                    ? (relatedOffer?.title || (rep.offerTitle && rep.offerTitle !== rep.offerId ? rep.offerTitle : undefined))
+                    : (relatedNeed?.title || (rep.needTitle && rep.needTitle !== rep.needId ? rep.needTitle : undefined));
+                  const entryTitle = resolvedTitle || (isOffer
+                    ? (rep.offerId ? `Oferta #${rep.offerId.slice(0, 8)}` : 'Oferta no disponible')
+                    : (rep.needId ? `Necesidad #${rep.needId.slice(0, 8)}` : 'Publicación no disponible'));
+                  const canOpen = isOffer ? !relatedOffer : !relatedNeed;
 
                   const handleOpenEntry = () => {
                     if (isOffer && relatedOffer) {
@@ -1745,12 +1758,12 @@ export const AdminPanelPage: React.FC = () => {
                           {rep.status === 'PENDING' ? '◷ Reporte Pendiente' : rep.status === 'RESOLVED' ? '✓ Resuelto' : '📁 Desestimado'}
                         </span>
                         <span className="px-2 py-0.5 text-rd-10 font-medium rounded-rd-sm border border-rd-line bg-rd-fondo text-rd-ink-2">
-                          Motivo: {rep.reason}
+                          Motivo: {formatReportReason(rep.reason, t)}
                         </span>
                       </div>
 
                       <h4 className="text-rd-13-5 font-semibold text-rd-ink">
-                        "{entryTitle || 'Publicación no disponible'}"
+                        "{entryTitle}"
                       </h4>
 
                       <p className="text-rd-12 text-rd-ink-2">{rep.description}</p>

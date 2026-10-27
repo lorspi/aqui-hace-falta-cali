@@ -20,7 +20,8 @@ import type { Publicacion } from '../../types/publicacion';
 import { useFlujo } from './useFlujo';
 import { useTranslation } from '../../i18n/LanguageContext';
 import type { Language } from '../../i18n/LanguageContext';
-import { createOfferWithItems } from '../../lib/supabaseService';
+import { createOfferWithItems, fetchOrganizationByUserId, fetchUserProfile } from '../../lib/supabaseService';
+import { getStoredAuthUser } from '../../utils/session';
 import { supabase } from '../../lib/supabaseClient';
 import type { HelpCategory, Offer } from '../../types';
 import { mapItemToCatalog, mapItemsToHelpCategories } from '../../utils/enumMappers';
@@ -127,7 +128,7 @@ function publicacionDe(e: EstadoOfrecer, lang?: Language): Publicacion {
   return { ...base, titulo: tituloPublicacion(base) };
 }
 
-export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth }) => {
+export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = false, initialCityId, onRequireAuth, authUser }) => {
   const { t, language } = useTranslation();
   const [createdOffer, setCreatedOffer] = useState<Offer | undefined>(undefined);
   const [nombreOrg, setNombreOrg] = useState<string>('');
@@ -141,8 +142,16 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       }
       throw new Error('AUTH_REQUIRED');
     }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    const { data: org } = await supabase.from('organizations').select('*').eq('user_id', user.id).maybeSingle();
+    const [profile, org] = await Promise.all([
+      fetchUserProfile(user.id),
+      fetchOrganizationByUserId(user.id)
+    ]);
+
+    const localUser = getStoredAuthUser();
+    const activeOrgName = org?.org_name || org?.name || authUser?.org_name || localUser?.org_name;
+    const isOrgOrCom = Boolean(activeOrgName && activeOrgName.trim());
+    const orgType = (org?.organization_type || '').toLowerCase();
+    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo';
 
     const pub = publicacionDe(estado, language);
 
@@ -189,14 +198,14 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       contactPhone: estado.tel,
       contactWhatsapp: estado.tel,
       contactEmail: user?.email,
-      organizationName: org?.org_name || profile?.cargo || 'Organización Oferente',
+      organizationName: isOrgOrCom ? activeOrgName : undefined,
       deliveryMode: estado.entrega,
       coverageRadius: estado.radio,
       shippingCost: estado.envio,
       userId: user?.id,
       evidenceUrl: photoUrls.join(','),
       verificationStatus: (org?.is_verified || profile?.is_verified) ? 'VERIFIED' : 'PENDING_VERIFICATION',
-      verifiedBy: (org?.is_verified || profile?.is_verified) ? (org?.org_name || profile?.full_name || 'Entidad verificada') : undefined,
+      verifiedBy: (org?.is_verified || profile?.is_verified) ? (activeOrgName || profile?.full_name || 'Entidad verificada') : undefined,
     };
 
     const inserted = await createOfferWithItems(offerPayload, itemsPayload);
@@ -210,7 +219,8 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       id: idPub,
       userId: user?.id,
       propia: true,
-      org: org?.org_name || nombreOrg || profile?.full_name || CUENTA_OFRECER.organizacion || 'Mi Organización',
+      perfil: isOrgOrCom ? (isCom ? 'liderazgo' : 'organizacion') : 'individual',
+      org: isOrgOrCom ? activeOrgName : '',
       verificada: publicacionSaleVerificada(),
       contactoNombre: estado.contacto || CUENTA_OFRECER.contacto,
       contactoTel: estado.tel || CUENTA_OFRECER.telefono,

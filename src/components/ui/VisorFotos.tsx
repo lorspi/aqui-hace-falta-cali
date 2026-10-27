@@ -25,6 +25,7 @@ export interface GrupoFotos {
  *  tarjeta de una publicación); en las tarjetas del tablero van solas, sin conteo (Alejandro,
  *  16 de septiembre de 2026). */
 export const TiraFotos: React.FC<{ fotos: FotoPublicada[]; onAbrir: (i: number) => void; max?: number; etiqueta?: boolean; tamano?: 'sm' | 'md'; className?: string }> = ({ fotos, onAbrir, max = 3, etiqueta = false, tamano = 'md', className = '' }) => {
+  const { t } = useTranslation();
   if (!fotos.length) return null;
   const visibles = fotos.slice(0, max);
   const mas = fotos.length - visibles.length;
@@ -46,7 +47,7 @@ export const TiraFotos: React.FC<{ fotos: FotoPublicada[]; onAbrir: (i: number) 
                 onAbrir(i);
               }}
               className={`relative block cursor-pointer overflow-hidden rounded-rd-md border border-rd-line bg-rd-sunken p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-navy ${tamano === 'sm' ? 'h-12 w-12' : 'h-16 w-16'}`}
-              aria-label={`Ver foto ${i + 1} de ${fotos.length}: ${f.alt}`}
+              aria-label={`${t('viewPhoto')} ${i + 1} ${t('ofPreposition')} ${fotos.length}${f.alt ? `: ${f.alt}` : ''}`}
             >
               <img src={f.url} alt="" loading="lazy" className="h-full w-full object-cover" />
               {i === visibles.length - 1 && mas > 0 && <span className={`absolute inset-0 flex items-center justify-center bg-rd-ink/55 font-semibold text-white ${tamano === 'sm' ? 'text-rd-12-5' : 'text-rd-14'}`}>+{mas}</span>}
@@ -103,7 +104,7 @@ export const VisorFotos: React.FC<VisorFotosProps> = ({ abierto, grupos, inicial
             <div className="min-w-0 flex-1">
               <p className="m-0 truncate text-rd-14 font-semibold">{titulo}</p>
               <p className="m-0 text-rd-12-5 text-white/70 tabular-nums">
-                {i + 1} de {lista.length}
+                {i + 1} {t('ofPreposition')} {lista.length}
                 {f.grupo ? (
                   <>
                     <Divisor className="bg-white/25" />

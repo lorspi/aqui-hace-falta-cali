@@ -4,6 +4,7 @@ import type { Ubicacion } from '../../types/publicacion';
 import { alternarCiudades, ciudadDeUbicacion, gruposDeCiudades, nombreCiudades } from '../../utils/lugares';
 import { Button } from './Button';
 import { Casilla, type Marca } from './Casilla';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
  * El lugar, en una sola pieza (Alejandro, 21 de septiembre de 2026): un campo de búsqueda que
@@ -34,6 +35,7 @@ type Item =
 
 
 export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCambiar, conteos, ubicacion, onCercaDeMi }) => {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [q, setQ] = useState('');
   const [activo, setActivo] = useState(0);
@@ -126,7 +128,7 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
     <div ref={raiz} className="relative">
       <label className="flex h-10 items-center gap-2 rounded-rd-md border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-navy focus-within:ring-3 focus-within:ring-rd-navy-soft pointer-coarse:h-rd-tactil">
         {abierto ? <Search aria-hidden="true" className="h-4 w-4 shrink-0" /> : <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />}
-        <span className="sr-only">Ciudades</span>
+        <span className="sr-only">{t('cities')}</span>
         <input
           ref={campo}
           role="combobox"
@@ -135,7 +137,7 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
           aria-autocomplete="list"
           aria-activedescendant={abierto && items[activo] ? idDe(activo) : undefined}
           value={abierto ? q : nombreCiudades(ciudades)}
-          placeholder="Buscar ciudad o departamento"
+          placeholder={t('searchCityOrDept')}
           onFocus={abrir}
           onClick={() => !abierto && abrir()}
           onChange={(e) => {
@@ -154,15 +156,15 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
         {ciudadPropia && !q.trim() && (
           <div className="border-b border-rd-line-soft p-2">
             <Button nivel="secundario" tamano="md" ancho icono={<Navigation className="h-4 w-4" />} onClick={cercaDeMi} onBlur={alSalir}>
-              Cerca de mí
+              {t('nearMe')}
             </Button>
           </div>
         )}
-        <div id={idLista} role="listbox" aria-label="Ciudades" aria-multiselectable="true" className="sin-barra min-h-0 flex-1 overflow-y-auto py-1">
+        <div id={idLista} role="listbox" aria-label={t('cities')} aria-multiselectable="true" className="sin-barra min-h-0 flex-1 overflow-y-auto py-1">
           {items.length === 0 ? (
             <p className="m-0 px-3 py-2.5 text-rd-12-5 text-rd-ink-2">No se encontró «{q.trim()}»</p>
           ) : (
-            items.map((it, i) => <Fila key={it.id} item={it} id={idDe(i)} activa={i === activo} marca={marca(it)} onElegir={() => elegir(it)} onEntrar={() => setActivo(i)} />)
+            items.map((it, i) => <Fila key={it.id} item={it} id={idDe(i)} activa={i === activo} marca={marca(it)} onElegir={() => elegir(it)} onEntrar={() => setActivo(i)} selectAllText={t('selectAll')} />)
           )}
         </div>
       </div>
@@ -173,7 +175,7 @@ export const SelectorCiudad: React.FC<SelectorCiudadProps> = ({ ciudades, onCamb
 /** Una opción de la lista, con la casilla a la derecha. El departamento va como rótulo en versalitas de 11,5 con línea suave
  *  debajo, sin fondo: el fondo es del hover (`hover:bg-rd-fondo/50`, el de las filas del
  *  Directorio). `onMouseDown` evita que el campo pierda el foco antes del clic. */
-const Fila: React.FC<{ item: Item; id: string; activa: boolean; marca: Marca; onElegir: () => void; onEntrar: () => void }> = ({ item, id, activa, marca, onElegir, onEntrar }) => {
+const Fila: React.FC<{ item: Item; id: string; activa: boolean; marca: Marca; onElegir: () => void; onEntrar: () => void; selectAllText: string }> = ({ item, id, activa, marca, onElegir, onEntrar, selectAllText }) => {
   const depto = item.tipo === 'depto';
   return (
     <div
@@ -186,7 +188,7 @@ const Fila: React.FC<{ item: Item; id: string; activa: boolean; marca: Marca; on
       onClick={onElegir}
       className={`font-rd flex cursor-pointer items-center gap-2 text-left hover:bg-rd-fondo/50 pointer-coarse:min-h-rd-tactil ${depto ? 'mx-3 mt-2 border-b border-rd-line-soft py-1.5 text-rd-11-5 font-semibold tracking-wider text-rd-ink-meta uppercase' : 'px-3 py-2 text-rd-13 text-rd-ink'} ${item.tipo === 'toda' ? 'font-semibold' : ''} ${activa ? 'bg-rd-fondo/50' : ''}`}
     >
-      <span className="min-w-0 flex-1 truncate">{item.tipo === 'toda' ? 'Seleccionar todo' : item.nombre}</span>
+      <span className="min-w-0 flex-1 truncate">{item.tipo === 'toda' ? selectAllText : item.nombre}</span>
       {item.tipo === 'ciudad' && item.n > 0 && <span className="text-rd-11-5 font-medium text-rd-ink-meta tabular-nums">{item.n}</span>}
       <Casilla marca={marca} />
     </div>

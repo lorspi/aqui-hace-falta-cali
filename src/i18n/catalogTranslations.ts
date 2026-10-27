@@ -95,6 +95,26 @@ export const ITEM_TRADUCCIONES: Record<Language, Record<string, string>> = {
     'Voluntariado en terreno': 'Voluntariado en terreno',
     'Voluntariado social y comunitario': 'Voluntariado social y comunitario',
     'Censo, registro y apoyo operativo': 'Censo, registro y apoyo operativo',
+    'Maquinaria pesada': 'Maquinaria pesada',
+    'Remover escombros': 'Remover escombros',
+    'Remoción de escombros': 'Remoción de escombros',
+    'Mano de obra': 'Mano de obra',
+    'Transporte / Flete': 'Transporte / Flete',
+    'Ropa y cobijas': 'Ropa y cobijas',
+    'Donar sangre': 'Donar sangre',
+    'Aporte económico': 'Aporte económico',
+    'Operarios de maquinaria pesada': 'Operarios de maquinaria pesada',
+    'Apoyo psicológico': 'Apoyo psicológico',
+    'Alojamiento / Carpas': 'Alojamiento / Carpas',
+    'Cuidado de animales': 'Cuidado de animales',
+    'Apoyo logístico': 'Apoyo logístico',
+    'Implementos de aseo': 'Implementos de aseo',
+    'Clasificar donaciones': 'Clasificar donaciones',
+    'Voluntariado general': 'Voluntariado general',
+    'Otro tipo de ayuda': 'Otro tipo de ayuda',
+    'Ayuda general': 'Ayuda general',
+    'Ayuda': 'Ayuda',
+    'Aporte': 'Aporte',
   },
   en: {
     'Agua potable': 'Drinking water',
@@ -138,6 +158,26 @@ export const ITEM_TRADUCCIONES: Record<Language, Record<string, string>> = {
     'Voluntariado en terreno': 'Field volunteering',
     'Voluntariado social y comunitario': 'Social & Community volunteering',
     'Censo, registro y apoyo operativo': 'Census & Operational support',
+    'Maquinaria pesada': 'Heavy machinery',
+    'Remover escombros': 'Debris removal',
+    'Remoción de escombros': 'Debris removal',
+    'Mano de obra': 'Labor / Volunteers',
+    'Transporte / Flete': 'Transport / Freight',
+    'Ropa y cobijas': 'Clothing & blankets',
+    'Donar sangre': 'Blood donation',
+    'Aporte económico': 'Financial contribution',
+    'Operarios de maquinaria pesada': 'Machinery operators',
+    'Apoyo psicológico': 'Psychological support',
+    'Alojamiento / Carpas': 'Shelter / Tents',
+    'Cuidado de animales': 'Animal care',
+    'Apoyo logístico': 'Logistics support',
+    'Implementos de aseo': 'Hygiene & Cleaning Supplies',
+    'Clasificar donaciones': 'Donation sorting',
+    'Voluntariado general': 'General volunteering',
+    'Otro tipo de ayuda': 'Other type of help',
+    'Ayuda general': 'General help',
+    'Ayuda': 'Help',
+    'Aporte': 'Contribution',
   },
   pt: {
     'Agua potable': 'Água potável',
@@ -181,6 +221,27 @@ export const ITEM_TRADUCCIONES: Record<Language, Record<string, string>> = {
     'Voluntariado en terreno': 'Voluntariado em campo',
     'Voluntariado social y comunitario': 'Voluntariado social e comunitário',
     'Censo, registro y apoyo operacional': 'Censo e apoio operacional',
+    'Censo, registro y apoyo operativo': 'Censo e apoio operacional',
+    'Maquinaria pesada': 'Maquinário pesado',
+    'Remover escombros': 'Remover entulhos',
+    'Remoción de escombros': 'Remoção de entulhos',
+    'Mano de obra': 'Mão de obra / Voluntários',
+    'Transporte / Flete': 'Transporte / Frete',
+    'Ropa y cobijas': 'Roupas e cobertores',
+    'Donar sangre': 'Doar sangue',
+    'Aporte económico': 'Contribuição financeira',
+    'Operarios de maquinaria pesada': 'Operadores de máquinas',
+    'Apoyo psicológico': 'Apoio psicológico',
+    'Alojamiento / Carpas': 'Alojamento / Tendas',
+    'Cuidado de animales': 'Cuidado de animais',
+    'Apoyo logístico': 'Apoio logístico',
+    'Implementos de aseo': 'Kits de higiene e limpeza',
+    'Clasificar donaciones': 'Triagem de doações',
+    'Voluntariado general': 'Voluntariado geral',
+    'Otro tipo de ayuda': 'Outro tipo de ajuda',
+    'Ayuda general': 'Ajuda geral',
+    'Ayuda': 'Ajuda',
+    'Aporte': 'Contribuição',
   },
   fr: {
     'Agua potable': 'Eau potable',
@@ -224,6 +285,27 @@ export const ITEM_TRADUCCIONES: Record<Language, Record<string, string>> = {
     'Voluntariado en terreno': 'Bénévolat sur le terrain',
     'Voluntariado social y comunitario': 'Bénévolat social et communautaire',
     'Censo, registro y apoyo operacional': 'Recensement et soutien opérationnel',
+    'Censo, registro y apoyo operativo': 'Recensement et soutien opérationnel',
+    'Maquinaria pesada': 'Engins lourds',
+    'Remover escombros': 'Déblaiement de débris',
+    'Remoción de escombros': 'Déblaiement de débris',
+    'Mano de obra': 'Main d\'œuvre / Bénévoles',
+    'Transporte / Flete': 'Transport / Fret',
+    'Ropa y cobijas': 'Vêtements & couvertures',
+    'Donar sangre': 'Don de sang',
+    'Aporte económico': 'Contribution financière',
+    'Operarios de maquinaria pesada': 'Conducteurs d\'engins',
+    'Apoyo psicológico': 'Soutien psychologique',
+    'Alojamiento / Carpas': 'Hébergement / Tentes',
+    'Cuidado de animales': 'Soins aux animaux',
+    'Apoyo logístico': 'Soutien logistique',
+    'Implementos de aseo': 'Kits d\'hygiène et nettoyage',
+    'Clasificar donaciones': 'Tri des dons',
+    'Voluntariado general': 'Bénévolat général',
+    'Otro tipo de ayuda': 'Autre type d\'aide',
+    'Ayuda general': 'Aide générale',
+    'Ayuda': 'Aide',
+    'Aporte': 'Contribution',
   },
 };
 
@@ -366,7 +448,22 @@ export function translateCategory(cat: string, lang: Language): string {
  */
 export function translateItem(item: string, lang: Language): string {
   if (!item) return '';
-  return ITEM_TRADUCCIONES[lang]?.[item] || ITEM_TRADUCCIONES['es']?.[item] || item;
+  const trimmed = item.trim();
+  const dict = ITEM_TRADUCCIONES[lang] || ITEM_TRADUCCIONES['es'];
+  if (dict[trimmed]) return dict[trimmed];
+
+  const lower = trimmed.toLowerCase();
+  const foundKey = Object.keys(dict).find((k) => k.toLowerCase() === lower);
+  if (foundKey) return dict[foundKey];
+
+  const esDict = ITEM_TRADUCCIONES['es'];
+  if (esDict[trimmed]) return esDict[trimmed];
+  const foundEsKey = Object.keys(esDict).find((k) => k.toLowerCase() === lower);
+  if (foundEsKey) {
+    return dict[foundEsKey] || esDict[foundEsKey];
+  }
+
+  return item;
 }
 
 /**

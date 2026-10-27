@@ -14,7 +14,7 @@ export async function registrarCompromisoPublicacion(
   c: Compromiso,
   usuarioActual?: any
 ): Promise<void> {
-  const partes = c.partes || [];
+  const partes = (c.partes || []).filter((parte) => Number.isFinite(parte.cantidad) && parte.cantidad > 0);
   if (partes.length === 0) return;
 
   const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id);

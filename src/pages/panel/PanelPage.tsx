@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Archive, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleDashed, CircleDot, Clock, Download, Edit3, Eye, FileText, Funnel, Hand, HeartHandshake, ListChecks, Megaphone, Package, Pause, Phone, Play, Radar, TriangleAlert, Truck, Users, X } from 'lucide-react';
 import { Dialogo, Opciones } from '../../components/ui/Dialogo';
+import { DialogoCompromiso } from '../../components/ui/DialogoCompromiso';
 import { InlineNotice } from '../../components/ui/InlineNotice';
 import { DialogoAsignar, DialogoCierre, DialogoDetallePublicacionPanel, DialogoEditarRecursoOfrecido, DialogoEditarRecursoPedido, DialogoGestionPublicacion, DialogoMiembro, DialogoRegistrarMiembro, DISPONIBILIDADES, type DatosPublicacionGestion } from './dialogos';
 import { TarjetaRecibida, TarjetaSolicitud, accionesDe, menuDe, quienLleva, type AccionesSolicitud } from './TarjetaEntrega';
@@ -39,7 +40,9 @@ import { supabase, dbNeedToNeed, dbOfferToOffer } from '../../lib/supabaseClient
 import { fetchOrganizationByUserId, fetchOrganizationMembers, fetchOrgCommitments, createCommitment, updateCommitmentStatus, addOrganizationMember, updateOrganizationMember, removeOrganizationMember, fetchUserAvisos } from '../../lib/supabaseService';
 import { commitmentToSolicitud, commitmentToEntregaRecibida, commitmentToSolicitudEnviada, commitmentToOfrecimientoEnviado, needToPublicacion, offerToPublicacion } from '../../utils/supabaseMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
-import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearStoredAuthUser, getStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { registrarCompromisoPublicacion } from '../../utils/compromisoHandler';
+import { avisoCompromiso, type Compromiso } from '../../utils/compromiso';
 import { useTranslation } from '../../i18n/LanguageContext';
 
 /**
@@ -265,6 +268,42 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     if (authUser !== undefined) return authUser;
     return localAuth ?? getStoredAuthUser();
   }, [authUser, localAuth]);
+
+  const [comprobandoAuth, setComprobandoAuth] = useState<boolean>(() => {
+    if (authUser || isUserLoggedIn()) return false;
+    return true;
+  });
+
+  useEffect(() => {
+    if (usuarioEfectivo || authUser || isUserLoggedIn()) {
+      setComprobandoAuth(false);
+      return;
+    }
+
+    let cancelado = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelado) return;
+      if (session?.user) {
+        setComprobandoAuth(false);
+      } else {
+        const destino = window.location.pathname + (window.location.hash || '') + (window.location.search || '');
+        const rutaLogin = `/registro?modo=login&retorno=${encodeURIComponent(destino)}`;
+        window.history.replaceState(null, '', rutaLogin);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    }).catch(() => {
+      if (!cancelado) {
+        const destino = window.location.pathname + (window.location.hash || '') + (window.location.search || '');
+        const rutaLogin = `/registro?modo=login&retorno=${encodeURIComponent(destino)}`;
+        window.history.replaceState(null, '', rutaLogin);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [usuarioEfectivo, authUser]);
   const avisar = useAviso();
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const sinLeer = useMemo(() => avisos.filter((a) => !a.leido).length, [avisos]);
@@ -686,8 +725,14 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         const dbCommitments = await fetchOrgCommitments(dbOrg?.id, activeUser.id);
         if (dbCommitments && dbCommitments.length > 0) {
           hidratarFotosDesdeCommitments(dbCommitments);
+          const NO_ACTIVAS = new Set(['cancelada', 'cancelado', 'rechazada', 'rechazado', 'declinada', 'declinado']);
+          const inactiveDbIds = new Set(
+            dbCommitments.filter((c: any) => NO_ACTIVAS.has(c.status)).map((c: any) => String(c.id))
+          );
+
           const commitmentsDespacho = dbCommitments.filter(
             (c: any) =>
+              !NO_ACTIVAS.has(c.status) &&
               (c.origin_type === 'INTERNAL_BRIGADE' ||
                 c.origin_type === 'DIRECT_OFFER_DISPATCH' ||
                 (c.origin_type === 'DIRECT_OFFER_REQUEST' && c.provider_user_id === activeUser.id) ||
@@ -697,6 +742,7 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
           );
           const commitmentsRecibidas = dbCommitments.filter(
             (c: any) =>
+              !NO_ACTIVAS.has(c.status) &&
               c.requester_user_id === activeUser.id &&
               c.origin_type !== 'INTERNAL_BRIGADE' &&
               c.origin_type !== 'DIRECT_OFFER_REQUEST' &&
@@ -708,12 +754,28 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
           setSol((prev) => {
             const dbIds = new Set(mappedSol.map((s) => s.dbId || String(s.id)));
-            const preserved = prev.filter((p) => !isMockSolicitud(p) && !dbIds.has(String(p.id)) && !(p as any).dbId);
+            const preserved = prev.filter(
+              (p) =>
+                !isMockSolicitud(p) &&
+                !dbIds.has(String(p.id)) &&
+                !(p as any).dbId &&
+                !inactiveDbIds.has(String(p.id)) &&
+                !inactiveDbIds.has(String((p as any).dbId)) &&
+                !NO_ACTIVAS.has(p.estado)
+            );
             return [...mappedSol, ...preserved];
           });
           setRecibidas((prev) => {
             const dbIds = new Set(mappedRec.map((r) => r.dbId || String(r.id)));
-            const preserved = prev.filter((p) => !isMockRecibida(p) && !dbIds.has(String(p.id)) && !(p as any).dbId);
+            const preserved = prev.filter(
+              (p) =>
+                !isMockRecibida(p) &&
+                !dbIds.has(String(p.id)) &&
+                !(p as any).dbId &&
+                !inactiveDbIds.has(String(p.id)) &&
+                !inactiveDbIds.has(String((p as any).dbId)) &&
+                !NO_ACTIVAS.has(p.estado)
+            );
             return [...mappedRec, ...preserved];
           });
 
@@ -1289,6 +1351,12 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const actas = useMemo(() => actasDe(modulos, { sol, recibidas, org: orgData.nombre, lleva: (s) => quienLleva(s, equipo)?.split(', ')[0] ?? null }), [modulos, sol, recibidas, orgData.nombre, equipo]);
   const [acta, setActa] = useState<Acta | null>(null);
   const [pubDetalle, setPubDetalle] = useState<Publicacion | null>(null);
+  const [compromiso, setCompromiso] = useState<Publicacion | null>(null);
+
+  const idsHechas = useMemo(() => [
+    ...ofrecimientosEnviados.map((o) => o.necesidadId).filter((id): id is string => Boolean(id)),
+    ...solicitudesEnviadas.map((s) => s.publicacionId).filter((id): id is string => Boolean(id)),
+  ], [ofrecimientosEnviados, solicitudesEnviadas]);
 
   /* --- matches de necesidades y ofertas propias --- */
   const [todasLasPubs, setTodasLasPubs] = useState<Publicacion[]>([]);
@@ -1373,6 +1441,29 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       coincidencias,
       recursoFoco: recursoNombre,
     });
+  };
+
+  const enviarCompromiso = async (p: Publicacion, c: Compromiso) => {
+    setCompromiso(null);
+    avisar(avisoCompromiso(p.org, p.tipo, c), { tipo: 'ok' });
+    try {
+      await registrarCompromisoPublicacion(p, c, usuarioEfectivo || getStoredAuthUser());
+    } catch (err) {
+      console.warn('Error registrando compromiso en Panel:', err);
+    } finally {
+      try {
+        const gOfr = localStorage.getItem('rd-ofrecimientos-enviados');
+        if (gOfr) {
+          const parsed = JSON.parse(gOfr);
+          if (Array.isArray(parsed)) setOfrecimientosEnviados(parsed);
+        }
+        const gSol = localStorage.getItem('rd-solicitudes-enviadas');
+        if (gSol) {
+          const parsed = JSON.parse(gSol);
+          if (Array.isArray(parsed)) setSolicitudesEnviadas(parsed);
+        }
+      } catch {}
+    }
   };
 
   const obtenerPublicacionDeSolicitud = (s: Solicitud): Publicacion => {
@@ -1652,7 +1743,12 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
   const cancelar = (id: number, motivo: string) => {
     const s = sol.find((x) => x.id === id);
     setSol((l) => l.filter((x) => x.id !== id));
-    if (s) avisar(`Compromiso cancelado. Le avisamos a ${s.quien}`);
+    if (s) {
+      avisar(`Compromiso cancelado. Le avisamos a ${s.quien}`);
+      if ((s as any)?.dbId) {
+        updateCommitmentStatus({ commitmentId: (s as any).dbId, status: 'cancelada' }).catch(console.warn);
+      }
+    }
   };
   const confirmarRecibido = async (id: number, fotos: number, fotosLista?: Foto[], notas?: string) => {
     const r = recibidas.find((x) => x.id === id);
@@ -2019,6 +2115,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     setRecibidas((l) => l.filter((x) => x.id !== id));
     if (r) {
       avisar(`Le avisamos a ${r.org}`);
+      if ((r as any)?.dbId) {
+        updateCommitmentStatus({ commitmentId: (r as any).dbId, status: 'rechazada' }).catch(console.warn);
+      }
     }
   };
   /* PENDIENTE: el motivo no se guarda (ver la nota de `confirmarRechazoSolicitud`). */
@@ -2027,6 +2126,9 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     setRecibidas((l) => l.filter((x) => x.id !== id));
     if (r) {
       avisar(`Compromiso cancelado. Le avisamos a ${r.org}`);
+      if ((r as any)?.dbId) {
+        updateCommitmentStatus({ commitmentId: (r as any).dbId, status: 'cancelada' }).catch(console.warn);
+      }
     }
   };
   /* Todo lo que se puede hacer con una solicitud, en un solo objeto: lo usan el tablero, la tabla y las tarjetas. */
@@ -2060,6 +2162,14 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
     }
     if (que === 'certificar') setCertificando(sol.find((s) => s.id === id) ?? null);
   };
+
+  if (comprobandoAuth || (!usuarioEfectivo && !isUserLoggedIn() && !authUser)) {
+    return (
+      <div className="min-h-screen bg-brand-surface flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Shell
@@ -2227,20 +2337,56 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
         />
         <DialogoDetallePublicacionPanel
           publicacion={pubDetalle}
+          enProceso={pubDetalle ? idsHechas.includes(pubDetalle.id) : false}
           onCerrar={() => setPubDetalle(null)}
+          onPrimaria={(id, pub) => {
+            const targetPub = pub || todasLasPubs.find((item) => item.id === id) || (pubDetalle?.id === id ? pubDetalle : null);
+            setPubDetalle(null);
+            if (targetPub) setCompromiso(targetPub);
+          }}
           onVerEnMapa={(id) => irA(`${RUTAS.radar}?punto=${id}`)}
+        />
+        <DialogoCompromiso
+          publicacion={compromiso}
+          onCerrar={() => setCompromiso(null)}
+          onEnviar={enviarCompromiso}
         />
         {matchesDialogo && (
           <DialogoCoincidencias
             abierto={Boolean(matchesDialogo)}
             publicacion={matchesDialogo.publicacion}
             coincidencias={matchesDialogo.coincidencias}
+            hechas={idsHechas}
             recursoFoco={matchesDialogo.recursoFoco}
             onCerrar={() => setMatchesDialogo(null)}
             onPrimaria={(id) => {
               setMatchesDialogo(null);
-              const target = todasLasPubs.find((p) => p.id === id);
-              if (target) setPubDetalle(target);
+              const target = todasLasPubs.find((p) => p.id === id) || matchesDialogo.coincidencias.find((c) => c.id === id);
+              if (target) {
+                if ('tipo' in target) {
+                  setPubDetalle(target as Publicacion);
+                } else {
+                  const c = target as CoincidenciaPublicacion;
+                  setPubDetalle({
+                    id: c.id,
+                    tipo: matchesDialogo.publicacion.tipo === 'oferta' ? 'necesidad' : 'oferta',
+                    titulo: '',
+                    punto: c.org,
+                    org: c.org,
+                    verificada: Boolean(c.verificada),
+                    lat: 3.4516,
+                    lng: -76.5320,
+                    zona: c.etiquetaAlcance || 'Cali',
+                    descripcion: 'Requerimiento identificado a través del sistema de cruce de RaDAR.',
+                    recursos: c.recursos.map((r) => ({
+                      item: r.item,
+                      unidad: r.unidad,
+                      total: r.cantidad,
+                      tramos: [],
+                    })),
+                  });
+                }
+              }
             }}
             onVerEnMapa={(id) => {
               setMatchesDialogo(null);
@@ -4298,7 +4444,7 @@ const COLUMNAS: { estado: Solicitud['estado']; nombre: string; vacia: string; cl
 
 const COLUMNAS_RECIBIDAS: {
   id: 'ofertas' | 'aceptada' | 'camino' | 'recibido' | 'distribuido' | 'archivadas';
-  estados: EntregaRecibida['estado'][];
+  estados: (EntregaRecibida['estado'] | 'propuesta')[];
   nombre: string;
   vacia: string;
   clase: string;
@@ -4308,7 +4454,7 @@ const COLUMNAS_RECIBIDAS: {
 }[] = [
   {
     id: 'ofertas',
-    estados: ['nueva'],
+    estados: ['nueva', 'propuesta' as any],
     nombre: 'Ofertas',
     vacia: 'Sin ofertas por responder',
     clase: 'border-rd-coral/40 bg-rd-coral-soft/10',
@@ -4549,12 +4695,12 @@ const Seguimiento: React.FC<{
               {
                 id: 'entrego',
                 etiqueta: 'Ayuda que entrego',
-                n: sol.filter((s) => s.estado !== 'archivada').length,
+                n: sol.filter((s) => COLUMNAS.filter((c) => c.estado !== 'archivada').some((c) => c.estado === s.estado)).length,
               },
               {
                 id: 'recibo',
                 etiqueta: 'Ayuda que recibo',
-                n: recibidas.filter((r) => r.estado !== 'archivada').length,
+                n: recibidas.filter((r) => COLUMNAS_RECIBIDAS.filter((c) => c.id !== 'archivadas').some((c) => c.estados.includes(r.estado))).length,
               },
             ]}
           />
@@ -4882,6 +5028,7 @@ const MiEquipo: React.FC<{
   onEditar: (m: MiembroEquipo) => void;
   onConfirmarBaja: (m: MiembroEquipo) => void;
 }> = ({ equipo, onRegistrar, onEditar, onConfirmarBaja }) => {
+  const { t } = useTranslation();
   const [busqueda, setBusqueda] = useState('');
   const [filtroUbicacion, setFiltroUbicacion] = useState('');
   const [filtroVeh, setFiltroVeh] = useState('');
@@ -4938,81 +5085,94 @@ const MiEquipo: React.FC<{
       plana
       titulo={
         <>
-          Mi equipo<Conteo n={equipo.length} />
+          {t('dashboardTabTeam')}<Conteo n={equipo.length} />
         </>
       }
       accion={
         <Button nivel="secundario" tamano="md" onClick={onRegistrar}>
-          Agregar
+          {t('teamAdd')}
         </Button>
       }
     >
-      {/* La barra de consulta, en el orden de la Radar y del Directorio (decisión 70): el filtro
-          primero, los chips de lo aplicado, y el buscador al final. Mi equipo la tenía al revés
-          —buscador de primero, chips en una segunda fila— y el filtro abría un popover con tres
-          `<select>` en vez de la hoja (Alejandro, 25 de septiembre de 2026). El conteo pasa a
-          `sr-only`, como en las demás secciones: los chips ya dicen qué está aplicado. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2.5">
-        <BotonFiltros
-          aplicados={filtrosDropdownActivos}
-          abierta={hojaFiltros}
-          onClick={() => setHojaFiltros(true)}
-          etiqueta="Filtrar"
-        />
-        <p aria-live="polite" aria-atomic="true" className="sr-only">
-          {filtrados.length} de {equipo.length} {equipo.length === 1 ? 'persona' : 'personas'}
-        </p>
-        {hayFiltros && (
-          <ZonaChips>
-            {busqueda && <ChipAplicado texto={`«${busqueda}»`} onQuitar={() => setBusqueda('')} />}
-            {filtroUbicacion && <ChipAplicado texto={filtroUbicacion} onQuitar={() => setFiltroUbicacion('')} />}
-            {filtroVeh && <ChipAplicado texto={filtroVeh} onQuitar={() => setFiltroVeh('')} />}
-            {filtroDisp && (
-              <ChipAplicado texto={DISPONIBILIDADES.find((d) => d.valor === filtroDisp)?.etiqueta || filtroDisp} onQuitar={() => setFiltroDisp('')} />
-            )}
-            <QuitarTodos onClick={resetFiltros} />
-          </ZonaChips>
-        )}
-        <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, rol o lugar" abierto className="h-10 w-full sm:ml-auto sm:w-72" />
-      </div>
-
-      <HojaFiltrosEquipo
-        abierta={hojaFiltros}
-        onCerrar={() => setHojaFiltros(false)}
-        equipo={equipo}
-        ubicacion={filtroUbicacion}
-        veh={filtroVeh}
-        disp={filtroDisp}
-        onUbicacion={setFiltroUbicacion}
-        onVeh={setFiltroVeh}
-        onDisp={setFiltroDisp}
-        onQuitarTodos={() => {
-          setFiltroUbicacion('');
-          setFiltroVeh('');
-          setFiltroDisp('');
-        }}
-        aplicados={filtrosDropdownActivos}
-        resultados={filtrados.length}
-      />
-
-      {/* El vacío del sistema, el mismo de la Radar y del Directorio: icono en círculo hundido,
-          título 15/600 y texto corto. Mi equipo lo tenía a mano, en una caja de borde punteado. */}
-      {filtrados.length === 0 ? (
+      {equipo.length === 0 ? (
         <Vacio
-          icono={<Funnel className="h-6.5 w-6.5" />}
-          titulo="Nadie coincide con estos filtros"
-          texto="Prueba con otro lugar, otro vehículo u otra disponibilidad."
+          icono={<Users className="h-6.5 w-6.5" />}
+          titulo={t('teamEmptyTitle')}
+          texto={t('teamEmptyText')}
           accion={
-            <Button nivel="secundario" tamano="md" onClick={resetFiltros}>
-              Quitar los filtros
+            <Button nivel="primario" tamano="md" onClick={onRegistrar}>
+              {t('teamAdd')}
             </Button>
           }
         />
       ) : (
-        <Tabla
-          etiqueta="Mi equipo"
-          filas={filtrados}
-          clave={(e) => e.id}
+        <>
+          {/* La barra de consulta, en el orden de la Radar y del Directorio (decisión 70): el filtro
+              primero, los chips de lo aplicado, y el buscador al final. Mi equipo la tenía al revés
+              —buscador de primero, chips en una segunda fila— y el filtro abría un popover con tres
+              `<select>` en vez de la hoja (Alejandro, 25 de septiembre de 2026). El conteo pasa a
+              `sr-only`, como en las demás secciones: los chips ya dicen qué está aplicado. */}
+          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+            <BotonFiltros
+              aplicados={filtrosDropdownActivos}
+              abierta={hojaFiltros}
+              onClick={() => setHojaFiltros(true)}
+              etiqueta={t('tabFilter')}
+            />
+            <p aria-live="polite" aria-atomic="true" className="sr-only">
+              {filtrados.length} de {equipo.length} {equipo.length === 1 ? 'persona' : 'personas'}
+            </p>
+            {hayFiltros && (
+              <ZonaChips>
+                {busqueda && <ChipAplicado texto={`«${busqueda}»`} onQuitar={() => setBusqueda('')} />}
+                {filtroUbicacion && <ChipAplicado texto={filtroUbicacion} onQuitar={() => setFiltroUbicacion('')} />}
+                {filtroVeh && <ChipAplicado texto={filtroVeh} onQuitar={() => setFiltroVeh('')} />}
+                {filtroDisp && (
+                  <ChipAplicado texto={DISPONIBILIDADES.find((d) => d.valor === filtroDisp)?.etiqueta || filtroDisp} onQuitar={() => setFiltroDisp('')} />
+                )}
+                <QuitarTodos onClick={resetFiltros} />
+              </ZonaChips>
+            )}
+            <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder={t('teamSearchPlaceholder')} abierto className="h-10 w-full sm:ml-auto sm:w-72" />
+          </div>
+
+          <HojaFiltrosEquipo
+            abierta={hojaFiltros}
+            onCerrar={() => setHojaFiltros(false)}
+            equipo={equipo}
+            ubicacion={filtroUbicacion}
+            veh={filtroVeh}
+            disp={filtroDisp}
+            onUbicacion={setFiltroUbicacion}
+            onVeh={setFiltroVeh}
+            onDisp={setFiltroDisp}
+            onQuitarTodos={() => {
+              setFiltroUbicacion('');
+              setFiltroVeh('');
+              setFiltroDisp('');
+            }}
+            aplicados={filtrosDropdownActivos}
+            resultados={filtrados.length}
+          />
+
+          {/* El vacío del sistema, el mismo de la Radar y del Directorio: icono en círculo hundido,
+              título 15/600 y texto corto. Mi equipo lo tenía a mano, en una caja de borde punteado. */}
+          {filtrados.length === 0 ? (
+            <Vacio
+              icono={<Funnel className="h-6.5 w-6.5" />}
+              titulo={t('teamFiltersEmptyTitle')}
+              texto={t('teamFiltersEmptyText')}
+              accion={
+                <Button nivel="secundario" tamano="md" onClick={resetFiltros}>
+                  {t('teamClearFilters')}
+                </Button>
+              }
+            />
+          ) : (
+            <Tabla
+              etiqueta={t('dashboardTabTeam')}
+              filas={filtrados}
+              clave={(e) => e.id}
           tarjeta={(e) => {
             const rolEtiqueta = e.rolPlataforma
               ? (ROL_PLATAFORMA[e.rolPlataforma] ?? e.rolPlataforma)
@@ -5199,6 +5359,8 @@ const MiEquipo: React.FC<{
             },
           ]}
         />
+      )}
+        </>
       )}
     </Caja>
   );

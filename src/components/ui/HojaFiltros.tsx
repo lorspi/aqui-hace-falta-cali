@@ -12,6 +12,7 @@ import { Button } from './Button';
 import { Opcion } from './Opcion';
 import { SelectorCiudad } from './SelectorCiudad';
 import { FilaSwitch } from './Switch';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export { Opcion } from './Opcion';
 
@@ -37,6 +38,7 @@ export interface HojaFiltrosProps {
 const TITULO = ROTULO_GRUPO;
 
 export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, onCambiar, onCerrar, publicaciones, resultados, ubicacion }) => {
+  const { t } = useTranslation();
   const [pestana, setPestana] = useState<'filtrar' | 'ordenar'>('filtrar');
   const [buscaRecurso, setBuscaRecurso] = useState('');
 
@@ -49,21 +51,21 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
   return (
     <Hoja
       abierta={abierta}
-      titulo="Filtrar y ordenar"
+      titulo={t('filterAndSort')}
       idTitulo="hoja-filtros-t"
       onCerrar={onCerrar}
       pestanas={
-        <div role="tablist" aria-label="Filtrar u ordenar" className="flex border-b border-rd-line px-4">
-          {(['filtrar', 'ordenar'] as const).map((t) => (
+        <div role="tablist" aria-label={t('filterOrSort')} className="flex border-b border-rd-line px-4">
+          {(['filtrar', 'ordenar'] as const).map((tab) => (
             <button
-              key={t}
+              key={tab}
               type="button"
               role="tab"
-              aria-selected={pestana === t}
-              onClick={() => setPestana(t)}
-              className={`font-rd -mb-px h-10 cursor-pointer border-b-2 px-3 text-rd-13-5 font-semibold focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${pestana === t ? 'border-rd-sel text-rd-ink' : 'border-transparent text-rd-ink-2'}`}
+              aria-selected={pestana === tab}
+              onClick={() => setPestana(tab)}
+              className={`font-rd -mb-px h-10 cursor-pointer border-b-2 px-3 text-rd-13-5 font-semibold focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rd-navy ${pestana === tab ? 'border-rd-sel text-rd-ink' : 'border-transparent text-rd-ink-2'}`}
             >
-              {t === 'filtrar' ? 'Filtrar' : 'Ordenar'}
+              {tab === 'filtrar' ? t('tabFilter') : t('tabSort')}
             </button>
           ))}
         </div>
@@ -71,10 +73,10 @@ export const HojaFiltros: React.FC<HojaFiltrosProps> = ({ abierta, filtros: f, o
       pie={
         <>
           <Button nivel="terciario" tamano="md" onClick={() => onCambiar(filtrosVacios())} disabled={cuantosAplicados(f) === 0}>
-            Quitar todos
+            {t('clearAll')}
           </Button>
           <Button nivel="primario" tamano="md" onClick={onCerrar}>
-            Ver {resultados} {resultados === 1 ? 'resultado' : 'resultados'}
+            {t('viewResults')} {resultados} {resultados === 1 ? t('resultSingular') : t('resultPlural')}
           </Button>
         </>
       }

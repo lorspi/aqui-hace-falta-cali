@@ -12,7 +12,7 @@ export function needToPublicacion(need: Need): Publicacion {
     const hecho = r.fulfilledQuantity ?? 0;
     const catLabel = r.type && CATEGORY_LABELS[r.type as HelpCategory]?.label;
     return {
-      item: catLabel || r.description || r.type || 'Ayuda',
+      item: r.description || catLabel || r.type || 'Ayuda',
       unidad: r.unit || 'unidades',
       total,
       tramos: hecho > 0 ? [{ t: 'hecho', cant: hecho, quien: 'Confirmado', cuando: 'Recientemente' }] : [],
@@ -31,14 +31,23 @@ export function needToPublicacion(need: Need): Publicacion {
     });
   }
 
-  const esIndividual = need.requesterType === 'PERSONA' || (!need.organizationName && Boolean(need.contactName));
+  const tieneOrg = Boolean(
+    need.organizationName &&
+    need.organizationName.trim() &&
+    need.organizationName.toLowerCase() !== 'ciudadano' &&
+    need.organizationName.toLowerCase() !== 'citizen' &&
+    need.organizationName.toLowerCase() !== 'organización / comunidad' &&
+    need.organizationName.toLowerCase() !== 'organizacion / comunidad'
+  );
+  const esComunidad = need.requesterType === 'COMUNIDAD';
+  const esIndividual = !tieneOrg && (need.requesterType === 'PERSONA' || !need.organizationName);
 
   const pub: Publicacion = {
     id: need.id,
     tipo: 'necesidad',
     titulo: need.title || 'Solicitud de ayuda',
-    org: need.organizationName || '',
-    perfil: esIndividual ? 'individual' : (need.organizationName ? 'organizacion' : 'liderazgo'),
+    org: tieneOrg ? need.organizationName! : '',
+    perfil: esIndividual ? 'individual' : (esComunidad ? 'liderazgo' : (tieneOrg ? 'organizacion' : 'individual')),
     verificada: need.verificationStatus === 'VERIFIED',
     lat: need.latitude,
     lng: need.longitude,
@@ -78,7 +87,7 @@ export function offerToPublicacion(offer: Offer): Publicacion {
     const hecho = r.fulfilledQuantity ?? 0;
     const catLabel = r.type && CATEGORY_LABELS[r.type as HelpCategory]?.label;
     return {
-      item: catLabel || r.description || r.type || 'Aporte',
+      item: r.description || catLabel || r.type || 'Aporte',
       unidad: r.unit || 'unidades',
       total,
       tramos: hecho > 0 ? [{ t: 'hecho', cant: hecho, quien: 'Entregado', cuando: 'Recientemente' }] : [],
@@ -105,15 +114,25 @@ export function offerToPublicacion(offer: Offer): Publicacion {
     });
   }
 
-  const esIndividual = !offer.organizationName && Boolean(offer.contactName);
+  const tieneOrg = Boolean(
+    offer.organizationName &&
+    offer.organizationName.trim() &&
+    offer.organizationName.toLowerCase() !== 'ciudadano' &&
+    offer.organizationName.toLowerCase() !== 'citizen' &&
+    offer.organizationName.toLowerCase() !== 'organización oferente' &&
+    offer.organizationName.toLowerCase() !== 'organizacion oferente' &&
+    offer.organizationName.toLowerCase() !== 'mi organización' &&
+    offer.organizationName.toLowerCase() !== 'mi organizacion'
+  );
+  const esIndividual = !tieneOrg;
 
   const pub: Publicacion = {
     id: offer.id,
     tipo: 'oferta',
     titulo: offer.title || 'Oferta de ayuda',
-    org: offer.organizationName || '',
+    org: tieneOrg ? offer.organizationName! : '',
     perfil: esIndividual ? 'individual' : 'organizacion',
-    verificada: offer.verificationStatus === 'VERIFIED' || Boolean(offer.organizationName),
+    verificada: offer.verificationStatus === 'VERIFIED' || Boolean(tieneOrg && offer.verificationStatus !== 'REJECTED'),
     lat: offer.latitude,
     lng: offer.longitude,
     ciudad: offer.cityId,
@@ -163,7 +182,7 @@ export function commitmentToSolicitud(c: any): any {
     rec: c.resource_name || 'Ayuda',
     cant: c.quantity || 1,
     u: c.unit || 'unidades',
-    estado: (c.status || 'nueva') as any,
+    estado: (c.status === 'propuesta' ? 'nueva' : (c.status || 'nueva')) as any,
     cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
     vol: c.assigned_volunteer_name || null,
     dist: c.distance_text || (c.origin_type === 'INTERNAL_BRIGADE' ? 'Brigada interna' : undefined),
@@ -206,7 +225,7 @@ export function commitmentToEntregaRecibida(c: any): any {
     rec: c.resource_name || 'Ayuda',
     cant: c.quantity || 1,
     u: c.unit || 'unidades',
-    estado: (c.status || 'nueva') as any,
+    estado: (c.status === 'propuesta' ? 'nueva' : (c.status || 'nueva')) as any,
     cuando: c.created_at ? new Date(c.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) : 'Reciente',
     quienEntrega: c.assigned_volunteer_name || 'Coordinación operativa',
     vol: c.assigned_volunteer_name || null,

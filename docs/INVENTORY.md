@@ -134,14 +134,14 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 ## Utilidades (`src/utils/`)
 
 - `analytics` · `chatbotReportUtils` · `conversationDetailUtils` · `formatters`
-- `geocoding` · `offerFilters` · `reviewUtils`
+- `geocoding` · `offerFilters` · `reviewUtils` · `enumMappers` (`formatReportReason`, `mapItemToCatalog`, `mapTipoLugarToPlaceType`, `mapEmergencyEventToId`)
 - `offerStatusLogic` — validación y transiciones de estado de ofertas (lógica pura).
 - `offerValidation` — validación de entrada y armado del documento de oferta (lógica pura).
 - `directorio` — el Directorio (lógica pura): `publicacionesDe`, `ofertasDe`, `necesidadesDe`, `recursosDe`, `solicitudesDe`, `cifraDe`, `estadoComunidad`, `resumenPublica`, `entidadesDe`, `zonasDe`, `recursosDeVista`, `pasa`, `filtrar`, `chipsDe`, `cuantosAplicados`, `conteoTexto`, `formatearTipoEntidad`. Pruebas en `tests/unit/directorio.test.ts`.
 - `filtros` — el predicado de la Radar (lógica pura): `pasa`, `pasaResto`, `chipsDe`, `cuantosAplicados`, `ordenar`, `lugaresDe`; `DISTANCIAS`, `ESTADOS`, `ORDENES`.
 - `cruce` — el cruce de RaDAR (lógica pura): `cruzar`, `sugerenciasDe`, `textoSugerencia`; `coincidenciasDe` y `puntajeCoincidencia` (las coincidencias al publicar, el «Radar Match» de `RadarMatchModal` con nuestro cruce: hasta 5, con porcentaje); `CRUCE_KM`.
 - `equivalencias` — la conversión de RaDAR (lógica pura): `calcularMetas`, `declarado`, `detalleTexto`, `camposOferta`, `unidadOferta`, `camposTexto`, `numero`, `redondear`. Pruebas en `tests/unit/equivalencias.test.ts`.
-- `cuenta` — la entidad elegida en el registro (`guardarEntidad`, `entidadActual`, `nombrePanel`; `localStorage` `rd-entidad`, `?entidad=comunidad` para verlo).
+- `cuenta` — la entidad elegida en el registro (`guardarEntidad`, `entidadActual`, `nombrePanel`, `guardarVerificacion`, `verificacionActual`, `publicacionSaleVerificada`, `formatearRol`, `formatearTipoDocumento`; `localStorage` `rd-entidad`, `?entidad=comunidad` para verlo). Pruebas en `tests/unit/cuenta-formateo.test.ts`.
 - `panel` — el panel por uso (lógica pura): `leerModulos`, `modulosGuardados`, `activarModulo` (lo llaman los flujos al publicar; `localStorage` `rd-modulos`), `pestanasDe`, `kpisDe` (entregas por estado), `bloquesResumen`, `tramosPorEstado`, `archivarViejas`, `textoCierre`, `textoCierreRecibida`, `actasDe`, `textoActa`, `resumenActas`, `siglas`, `fechaCorta`, `pendientesDe`, `pendientesCuenta`, `quedan`, `cantidadPorEstado`. Pruebas en `tests/unit/panel.test.ts`.
 - `pedir` · `ofrecer` — el camino y la guarda de cada flujo (lógica pura): `caminoPedir`, `listoPedir`, `faltanCantidades`, `aDeclarar`, `esTelefonoValido`, `contactoListo`, `mensajeDe`; `caminoOfrecer`, `listoOfrecer`, `itemListo`, `textoEntrega`, `fechaCorta`.
 - `publicaciones` — cuentas de RaDAR (lógica pura): `movido`, `restante`, `porcentaje`, `resumen`, `estadoRecurso`, `estadoPublicacion`, `distanciaKm`, `distanciaTexto`, `cifra`, `unidad`, `iniciales`, `tituloPublicacion`, `actorPublicacion`. Pruebas en `tests/unit/publicaciones-titulo.test.ts`.

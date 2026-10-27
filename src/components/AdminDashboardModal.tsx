@@ -32,6 +32,7 @@ import {
   formatTimeAgo,
 } from "../utils/formatters";
 import { geocodeAddress } from "../utils/geocoding";
+import { formatReportReason } from "../utils/enumMappers";
 import { MiniMapPicker } from "./MiniMapPicker";
 import { CityCombobox } from "./CityCombobox";
 import { CustomSelect } from "./CustomSelect";
@@ -746,13 +747,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <div className="space-y-1 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="bg-rose-600 text-white font-bold px-2 py-0.5 rounded text-[10px]">
-                                  REPORTE: {rep.reason}
+                                  REPORTE: {formatReportReason(rep.reason)}
                                 </span>
                                 <span className="text-[11px] text-slate-500">
                                   {rep.reporterContact || "Anónimo"} · {formatTimeAgo(rep.createdAt)}
                                 </span>
                               </div>
-                              <p className="font-bold text-slate-900 text-sm">{rep.needTitle}</p>
+                              <p className="font-bold text-slate-900 text-sm">
+                                {reportedNeed?.title || (rep.needTitle && rep.needTitle !== rep.needId ? rep.needTitle : 'Publicación no disponible')}
+                              </p>
                               <p className="text-slate-800 text-xs bg-white border border-rose-100 rounded-lg p-2">
                                 <strong className="text-rose-700">Motivo del reporte:</strong>{" "}
                                 {rep.description}

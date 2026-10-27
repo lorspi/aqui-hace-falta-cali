@@ -471,7 +471,7 @@ export const TarjetaRecibida: React.FC<{
   const recursoTraducido = tRecurso(r.rec, language);
   const unidadTraducida = tUnidad(r.u, language, r.cant);
   const acciones = (() => {
-    if (r.estado === 'nueva') {
+    if (r.estado === 'nueva' || (r.estado as any) === 'propuesta') {
       return (
         <>
           {onAceptar && (

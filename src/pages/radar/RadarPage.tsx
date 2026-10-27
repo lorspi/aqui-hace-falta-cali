@@ -228,12 +228,12 @@ const Radar: React.FC<RadarProps> = ({
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = 'Radar, RaDAR de ayuda';
+    document.title = `${t('navRadar')}, ${t('radarHome')}`;
     const mq = window.matchMedia('(max-width: 1023px)');
     const alCambiar = () => setMovil(mq.matches);
     mq.addEventListener('change', alCambiar);
     return () => mq.removeEventListener('change', alCambiar);
-  }, []);
+  }, [t]);
 
   /* La URL dice lo que se ve, para poder compartirlo. `punto` se conserva: es el enlace a una
      publicación, que no es parte de la consulta. */
@@ -895,7 +895,7 @@ const FilaPublicacion: React.FC<{
   onReportar,
   onVerCoincidencias,
 }) => {
-  const { t, tItem, tResourceStatus, tDistance } = useTranslation();
+  const { t, language, tItem, tResourceStatus, tDistance } = useTranslation();
   const est = estadoPublicacion(p);
   const menu = [
     { texto: t('viewOnMap'), icono: <MapIcon className="h-4 w-4" />, onElegir: () => onVerEnMapa(p.id) },
@@ -937,7 +937,7 @@ const FilaPublicacion: React.FC<{
               />
             )}
           </div>
-          {p.org && p.org !== actorPublicacion(p) && (
+          {p.org && p.org !== actorPublicacion(p, language) && (
             <span className="text-rd-12 text-rd-ink-2 truncate">{p.org}</span>
           )}
           <Donde

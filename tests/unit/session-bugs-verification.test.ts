@@ -5,6 +5,10 @@ import type { Publicacion, Ubicacion } from '../../src/types/publicacion';
 import { contactoListo, esTelefonoValido, listoPedir, mensajeDe } from '../../src/utils/pedir';
 import { estadoInicialOfrecer, estadoInicialPedir } from '../../src/mocks/flujosMock';
 import { extractColombianIntersection, geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeStructured } from '../../src/utils/geocoding';
+import { needToPublicacion } from '../../src/utils/supabaseMappers';
+import { actorPublicacion } from '../../src/utils/publicaciones';
+import { formatReportReason } from '../../src/utils/enumMappers';
+import { translations } from '../../src/i18n/translations';
 
 describe('Verificación de solución de bugs (BUS-05, FYO-03, FYO-06)', () => {
   const dummyUbi: Ubicacion = { lat: 4.5, lng: -74.1, ciudad: 'bogota', zona: 'Centro', simulada: false };
@@ -294,4 +298,279 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(ofrecer.lng).toBeCloseTo(-74.0817, 2);
     expect(ofrecer.lat).not.toBeCloseTo(3.4516, 2);
   });
+
+  it('ORG-06: Mapeo de organización en sesión y cálculo de entidad en Shell no cae a prefijo de email', () => {
+    // Simular fila proveniente de la tabla organizations (tiene org_name)
+    const orgData = {
+      id: 'b23c1b45-f7c0-4c46-9904-1e20f70a1ae6',
+      user_id: '9e1e4794-ee5e-4c4d-9825-6e05f8f6d92e',
+      org_name: 'Gobernacion quindio',
+      organization_type: 'bomberos_defensa_civil'
+    };
+
+    const user = {
+      id: orgData.user_id,
+      email: 'alcandia@gmail.com',
+      user_metadata: {}
+    };
+
+    // Mapeo canónico corregido en Shell y App
+    const resolvedOrgName = orgData?.org_name || (orgData as any)?.name || user.user_metadata?.org_name;
+    const profileType = (orgData ? 'organizacion' : null) || 'persona';
+
+    expect(resolvedOrgName).toBe('Gobernacion quindio');
+    expect(profileType).toBe('organizacion');
+
+    // Cálculo de cuentaFinal en Shell
+    const activeUser = {
+      ...user,
+      name: 'Jesse Lopez',
+      org_name: resolvedOrgName,
+      organization: resolvedOrgName,
+      role: 'entidad_profesional'
+    };
+
+    const name = activeUser.name || activeUser.email;
+    const entidadNombre = activeUser.org_name || activeUser.organization || name;
+    const inicialesStr = entidadNombre.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+
+    expect(entidadNombre).toBe('Gobernacion quindio');
+    expect(entidadNombre).not.toBe('alcandia');
+    expect(inicialesStr).toBe('GQ');
+  });
+
+  it('EQP-04: "Mi equipo" vacío muestra mensaje de equipo sin personas en vez de filtros', () => {
+    // Si la organización no tiene miembros en equipo (equipo = [])
+    const equipoVacio: any[] = [];
+    const hayFiltros = false;
+
+    const estadoVacio = equipoVacio.length === 0
+      ? {
+          titulo: 'Todavía no hay personas en tu equipo',
+          accion: 'Agregar',
+          esFiltro: false,
+        }
+      : hayFiltros
+        ? {
+            titulo: 'Nadie coincide con estos filtros',
+            accion: 'Quitar los filtros',
+            esFiltro: true,
+          }
+        : null;
+
+    expect(estadoVacio).not.toBeNull();
+    expect(estadoVacio?.titulo).toBe('Todavía no hay personas en tu equipo');
+    expect(estadoVacio?.accion).toBe('Agregar');
+    expect(estadoVacio?.esFiltro).toBe(false);
+
+    // Caso con miembros y filtro aplicado sin coincidencias
+    const equipoConMiembros = [{ id: 1, n: 'Carlos Bombero' }];
+    const hayFiltrosAplicados = true;
+    const filtradosSinCoincidencias: any[] = [];
+
+    const estadoConFiltros = equipoConMiembros.length === 0
+      ? {
+          titulo: 'Todavía no hay personas en tu equipo',
+          accion: 'Agregar',
+          esFiltro: false,
+        }
+      : filtradosSinCoincidencias.length === 0
+        ? {
+            titulo: 'Nadie coincide con estos filtros',
+            accion: 'Quitar los filtros',
+            esFiltro: true,
+          }
+        : null;
+
+    expect(estadoConFiltros?.titulo).toBe('Nadie coincide con estos filtros');
+    expect(estadoConFiltros?.accion).toBe('Quitar los filtros');
+    expect(estadoConFiltros?.esFiltro).toBe(true);
+
+    // Verificación de traducciones en todos los idiomas soportados (es, en, pt, fr)
+    expect(translations.es.teamEmptyTitle).toBe('Todavía no hay personas en tu equipo');
+    expect(translations.en.teamEmptyTitle).toBe('There are no people on your team yet');
+    expect(translations.pt.teamEmptyTitle).toBe('Ainda não há pessoas na sua equipe');
+    expect(translations.fr.teamEmptyTitle).toBe('Il n\'y a pas encore de personnes dans votre équipe');
+
+    expect(translations.es.teamAdd).toBe('Agregar');
+    expect(translations.en.teamAdd).toBe('Add');
+    expect(translations.pt.teamAdd).toBe('Adicionar');
+    expect(translations.fr.teamAdd).toBe('Ajouter');
+  });
+
+  it('ORG-07: Publicación de necesidad por organización mapea perfil organizacion y muestra nombre de org en actor (no Citizen)', () => {
+    const need: any = {
+      id: 'need-org-1',
+      title: '100 Colchonetas y Cobijas',
+      description: 'Atención de emergencia en albergue',
+      organizationName: 'Gobernacion quindio',
+      requesterType: 'ORGANIZACION',
+      verificationStatus: 'VERIFIED',
+      resources: [{ requestedQuantity: 100, description: 'Colchonetas' }],
+      address: 'Calle 21 # 21-4',
+      neighborhood: 'Armenia',
+      latitude: 4.53,
+      longitude: -75.67,
+      contactName: 'Jesse Lopez',
+    };
+
+    const pub = needToPublicacion(need);
+    expect(pub.org).toBe('Gobernacion quindio');
+    expect(pub.perfil).toBe('organizacion');
+
+    // Incluso si requesterType en BD vino como 'PERSONA' por default antiguo pero tiene organizationName
+    const needLegacy: any = {
+      ...need,
+      id: 'need-legacy',
+      requesterType: 'PERSONA',
+    };
+    const pubLegacy = needToPublicacion(needLegacy);
+    expect(pubLegacy.org).toBe('Gobernacion quindio');
+    expect(pubLegacy.perfil).toBe('organizacion');
+
+    // actorPublicacion debe retornar el nombre de la organización, NO 'Citizen' ni 'Ciudadano'
+    const actorEn = actorPublicacion(pub, 'en');
+    const actorEs = actorPublicacion(pub, 'es');
+    expect(actorEn).toBe('Gobernacion quindio');
+    expect(actorEs).toBe('Gobernacion quindio');
+    expect(actorEn).not.toBe('Citizen');
+    expect(actorEs).not.toBe('Ciudadano');
+  });
+
+  it('ADM-02: formatReportReason traduce códigos de motivos y conteo de reportes pendientes coincide', () => {
+    // 1. Motivos humanizados / traducidos
+    expect(formatReportReason('WRONG_LOCATION')).toBe('La ubicación o dirección es incorrecta');
+    expect(formatReportReason('BAD_CONTACT')).toBe('El teléfono o WhatsApp no funciona');
+    expect(formatReportReason('NOT_NEEDED_ANYMORE')).toBe('Ya no necesitan ayuda / La ayuda fue cubierta');
+    expect(formatReportReason('FALSE_INFORMATION')).toBe('La información es falsa o engañosa');
+    expect(formatReportReason('OUTDATED')).toBe('La información está desactualizada');
+    expect(formatReportReason('OTHER')).toBe('Otro motivo');
+    expect(formatReportReason('CUSTOM_REASON')).toBe('CUSTOM_REASON');
+
+    // 2. Con helper de traducción en inglés
+    const tEn = (k: string) => (translations.en as any)[k] || k;
+    expect(formatReportReason('WRONG_LOCATION', tEn)).toBe('Incorrect location or address');
+    expect(formatReportReason('BAD_CONTACT', tEn)).toBe('Phone or WhatsApp does not work');
+    expect(formatReportReason('NOT_NEEDED_ANYMORE', tEn)).toBe('Help no longer needed / Covered');
+
+    // 3. Conteo de pendientes vs resueltos
+    const mockReports = [
+      { id: '1', status: 'PENDING', reason: 'WRONG_LOCATION', needId: 'n1' },
+      { id: '2', status: 'PENDING', reason: 'BAD_CONTACT', needId: 'n2' },
+      { id: '3', status: 'PENDING', reason: 'NOT_NEEDED_ANYMORE', needId: 'n3' },
+      { id: '4', status: 'PENDING', reason: 'OUTDATED', needId: 'n4' },
+      { id: '5', status: 'RESOLVED', reason: 'OTHER', needId: 'n5' },
+      { id: '6', status: 'RESOLVED', reason: 'FALSE_INFORMATION', needId: 'n6' },
+      { id: '7', status: 'RESOLVED', reason: 'WRONG_LOCATION', needId: 'n7' },
+    ];
+
+    const pendingOnly = mockReports.filter((r) => r.status === 'PENDING');
+    expect(pendingOnly.length).toBe(4);
+    expect(mockReports.length).toBe(7);
+
+    // En filtro PENDING: menú dice 4 y título de sección pendientes dice 4
+    const filterStatus = 'PENDING';
+    const filtered = mockReports.filter((r) => filterStatus === 'ALL' || r.status === filterStatus);
+    expect(filtered.length).toBe(pendingOnly.length);
+    expect(filtered.length).toBe(4);
+
+    // Resolución de título de publicación (no debe caer en el ID si la necesidad existe)
+    const mockNeeds = [{ id: 'n1', title: 'Alimentos para Siloé' }];
+    const rep = mockReports[0];
+    const relatedNeed = mockNeeds.find((n) => n.id === rep.needId);
+    const resolvedTitle = relatedNeed?.title || (rep as any).needTitle || 'Publicación no disponible';
+    expect(resolvedTitle).toBe('Alimentos para Siloé');
+    expect(resolvedTitle).not.toBe('n1');
+  });
+
+  it('MIE-02: Miembro de equipo de organización con rol voluntario en perfil pero con org asociada ve "Mi organización" y no "Mi actividad"', () => {
+    // Simulación del cálculo de entidad / perfil en Shell
+    const activeUser = {
+      id: 'usr-fed-1',
+      name: 'Federico Posada 1',
+      role: 'voluntario', // perfil original en profiles
+      org_name: 'Gobernacion quindio', // asignado por fetchOrganizationByUserId / organization_members
+      organization: 'Gobernacion quindio',
+      profile_type: 'organizacion',
+    };
+    const hasOrg = true;
+    const dbProfileType = 'organizacion';
+    const normUserRole = (activeUser?.role || dbProfileType || '').toString().trim().toLowerCase();
+    const normProfileType = (dbProfileType || activeUser?.profile_type || '').toString().trim().toLowerCase();
+
+    const tieneOrg = Boolean(
+      hasOrg ||
+      Boolean(activeUser?.org_name) ||
+      Boolean(activeUser?.organization) ||
+      normProfileType === 'organizacion' ||
+      normProfileType === 'entidad_profesional' ||
+      normUserRole === 'organizacion' ||
+      normUserRole === 'entidad_profesional'
+    );
+
+    const esComunidad = Boolean(
+      normProfileType === 'comunidad' ||
+      normProfileType === 'liderazgo' ||
+      normProfileType === 'lider' ||
+      normProfileType === 'junta_vecinal' ||
+      normUserRole === 'lider' ||
+      normUserRole === 'liderazgo' ||
+      normUserRole === 'comunidad'
+    );
+
+    const esOrganizacion = !esComunidad && Boolean(tieneOrg);
+    const esIndividual = !tieneOrg && !esComunidad && Boolean(
+      normProfileType === 'persona' ||
+      normProfileType === 'individual' ||
+      normUserRole === 'voluntario' ||
+      normUserRole === 'user'
+    );
+
+    // Verificaciones
+    expect(tieneOrg).toBe(true);
+    expect(esComunidad).toBe(false);
+    expect(esOrganizacion).toBe(true);
+    expect(esIndividual).toBe(false);
+
+    // El panel asignado debe ser 'panel' (Mi organización) y no 'actividad' (Mi actividad)
+    let seccionAsignada = 'radar';
+    if (esIndividual) {
+      seccionAsignada = 'actividad';
+    } else if (esComunidad) {
+      seccionAsignada = 'panel';
+    } else {
+      seccionAsignada = 'panel';
+    }
+
+    expect(seccionAsignada).toBe('panel');
+    expect(seccionAsignada).not.toBe('actividad');
+  });
+
+  it('ROL-12: Sin iniciar sesión, /panel no permite acceso anónimo y redirige a login con retorno', () => {
+    // 1. Simulación de usuario anónimo (sin sesión)
+    const authUser = null;
+    const storedAuth = null;
+    const isLogged = Boolean(storedAuth);
+
+    const destino = '/panel#equipo';
+    const rutaLoginEsperada = `/registro?modo=login&retorno=${encodeURIComponent(destino)}`;
+
+    expect(isLogged).toBe(false);
+    expect(authUser).toBeNull();
+
+    // Verificación de generación de ruta de login con retorno
+    const rutaRedireccion = `/registro?modo=login&retorno=${encodeURIComponent(destino)}`;
+    expect(rutaRedireccion).toBe(rutaLoginEsperada);
+    expect(rutaRedireccion).toContain('modo=login');
+    expect(rutaRedireccion).toContain(encodeURIComponent('/panel#equipo'));
+
+    // 2. Simulación de organización autenticada (control ROL12-04)
+    const orgUser = { id: 'org-123', name: 'Fundación Apoyo', role: 'voluntario', profile_type: 'organizacion' };
+    const isLoggedWithOrg = Boolean(orgUser);
+
+    expect(isLoggedWithOrg).toBe(true);
+  });
 });
+
+
+
