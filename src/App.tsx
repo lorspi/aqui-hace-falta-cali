@@ -364,7 +364,8 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       if (!sessionUser) return;
 
       // 1. Establecer el usuario INMEDIATAMENTE con los metadatos de la sesión
-      const local = getStoredAuthUser();
+      const stored = getStoredAuthUser();
+      const local = stored?.id === sessionUser.id ? stored : null;
       const metaName = local?.name || sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'Usuario';
       const immediateUserObj = {
         id: sessionUser.id,
@@ -393,13 +394,20 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         if (profile || orgData) {
           if (profile) setUserProfile(profile);
           const dbName = profile?.full_name || profile?.name || local?.name || metaName;
-          const resolvedOrgName = orgData?.org_name || orgData?.name || local?.org_name || sessionUser.user_metadata?.org_name;
+          const resolvedOrgName = orgData?.org_name || orgData?.name || profile?.organization || local?.org_name || sessionUser.user_metadata?.org_name || sessionUser.user_metadata?.organization;
+          const orgType = (orgData?.organization_type || '').toLowerCase();
+          const profType = (profile?.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType || '').toLowerCase();
+          const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
+          const resolvedProfileType = orgData
+            ? (isCom ? 'liderazgo' : 'organizacion')
+            : (profile?.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType);
+
           const updatedUserObj = {
             id: sessionUser.id,
             name: dbName,
             email: sessionUser.email,
             role: profile?.role || sessionUser.user_metadata?.role || sessionUser.role,
-            profile_type: (orgData ? 'organizacion' : null) || profile?.profile_type || sessionUser.user_metadata?.profile_type || sessionUser.user_metadata?.profileType,
+            profile_type: resolvedProfileType,
             org_name: resolvedOrgName,
             organization: resolvedOrgName,
             user_metadata: sessionUser.user_metadata,
@@ -407,20 +415,20 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           setAuthUser(updatedUserObj);
           saveStoredAuthUser(updatedUserObj);
 
-          const normRole = profile.role?.toString().trim().toUpperCase();
+          const normRole = profile?.role?.toString().trim().toUpperCase();
           const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
-          const isApprovedMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR') && profile.moderation_status === 'APPROVED';
+          const isApprovedMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR') && profile?.moderation_status === 'APPROVED';
 
           if (isAdmin || isApprovedMod) {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token || 'supabase_token';
             const adminUserObj = {
-              id: profile.id,
+              id: profile?.id || sessionUser.id,
               name: dbName,
               email: sessionUser.email || '',
               role: isAdmin ? 'ADMIN' : 'MODERATOR',
               active: true,
-              createdAt: profile.created_at || new Date().toISOString(),
+              createdAt: profile?.created_at || new Date().toISOString(),
             };
             localStorage.setItem('ahf_admin_token', token);
             localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));

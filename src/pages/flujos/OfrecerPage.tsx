@@ -151,9 +151,12 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     const activeOrgName = org?.org_name || org?.name || authUser?.org_name || localUser?.org_name;
     const isOrgOrCom = Boolean(activeOrgName && activeOrgName.trim());
     const orgType = (org?.organization_type || '').toLowerCase();
-    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo';
+    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo' || profile?.profile_type === 'liderazgo' || profile?.profile_type === 'comunidad';
 
     const pub = publicacionDe(estado, language);
+    pub.perfil = isOrgOrCom ? (isCom ? 'liderazgo' : 'organizacion') : 'individual';
+    pub.org = isOrgOrCom ? activeOrgName : '';
+    pub.titulo = tituloPublicacion(pub, language);
 
     // Subir fotos a Supabase Storage
     const photoUrls = await uploadEvidencePhotos(estado.fotos);

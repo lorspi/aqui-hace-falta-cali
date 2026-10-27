@@ -114,7 +114,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           try {
             const { data: p } = await supabase
               .from('profiles')
-              .select('id, role, full_name, moderation_status')
+              .select('id, role, full_name, moderation_status, profile_type, organization')
               .eq('id', user.id)
               .maybeSingle();
             profileData = p;
@@ -135,11 +135,18 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
             const isMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR');
 
+            const orgType = (orgData?.organization_type || '').toLowerCase();
+            const profType = (profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType || '').toLowerCase();
+            const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
+            const resolvedProfileType = orgData
+              ? (isCom ? 'liderazgo' : 'organizacion')
+              : (profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType);
+
             const fullUser = {
               ...user,
               name: profileData?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
               role: profileData?.role || user.user_metadata?.role || (isAdmin ? 'admin' : user.role),
-              profile_type: (orgData ? 'organizacion' : null) || profileData?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType,
+              profile_type: resolvedProfileType,
               org_name: orgData?.org_name || orgData?.name || profileData?.organization || user.user_metadata?.org_name,
               organization: orgData?.org_name || orgData?.name || profileData?.organization || user.user_metadata?.organization,
               user_metadata: user.user_metadata,
@@ -313,14 +320,17 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       try {
         const [orgRes, profRes] = await Promise.all([
           fetchOrganizationByUserId(activeUser.id),
-          supabase.from('profiles').select('role').eq('id', activeUser.id).maybeSingle()
+          supabase.from('profiles').select('role, profile_type').eq('id', activeUser.id).maybeSingle()
         ]);
         if (!isMounted) return;
         setHasOrg(Boolean(orgRes));
         if (orgRes) {
-          setDbProfileType('organizacion');
+          const orgType = (orgRes.organization_type || '').toLowerCase();
+          const profType = (profRes?.data?.profile_type || activeUser?.profile_type || '').toLowerCase();
+          const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
+          setDbProfileType(isCom ? 'comunidad' : 'organizacion');
         } else if (profRes?.data) {
-          setDbProfileType((profRes.data.role || '').toLowerCase());
+          setDbProfileType((profRes.data.profile_type || profRes.data.role || '').toLowerCase());
         }
       } catch {}
     }

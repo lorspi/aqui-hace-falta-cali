@@ -110,11 +110,14 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     const activeOrgName = org?.org_name || org?.name || authUser?.org_name || localUser?.org_name;
     const isOrgOrCom = Boolean(activeOrgName && activeOrgName.trim());
     const orgType = (org?.organization_type || '').toLowerCase();
-    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo';
+    const isCom = orgType.includes('comun') || orgType.includes('junta') || authUser?.profile_type === 'liderazgo' || localUser?.profile_type === 'liderazgo' || profile?.profile_type === 'liderazgo' || profile?.profile_type === 'comunidad';
     const requesterType = isOrgOrCom ? (isCom ? 'COMUNIDAD' : 'ORGANIZACION') : 'PERSONA';
 
     const metas = calcularMetas(estado.sel, estado.grupo, estado.dias);
     const pub = publicacionDe(estado, metas);
+    pub.perfil = isOrgOrCom ? (isCom ? 'liderazgo' : 'organizacion') : 'individual';
+    pub.org = isOrgOrCom ? activeOrgName : '';
+    pub.titulo = tituloPublicacion(pub, language);
 
     // Subir fotos a Supabase Storage
     const photoUrls = await uploadEvidencePhotos(estado.fotos);

@@ -1718,7 +1718,7 @@ export const AdminPanelPage: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                 {filteredReports.map((rep) => {
-                  const isOffer = !rep.offerId;
+                  const isOffer = !!rep.offerId;
                   const relatedNeed = rep.needId ? needs.find((n) => n.id === rep.needId) : undefined;
                   const relatedOffer = rep.offerId ? offers.find((o) => o.id === rep.offerId) : undefined;
                   const resolvedTitle = isOffer
@@ -1727,7 +1727,7 @@ export const AdminPanelPage: React.FC = () => {
                   const entryTitle = resolvedTitle || (isOffer
                     ? (rep.offerId ? `Oferta #${rep.offerId.slice(0, 8)}` : 'Oferta no disponible')
                     : (rep.needId ? `Necesidad #${rep.needId.slice(0, 8)}` : 'Publicación no disponible'));
-                  const canOpen = isOffer ? !relatedOffer : !relatedNeed;
+                  const canOpen = isOffer ? !!relatedOffer : !!relatedNeed;
 
                   const handleOpenEntry = () => {
                     if (isOffer && relatedOffer) {

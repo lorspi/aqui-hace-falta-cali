@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import type { Publicacion } from '../../types/publicacion';
-import { cifra, restante } from '../../utils/publicaciones';
+import { actorPublicacion, cifra, restante } from '../../utils/publicaciones';
 import { cantidadDe, type Compromiso } from '../../utils/compromiso';
 import { numero } from '../../utils/equivalencias';
 import { Casilla } from './Casilla';
@@ -20,8 +20,9 @@ interface EstadoFila {
 }
 
 export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacion: p, onCerrar, onEnviar }) => {
-  const { t, tItem, tUnit, tResourceStatus } = useTranslation();
+  const { t, tItem, tUnit, tResourceStatus, language } = useTranslation();
   const esNecesidad = p?.tipo === 'necesidad';
+  const actor = p ? (p.org?.trim() || actorPublicacion(p, language)) : '';
   const filas = (p?.recursos ?? []).map((r, i) => ({ i, r, queda: restante(r) })).filter((f) => f.queda > 0);
   const [estado, setEstado] = useState<Record<number, EstadoFila>>({});
 
@@ -77,7 +78,7 @@ export const DialogoCompromiso: React.FC<DialogoCompromisoProps> = ({ publicacio
   return (
     <Dialogo
       abierto={p !== null}
-      titulo={p ? `${esNecesidad ? t('commitmentHelpTitle') : t('commitmentRequestTitle')} ${p.org}?` : ''}
+      titulo={p ? `${esNecesidad ? t('commitmentHelpTitle') : t('commitmentRequestTitle')} ${actor}?` : ''}
       accion={esNecesidad ? t('radarMatchActionCommit') : t('radarMatchActionRequest')}
       accionActiva={todasElegidasValidas}
       onCerrar={onCerrar}
