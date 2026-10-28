@@ -126,7 +126,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [editDescription, setEditDescription] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editNeighborhood, setEditNeighborhood] = useState("");
-  const [editCityId, setEditCityId] = useState("cali");
+  const [editCityId, setEditCityId] = useState("");
   const [editContactName, setEditContactName] = useState("");
   const [editContactPhone, setEditContactPhone] = useState("");
   const [editContactWhatsapp, setEditContactWhatsapp] = useState("");
@@ -339,7 +339,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditDescription(need.description);
     setEditAddress(need.address);
     setEditNeighborhood(need.neighborhood);
-    setEditCityId(need.cityId || "cali");
+    setEditCityId(need.cityId || "");
     setEditContactName(need.contactName);
     setEditContactPhone(need.contactPhone || "");
     setEditContactWhatsapp(need.contactWhatsapp || "");
@@ -347,8 +347,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEditPlaceType(need.placeType || "");
     setEditCategories(need.categories ? [...need.categories] : []);
     setEditResources(need.resources ? [...need.resources] : []);
-    setEditLatitude(need.latitude || 3.4516);
-    setEditLongitude(need.longitude || -76.532);
+    setEditLatitude(need.latitude || 4.5709);
+    setEditLongitude(need.longitude || -74.2973);
     setEditGeoError("");
   };
 

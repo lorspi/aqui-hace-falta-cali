@@ -768,15 +768,10 @@ export const MiniMapa: React.FC<{
       draggable: true,
       title: t('flowPinDragTooltip')
     }).addTo(m);
-    
+
     pin.on('dragend', () => {
       const p = pin.getLatLng();
       alMover.current(p.lat, p.lng);
-    });
-
-    m.on('click', (e: L.LeafletMouseEvent) => {
-      pin.setLatLng(e.latlng);
-      alMover.current(e.latlng.lat, e.latlng.lng);
     });
 
     requestAnimationFrame(() => m.invalidateSize());
@@ -891,24 +886,24 @@ export const ResumenPub: React.FC<{ titulo: string; children: React.ReactNode }>
  *  fórmula y el detalle. */
 export const MetaPub: React.FC<{ item: string; valor: string; unidad: string; onChange?: (v: string) => void; linea?: React.ReactNode; children?: React.ReactNode; error?: string | null; onBlur?: (v: string) => void }> = ({ item, valor, unidad, onChange, linea, children, error, onBlur }) => {
   const { tItem, tUnit } = useTranslation();
-  const { texto, alCambiar, alSalir } = useTexto(valor, onChange ?? (() => {}), onBlur);
+  const { texto, alCambiar, alSalir } = useTexto(valor, onChange ?? (() => { }), onBlur);
   const cantNum = parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0;
   const unidadLocal = tUnit(cantNum, unidad);
   return (
-  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-b border-rd-line-soft p-3 last:border-b-0">
-    <div className="min-w-0 flex-1 text-rd-13-5 font-semibold text-rd-ink">{tItem(item)}</div>
-    <div className="flex items-center justify-end gap-2">
-      {onChange ? (
-        <input type="text" inputMode="decimal" value={texto} onChange={(e) => alCambiar(e.target.value)} onBlur={(e) => alSalir(e.target.value)} aria-label={`Cantidad de ${tItem(item)}, en ${unidadLocal}`} aria-invalid={error ? true : undefined} className={`font-rd h-rd-h-sm w-24 rounded-rd-sm border bg-rd-surface px-2 text-right text-rd-13 font-semibold text-rd-ink tabular-nums focus:border-rd-navy focus:outline-none focus:ring-3 focus:ring-rd-navy-soft ${error ? 'border-rd-coral' : 'border-rd-line'}`} />
-      ) : (
-        <b className="text-rd-14 tabular-nums">{valor}</b>
-      )}
-      <span className="max-w-23 truncate text-rd-12-5 font-semibold text-rd-ink-2">{unidadLocal}</span>
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-b border-rd-line-soft p-3 last:border-b-0">
+      <div className="min-w-0 flex-1 text-rd-13-5 font-semibold text-rd-ink">{tItem(item)}</div>
+      <div className="flex items-center justify-end gap-2">
+        {onChange ? (
+          <input type="text" inputMode="decimal" value={texto} onChange={(e) => alCambiar(e.target.value)} onBlur={(e) => alSalir(e.target.value)} aria-label={`Cantidad de ${tItem(item)}, en ${unidadLocal}`} aria-invalid={error ? true : undefined} className={`font-rd h-rd-h-sm w-24 rounded-rd-sm border bg-rd-surface px-2 text-right text-rd-13 font-semibold text-rd-ink tabular-nums focus:border-rd-navy focus:outline-none focus:ring-3 focus:ring-rd-navy-soft ${error ? 'border-rd-coral' : 'border-rd-line'}`} />
+        ) : (
+          <b className="text-rd-14 tabular-nums">{valor}</b>
+        )}
+        <span className="max-w-23 truncate text-rd-12-5 font-semibold text-rd-ink-2">{unidadLocal}</span>
+      </div>
+      {error && <p className="basis-full text-rd-12-5 text-rd-coral">{error}</p>}
+      {linea && <div className="basis-full text-rd-11-5 text-rd-ink-meta wrap-anywhere">{linea}</div>}
+      {children && <div className="mt-2 basis-full border-t border-dashed border-rd-line pt-2">{children}</div>}
     </div>
-    {error && <p className="basis-full text-rd-12-5 text-rd-coral">{error}</p>}
-    {linea && <div className="basis-full text-rd-11-5 text-rd-ink-meta wrap-anywhere">{linea}</div>}
-    {children && <div className="mt-2 basis-full border-t border-dashed border-rd-line pt-2">{children}</div>}
-  </div>
   );
 };
 
@@ -1005,7 +1000,7 @@ export const ExitoFlujo: React.FC<ExitoFlujoProps> = ({ tipo, publicacion, onVer
   const compartir = () => {
     const url = `${window.location.origin}${RUTAS.radar}?punto=${encodeURIComponent(pubSegura.id)}`;
     const listo = () => avisar(t('linkCopiedOk') || 'Enlace copiado', { tipo: 'ok' });
-    if (navigator.share) navigator.share({ title: `${pubSegura.titulo || 'Publicación'}, RaDAR de ayuda`, url }).then(listo).catch(() => {});
+    if (navigator.share) navigator.share({ title: `${pubSegura.titulo || 'Publicación'}, RaDAR de ayuda`, url }).then(listo).catch(() => { });
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(listo, listo);
     else listo();
   };

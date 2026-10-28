@@ -832,7 +832,7 @@ export const MapView: React.FC<MapViewProps> = ({
       {/* Picker Instructions */}
       {isPickerMode && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-emerald-950 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-semibold flex items-center gap-2 border border-emerald-500/50">
-          <span>📍 Haz clic en el mapa para ubicar el punto exacto en Cali</span>
+          <span>📍 Haz clic en el mapa para ubicar el punto exacto</span>
         </div>
       )}
     </div>

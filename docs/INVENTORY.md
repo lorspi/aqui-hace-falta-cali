@@ -55,6 +55,7 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
   (`lg` · `md` · `sm`); 44 con el dedo.
 - `Field` — etiqueta visible, control (`text` · `email` · `tel` · `password` · `select` ·
   `checkbox` · `textarea` · `date`), icono, ayuda y error con `aria-describedby`. La contraseña no pasa por el estado.
+- `CampoDireccion` — campo de dirección unificado con autocompletado predictivo inteligente (Google Places), sesgo geográfico por proximidad y accesibilidad ARIA.
 - `Combobox` — selector accesible con búsqueda y filtrado en tiempo real, opciones desplegables con teclado/mouse y variantes `base` y `pildora`.
 - `Segmented` — conmutador de modos con `aria-pressed`.
 - `OptionCard` — tarjeta de opción única con radio nativo.
@@ -64,7 +65,7 @@ Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 - `Success` — pantalla de éxito al cerrar un flujo.
 - `Etiqueta` — `EtiquetaTipo` (Se necesita · Se ofrece), `EtiquetaEstado` (Cubierta · En proceso · Sin iniciar), `Avatar`, `Contador`.
 - `Recursos` — el bloque de recursos de una publicación: `Anillo`, `BarraRecurso`, filas plegables con ficha (`soloFilas` para solo las filas, sin cabecera ni anillos: el Directorio); `iconoDe()`, `categoriaDe()`.
-- `Consulta` — las piezas de la barra de consulta, una sola para la Radar y el Directorio: `BotonFiltros` (con el conteo de aplicados), `ChipAplicado`, `QuitarTodos`, `ZonaChips` (fila que se desplaza, con › cuando desborda en móvil), `CampoBuscar`.
+- `Consulta` — las piezas de la barra de consulta, una sola para la Radar y el Directorio: `BotonFiltros` (con el conteo de aplicados), `ChipAplicado`, `QuitarTodos`, `ZonaChips` (fila que se desplaza, con › cuando desborda en móvil), `CampoBuscar` (buscador inteligente predictivo con sugerencias de municipios/ciudades con vuelo en mapa, sugerencias de taxonomía de recursos y búsqueda de texto libre).
 - `Caja` — la caja de una sección (`rd-caja`: borde, radio 12, `h2` 16/600 con la acción a la derecha, siempre en la misma fila), `Conteo` (el chip de conteo junto a un título: cuenta cosas, no dice estados) y `FilaDato` (`rd-dato`: rótulo, valor con nota y acción a la derecha). Los usan el panel y el Perfil.
 - `Donde` — dónde está algo, en un renglón: pin, el lugar (con «…» si no cabe), divisor vertical y la distancia entera. La usan la tarjeta de Radar y el Directorio.
 - `Switch` — el interruptor (`rd-switch`: pista 40 × 24, tinta cuando está encendido, `input` con `role="switch"`) y `FilaSwitch` (rótulo, nota y el interruptor a la derecha, toda la fila es el `label`). Para ajustes: aparecer en el Directorio, canales de aviso, solo verificadas.

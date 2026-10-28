@@ -10,6 +10,7 @@ import { MiniMapPicker } from './MiniMapPicker';
 import { CustomSelect } from './CustomSelect';
 import { Turnstile } from './Turnstile';
 import { useTranslation } from '../i18n/LanguageContext';
+import { findCityById } from '../data/colombiaCities';
 
 interface PublicEditModalProps {
   need: Need | null;
@@ -30,8 +31,8 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
   const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>([]);
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [latitude, setLatitude] = useState(3.4516);
-  const [longitude, setLongitude] = useState(-76.532);
+  const [latitude, setLatitude] = useState(4.5709);
+  const [longitude, setLongitude] = useState(-74.2973);
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactWhatsapp, setContactWhatsapp] = useState('');
@@ -85,8 +86,8 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
       setSelectedCategories((need.categories as HelpCategory[]) || []);
       setAddress(need.address || '');
       setNeighborhood(need.neighborhood || '');
-      setLatitude(need.latitude || 3.4516);
-      setLongitude(need.longitude || -76.532);
+      setLatitude(need.latitude || 4.5709);
+      setLongitude(need.longitude || -74.2973);
       setContactName(need.contactName || '');
       setContactPhone(need.contactPhone || '');
       setContactWhatsapp(need.contactWhatsapp || '');
@@ -173,16 +174,18 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
     if (!address) return;
     setIsGeocoding(true);
     setGeocodeError('');
-    const result = await geocodeAddress(address, neighborhood);
     try {
-      const fullAddr = neighborhood ? `${address}, ${neighborhood}, Cali` : `${address}, Cali`;
-      const res = await geocodeAddress(fullAddr);
+      const cityName = need?.cityId ? (findCityById(need.cityId)?.name || need.cityId) : '';
+      const res = await geocodeAddress(address, neighborhood, cityName);
       if (res) {
         setLatitude(res.latitude);
         setLongitude(res.longitude);
+        setGeocodeError('');
+      } else {
+        setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
       }
     } catch {
-      // Ignore geocoding failure silently
+      setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
     } finally {
       setIsGeocoding(false);
     }
@@ -419,7 +422,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
           {/* Section 2: Location */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b pb-1">
-              2. ¿Dónde está ubicado? (Cali)
+              2. ¿Dónde está ubicado?
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -429,7 +432,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                   type="text"
                   value={neighborhood}
                   onChange={(e) => { setNeighborhood(e.target.value); clearFieldError('neighborhood'); }}
-                  placeholder="Ej: San Fernando, Siloé, Granada, El Peñón..."
+                  placeholder="Ej: Barrio, sector o localidad..."
                   className={`w-full p-2 bg-slate-50 border rounded-lg ${errors.neighborhood ? 'border-red-400 focus:ring-2 focus:ring-red-300/30 focus:border-red-400' : 'border-slate-300'}`}
                   aria-invalid={errors.neighborhood ? true : undefined}
                 />
@@ -472,7 +475,7 @@ export const PublicEditModal: React.FC<PublicEditModalProps> = ({ need, onClose,
                 className="text-xs text-slate-900 font-bold hover:underline flex items-center gap-1"
               >
                 <MapPin className="w-3.5 h-3.5 text-red-600" />
-                <span>{showPickerMap ? 'Ocultar mapa de ubicación' : 'Ajustar punto exacto en el mapa de Cali'}</span>
+                <span>{showPickerMap ? 'Ocultar mapa de ubicación' : 'Ajustar punto exacto en el mapa'}</span>
               </button>
 
               {showPickerMap && (

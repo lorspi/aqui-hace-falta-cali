@@ -2,6 +2,7 @@ import type { Need, Offer, HelpCategory } from '../types';
 import type { Publicacion, Recurso } from '../types/publicacion';
 import type { SolicitudEnviada, OfrecimientoEnviado, EstadoSolicitudEnviada, EstadoOfrecimientoEnviado } from '../types/panel';
 import { CATEGORY_LABELS } from './formatters';
+import { detectCityFromCoords, findCityById } from '../data/colombiaCities';
 
 /**
  * Convierte un Need (de Supabase) al tipo unificado Publicacion (v2 RaDAR)
@@ -42,6 +43,16 @@ export function needToPublicacion(need: Need): Publicacion {
   const esComunidad = need.requesterType === 'COMUNIDAD';
   const esIndividual = !tieneOrg && (need.requesterType === 'PERSONA' || !need.organizationName);
 
+  const detectedCity = (typeof need.latitude === 'number' && typeof need.longitude === 'number')
+    ? detectCityFromCoords(need.latitude, need.longitude)
+    : null;
+  const rawNeedCityId = need.cityId && need.cityId !== 'todo-colombia' && need.cityId !== 'all_colombia'
+    ? (need.cityId === 'bogota-d-c' ? 'bogota' : need.cityId)
+    : undefined;
+  const ciudadId = rawNeedCityId || detectedCity?.id;
+  const nombreCiudadDetectada = detectedCity?.name || (ciudadId ? (findCityById(ciudadId)?.name || (ciudadId.charAt(0).toUpperCase() + ciudadId.slice(1))) : '');
+  const zonaFinal = need.neighborhood || nombreCiudadDetectada || '';
+
   const pub: Publicacion = {
     id: need.id,
     tipo: 'necesidad',
@@ -51,8 +62,8 @@ export function needToPublicacion(need: Need): Publicacion {
     verificada: need.verificationStatus === 'VERIFIED',
     lat: need.latitude,
     lng: need.longitude,
-    ciudad: need.cityId,
-    zona: need.neighborhood || (need.cityId ? need.cityId.charAt(0).toUpperCase() + need.cityId.slice(1) : 'Cali'),
+    ciudad: ciudadId,
+    zona: zonaFinal,
     dir: need.address,
     descripcion: need.description,
     recursos: recursos.length > 0 ? recursos : [{ item: 'Ayuda general', unidad: 'solicitud', total: 1, tramos: [] }],
@@ -126,6 +137,16 @@ export function offerToPublicacion(offer: Offer): Publicacion {
   );
   const esIndividual = !tieneOrg;
 
+  const detectedCity = (typeof offer.latitude === 'number' && typeof offer.longitude === 'number')
+    ? detectCityFromCoords(offer.latitude, offer.longitude)
+    : null;
+  const rawOfferCityId = offer.cityId && offer.cityId !== 'todo-colombia' && offer.cityId !== 'all_colombia'
+    ? (offer.cityId === 'bogota-d-c' ? 'bogota' : offer.cityId)
+    : undefined;
+  const ciudadId = rawOfferCityId || detectedCity?.id;
+  const nombreCiudadDetectada = detectedCity?.name || (ciudadId ? (findCityById(ciudadId)?.name || (ciudadId.charAt(0).toUpperCase() + ciudadId.slice(1))) : '');
+  const zonaFinal = offer.neighborhood || nombreCiudadDetectada || '';
+
   const pub: Publicacion = {
     id: offer.id,
     tipo: 'oferta',
@@ -135,8 +156,8 @@ export function offerToPublicacion(offer: Offer): Publicacion {
     verificada: offer.verificationStatus === 'VERIFIED' || Boolean(tieneOrg && offer.verificationStatus !== 'REJECTED'),
     lat: offer.latitude,
     lng: offer.longitude,
-    ciudad: offer.cityId,
-    zona: offer.neighborhood || (offer.cityId ? offer.cityId.charAt(0).toUpperCase() + offer.cityId.slice(1) : 'Cali'),
+    ciudad: ciudadId,
+    zona: zonaFinal,
     dir: offer.address,
     descripcion: offer.description,
     recursos: recursos.length > 0 ? recursos : [{ item: 'Aporte general', unidad: 'oferta', total: 1, tramos: [] }],

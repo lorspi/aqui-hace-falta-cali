@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase, dbNeedToNeed, dbOfferToOffer, needToDbNeed, offerToDbOffer } from './supabaseClient';
 import { FilterState, HelpCategory, Need, NeedStatus, Offer, OfferStatus, PlaceType, Priority, QuickTicket } from '../types';
-import { ALL_COLOMBIA_ID, getCityCoordinates, findDepartmentByCityId } from '../data/colombiaCities';
+import { ALL_COLOMBIA_ID, getCityCoordinates, findDepartmentByCityId, detectCityFromCoords, COLOMBIA_CENTER_COORDS } from '../data/colombiaCities';
 import {
   filterChatbotReports,
   countPendingChatbotReports,
@@ -10,6 +10,7 @@ import {
 } from '../utils/chatbotReportUtils';
 import type { DocumentoVerificacion } from '../types/panel';
 import { formatearTipoEntidad } from '../utils/directorio';
+import { buscarCiudadCoincidente } from '../utils/lugares';
 
 export interface AdminReport {
   id: string;
@@ -438,17 +439,21 @@ export async function getOfferById(id: string): Promise<Offer | null> {
 }
 
 export async function createNeed(data: Partial<Need>): Promise<Need> {
-  const activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId : 'cali';
-  const cityCoords = getCityCoordinates(activeCityId);
-  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
-  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
+  let activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId.trim() : '';
+  if (!activeCityId && data.latitude != null && data.longitude != null) {
+    const detected = detectCityFromCoords(data.latitude, data.longitude);
+    if (detected) activeCityId = detected.id;
+  }
+  const cityCoords = activeCityId ? getCityCoordinates(activeCityId) : null;
+  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : (cityCoords ? cityCoords.lat : null);
+  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : (cityCoords ? cityCoords.lng : null);
 
   const dbData = needToDbNeed({
     ...data,
     emergencyId: data.emergencyId || 'general',
-    cityId: activeCityId,
-    latitude: lat,
-    longitude: lng,
+    cityId: activeCityId || undefined,
+    latitude: lat != null ? lat : undefined,
+    longitude: lng != null ? lng : undefined,
     status: data.status || 'NEED_HELP_NOW',
     verificationStatus: data.verificationStatus || 'PENDING_VERIFICATION',
     createdAt: new Date().toISOString(),
@@ -465,16 +470,20 @@ export async function createNeed(data: Partial<Need>): Promise<Need> {
 }
 
 export async function createOffer(data: Partial<Offer>): Promise<Offer> {
-  const activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId : 'cali';
-  const cityCoords = getCityCoordinates(activeCityId);
-  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : cityCoords.lat;
-  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : cityCoords.lng;
+  let activeCityId = (data.cityId && data.cityId.trim()) ? data.cityId.trim() : '';
+  if (!activeCityId && data.latitude != null && data.longitude != null) {
+    const detected = detectCityFromCoords(data.latitude, data.longitude);
+    if (detected) activeCityId = detected.id;
+  }
+  const cityCoords = activeCityId ? getCityCoordinates(activeCityId) : null;
+  const lat = data.latitude != null && !isNaN(data.latitude) ? data.latitude : (cityCoords ? cityCoords.lat : null);
+  const lng = data.longitude != null && !isNaN(data.longitude) ? data.longitude : (cityCoords ? cityCoords.lng : null);
 
   const dbData = offerToDbOffer({
     ...data,
-    cityId: activeCityId,
-    latitude: lat,
-    longitude: lng,
+    cityId: activeCityId || undefined,
+    latitude: lat != null ? lat : undefined,
+    longitude: lng != null ? lng : undefined,
     offerStatus: data.offerStatus || 'AVAILABLE',
     verificationStatus: data.verificationStatus || 'PENDING_VERIFICATION',
     createdAt: new Date().toISOString(),
@@ -1129,8 +1138,8 @@ export async function upsertUserProfile(profileData: {
         document_type: profileData.document_type || 'cedula',
         document_number: profileData.document_number?.trim(),
         country: profileData.country || 'Colombia',
-        department: profileData.department || 'Valle del Cauca',
-        city: profileData.city || 'Cali',
+        department: profileData.department?.trim() || null,
+        city: profileData.city?.trim() || null,
         is_auto_detected_location: profileData.is_auto_detected_location ?? true,
         role: profileData.role || 'regular',
         accept_terms: profileData.accept_terms ?? true,
@@ -1347,16 +1356,35 @@ export async function fetchDirectorioEntidades(): Promise<any[]> {
 
     return adminOrgs.map((o) => {
       const isComunidad = o.category === 'COMUNIDAD';
+      let detectedCityId = '';
+      if (typeof o.latitude === 'number' && typeof o.longitude === 'number' && !isNaN(o.latitude) && !isNaN(o.longitude)) {
+        const detected = detectCityFromCoords(o.latitude, o.longitude);
+        if (detected) detectedCityId = detected.id;
+      }
+      if (!detectedCityId && o.address) {
+        const partes = o.address.split(/[,;-]/).map((s) => s.trim()).filter(Boolean);
+        for (const parte of partes) {
+          const coincidencia = buscarCiudadCoincidente(parte);
+          if (coincidencia) {
+            detectedCityId = coincidencia.ciudad.id;
+            break;
+          }
+        }
+      }
+      const coords = (typeof o.latitude === 'number' && typeof o.longitude === 'number' && !isNaN(o.latitude) && !isNaN(o.longitude))
+        ? { lat: o.latitude, lng: o.longitude }
+        : (detectedCityId ? getCityCoordinates(detectedCityId) : COLOMBIA_CENTER_COORDS);
+
       return {
         id: o.id,
         nombre: o.name,
         tipo: formatearTipoEntidad(o.organizationType, isComunidad),
         clase: isComunidad ? 'comunidad' : 'organizacion',
         verificada: o.isVerified,
-        ciudad: 'cali',
-        zona: o.address || 'Cali',
-        lat: o.latitude || 3.4516,
-        lng: o.longitude || -76.5320,
+        ciudad: detectedCityId || undefined,
+        zona: o.address || (detectedCityId ? (detectedCityId.charAt(0).toUpperCase() + detectedCityId.slice(1)) : 'Colombia'),
+        lat: coords.lat,
+        lng: coords.lng,
         dir: o.address || 'Dirección no especificada',
         tel: o.contactPhone || o.contactWhatsapp || '',
         wa: Boolean(o.contactWhatsapp),
@@ -1763,18 +1791,31 @@ export async function createNeedWithItems(needPayload: any, itemsPayload: any[])
     initialVerStatus = 'PENDING_VERIFICATION';
   }
 
+  let activeCityId = (needPayload.cityId || needPayload.city_id)?.trim() || '';
+  if (!activeCityId && needPayload.latitude != null && needPayload.longitude != null) {
+    const detected = detectCityFromCoords(needPayload.latitude, needPayload.longitude);
+    if (detected) activeCityId = detected.id;
+  }
+  const cityCoords = activeCityId ? getCityCoordinates(activeCityId) : null;
+  const lat = (needPayload.latitude != null && !isNaN(needPayload.latitude))
+    ? needPayload.latitude
+    : (cityCoords ? cityCoords.lat : null);
+  const lng = (needPayload.longitude != null && !isNaN(needPayload.longitude))
+    ? needPayload.longitude
+    : (cityCoords ? cityCoords.lng : null);
+
   const needRow = {
     user_id: userId,
-    city_id: needPayload.cityId || needPayload.city_id || 'cali',
-    emergency_id: needPayload.emergencyId || needPayload.emergency_id || 'inundacion',
-    emergency_event: needPayload.emergencyEvent || needPayload.emergency_event || 'inundacion',
+    city_id: activeCityId || 'todo-colombia',
+    emergency_id: needPayload.emergencyId || needPayload.emergency_id || 'general',
+    emergency_event: needPayload.emergencyEvent || needPayload.emergency_event || 'general',
     title: needPayload.title,
     description: needPayload.description,
     place_type: needPayload.placeType || 'EDIFICIO_AFECTADO',
     address: needPayload.address,
     neighborhood: needPayload.neighborhood,
-    latitude: needPayload.latitude || 3.4516,
-    longitude: needPayload.longitude || -76.5320,
+    latitude: lat,
+    longitude: lng,
     priority: needPayload.priority || 'MEDIUM',
     status: needPayload.status || 'OPEN',
     verification_status: initialVerStatus,
@@ -1859,16 +1900,29 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
     initialVerStatus = 'PENDING_VERIFICATION';
   }
 
+  let activeCityId = (offerPayload.cityId || offerPayload.city_id)?.trim() || '';
+  if (!activeCityId && offerPayload.latitude != null && offerPayload.longitude != null) {
+    const detected = detectCityFromCoords(offerPayload.latitude, offerPayload.longitude);
+    if (detected) activeCityId = detected.id;
+  }
+  const cityCoords = activeCityId ? getCityCoordinates(activeCityId) : null;
+  const lat = (offerPayload.latitude != null && !isNaN(offerPayload.latitude))
+    ? offerPayload.latitude
+    : (cityCoords ? cityCoords.lat : null);
+  const lng = (offerPayload.longitude != null && !isNaN(offerPayload.longitude))
+    ? offerPayload.longitude
+    : (cityCoords ? cityCoords.lng : null);
+
   // 2. Insertar cabecera de Oferta
   const offerRow = {
     user_id: userId,
-    city_id: offerPayload.cityId || offerPayload.city_id || 'cali',
+    city_id: activeCityId || 'todo-colombia',
     title: offerPayload.title,
     description: offerPayload.description,
     address: offerPayload.address,
     neighborhood: offerPayload.neighborhood,
-    latitude: offerPayload.latitude || 3.4516,
-    longitude: offerPayload.longitude || -76.5320,
+    latitude: lat,
+    longitude: lng,
     offer_status: 'AVAILABLE',
     verification_status: initialVerStatus,
     verified_by: initialVerifiedBy || null,

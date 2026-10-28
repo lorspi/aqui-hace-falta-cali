@@ -40,7 +40,7 @@ import { cifra, distanciaKm, distanciaTexto, estadoPublicacion, iniciales, resta
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
-const UBICACION_BASE: Ubicacion = { lat: 3.4516, lng: -76.5320, zona: 'Cali', simulada: false };
+const UBICACION_COLOMBIA: Ubicacion = { lat: 4.5709, lng: -74.2973, zona: 'Colombia', simulada: false };
 
 /**
  * El Directorio (mockup/*): quién está en la red (`organizaciones.html` del prototipo,
@@ -148,6 +148,10 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     document.title = 'Directorio, RaDAR de ayuda';
   }, []);
 
+  const [entidadesBase, setEntidadesBase] = useState<Entidad[]>([]);
+  const [publicacionesBase, setPublicacionesBase] = useState<Publicacion[]>([]);
+  const [ubicacion, setUbicacion] = useState<Ubicacion | null>(null);
+
   // Reanudar automáticamente compromiso tras registro / login
   useEffect(() => {
     const estaAutenticado = Boolean(usuarioEfectivo || getStoredAuthUser());
@@ -170,10 +174,24 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
         }
       }
     }
-  }, [usuarioEfectivo]);
+  }, [usuarioEfectivo, publicacionesBase]);
 
-  const [entidadesBase, setEntidadesBase] = useState<Entidad[]>([]);
-  const [publicacionesBase, setPublicacionesBase] = useState<Publicacion[]>([]);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUbicacion({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            zona: 'Tu ubicación',
+            simulada: false,
+          });
+        },
+        () => {},
+        { timeout: 8000, enableHighAccuracy: false }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     async function cargarDatosDirectorio() {
@@ -204,7 +222,7 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   }, [q, clase]);
 
   const deVista = useMemo(() => entidadesDe(clase, entidadesBase, ENTIDAD_PROPIA), [clase, entidadesBase]);
-  const lista = useMemo(() => filtrar(deVista, publicacionesBase, q, UBICACION_BASE), [deVista, publicacionesBase, q]);
+  const lista = useMemo(() => filtrar(deVista, publicacionesBase, q, ubicacion), [deVista, publicacionesBase, q, ubicacion]);
   const pestanas = useMemo(
     () => [
       { id: 'organizacion' as ClaseEntidad, nombre: t('organizationsTab') },
@@ -396,16 +414,16 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
                   <span className="text-rd-13 font-semibold text-rd-ink">{t('actions')}</span>
                 </div>
                 {lista.map((e) => (
-                  <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
+                  <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
                 ))}
               </div>
             </>
           )}
         </main>
 
-        <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} publicacionesBase={publicacionesBase} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
+        <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
         <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
-        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} publicacionesBase={publicacionesBase} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
+        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
         <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
       </div>
     </Shell>
@@ -426,10 +444,10 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
  * tabla** las tres van pegadas, porque son un grupo; en la **tarjeta** las de acción quedan a
  * la izquierda, de mayor a menor jerarquía, y el ⋮ se va al extremo derecho.
  */
-const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, publicacionesBase, onVerDetalle, onCompartir, onReportar }) => {
+const FilaEntidad: React.FC<{ entidad: Entidad; publicacionesBase: Publicacion[]; ubicacion: Ubicacion | null; onVerDetalle: () => void; onCompartir: () => void; onReportar: () => void }> = ({ entidad: e, publicacionesBase, ubicacion, onVerDetalle, onCompartir, onReportar }) => {
   const { t, language } = useTranslation();
   const com = e.clase === 'comunidad';
-  const km = distanciaKm(UBICACION_BASE, e);
+  const km = ubicacion ? distanciaKm(ubicacion, e) : null;
   const datos = cifrasDe(e, publicacionesBase, language);
   const pubs = publicacionesDe(e, publicacionesBase);
   const primerPunto = pubs[0]?.id;
@@ -537,11 +555,12 @@ const DialogoDetalleEntidad: React.FC<{
   abierto: boolean;
   entidad: Entidad | null;
   publicacionesBase: Publicacion[];
+  ubicacion: Ubicacion | null;
   onCerrar: () => void;
   onCompromiso?: (pub: Publicacion) => void;
   onCompartir?: () => void;
   onReportar?: () => void;
-}> = ({ abierto, entidad: e, publicacionesBase, onCerrar, onCompromiso, onCompartir, onReportar }) => {
+}> = ({ abierto, entidad: e, publicacionesBase, ubicacion, onCerrar, onCompromiso, onCompartir, onReportar }) => {
   const { t, language } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -555,7 +574,7 @@ const DialogoDetalleEntidad: React.FC<{
   if (!e) return null;
 
   const com = e.clase === 'comunidad';
-  const km = distanciaKm(UBICACION_BASE, e);
+  const km = ubicacion ? distanciaKm(ubicacion, e) : null;
   const publicaciones = publicacionesDe(e, publicacionesBase);
   const datos = cifrasDe(e, publicacionesBase, language);
 
@@ -723,7 +742,7 @@ const PublicacionDeEntidad: React.FC<{ publicacion: Publicacion; entidad: Entida
 /* ---------- la hoja de filtros del directorio: la misma hoja de la Radar, con sus secciones ---------- */
 
 
-const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta: ConsultaDirectorio; entidades: Entidad[]; publicacionesBase: Publicacion[]; onCambiar: (q: ConsultaDirectorio) => void; onCerrar: () => void; resultados: number }> = ({ abierta, clase, consulta: q, entidades, publicacionesBase, onCambiar, onCerrar, resultados }) => {
+const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta: ConsultaDirectorio; entidades: Entidad[]; publicacionesBase: Publicacion[]; ubicacion: Ubicacion | null; onCambiar: (q: ConsultaDirectorio) => void; onCerrar: () => void; resultados: number }> = ({ abierta, clase, consulta: q, entidades, publicacionesBase, ubicacion, onCambiar, onCerrar, resultados }) => {
   const { t, tItem } = useTranslation();
   const hoja = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -755,7 +774,7 @@ const HojaDirectorio: React.FC<{ abierta: boolean; clase: ClaseEntidad; consulta
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={ROTULO}>{t('cardLocation').replace(':', '')}</h3>
             {/* El mismo selector que la Radar: Cerca de mí, Seleccionar todo, ciudades por departamento. */}
-            <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={UBICACION_BASE} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
+            <SelectorCiudad ciudades={q.ciudades} onCambiar={(ciudades) => onCambiar({ ...q, ciudades })} conteos={conteoPorCiudad(entidades)} ubicacion={ubicacion ?? UBICACION_COLOMBIA} onCercaDeMi={(ciudad) => onCambiar({ ...q, ciudades: [ciudad], orden: 'cercania' })} />
           </section>
           <section className="border-b border-rd-line-soft py-4">
             <h3 className={ROTULO}>{t('whatResource')}</h3>

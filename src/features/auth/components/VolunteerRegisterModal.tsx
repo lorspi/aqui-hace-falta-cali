@@ -38,7 +38,7 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [documentType, setDocumentType] = useState('cedula');
   const [documentNumber, setDocumentNumber] = useState('');
-  const [cityId, setCityId] = useState('cali-valle-del-cauca');
+  const [cityId, setCityId] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(true);
 
@@ -82,6 +82,9 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
     if (!phoneNumber.trim() || phoneNumber.trim().length < 7) {
       newErrors.phoneNumber = 'El teléfono / WhatsApp es obligatorio (mínimo 7 dígitos)';
     }
+    if (!cityId) {
+      newErrors.cityId = 'Selecciona tu ciudad y departamento';
+    }
     if (!captchaToken) {
       newErrors.captchaToken = 'Por favor confirma que no eres un robot';
     }
@@ -103,10 +106,10 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const selectedCityObj = findCityById(cityId);
-      const selectedDeptObj = findDepartmentByCityId(cityId);
-      const resolvedCity = selectedCityObj ? selectedCityObj.name : 'Cali';
-      const resolvedDept = selectedDeptObj ? selectedDeptObj.name : 'Valle del Cauca';
+      const selectedCityObj = cityId ? findCityById(cityId) : null;
+      const selectedDeptObj = cityId ? findDepartmentByCityId(cityId) : null;
+      const resolvedCity = selectedCityObj ? selectedCityObj.name : '';
+      const resolvedDept = selectedDeptObj ? selectedDeptObj.name : '';
 
       const hasPhone = !!phoneNumber.trim();
       const fullPhone = hasPhone ? `${phoneCountryCode}${phoneNumber.trim()}` : null;
@@ -387,8 +390,12 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
                   <label className="block text-xs font-bold text-slate-700 mb-1">Ciudad y Departamento</label>
                   <CityFormCombobox
                     value={cityId}
-                    onChange={(selectedCityId: string) => setCityId(selectedCityId)}
+                    onChange={(selectedCityId: string) => {
+                      setCityId(selectedCityId);
+                      setErrors((prev) => ({ ...prev, cityId: '' }));
+                    }}
                   />
+                  {errors.cityId && <p className="text-[11px] text-red-600 font-semibold mt-1">{errors.cityId}</p>}
                 </div>
 
                 {/* Cloudflare Turnstile */}

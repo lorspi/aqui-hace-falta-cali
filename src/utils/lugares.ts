@@ -9,7 +9,8 @@
  * Sin búsqueda, solo aparecen las ciudades con publicaciones, con su conteo. Reutiliza el
  * dataset de producción (`data/colombiaCities.ts`) en vez de crear otro.
  */
-import { DEPARTMENTS, detectCityFromCoords, findCityById, findDepartmentByCityId } from '../data/colombiaCities';
+import { ALL_CITIES, DEPARTMENTS, detectCityFromCoords, findCityById, findDepartmentByCityId, getCityCoordinates, type ColombiaCity } from '../data/colombiaCities';
+import { TAXONOMIA } from '../mocks/publicacionesMock';
 import type { Ubicacion } from '../types/publicacion';
 
 /** Los datos de la maqueta nacieron en Bogotá: lo que no dice ciudad, es de Bogotá. */
@@ -17,7 +18,9 @@ export const CIUDAD_POR_DEFECTO = 'bogota';
 
 /** La ciudad (id) de una publicación o entidad. */
 export function ciudadDe(x: { ciudad?: string }): string {
-  return x.ciudad ?? CIUDAD_POR_DEFECTO;
+  const c = x.ciudad && x.ciudad !== 'todo-colombia' && x.ciudad !== 'all_colombia' ? x.ciudad : undefined;
+  if (c === 'bogota-d-c') return 'bogota';
+  return c ?? CIUDAD_POR_DEFECTO;
 }
 
 /** ¿Pasa el filtro de ciudades? Vacío es todas. */
@@ -84,6 +87,94 @@ export function gruposDeCiudades(conteos: Map<string, number>, busqueda = ''): G
 export function alternarCiudades(seleccion: string[], ids: string[], marcar: boolean): string[] {
   if (marcar) return [...seleccion, ...ids.filter((id) => !seleccion.includes(id))];
   return seleccion.filter((id) => !ids.includes(id));
+}
+
+const ALIASES: Record<string, string> = {
+  'bogota-d-c': 'bogota',
+  'bogota-dc': 'bogota',
+  'cartagena': 'cartagena-de-indias',
+};
+
+/** Busca si un término de búsqueda coincide exactamente con una ciudad colombiana */
+export function buscarCiudadCoincidente(termino: string): { ciudad: ColombiaCity; coords: { lat: number; lng: number } } | null {
+  if (!termino || termino.trim().length < 2) return null;
+  const q = normalizar(termino);
+  const slug = q.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slugEfectivo = ALIASES[slug] || slug;
+
+  let encontrada = ALL_CITIES.find((c) => c.id === slugEfectivo || normalizar(c.name) === q);
+
+  if (!encontrada && q.length >= 4) {
+    encontrada = ALL_CITIES.find((c) => normalizar(c.name) === q || c.id === slug);
+  }
+
+  if (encontrada) {
+    const coords = getCityCoordinates(encontrada.id, encontrada.departmentId);
+    return { ciudad: encontrada, coords };
+  }
+  return null;
+}
+
+/** Devuelve sugerencias de ciudades colombianas para el autocompletado del buscador */
+export function sugerenciasDeUbicacion(termino: string, limite = 4): { id: string; nombre: string; depto: string; lat: number; lng: number }[] {
+  if (!termino || termino.trim().length < 2) return [];
+  const q = normalizar(termino);
+  const slug = q.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slugEfectivo = ALIASES[slug] || slug;
+
+  const resultados: { id: string; nombre: string; depto: string; lat: number; lng: number }[] = [];
+  const vistos = new Set<string>();
+
+  // 1. Coincidencia por inicio del nombre o id
+  for (const c of ALL_CITIES) {
+    if (resultados.length >= limite) break;
+    const norm = normalizar(c.name);
+    if (c.id === slugEfectivo || norm.startsWith(q) || norm === q) {
+      if (!vistos.has(c.id)) {
+        vistos.add(c.id);
+        const depto = findDepartmentByCityId(c.id, c.departmentId)?.name || '';
+        const coords = getCityCoordinates(c.id, c.departmentId);
+        resultados.push({ id: c.id, nombre: c.name, depto, lat: coords.lat, lng: coords.lng });
+      }
+    }
+  }
+
+  // 2. Coincidencia por inclusión dentro del nombre
+  if (resultados.length < limite) {
+    for (const c of ALL_CITIES) {
+      if (resultados.length >= limite) break;
+      const norm = normalizar(c.name);
+      if (norm.includes(q) && !vistos.has(c.id)) {
+        vistos.add(c.id);
+        const depto = findDepartmentByCityId(c.id, c.departmentId)?.name || '';
+        const coords = getCityCoordinates(c.id, c.departmentId);
+        resultados.push({ id: c.id, nombre: c.name, depto, lat: coords.lat, lng: coords.lng });
+      }
+    }
+  }
+
+  return resultados;
+}
+
+/** Devuelve sugerencias de insumos/recursos de la taxonomía */
+export function sugerenciasDeRecursos(termino: string, limite = 3): string[] {
+  if (!termino || termino.trim().length < 2) return [];
+  const q = normalizar(termino);
+  const resultados: string[] = [];
+  const vistos = new Set<string>();
+
+  for (const cat of TAXONOMIA) {
+    for (const item of cat.items) {
+      if (resultados.length >= limite) break;
+      const norm = normalizar(item);
+      if (norm.includes(q) && !vistos.has(norm)) {
+        vistos.add(norm);
+        resultados.push(item);
+      }
+    }
+    if (resultados.length >= limite) break;
+  }
+  return resultados;
 }
 
 function normalizar(s: string): string {

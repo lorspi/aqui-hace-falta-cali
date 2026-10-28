@@ -341,7 +341,7 @@ export const LandingHomePage: React.FC = () => {
             ¿Quieres sumarte como voluntario o aliarte con nosotros?
           </h2>
           <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl mx-auto leading-relaxed">
-            Estamos coordinando ayuda activa en Cali y la región. Si eres voluntario, entidad u organización y deseas colaborar, comunícate directamente con nuestro equipo.
+            Estamos coordinando ayuda activa en Colombia y sus regiones. Si eres voluntario, entidad u organización y deseas colaborar, comunícate directamente con nuestro equipo.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">

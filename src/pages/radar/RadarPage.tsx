@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, Flag, Funnel, Hand, HeartHandshake, List, Map as MapIcon, Search, Share2, X } from 'lucide-react';
-import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips } from '../../components/ui/Consulta';
+import { BotonFiltros, CampoBuscar, ChipAplicado, QuitarTodos, ZonaChips, type CiudadSugerida } from '../../components/ui/Consulta';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { CampanaAvisos } from '../../components/ui/Avisos';
@@ -28,7 +28,8 @@ import { coincidenciasDe, type CoincidenciaPublicacion } from '../../utils/cruce
 import { DialogoCoincidencias, ResumenCoincidencias } from '../../components/ui/Coincidencias';
 import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vacioDe, type Filtros } from '../../utils/filtros';
 import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
-import { ciudadDeUbicacion } from '../../utils/lugares';
+import { buscarCiudadCoincidente, ciudadDeUbicacion } from '../../utils/lugares';
+import { getCityCoordinates } from '../../data/colombiaCities';
 import { nombrePanel } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
 import { fetchUserAvisos } from '../../lib/supabaseService';
@@ -259,14 +260,102 @@ const Radar: React.FC<RadarProps> = ({
   /* Al cambiar de ciudades, el mapa encuadra lo que queda visible (como producción, que vuela a
      la ciudad elegida). */
   const [encuadrarCiudad, setEncuadrarCiudad] = useState<{ n: number } | null>(null);
+  const [encuadrarCoordenadas, setEncuadrarCoordenadas] = useState<{ lat: number; lng: number; zoom?: number; n: number } | null>(null);
+  const visiblesRef = useRef(visibles);
+  visiblesRef.current = visibles;
+  const suprimirEncuadreCiudadRef = useRef(false);
   const llaveCiudades = filtros.ciudades.join(',');
   const ciudadesAnteriores = useRef(llaveCiudades);
   useEffect(() => {
     if (ciudadesAnteriores.current === llaveCiudades) return;
     ciudadesAnteriores.current = llaveCiudades;
+    if (suprimirEncuadreCiudadRef.current) {
+      suprimirEncuadreCiudadRef.current = false;
+      return;
+    }
+    if (filtros.ciudades.length === 1 && visiblesRef.current.length === 0) {
+      const coords = getCityCoordinates(filtros.ciudades[0]);
+      setEncuadrarCoordenadas({ lat: coords.lat, lng: coords.lng, zoom: 13, n: Date.now() });
+      return;
+    }
     setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
-  }, [llaveCiudades]);
+  }, [llaveCiudades, filtros.ciudades]);
   const aplicados = cuantosAplicados(filtros);
+
+  const busquedaAnterior = useRef(busqueda.trim());
+
+  const alSeleccionarCiudad = useCallback((ciudad: CiudadSugerida) => {
+    suprimirEncuadreCiudadRef.current = true;
+    busquedaAnterior.current = '';
+    setFiltros((prev) => ({ ...prev, ciudades: [ciudad.id] }));
+    setEncuadrarCoordenadas({ lat: ciudad.lat, lng: ciudad.lng, zoom: 13, n: Date.now() });
+    setBusqueda('');
+    setVista('mapa');
+    setPanelDerechoMinimizado(false);
+    avisar(`Mostrando publicaciones en ${ciudad.nombre}`, { tipo: 'ok' });
+  }, [avisar]);
+
+  const alSeleccionarRecurso = useCallback((recurso: string) => {
+    setBusqueda(recurso);
+    setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
+  }, []);
+
+  // Re-encuadre automático dinámico al escribir en el buscador
+  useEffect(() => {
+    const q = busqueda.trim();
+    if (q === busquedaAnterior.current) return;
+    busquedaAnterior.current = q;
+
+    if (!q) {
+      // Si el usuario borra la búsqueda, encuadrar lo que queda visible
+      setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      // 1. Si coincide con una ciudad colombiana (ej. "cali", "bogota", "medellin"), volar directamente a la ciudad
+      const ciudadCoincidente = buscarCiudadCoincidente(q);
+      if (ciudadCoincidente) {
+        setEncuadrarCoordenadas({
+          lat: ciudadCoincidente.coords.lat,
+          lng: ciudadCoincidente.coords.lng,
+          zoom: 13,
+          n: Date.now(),
+        });
+        return;
+      }
+
+      // 2. Si no es ciudad pero filtró publicaciones visibles, encuadrar los pines encontrados
+      if (visiblesRef.current.length > 0) {
+        setEncuadrarCiudad((e) => ({ n: (e?.n ?? 0) + 1 }));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [busqueda]);
+
+  const alBuscarSubmit = useCallback((termino: string) => {
+    setBusqueda(termino);
+    // Si hay publicaciones visibles, enfocar y seleccionar la primera tarjeta
+    if (visibles.length > 0) {
+      const primera = visibles[0];
+      setSeleccionada(primera.id);
+      setEncuadrar(primera.id);
+      setVista('mapa');
+      setPanelDerechoMinimizado(false);
+      if (esMovil()) setHojaPin({ id: primera.id, expandida: false });
+    } else {
+      const coincidencia = buscarCiudadCoincidente(termino);
+      if (coincidencia) {
+        setEncuadrarCoordenadas({
+          lat: coincidencia.coords.lat,
+          lng: coincidencia.coords.lng,
+          zoom: 13,
+          n: Date.now(),
+        });
+      }
+    }
+  }, [visibles]);
 
   /* Seleccionar desde el mapa trae la tarjeta a la vista (y, en móvil, abre la hoja
      colapsada); desde la tarjeta, encuadra el pin. */
@@ -584,7 +673,18 @@ const Radar: React.FC<RadarProps> = ({
       <div className="flex h-full min-h-0 flex-col">
         {/* ---- cabecera ---- */}
         <header className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
-          <h1 className="font-rd m-0 text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">{t('navRadar')}</h1>
+          <h1 className="font-rd m-0 flex items-center text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">
+            <span className="hidden lg:inline">{t('navRadar')}</span>
+            <span className="flex items-center lg:hidden">
+              <img
+                src="/logo-radar-compacto.svg"
+                alt="Radar"
+                width={2005}
+                height={600}
+                className="block h-7.5 w-auto"
+              />
+            </span>
+          </h1>
           <span className="ml-auto flex items-center gap-2">
             <span className="hidden items-center gap-2 lg:flex">
               <Button nivel="pedir" tamano="md" icono={<Hand className="h-4 w-4" />} onClick={() => (onOpenCreateNeedModal ? onOpenCreateNeedModal() : irA(RUTAS.pedir))}>
@@ -648,7 +748,16 @@ const Radar: React.FC<RadarProps> = ({
                 <QuitarTodos onClick={() => setFiltros(filtrosVacios())} />
               </ZonaChips>
             )}
-            <CampoBuscar valor={busqueda} onChange={setBusqueda} placeholder={t('searchPlaceholder')} abierto={buscando} className="min-w-[160px] max-w-xs flex-1 lg:ml-auto" />
+            <CampoBuscar
+              valor={busqueda}
+              onChange={setBusqueda}
+              placeholder={t('searchPlaceholder')}
+              abierto={buscando}
+              onSeleccionarCiudad={alSeleccionarCiudad}
+              onSeleccionarRecurso={alSeleccionarRecurso}
+              onBuscarSubmit={alBuscarSubmit}
+              className="min-w-[160px] max-w-xs flex-1 lg:ml-auto"
+            />
           </div>
         </div>
 
@@ -719,6 +828,7 @@ const Radar: React.FC<RadarProps> = ({
                 onSeleccionar={seleccionarDesdeMapa}
                 onDeseleccionar={() => setSeleccionada(null)}
                 encuadrar={encuadrar}
+                encuadrarCoordenadas={encuadrarCoordenadas}
                 encuadrarTodo={encuadrarCiudad}
                 tapadoAbajo={tapadoAbajo}
                 resaltadas={resaltadas}

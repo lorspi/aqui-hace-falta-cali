@@ -146,8 +146,8 @@ export function pasa(e: Entidad, pubs: Publicacion[], q: ConsultaDirectorio): bo
   return true;
 }
 
-export function filtrar(entidades: Entidad[], pubs: Publicacion[], q: ConsultaDirectorio, ubicacion: Ubicacion): Entidad[] {
-  const km = (e: Entidad) => distanciaKm(ubicacion, e);
+export function filtrar(entidades: Entidad[], pubs: Publicacion[], q: ConsultaDirectorio, ubicacion?: Ubicacion | null): Entidad[] {
+  const km = (e: Entidad) => (ubicacion ? distanciaKm(ubicacion, e) : 0);
   return entidades
     .filter((e) => pasa(e, pubs, q))
     .sort((a, b) => {
@@ -155,7 +155,10 @@ export function filtrar(entidades: Entidad[], pubs: Publicacion[], q: ConsultaDi
         const d = cifraDe(b, pubs).n - cifraDe(a, pubs).n;
         if (d !== 0) return d;
       }
-      return km(a) - km(b);
+      if (ubicacion) {
+        return km(a) - km(b);
+      }
+      return a.nombre.localeCompare(b.nombre, 'es');
     });
 }
 
@@ -302,6 +305,20 @@ export function formatearTipoEntidad(tipo?: string, esComunidad?: boolean, lang:
   const dic = DICCIONARIO_TIPOS_CONOCIDOS[lang] || DICCIONARIO_TIPOS_CONOCIDOS.es;
   if (dic[tipo]) {
     return dic[tipo];
+  }
+
+  // Si ya venía traducido al español (por ejemplo desde el servicio), buscar su código técnico para traducir a otros idiomas
+  if (lang !== 'es') {
+    const entradaEs = Object.entries(DICCIONARIO_TIPOS_CONOCIDOS.es).find(([, val]) => val === tipo);
+    if (entradaEs && dic[entradaEs[0]]) {
+      return dic[entradaEs[0]];
+    }
+    if (tipo === 'Comunidad / Liderazgo') {
+      return formatearTipoEntidad(undefined, true, lang);
+    }
+    if (tipo === 'Organización') {
+      return formatearTipoEntidad(undefined, false, lang);
+    }
   }
 
   const match = Object.values(ORGANIZATION_TYPE_CONFIG).find((c) => c.id === tipo);

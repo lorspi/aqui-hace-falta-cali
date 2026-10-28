@@ -516,7 +516,7 @@ const Step3Gobierno: React.FC<Step3GobiernoProps> = ({ data, onChange, errors })
             type="text"
             value={data.entity}
             onChange={(e) => onChange({ ...data, entity: e.target.value })}
-            placeholder="Ej: Alcaldía de Cali - Secretaría de Gestión del Riesgo"
+            placeholder="Ej: Alcaldía Municipal - Secretaría de Gestión del Riesgo"
             className={`w-full px-4 py-2.5 rounded-xl border ${errors.entity ? 'border-red-400 bg-red-50' : 'border-slate-200'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A93]/30 focus:border-[#1B3A93] transition-all`}
           />
           {errors.entity && <p className="text-xs text-red-500 mt-1">{errors.entity}</p>}

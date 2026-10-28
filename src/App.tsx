@@ -1,5 +1,5 @@
 /**
- * Aquí Hace Falta - Plataforma Ciudadana de Coordinación de Ayuda (Cali)
+ * Aquí Hace Falta - Plataforma Ciudadana de Coordinación de Ayuda (Colombia)
  * Main Application Component — Supabase Backend
  */
 

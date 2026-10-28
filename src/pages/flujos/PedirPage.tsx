@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Activity, Bug, Compass, Flame, Info, Loader2, Mountain, TriangleAlert, Waves, Wind } from 'lucide-react';
 import { Divisor } from '../../components/ui/Divisor';
 import { Field } from '../../components/ui/Field';
+import { CampoDireccion } from '../../components/ui/CampoDireccion';
 import { RUTAS } from '../../mocks/cuentasMock';
 import { BASES, DETALLE, EQUIV } from '../../mocks/equivalenciasMock';
 import { AVISO_GUIA, CUENTA_PEDIR, DIAS_OPCIONES, ICONO_EVENTO, MAPA_TIPOS_LUGAR, NOMBRE_GRUPO, PARA_QUIEN, PREGUNTA_GRUPO, SUGERIDOS, TIPOS_LUGAR, TOPE_GRUPO, estadoInicialPedir, opcionesParaQuien, opcionesTiposLugar, type IconoEvento } from '../../mocks/flujosMock';
@@ -27,6 +28,7 @@ import { supabase } from '../../lib/supabaseClient';
 import type { HelpCategory, Need, PlaceType } from '../../types';
 import { mapEmergencyEventToId, mapItemToCatalog, mapItemsToHelpCategories, mapTipoLugarToPlaceType } from '../../utils/enumMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
+import { detectCityFromCoords } from '../../data/colombiaCities';
 import { geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeAddress, reverseGeocodeStructured } from '../../utils/geocoding';
 
 /**
@@ -139,8 +141,13 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       };
     });
 
+    const detectedCity = (typeof estado.lat === 'number' && typeof estado.lng === 'number')
+      ? detectCityFromCoords(estado.lat, estado.lng)
+      : null;
+    const resolvedCityId = initialCityId || profile?.city || detectedCity?.id || '';
+
     const needPayload = {
-      cityId: initialCityId || profile?.city || 'cali',
+      cityId: resolvedCityId,
       departmentId: profile?.department,
       emergencyId: emergencyIdStr,
       emergencyEvent: emergencyIdStr,
@@ -162,7 +169,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         };
       }),
       address: estado.dir || 'Sin dirección especificada',
-      neighborhood: estado.dir || 'Cali',
+      neighborhood: estado.dir || detectedCity?.name || profile?.city || 'Sin barrio especificado',
       latitude: estado.lat,
       longitude: estado.lng,
       contactName: estado.contacto || profile?.full_name || 'Contacto',
@@ -221,7 +228,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       titulo: pubFinal.titulo,
       org: pubFinal.org,
       verificada: pubFinal.verificada,
-      zona: estado.tipoLugar || 'Cali',
+      zona: estado.tipoLugar || detectedCity?.name || profile?.city || 'General',
       dir: estado.dir || CUENTA_PEDIR.direccion,
       descripcion: `Atención de emergencia (${estado.evento || 'Comunidad'}). Recursos requeridos con urgencia.`,
       personaContacto: estado.contacto || CUENTA_PEDIR.contacto,
@@ -283,8 +290,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   }, [e.publicado, onSuccess, createdNeed]);
   const errores = useErrores(sub?.id ?? '');
 
-  const [barrioSector, setBarrioSector] = useState<string>('');
-  const [direccionNum, setDireccionNum] = useState<string>('');
+  const [direccionTexto, setDireccionTexto] = useState<string>(() => e.dir || '');
 
   useEffect(() => {
     document.title = 'RaDAR · Pedir ayuda';
@@ -299,18 +305,16 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       const telefono = profile?.phone || profile?.whatsapp || '';
       const direccion = org?.address || profile?.city || '';
 
-      if (profile?.city) {
-        setBarrioSector(profile.city);
-      }
-      if (org?.address) {
-        setDireccionNum(org.address);
-      }
-
-      set((prev) => ({
-        contacto: prev.contacto || nombreContacto,
-        tel: prev.tel || telefono,
-        dir: prev.dir || direccion,
-      }));
+      set((prev) => {
+        if (!prev.dir && direccion) {
+          setDireccionTexto(direccion);
+        }
+        return {
+          contacto: prev.contacto || nombreContacto,
+          tel: prev.tel || telefono,
+          dir: prev.dir || direccion,
+        };
+      });
     }
     autocompletarPerfil();
   }, [set]);
@@ -321,18 +325,15 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   const [coordsGps, setCoordsGps] = useState<{ lat: number; lng: number } | null>(null);
   const [errorGps, setErrorGps] = useState<string | null>(null);
   const [avisoAproximacion, setAvisoAproximacion] = useState<string | null>(null);
-  const direccionDelPinRef = useRef<string>('');
+  const direccionDelPinRef = useRef<string>(e.dir || '');
   const ultimoMovimientoRef = useRef<number>(0);
 
-  const actualizarUbicacionCompuesta = (nuevoSector: string, nuevaDir: string) => {
-    setBarrioSector(nuevoSector);
-    setDireccionNum(nuevaDir);
-    direccionDelPinRef.current = '';
-    setAvisoAproximacion(null);
-    errores.limpiar('dir');
-    const compuesta = [nuevaDir.trim(), nuevoSector.trim()].filter(Boolean).join(', ');
-    set({ dir: compuesta });
-  };
+  useEffect(() => {
+    if (!e.dir && direccionTexto) {
+      setDireccionTexto('');
+      direccionDelPinRef.current = '';
+    }
+  }, [e.dir, direccionTexto]);
 
   const obtenerUbicacionGPS = useCallback(() => {
     if (!navigator.geolocation) {
@@ -354,8 +355,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           if (structured) {
             direccionDelPinRef.current = structured.direccionCompleta;
             set({ dir: structured.direccionCompleta });
-            setDireccionNum(structured.direccionNum);
-            setBarrioSector(structured.barrioSector);
+            setDireccionTexto(structured.direccionCompleta);
             errores.limpiar('dir');
           }
         } catch {
@@ -389,8 +389,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       if (ultimoMovimientoRef.current === timestampActual && structured) {
         direccionDelPinRef.current = structured.direccionCompleta;
         set({ dir: structured.direccionCompleta });
-        setDireccionNum(structured.direccionNum);
-        setBarrioSector(structured.barrioSector);
+        setDireccionTexto(structured.direccionCompleta);
         errores.limpiar('dir');
       }
     } catch (err) {
@@ -402,10 +401,9 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     }
   }, [set, errores.limpiar, t]);
 
-  const geocodificarUbicacion = useCallback(async (sector: string, dir: string) => {
-    const s = sector.trim();
+  const geocodificarUbicacion = useCallback(async (dir: string) => {
     const d = dir.trim();
-    if (!s && !d) {
+    if (!d) {
       setCargandoGeocodificacion(false);
       setAvisoAproximacion(null);
       return;
@@ -414,12 +412,13 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     setCargandoGeocodificacion(true);
     setAvisoAproximacion(null);
     try {
-      const res = await geocodeAddressStructured(d, s);
+      const res = await geocodeAddressStructured(d);
       if (res) {
+        direccionDelPinRef.current = d;
         set({ lat: res.lat, lng: res.lng });
         errores.limpiar('dir');
         if (res.isApproximation) {
-          const nombreLugar = s || res.displayName?.split(',')[0] || 'la zona';
+          const nombreLugar = res.displayName?.split(',')[0] || 'la zona';
           setAvisoAproximacion(`Ubicamos ${nombreLugar} en el mapa. Puedes ajustar el pin si deseas mayor precisión.`);
         } else {
           setAvisoAproximacion(null);
@@ -434,24 +433,22 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     } finally {
       setCargandoGeocodificacion(false);
     }
-  }, [set, errores.limpiar, errores.poner, t]);
+  }, [set, errores, t]);
 
   useEffect(() => {
     if (sub?.id === 'donde') {
-      if (!barrioSector.trim() && (!direccionNum.trim() || isAddressIncomplete(direccionNum))) {
-        setCargandoGeocodificacion(false);
-        return;
-      }
-      const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
-      if (compuesta === direccionDelPinRef.current) {
-        return;
-      }
+      const d = direccionTexto.trim();
+      if (!d || d.length < 3 || isAddressIncomplete(d)) return;
+      if (d === direccionDelPinRef.current) return;
+
       const timer = setTimeout(() => {
-        geocodificarUbicacion(barrioSector, direccionNum);
+        if (d === direccionDelPinRef.current) return;
+        geocodificarUbicacion(d);
       }, 1000);
+
       return () => clearTimeout(timer);
     }
-  }, [sub?.id, barrioSector, direccionNum, geocodificarUbicacion]);
+  }, [sub?.id, direccionTexto, geocodificarUbicacion]);
 
   const metas = calcularMetas(e.sel, e.grupo, e.dias);
   const toggle = (it: string) => set((p) => ({ sel: p.sel.includes(it) ? p.sel.filter((x) => x !== it) : [...p.sel, it] }));
@@ -657,40 +654,42 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 mb-3">
-          <Field
-            id="barrio_sector"
-            etiqueta={t('flowCitySectorLabel')}
-            placeholder={t('flowCitySectorPlaceholder')}
-            valor={barrioSector}
-            onChange={(v) => actualizarUbicacionCompuesta(v, direccionNum)}
-            onBlur={() => {
-              if (barrioSector || direccionNum) {
-                geocodificarUbicacion(barrioSector, direccionNum);
-              }
-            }}
-          />
-          <Field
-            id="dir_num"
-            etiqueta={t('flowAddressNumberLabel')}
-            placeholder={t('flowAddressNumberPlaceholder')}
-            valor={direccionNum}
-            autoComplete="street-address"
-            onChange={(v) => actualizarUbicacionCompuesta(barrioSector, v)}
-            onBlur={() => {
-              if ((barrioSector || direccionNum) && !isAddressIncomplete(direccionNum)) {
-                geocodificarUbicacion(barrioSector, direccionNum);
-              }
-            }}
-          />
-        </div>
-        {errores.errores.dir && (
-          <p className="mb-3 text-rd-12 text-rd-coral">{errores.errores.dir}</p>
-        )}
+        <CampoDireccion
+          id="dir"
+          etiqueta={t('flowAddressNumberLabel')}
+          placeholder={t('flowAddressNumberPlaceholder')}
+          valor={direccionTexto}
+          biasCoords={{ lat: e.lat, lng: e.lng }}
+          onChange={(v) => {
+            setDireccionTexto(v);
+            direccionDelPinRef.current = '';
+            setAvisoAproximacion(null);
+            errores.limpiar('dir');
+            set({ dir: v });
+          }}
+          onConfirmar={(v) => {
+            if (v.trim() && v.trim() !== direccionDelPinRef.current) {
+              geocodificarUbicacion(v);
+            }
+          }}
+          onSeleccionarLugar={({ direccion, lat, lng }) => {
+            setDireccionTexto(direccion);
+            direccionDelPinRef.current = direccion;
+            errores.limpiar('dir');
+            setAvisoAproximacion(null);
+            set({ dir: direccion, lat, lng });
+          }}
+          onBlur={() => {
+            if (direccionTexto.trim() && direccionTexto.trim() !== direccionDelPinRef.current) {
+              geocodificarUbicacion(direccionTexto);
+            }
+          }}
+          error={errores.errores.dir}
+          className="mb-3"
+        />
         {avisoAproximacion && !errores.errores.dir && (
           <AvisoLinea className="mb-3">{avisoAproximacion}</AvisoLinea>
         )}
-        <Field id="tl" etiqueta={t('flowPlaceTypeLabel')} tipo="select" opciones={opcionesTiposLugar(language)} placeholder={t('flowPlaceTypePlaceholder')} valor={e.tipoLugar} onChange={(v) => set({ tipoLugar: v })} className="mb-3" />
         {cargandoGeocodificacion && (
           <div className="flex items-center gap-1.5 text-rd-12 text-rd-navy animate-pulse mb-1.5">
             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
@@ -702,10 +701,11 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           lng={e.lng}
           onMover={manejarMovimientoMapa}
           tipo="necesidad"
-          marcada={Boolean(coordsGps || barrioSector || direccionNum || e.dir)}
+          marcada={Boolean(coordsGps || direccionTexto.trim() || e.dir)}
           coordsGps={coordsGps}
         />
-        <Field id="cl" etiqueta={<>{t('flowHowToGetThere')}<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder={t('flowHowToGetTherePlaceholder')} onChange={(v) => set({ comoLlegar: v })} className="mt-3" />
+        <Field id="tl" etiqueta={<>{t('flowPlaceTypeLabel')}<Opt /></>} tipo="select" opciones={opcionesTiposLugar(language)} placeholder={t('flowPlaceTypePlaceholder')} valor={e.tipoLugar} onChange={(v) => set({ tipoLugar: v })} className="mt-3 mb-3" />
+        <Field id="cl" etiqueta={<>{t('flowHowToGetThere')}<Opt /></>} tipo="textarea" valor={e.comoLlegar} placeholder={t('flowHowToGetTherePlaceholder')} onChange={(v) => set({ comoLlegar: v })} />
       </>
     );
   } else if (sub.id === 'contacto') {
@@ -773,22 +773,22 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   }
 
   const hayErrorActivo = Object.values(errores.errores).some(Boolean);
-  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir && Boolean(barrioSector.trim() || direccionNum.trim())));
+  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir && Boolean(direccionTexto.trim())));
 
   const alContinuar = async () => {
     if (sub?.id === 'donde') {
       if (cargandoGeocodificacion) return;
-      if (!barrioSector.trim() && !direccionNum.trim()) {
+      if (!direccionTexto.trim()) {
         errores.poner('dir', t('flowAddressRequired'));
         return;
       }
       if (errores.errores.dir) return;
-      const compuesta = [direccionNum.trim(), barrioSector.trim()].filter(Boolean).join(', ');
+      const compuesta = direccionTexto.trim();
       if (compuesta && compuesta.length >= 3 && compuesta !== direccionDelPinRef.current) {
         setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
         setCargandoGeocodificacion(true);
         try {
-          const res = await geocodeAddressStructured(direccionNum, barrioSector);
+          const res = await geocodeAddressStructured(compuesta);
           if (res) {
             set({ lat: res.lat, lng: res.lng });
             errores.limpiar('dir');

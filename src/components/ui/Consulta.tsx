@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Funnel, Search, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronRight, Funnel, MapPin, Package, Search, X } from 'lucide-react';
 import { useTranslation } from '../../i18n/LanguageContext';
+import { buscarCiudadCoincidente, sugerenciasDeRecursos, sugerenciasDeUbicacion } from '../../utils/lugares';
 
 /**
  * Las piezas de la barra de consulta (`rd-consulta` del prototipo, decisión 70): una sola
@@ -177,14 +178,208 @@ export const ZonaChips: React.FC<{ children: React.ReactNode }> = ({ children })
  *  Al foco el marco va en tinta (`rd-sel`), el mismo negro con el que Filtros marca que tiene
  *  algo aplicado, porque comparten fila y el navy desentonaba (Alejandro, 24 de septiembre de
  *  2026). El halo acompaña en tinta al 10 %, no en navy. */
-export const CampoBuscar: React.FC<{ valor: string; onChange: (v: string) => void; placeholder: string; abierto: boolean; className?: string }> = ({ valor, onChange, placeholder, abierto, className = '' }) => {
+export interface CiudadSugerida {
+  id: string;
+  nombre: string;
+  depto?: string;
+  lat: number;
+  lng: number;
+}
+
+export interface CampoBuscarProps {
+  valor: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  abierto: boolean;
+  className?: string;
+  onSeleccionarCiudad?: (ciudad: CiudadSugerida) => void;
+  onSeleccionarRecurso?: (recurso: string) => void;
+  onBuscarSubmit?: (termino: string) => void;
+}
+
+/** El campo de búsqueda inteligente de la consulta: soporta búsqueda textual, sugerencias
+ *  de ciudades de Colombia con vuelo en mapa, y sugerencias de taxonomía de recursos. */
+export const CampoBuscar: React.FC<CampoBuscarProps> = ({
+  valor,
+  onChange,
+  placeholder,
+  abierto,
+  className = '',
+  onSeleccionarCiudad,
+  onSeleccionarRecurso,
+  onBuscarSubmit,
+}) => {
   const { t } = useTranslation();
+  const [desplegado, setDesplegado] = useState(false);
+  const contenedorRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const habilitarSugerencias = Boolean(onSeleccionarCiudad || onSeleccionarRecurso);
+
+  const ubicaciones = useMemo(() => {
+    if (!habilitarSugerencias || !valor.trim() || valor.trim().length < 2) return [];
+    return sugerenciasDeUbicacion(valor, 4);
+  }, [habilitarSugerencias, valor]);
+
+  const recursos = useMemo(() => {
+    if (!habilitarSugerencias || !valor.trim() || valor.trim().length < 2) return [];
+    return sugerenciasDeRecursos(valor, 3);
+  }, [habilitarSugerencias, valor]);
+
+  const tieneSugerencias = ubicaciones.length > 0 || recursos.length > 0;
+
+  // Cerrar al hacer clic afuera
+  useEffect(() => {
+    const alHacerClickFuera = (ev: MouseEvent) => {
+      if (contenedorRef.current && !contenedorRef.current.contains(ev.target as Node)) {
+        setDesplegado(false);
+      }
+    };
+    document.addEventListener('mousedown', alHacerClickFuera);
+    return () => document.removeEventListener('mousedown', alHacerClickFuera);
+  }, []);
+
+  const handleSeleccionarCiudad = (u: CiudadSugerida) => {
+    setDesplegado(false);
+    onSeleccionarCiudad?.(u);
+  };
+
+  const handleSeleccionarRecurso = (r: string) => {
+    setDesplegado(false);
+    if (onSeleccionarRecurso) {
+      onSeleccionarRecurso(r);
+    } else {
+      onChange(r);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setDesplegado(false);
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Si el texto escrito coincide exactamente con una ciudad colombiana
+      const coincidencia = buscarCiudadCoincidente(valor);
+      if (coincidencia && onSeleccionarCiudad) {
+        setDesplegado(false);
+        onSeleccionarCiudad({
+          id: coincidencia.ciudad.id,
+          nombre: coincidencia.ciudad.name,
+          lat: coincidencia.coords.lat,
+          lng: coincidencia.coords.lng,
+        });
+        return;
+      }
+
+      setDesplegado(false);
+      onBuscarSubmit?.(valor);
+    }
+  };
+
   return (
-    <label className={`flex h-10 shrink-0 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className ? className : 'lg:ml-auto lg:w-64 xl:w-80 min-w-[160px] flex-1 max-w-xs'} ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}>
-      <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
-      <span className="sr-only">{t('searchKeyword')}</span>
-      <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3" />
-    </label>
+    <div
+      ref={contenedorRef}
+      className={`relative flex items-center ${
+        className ? className : 'lg:ml-auto lg:w-64 xl:w-80 min-w-[160px] flex-1 max-w-xs'
+      } ${abierto ? 'max-lg:order-first max-lg:h-11 max-lg:w-full' : 'max-lg:hidden'}`}
+    >
+      <label
+        className={`flex h-10 w-full shrink-0 items-center gap-2 rounded-full border border-rd-line bg-rd-surface px-3 text-rd-ink-3 transition-colors focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${
+          abierto ? 'max-lg:h-11' : ''
+        }`}
+      >
+        <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-ink-3" />
+        <span className="sr-only">{t('searchKeyword')}</span>
+        <input
+          ref={inputRef}
+          type="search"
+          value={valor}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setDesplegado(true);
+          }}
+          onFocus={() => {
+            if (valor.trim().length >= 2) setDesplegado(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          aria-expanded={desplegado && tieneSugerencias}
+          aria-haspopup="listbox"
+          className="font-rd min-w-0 flex-1 bg-transparent text-rd-13 text-rd-ink outline-none placeholder:text-rd-ink-3 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        />
+        {valor && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange('');
+              setDesplegado(false);
+              inputRef.current?.focus();
+            }}
+            aria-label={t('clearSearch')}
+            className="flex h-4.5 w-4.5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-rd-sunken text-rd-ink-2 hover:bg-rd-line hover:text-rd-ink transition-colors"
+          >
+            <X aria-hidden="true" className="h-3 w-3" />
+          </button>
+        )}
+      </label>
+
+      {/* Menú de sugerencias inteligentes (ciudades, recursos) */}
+      {desplegado && tieneSugerencias && (
+        <div
+          role="listbox"
+          aria-label="Sugerencias de búsqueda"
+          className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-rd-line bg-rd-surface p-1.5 shadow-lg"
+        >
+          {ubicaciones.length > 0 && (
+            <div className="mb-1">
+              <span className="block px-2.5 py-1 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-3">
+                Ubicación
+              </span>
+              {ubicaciones.map((u) => (
+                <button
+                  key={`ubicacion-${u.id}`}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSeleccionarCiudad(u)}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-rd-13 text-rd-ink hover:bg-rd-fondo transition-colors"
+                >
+                  <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-navy" />
+                  <span className="flex-1 truncate">
+                    <strong className="font-semibold text-rd-ink">{u.nombre}</strong>
+                    {u.depto ? <span className="text-rd-ink-3 font-normal">, {u.depto}</span> : null}
+                  </span>
+                  <span className="text-rd-11 font-medium text-rd-ink-3">Ciudad</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {recursos.length > 0 && (
+            <div>
+              <span className="block px-2.5 py-1 text-rd-11 font-semibold uppercase tracking-wider text-rd-ink-3">
+                Recurso
+              </span>
+              {recursos.map((rec) => (
+                <button
+                  key={`recurso-${rec}`}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSeleccionarRecurso(rec)}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-rd-13 text-rd-ink hover:bg-rd-fondo transition-colors"
+                >
+                  <Package aria-hidden="true" className="h-4 w-4 shrink-0 text-rd-coral" />
+                  <span className="flex-1 truncate text-rd-ink">{rec}</span>
+                  <span className="text-rd-11 font-medium text-rd-ink-3">Recurso</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -199,7 +394,7 @@ export const CampoBuscarEnBloque: React.FC<{ valor: string; onChange: (v: string
     <label className={`flex h-11 sm:h-12 w-full shrink-0 items-center gap-2.5 rounded-full border border-rd-line bg-rd-surface px-4 text-rd-ink-3 transition-colors focus-within:border-rd-sel focus-within:ring-3 focus-within:ring-rd-ink/10 ${className}`}>
       <Search aria-hidden="true" className="h-4.5 w-4.5 shrink-0 text-rd-ink-3" />
       <span className="sr-only">{etiqueta}</span>
-      <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-14 sm:text-rd-14-5 text-rd-ink outline-none placeholder:text-rd-ink-3" />
+      <input type="search" value={valor} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-rd min-w-0 flex-1 bg-transparent text-rd-14 sm:text-rd-14-5 text-rd-ink outline-none placeholder:text-rd-ink-3 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden" />
       {valor && (
         <button
           type="button"

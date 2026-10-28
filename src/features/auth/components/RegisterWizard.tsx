@@ -20,7 +20,7 @@ import { StepOrgCategory } from './steps/StepOrgCategory';
 import { StepOrgMapLocation } from './steps/StepOrgMapLocation';
 import { StepOrgDetails } from './steps/StepOrgDetails';
 import { StepOrgAccount } from './steps/StepOrgAccount';
-import { getCityCoordinates, findCityById, findDepartmentByCityId, getCityDisplayName } from '../../../data/colombiaCities';
+import { getCityCoordinates, findCityById, findDepartmentByCityId, getCityDisplayName, COLOMBIA_CENTER_COORDS } from '../../../data/colombiaCities';
 
 interface RegisterWizardProps {
   isOpen?: boolean;
@@ -303,8 +303,8 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
       // Resolver nombres reales de ciudad y departamento desde cityId
       const selectedCityObj = data.cityId ? findCityById(data.cityId) : null;
       const selectedDeptObj = data.cityId ? findDepartmentByCityId(data.cityId) : null;
-      const resolvedCity = data.city?.trim() || (selectedCityObj ? selectedCityObj.name : 'Cali');
-      const resolvedDept = data.department?.trim() || (selectedDeptObj ? selectedDeptObj.name : 'Valle del Cauca');
+      const resolvedCity = data.city?.trim() || (selectedCityObj ? selectedCityObj.name : '');
+      const resolvedDept = data.department?.trim() || (selectedDeptObj ? selectedDeptObj.name : '');
 
       // 2. Si NO hay usuario activo de Google, registrar la cuenta en Supabase Auth con Correo y Contraseña
       if (!targetUserId) {
@@ -402,8 +402,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
             description: data.orgDescription?.trim() || '',
             website_or_social: data.orgWebsiteOrSocial?.trim() || '',
             address: data.searchAddress?.trim() || '',
-            latitude: data.latitude || 3.4516,
-            longitude: data.longitude || -76.532,
+            latitude: (typeof data.latitude === 'number' && !isNaN(data.latitude))
+              ? data.latitude
+              : (data.cityId ? getCityCoordinates(data.cityId).lat : COLOMBIA_CENTER_COORDS.lat),
+            longitude: (typeof data.longitude === 'number' && !isNaN(data.longitude))
+              ? data.longitude
+              : (data.cityId ? getCityCoordinates(data.cityId).lng : COLOMBIA_CENTER_COORDS.lng),
             document_type: data.documentType || 'nit',
             document_number: data.documentNumber?.trim(),
           });
@@ -579,8 +583,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
                     onChangeCityId={(cId, dId) => {
+                      const foundCity = findCityById(cId, dId);
+                      const foundDept = findDepartmentByCityId(cId, dId);
                       setValue('cityId', cId, { shouldValidate: true });
-                      setValue('departmentId', dId || '', { shouldValidate: true });
+                      setValue('departmentId', dId || foundDept?.id || '', { shouldValidate: true });
+                      setValue('city', foundCity?.name || cId, { shouldValidate: true });
+                      setValue('department', foundDept?.name || '', { shouldValidate: true });
                     }}
                   />
                 )}
@@ -627,8 +635,12 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
                     onChangeDocumentNumber={(val) => setValue('documentNumber', val, { shouldValidate: true })}
                     onChangeCountry={(c) => setValue('country', c, { shouldValidate: true })}
                     onChangeCityId={(cId, dId) => {
+                      const foundCity = findCityById(cId, dId);
+                      const foundDept = findDepartmentByCityId(cId, dId);
                       setValue('cityId', cId, { shouldValidate: true });
-                      setValue('departmentId', dId || '', { shouldValidate: true });
+                      setValue('departmentId', dId || foundDept?.id || '', { shouldValidate: true });
+                      setValue('city', foundCity?.name || cId, { shouldValidate: true });
+                      setValue('department', foundDept?.name || '', { shouldValidate: true });
                     }}
                   />
                 )}

@@ -530,8 +530,12 @@ const DEPARTMENT_CAPITALS: Record<string, { lat: number; lng: number }> = {
   "bogota-d-c": { lat: 4.7110, lng: -74.0721 },
 };
 
+export const COLOMBIA_CENTER_COORDS = { lat: 4.5709, lng: -74.2973 };
+
 export function getCityCoordinates(cityId: string, departmentId?: string): { lat: number; lng: number } {
-  if (!cityId) return { lat: 3.4516, lng: -76.5320 };
+  if (!cityId || cityId === ALL_COLOMBIA_ID || cityId === 'ALL_COLOMBIA' || cityId === 'todo-colombia') {
+    return COLOMBIA_CENTER_COORDS;
+  }
   const clean = cityId.toLowerCase().trim();
   if (KNOWN_CITY_COORDS[clean]) return KNOWN_CITY_COORDS[clean];
 
@@ -543,7 +547,7 @@ export function getCityCoordinates(cityId: string, departmentId?: string): { lat
     return DEPARTMENT_CAPITALS[dept.id];
   }
 
-  return { lat: 3.4516, lng: -76.5320 };
+  return COLOMBIA_CENTER_COORDS;
 }
 
 export const ALL_VALLE_ID = ALL_COLOMBIA_ID;

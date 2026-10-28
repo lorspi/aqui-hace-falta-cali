@@ -67,7 +67,8 @@ function normalizar(s: string): string {
 }
 
 function textosDe(p: Publicacion): string[] {
-  return [p.titulo, p.org, p.zona, p.localidad, p.dir, ...p.recursos.map((r) => r.item)]
+  const ciudadNombre = p.ciudad ? nombreCorto(p.ciudad) : '';
+  return [p.titulo, p.org, p.zona, p.localidad, p.dir, p.ciudad, ciudadNombre, ...p.recursos.map((r) => r.item)]
     .filter(Boolean)
     .map((s) => normalizar(String(s)));
 }

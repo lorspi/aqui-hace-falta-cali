@@ -300,7 +300,7 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
     }));
 
     const pubActualizada: Publicacion = {
-      ...(pubOriginal || { id: datos.id, tipo: datos.tipo, org: datos.org, verificada: datos.verificada, lat: datos.lat ?? 3.4516, lng: datos.lng ?? -76.5320 }),
+      ...(pubOriginal || { id: datos.id, tipo: datos.tipo, org: datos.org, verificada: datos.verificada, lat: datos.lat ?? 4.5709, lng: datos.lng ?? -74.2973 }),
       id: datos.id,
       tipo: datos.tipo,
       titulo: datos.titulo,
@@ -485,7 +485,7 @@ const MiActividad: React.FC<{ authUser?: any }> = ({ authUser }) => {
         <header className="border-b border-rd-line px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h1 className="font-rd m-0 truncate text-rd-20 font-bold text-rd-ink sm:text-rd-22">Mi actividad</h1>
+              <h1 className="font-rd m-0 truncate text-rd-22 leading-tight font-semibold tracking-rd-titulo text-rd-ink">Mi actividad</h1>
               <p className="m-0 mt-0.5 hidden text-rd-13 text-rd-ink-2 sm:block">
                 Consulta y gestiona las solicitudes de ayuda que has pedido o los aportes que has ofrecido.
               </p>

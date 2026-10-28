@@ -41,9 +41,9 @@ const createRedMarkerIcon = () => {
 
 export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
   searchAddress,
-  latitude = 3.4516, // Coordenadas predeterminadas (Cali)
-  longitude = -76.532,
-  cityName = 'Cali',
+  latitude = 4.5709,
+  longitude = -74.2973,
+  cityName = '',
   errors,
   onChangeSearchAddress,
   onChangeCoordinates,
@@ -52,13 +52,26 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const onChangeCoordinatesRef = useRef(onChangeCoordinates);
+  onChangeCoordinatesRef.current = onChangeCoordinates;
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodingError, setGeocodingError] = useState<string | null>(null);
 
   // Coordenadas actuales activas
-  const currentLat = latitude || 3.4516;
-  const currentLng = longitude || -76.532;
+  const currentLat = latitude || 4.5709;
+  const currentLng = longitude || -74.2973;
+
+  // Limpiar instancia de Leaflet al desmontar el paso
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, []);
 
   // Inicializar o actualizar el mapa Leaflet
   useEffect(() => {
@@ -89,18 +102,24 @@ export const StepOrgMapLocation: React.FC<StepOrgMapLocationProps> = ({
       // Evento al arrastrar el marcador
       marker.on('dragend', () => {
         const pos = marker.getLatLng();
-        onChangeCoordinates(pos.lat, pos.lng);
+        onChangeCoordinatesRef.current(pos.lat, pos.lng);
       });
 
       // Evento al hacer clic en cualquier parte del mapa
       map.on('click', (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
         marker.setLatLng([lat, lng]);
-        onChangeCoordinates(lat, lng);
+        onChangeCoordinatesRef.current(lat, lng);
       });
 
       mapInstanceRef.current = map;
       markerRef.current = marker;
+
+      requestAnimationFrame(() => {
+        if (mapInstanceRef.current === map) {
+          map.invalidateSize();
+        }
+      });
     } else {
       // Actualizar posición existente
       if (markerRef.current) {

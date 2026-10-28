@@ -86,8 +86,8 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
     tel: 'Sin teléfono',
     correo: '',
     pais: 'Colombia',
-    ciudad: 'Cali',
-    departamento: 'Valle del Cauca',
+    ciudad: '',
+    departamento: '',
     tipoDocumento: 'Cédula de ciudadanía',
     numeroDocumento: '',
     tipoPerfil: 'voluntario',
@@ -159,8 +159,8 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
 
           const correo = profile?.email || user.email || '';
           const pais = profile?.country || 'Colombia';
-          const ciudad = profile?.city || 'Cali';
-          const departamento = profile?.department || 'Valle del Cauca';
+          const ciudad = profile?.city || '';
+          const departamento = profile?.department || '';
           const tipoDocumento = profile?.document_type ? formatearTipoDocumento(profile.document_type, language) : 'Cédula de ciudadanía';
           const numeroDocumento = profile?.document_number || '';
           const tipoComunidad = profile?.community_type || 'Junta de Acción Comunal';
@@ -348,7 +348,7 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
                 <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-1.5 text-rd-12-5 text-rd-ink-2">
                   {hasOrg && orgData?.verificacion === 'verificada' && <BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 text-rd-navy" />}
                   <b className="font-semibold text-rd-ink">
-                    {hasOrg ? (orgData?.nombre || 'Mi Organización') : `${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}`}
+                    {hasOrg ? (orgData?.nombre || 'Mi Organización') : ((yo.ciudad || yo.departamento) ? `${yo.ciudad ? yo.ciudad + ', ' : ''}${yo.departamento}` : 'Ubicación no configurada')}
                   </b>
                   <span className="text-rd-ink-meta">{t('profileMemberSince')} {yo.desde}</span>
                 </p>
@@ -554,8 +554,8 @@ const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: 
           <Field id="perfil-tel" etiqueta="Celular" tipo="tel" valor={borrador.tel} onChange={(v) => setBorrador({ ...borrador, tel: v, wa: v, mismoWa: true })} autoComplete="tel" inputMode="tel" />
           <Field id="perfil-tipodoc" etiqueta="Tipo de documento" tipo="select" valor={borrador.tipoDocumento || 'Cédula de ciudadanía'} onChange={(v) => setBorrador({ ...borrador, tipoDocumento: v })} opciones={TIPOS_DOC} />
           <Field id="perfil-numdoc" etiqueta="Número de documento" valor={borrador.numeroDocumento || ''} onChange={(v) => setBorrador({ ...borrador, numeroDocumento: v })} />
-          <Field id="perfil-ciudad" etiqueta="Ciudad" valor={borrador.ciudad || 'Cali'} onChange={(v) => setBorrador({ ...borrador, ciudad: v })} />
-          <Field id="perfil-depto" etiqueta="Departamento" valor={borrador.departamento || 'Valle del Cauca'} onChange={(v) => setBorrador({ ...borrador, departamento: v })} />
+          <Field id="perfil-ciudad" etiqueta="Ciudad" valor={borrador.ciudad || ''} onChange={(v) => setBorrador({ ...borrador, ciudad: v })} />
+          <Field id="perfil-depto" etiqueta="Departamento" valor={borrador.departamento || ''} onChange={(v) => setBorrador({ ...borrador, departamento: v })} />
           <Field id="perfil-pais" etiqueta="País" valor={borrador.pais || 'Colombia'} onChange={(v) => setBorrador({ ...borrador, pais: v })} />
         </div>
       ) : (
@@ -564,7 +564,7 @@ const TusDatos: React.FC<{ yo: PersonaExt; dbUserId?: string | null; onGuardar: 
           <FilaDato rotulo="Cargo / Rol">{formatearRol(yo.cargo, language) || <span className="text-rd-ink-meta">Sin cargo</span>}</FilaDato>
           <FilaDato rotulo="Celular">{yo.tel}</FilaDato>
           {yo.numeroDocumento && <FilaDato rotulo="Documento">{`${formatearTipoDocumento(yo.tipoDocumento, language)}: ${yo.numeroDocumento}`}</FilaDato>}
-          <FilaDato rotulo="Ubicación">{`${yo.ciudad || 'Cali'}, ${yo.departamento || 'Valle del Cauca'}, ${yo.pais || 'Colombia'}`}</FilaDato>
+          <FilaDato rotulo="Ubicación">{(yo.ciudad || yo.departamento) ? `${[yo.ciudad, yo.departamento, yo.pais].filter(Boolean).join(', ')}` : 'Ubicación no configurada'}</FilaDato>
         </>
       )}
     </Caja>
@@ -627,7 +627,7 @@ const DEFAULT_ORG: DatosOrg = {
   nombre: 'Mi Organización',
   tipo: 'Organización Comunitaria',
   nit: '',
-  dir: 'Cali, Valle del Cauca',
+  dir: 'Dirección no especificada',
   contacto: { tel: '', wa: true, correo: '' },
   enlace: '',
   web: '',
@@ -754,7 +754,7 @@ const DatosComunidad: React.FC<{
       nombre: 'Comunidad / Sector',
       tipo: 'Junta de Acción Comunitaria',
       nit: 'No especificado',
-      dir: 'Cali, Valle del Cauca',
+      dir: 'Dirección no especificada',
       contacto: { tel: '', wa: true, correo: '' },
       enlace: 'Representante Comunitario',
       web: 'No especificado',

@@ -41,8 +41,8 @@ export const RegisterMultiStepModal: React.FC<RegisterMultiStepModalProps> = ({
     defaultValues: {
       role: 'voluntario',
       country: 'Colombia',
-      department: 'Valle del Cauca',
-      city: 'Cali',
+      department: '',
+      city: '',
       isAutoDetected: true,
       firstName: '',
       lastName: '',

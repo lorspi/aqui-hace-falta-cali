@@ -27,8 +27,8 @@ export const MiniMapPicker: React.FC<MiniMapPickerProps> = ({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const safeLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : 3.4516;
-    const safeLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : -76.5320;
+    const safeLat = typeof latitude === 'number' && !isNaN(latitude) ? latitude : 4.5709;
+    const safeLng = typeof longitude === 'number' && !isNaN(longitude) ? longitude : -74.2973;
 
     const map = L.map(containerRef.current, {
       center: [safeLat, safeLng],

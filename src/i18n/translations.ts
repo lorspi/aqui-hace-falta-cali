@@ -429,7 +429,7 @@ export const translations = {
     // Auth - Org Map Location
     authOrgMapTitle: '¿Dónde están ubicados?',
     authOrgMapSubtitle: 'Marca el punto exacto: es lo que verá la gente en el mapa para saber dónde llegar.',
-    authOrgMapSearchPlaceholder: 'Ej: Calle 5 # 38-25, Cali...',
+    authOrgMapSearchPlaceholder: 'Ej: Carrera 7 # 32-16, o Calle 10 # 4-25...',
     authOrgMapSearch: 'Buscar',
     authOrgMapDetectLocation: 'Usar mi ubicación actual',
     authOrgMapConfirmation: 'Punto fijado. Arrastra el pin si no quedó exacto.',
@@ -804,8 +804,8 @@ export const translations = {
     notifWhatsApp: 'Avisos por WhatsApp',
     notifEmail: 'Avisos por correo',
     notifDailySummary: 'Resumen diario',
-    dashboardTitle: 'Mi Organización',
-    dashboardCommunityTitle: 'Mi Comunidad',
+    dashboardTitle: 'Mi organización',
+    dashboardCommunityTitle: 'Mi comunidad',
     dashboardTabSummary: 'Resumen',
     dashboardTabNeeds: 'Mis necesidades',
     dashboardTabOffers: 'Mis ofertas',
@@ -1007,7 +1007,7 @@ export const translations = {
 
     // Flujos: Ubicación y Dirección
     flowGpsLoading: 'Obteniendo tu ubicación GPS...',
-    flowGpsButton: 'Usar mi ubicación actual (GPS) (Recomendado)',
+    flowGpsButton: 'Usar mi ubicación actual (GPS)',
     flowGpsNotSupported: 'Tu navegador no soporta geolocalización por GPS.',
     flowGpsPermissionDenied: 'Ubicación desactivada en tu navegador. Toca el candado o icono de permisos arriba (al lado de la URL) para permitirla, o escribe tu dirección/localidad.',
     flowGpsFailed: 'No se pudo obtener tu ubicación actual por GPS.',
@@ -2072,7 +2072,7 @@ export const translations = {
 
     // Flujos: Ubicación y Dirección
     flowGpsLoading: 'Getting your GPS location...',
-    flowGpsButton: 'Use my current location (GPS) (Recommended)',
+    flowGpsButton: 'Use my current location (GPS)',
     flowGpsNotSupported: 'Your browser does not support GPS geolocation.',
     flowGpsPermissionDenied: 'Location disabled in your browser. Tap the padlock or permissions icon in the address bar to allow it, or enter your address/locality.',
     flowGpsFailed: 'Could not obtain your current location via GPS.',
@@ -2934,8 +2934,8 @@ export const translations = {
     notifWhatsApp: 'Avisos por WhatsApp',
     notifEmail: 'Avisos por e-mail',
     notifDailySummary: 'Resumo diário',
-    dashboardTitle: 'Minha Organização',
-    dashboardCommunityTitle: 'Minha Comunidade',
+    dashboardTitle: 'Minha organização',
+    dashboardCommunityTitle: 'Minha comunidade',
     dashboardTabSummary: 'Resumo',
     dashboardTabNeeds: 'Necessidades',
     dashboardTabOffers: 'Ofertas',
@@ -3137,7 +3137,7 @@ export const translations = {
 
     // Flujos: Ubicación y Dirección
     flowGpsLoading: 'Obtendo sua localização GPS...',
-    flowGpsButton: 'Usar minha localização atual (GPS) (Recomendado)',
+    flowGpsButton: 'Usar minha localização atual (GPS)',
     flowGpsNotSupported: 'Seu navegador não suporta geolocalização por GPS.',
     flowGpsPermissionDenied: 'Localização desativada no seu navegador. Toque no cadeado ou ícone de permissões na barra de endereço para permitir, ou digite seu endereço/localidade.',
     flowGpsFailed: 'Não foi possível obter sua localização atual por GPS.',
@@ -3999,8 +3999,8 @@ export const translations = {
     notifWhatsApp: 'Alertes WhatsApp',
     notifEmail: 'Alertes par e-mail',
     notifDailySummary: 'Résumé quotidien',
-    dashboardTitle: 'Mon Organisation',
-    dashboardCommunityTitle: 'Ma Communauté',
+    dashboardTitle: 'Mon organisation',
+    dashboardCommunityTitle: 'Ma communauté',
     dashboardTabSummary: 'Résumé',
     dashboardTabNeeds: 'Besoins',
     dashboardTabOffers: 'Offres',
@@ -4202,7 +4202,7 @@ export const translations = {
 
     // Flujos: Ubicación y Dirección
     flowGpsLoading: 'Obtention de votre position GPS...',
-    flowGpsButton: 'Utiliser ma position actuelle (GPS) (Recommandé)',
+    flowGpsButton: 'Utiliser ma position actuelle (GPS)',
     flowGpsNotSupported: 'Votre navigateur ne prend pas en charge la géolocalisation GPS.',
     flowGpsPermissionDenied: 'Localisation désactivée dans votre navigateur. Cliquez sur le cadenas ou l\'icône des autorisations dans la barre d\'adresse pour l\'autoriser, ou saisissez votre adresse/commune.',
     flowGpsFailed: 'Impossible d\'obtenir votre position actuelle par GPS.',

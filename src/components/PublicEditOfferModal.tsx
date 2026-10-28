@@ -6,6 +6,7 @@ import { showToast } from './Toast';
 import { HelpCategory, Offer } from '../types';
 import { CATEGORY_LABELS, getCategoryLabel } from '../utils/formatters';
 import { geocodeAddress } from '../utils/geocoding';
+import { findCityById } from '../data/colombiaCities';
 import { MiniMapPicker } from './MiniMapPicker';
 import { CustomSelect } from './CustomSelect';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -29,8 +30,8 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
   const [selectedCategories, setSelectedCategories] = useState<HelpCategory[]>([]);
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [latitude, setLatitude] = useState(3.4516);
-  const [longitude, setLongitude] = useState(-76.532);
+  const [latitude, setLatitude] = useState(4.5709);
+  const [longitude, setLongitude] = useState(-74.2973);
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactWhatsapp, setContactWhatsapp] = useState('');
@@ -71,8 +72,8 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
       setSelectedCategories((offer.categories as HelpCategory[]) || []);
       setAddress(offer.address || '');
       setNeighborhood(offer.neighborhood || '');
-      setLatitude(offer.latitude || 3.4516);
-      setLongitude(offer.longitude || -76.532);
+      setLatitude(offer.latitude || 4.5709);
+      setLongitude(offer.longitude || -74.2973);
       setContactName(offer.contactName || '');
       setContactPhone(offer.contactPhone || '');
       setContactWhatsapp(offer.contactWhatsapp || '');
@@ -155,15 +156,21 @@ export const PublicEditOfferModal: React.FC<PublicEditOfferModalProps> = ({ offe
     if (!address) return;
     setIsGeocoding(true);
     setGeocodeError('');
-    const result = await geocodeAddress(address, neighborhood);
-    if (result) {
-      setLatitude(result.latitude);
-      setLongitude(result.longitude);
-      setGeocodeError('');
-    } else {
+    try {
+      const cityName = offer?.cityId ? (findCityById(offer.cityId)?.name || offer.cityId) : '';
+      const result = await geocodeAddress(address, neighborhood, cityName);
+      if (result) {
+        setLatitude(result.latitude);
+        setLongitude(result.longitude);
+        setGeocodeError('');
+      } else {
+        setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+      }
+    } catch {
       setGeocodeError('No se encontró la ubicación. Ubícala manualmente en el mapa.');
+    } finally {
+      setIsGeocoding(false);
     }
-    setIsGeocoding(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

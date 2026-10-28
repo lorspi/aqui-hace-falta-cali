@@ -36,6 +36,8 @@ export interface MapaRadarProps {
   /** Cuando cambia, el mapa vuela a ese punto (por ejemplo, «Ver en el mapa» o la hoja).
    *  Cada pedido lleva su `n` para poder repetir el mismo punto. */
   encuadrar?: { id: string; n: number } | null;
+  /** Coordenadas explícitas a donde volar (ej. al buscar una ciudad o ubicación). */
+  encuadrarCoordenadas?: { lat: number; lng: number; zoom?: number; n: number } | null;
   /** Bajo 1024, cuánto tapa la hoja del pin desde abajo (px): el pin se centra en la franja
    *  que queda libre. */
   tapadoAbajo?: number;
@@ -275,6 +277,7 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   onSeleccionar,
   onDeseleccionar,
   encuadrar,
+  encuadrarCoordenadas,
   tapadoAbajo = 0,
   resaltadas,
   encuadrarTodo,
@@ -534,8 +537,12 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
   pubsRef.current = publicaciones;
   const encuadrarRef = useRef(encuadrar);
   encuadrarRef.current = encuadrar;
+  const encuadrarCoordenadasRef = useRef(encuadrarCoordenadas);
+  encuadrarCoordenadasRef.current = encuadrarCoordenadas;
+  const encuadrarTodoRef = useRef(encuadrarTodo);
+  encuadrarTodoRef.current = encuadrarTodo;
   const encuadrarVisibles = (m: L.Map) => {
-    if (encuadrado.current || encuadrarRef.current) return;
+    if (encuadrado.current || encuadrarRef.current || encuadrarCoordenadasRef.current) return;
     const tam = m.getSize();
     if (tam.x === 0 || tam.y === 0) return;
     if (pubsRef.current.length === 0) return;
@@ -805,8 +812,9 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
         zIndexOffset: -100,
       }).addTo(m);
     }
-    if (!encuadrarRef.current) {
+    if (!encuadrado.current && !encuadrarRef.current && !encuadrarCoordenadasRef.current && !encuadrarTodoRef.current) {
       m.setView([ubicacion.lat, ubicacion.lng], 13);
+      encuadrado.current = true;
     }
   }, [ubicacion]);
 
@@ -852,6 +860,24 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encuadrar?.n]);
 
+  /* Volar a coordenadas explícitas (por ejemplo, al seleccionar una ciudad desde la búsqueda). */
+  useEffect(() => {
+    const m = mapa.current;
+    if (!encuadrarCoordenadas || !m) return;
+    encuadrado.current = true;
+    const cuadro = requestAnimationFrame(() => {
+      if (mapa.current !== m) return;
+      m.invalidateSize(false);
+      const zoom = encuadrarCoordenadas.zoom ?? Math.max(m.getZoom(), 13);
+      m.flyTo([encuadrarCoordenadas.lat, encuadrarCoordenadas.lng], zoom, {
+        duration: 0.55,
+        easeLinearity: 0.25,
+      });
+    });
+    return () => cancelAnimationFrame(cuadro);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encuadrarCoordenadas?.n]);
+
   /* Al resaltar las sugerencias, el mapa las encuadra junto con la publicación. Si el mapa no
      mide nada (vista Lista bajo 1024), no se mueve: cuando se vea, seguirá donde estaba. */
   useEffect(() => {
@@ -865,15 +891,21 @@ export const MapaRadar: React.FC<MapaRadarProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resaltadas?.n]);
 
-  /* Al cambiar de ciudad, el mapa encuadra lo que queda visible (Toda Colombia: todo el país
+  /* Al cambiar de ciudad o al buscar, el mapa encuadra lo que queda visible (Toda Colombia: todo el país
      con sus grupos; una ciudad: sus pines). Si no hay nada, se queda donde estaba. */
   useEffect(() => {
     const m = mapa.current;
     if (!encuadrarTodo || !m) return;
     const tam = m.getSize();
     if (tam.x === 0 || tam.y === 0) return;
-    const puntos = pubsRef.current.map((p) => [p.lat, p.lng] as [number, number]);
-    if (puntos.length) m.flyToBounds(L.latLngBounds(puntos).pad(0.2), { maxZoom: 12, duration: 0.5 });
+    const puntos = publicaciones
+      .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number')
+      .map((p) => [p.lat, p.lng] as [number, number]);
+    if (puntos.length === 1) {
+      m.flyTo(puntos[0], Math.max(m.getZoom(), 14), { duration: 0.55 });
+    } else if (puntos.length > 1) {
+      m.flyToBounds(L.latLngBounds(puntos).pad(0.25), { maxZoom: 13, duration: 0.55 });
+    }
     // Solo cuando cambia el pedido (su `n`).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encuadrarTodo?.n]);

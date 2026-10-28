@@ -204,7 +204,7 @@ export interface FilterState {
   placeType: PlaceType | 'ALL';
   status: NeedStatus | 'ALL';
   verificationStatus: VerificationStatus | 'ALL';
-  distanceKm: number | null; // null = Toda Cali
+  distanceKm: number | null; // null = Todo el país (sin límite)
   userLat: number | null;
   userLng: number | null;
   sortBy: 'PRIORITY' | 'RECENT' | 'DISTANCE';
