@@ -106,14 +106,60 @@ const LADO_CHICO = 2 * (RADIO_INICIAL + PASO * (CUANTOS_CHICO - 1)) + 40;
 const ESCALA_CHICA = 0.55;
 const JUEGOS_CHICOS = juegos(ANILLOS.slice(0, CUANTOS_CHICO));
 
+/**
+ * Puntos aleatorios (blips) en el radar del hero:
+ * Aparecen en posiciones variables exclusivamente con el paso de cada onda expansiva,
+ * iluminándose y desvaneciéndose en armonía con el pulso del sonar.
+ */
+interface PuntoRadar {
+  id: string;
+  x: number;
+  y: number;
+  tipo: 'ayuda' | 'necesidad';
+  delay: number;
+}
+
+const generarPuntos = (): PuntoRadar[] => {
+  const rMin = 160;
+  const rMax = 360;
+  // 4 sectores diagonales (25°, 115°, 205°, 295°) para flanquear armónicamente el titular
+  const sectores = [25, 115, 205, 295];
+
+  return sectores.map((baseAngulo, idx) => {
+    const angulo = baseAngulo + (Math.random() * 50 - 25);
+    const rad = (angulo * Math.PI) / 180;
+    const radio = rMin + Math.random() * (rMax - rMin);
+    const x = Math.round(radio * Math.cos(rad));
+    const y = Math.round(radio * Math.sin(rad));
+    // Demora proporcional al radio para que coincida exactamente con la onda expansiva
+    const fraccion = (radio - rMin) / (rMax - rMin);
+    const delay = Number((0.6 + fraccion * 2.2).toFixed(2));
+    const tipo: 'ayuda' | 'necesidad' = idx % 2 === 0 ? 'ayuda' : 'necesidad';
+
+    return {
+      id: `${idx}-${x}-${y}-${Date.now()}-${Math.random().toFixed(3)}`,
+      x,
+      y,
+      tipo,
+      delay,
+    };
+  });
+};
+
 export const AnillosHero: React.FC = () => {
   const caja = useRef<HTMLDivElement>(null);
   const [fuera, setFuera] = useState(false);
   const chico = useConsulta('(width < 64rem)', false);
   const lado = chico ? LADO_CHICO : LADO;
   const desde = CENTRO - lado / 2;
+  const anchoPx = chico ? Math.round(lado * ESCALA_CHICA) : lado;
 
-  /* Fuera de la pantalla el giro se pausa. */
+  const [puntosA, setPuntosA] = useState<PuntoRadar[]>([]);
+  const [puntosB, setPuntosB] = useState<PuntoRadar[]>([]);
+  const [claveA, setClaveA] = useState(0);
+  const [claveB, setClaveB] = useState(0);
+
+  /* Fuera de la pantalla las animaciones se pausan. */
   useEffect(() => {
     const c = caja.current;
     if (!c || typeof IntersectionObserver === 'undefined') return;
@@ -122,6 +168,47 @@ export const AnillosHero: React.FC = () => {
     return () => io.disconnect();
   }, []);
 
+  /* Sincronización de puntos aleatorios con cada nueva onda expansiva (solo en escritorio) */
+  useEffect(() => {
+    if (fuera || chico) {
+      setPuntosA([]);
+      setPuntosB([]);
+      return;
+    }
+
+    // Onda A: lote inicial al arrancar
+    setPuntosA(generarPuntos());
+    setClaveA((c) => c + 1);
+
+    // Onda B: primer lote desfasado 4 segundos
+    const timerPrimerB = setTimeout(() => {
+      setPuntosB(generarPuntos());
+      setClaveB((c) => c + 1);
+    }, 4000);
+
+    // Cada 8s se renuevan los puntos de la Onda A
+    const intervaloA = setInterval(() => {
+      setPuntosA(generarPuntos());
+      setClaveA((c) => c + 1);
+    }, 8000);
+
+    // Cada 8s se renuevan los puntos de la Onda B (desfasada 4s)
+    let intervaloB: ReturnType<typeof setInterval>;
+    const timerInicioCicloB = setTimeout(() => {
+      intervaloB = setInterval(() => {
+        setPuntosB(generarPuntos());
+        setClaveB((c) => c + 1);
+      }, 8000);
+    }, 4000);
+
+    return () => {
+      clearTimeout(timerPrimerB);
+      clearTimeout(timerInicioCicloB);
+      clearInterval(intervaloA);
+      if (intervaloB) clearInterval(intervaloB);
+    };
+  }, [fuera, chico]);
+
   return (
     <div
       ref={caja}
@@ -129,13 +216,18 @@ export const AnillosHero: React.FC = () => {
       data-quieto={fuera ? '' : undefined}
       className="rd-hero-anillos pointer-events-none absolute inset-0 overflow-hidden"
     >
+      {/* 1. Pulsos de sonar concéntricos desde el centro */}
+      <div className="rd-hero-sonar pointer-events-none" aria-hidden="true" />
+      <div className="rd-hero-sonar rd-hero-sonar-retraso pointer-events-none" aria-hidden="true" />
+
+      {/* 2. Anillos concéntricos sinuosos dibujados a mano */}
       <div className="rd-hero-anillos-pulso pointer-events-none absolute inset-0">
         {(chico ? JUEGOS_CHICOS : JUEGOS).map((j) => (
           <svg
             key={j.giro}
             className={`${j.giro} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`}
-            width={chico ? Math.round(lado * ESCALA_CHICA) : lado}
-            height={chico ? Math.round(lado * ESCALA_CHICA) : lado}
+            width={anchoPx}
+            height={anchoPx}
             viewBox={`${desde} ${desde} ${lado} ${lado}`}
           >
             {j.anillos.map((d) => (
@@ -144,6 +236,67 @@ export const AnillosHero: React.FC = () => {
           </svg>
         ))}
       </div>
+
+      {/* 3. Puntos aleatorios del radar (solo en escritorio, con brillo sutil y suave) */}
+      {!chico && (
+        <>
+          <div key={`lote-a-${claveA}`} className="pointer-events-none absolute inset-0">
+            {puntosA.map((p) => {
+              const esAyuda = p.tipo === 'ayuda';
+              return (
+                <div
+                  key={p.id}
+                  className="rd-blip-item pointer-events-none"
+                  style={{
+                    left: `calc(50% + ${p.x}px)`,
+                    top: `calc(50% + ${p.y}px)`,
+                    animationDelay: `${p.delay}s`,
+                  }}
+                >
+                  <div
+                    className={`rd-blip-ripple ${esAyuda ? 'border-rd-amber-claro/60' : 'border-rd-coral/60'}`}
+                    style={{ animationDelay: `${p.delay}s` }}
+                  />
+                  <div
+                    className={`rd-blip-glow ${esAyuda ? 'bg-rd-amber-claro/20' : 'bg-rd-coral/20'}`}
+                  />
+                  <div
+                    className={`rd-blip-core ${esAyuda ? 'bg-rd-amber-claro shadow-[0_0_6px_rgba(251,176,0,0.5)]' : 'bg-rd-coral shadow-[0_0_6px_rgba(228,84,79,0.5)]'}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div key={`lote-b-${claveB}`} className="pointer-events-none absolute inset-0">
+            {puntosB.map((p) => {
+              const esAyuda = p.tipo === 'ayuda';
+              return (
+                <div
+                  key={p.id}
+                  className="rd-blip-item pointer-events-none"
+                  style={{
+                    left: `calc(50% + ${p.x}px)`,
+                    top: `calc(50% + ${p.y}px)`,
+                    animationDelay: `${p.delay}s`,
+                  }}
+                >
+                  <div
+                    className={`rd-blip-ripple ${esAyuda ? 'border-rd-amber-claro/60' : 'border-rd-coral/60'}`}
+                    style={{ animationDelay: `${p.delay}s` }}
+                  />
+                  <div
+                    className={`rd-blip-glow ${esAyuda ? 'bg-rd-amber-claro/20' : 'bg-rd-coral/20'}`}
+                  />
+                  <div
+                    className={`rd-blip-core ${esAyuda ? 'bg-rd-amber-claro shadow-[0_0_6px_rgba(251,176,0,0.5)]' : 'bg-rd-coral shadow-[0_0_6px_rgba(228,84,79,0.5)]'}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 };

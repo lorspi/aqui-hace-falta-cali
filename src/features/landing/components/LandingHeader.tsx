@@ -33,7 +33,7 @@ export const LandingHeader: React.FC<{ tema: TemaLanding; alCambiarTema: (tema: 
   }, [menuMovilAbierto]);
 
   return (
-    <header ref={menuRef} className="rd-grano sticky top-0 z-40 bg-rd-noche">
+    <header ref={menuRef} className="rd-grano sticky top-0 z-40 bg-rd-noche-lamina md:bg-rd-noche">
       <div className="rd-contenedor-landing flex h-18 sm:h-16 items-center justify-between !px-6 sm:!px-8 lg:!px-12">
         {/* El logo de RaDAR, el de siempre y el mismo de la herramienta (Shell, a 38). */}
         <a

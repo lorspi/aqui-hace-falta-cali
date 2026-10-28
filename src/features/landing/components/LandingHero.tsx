@@ -45,13 +45,19 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
        `VentanaLiquida`) y los botones (`z-20`). La gota pasa por detrás del texto y lo vuelve
        crema donde pasa (Alejandro, 6 de octubre de 2026); `texto` es el bloque que se copia. */
     <section ref={hero} id="hero" className="relative isolate">
-      {/* El fondo del hero, lo primero de todo (ver LAS CAPAS DE LA PÁGINA en `index.css`): del
-          ancho de las 12 columnas, desde el pie del header hasta la mitad del panel de la sección 2
-          (`rd-fondo-hero`), que sube encima de él; ahí se desvanece. Lleva su grano. En el teléfono
-          no va (Alejandro, 7 de octubre de 2026: «el subfondo principal desde la seccion 1 quitalo.
-          porque queda a los 4 columnas y tanto los textos como botones se ven montados»): en la
-          grilla de cuatro, su borde quedaba a 15 px del texto y de los botones. Desde 768 vuelve. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero max-md:hidden">
+      {/* Fondo móvil (< md): a pantalla completa de borde a borde, sin márgenes laterales ni superiores */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero md:hidden"
+      >
+        <div className="rd-fondo-hero rd-grano h-full w-full bg-rd-noche-lamina" />
+      </div>
+
+      {/* Fondo escritorio (>= md): encuadrado en 12 columnas con esquinas redondeadas */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -bottom-rd-fondo-hero hidden md:block"
+      >
         <div className="rd-contenedor-landing h-full">
           <div className="rd-fondo-hero rd-grano h-full rounded-rd-xl bg-rd-noche-lamina" />
         </div>
@@ -98,14 +104,14 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                   página, y el segundo, en amarillo y en 400, lo completa. En el teléfono todo va en
                   600 (ver EN EL TELÉFONO). */}
               <span className="font-bold max-sm:font-semibold">{t(telefono ? 'landingHeroTitleMovil' : 'landingHeroTitle')}</span>
-            {/* «ayudas» cierra el primer renglón y el segundo va entero en el amarillo del logo
+              {/* «ayudas» cierra el primer renglón y el segundo va entero en el amarillo del logo
                 (Alejandro, 6 de octubre de 2026). El salto es fijo; la escala del titular está
                 medida para que el primer renglón quepa de una (ver `Titular`). El amarillo es
                 `rd-amber-claro` y no `rd-ayuda`, que en el modo claro baja a ámbar tinta: aquí va
                 el mismo amarillo en los dos modos (Alejandro, ese mismo día: «el amarillo de la
                 tipo del hero debe ser la misma que en dark»). Sobre la crema da 1,9:1. */}
-            <br />
-            <span className="text-rd-amber-claro">{t(telefono ? 'landingHeroTitleSoftMovil' : 'landingHeroTitleSoft')}</span>
+              <br />
+              <span className="text-rd-amber-claro">{t(telefono ? 'landingHeroTitleSoftMovil' : 'landingHeroTitleSoft')}</span>
             </Titular>
 
             {/* Titular y bajada separados por 24 exactos, sin salto por punto de quiebre: es el

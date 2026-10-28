@@ -551,7 +551,7 @@ export const translations = {
     landingHeroTitleMovil: 'Conectamos a quien necesita ayuda',
     landingHeroTitleSoftMovil: 'con quien puede darla.',
     landingHeroSubtitle: 'Organizaciones, comunidades y voluntarios permiten que las conexiones se hagan realidad',
-    landingAccesosTitulo: 'Todo lo que hace falta, en un solo sitio',
+    landingAccesosTitulo: 'Todo lo que hace falta, en un solo lugar',
     landingHeroCtaNeed: 'Pedir ayuda',
     landingHeroCtaOffer: 'Ofrecer ayuda',
     landingAjustes: 'Configuración',

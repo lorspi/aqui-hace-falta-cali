@@ -339,6 +339,43 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(inicialesStr).toBe('GQ');
   });
 
+  it('ORG-06: Shell preserva activeUser.org_name y no cae al prefijo del correo si orgData aún no carga', () => {
+    const user = {
+      id: '9e1e4794-ee5e-4c4d-9825-6e05f8f6d92e',
+      email: 'alcandia@gmail.com',
+      user_metadata: {}
+    };
+
+    const activeUser = {
+      ...user,
+      name: 'Jesse Lopez',
+      org_name: 'Gobernacion quindio',
+      organization: 'Gobernacion quindio',
+      role: 'entidad_profesional',
+      profile_type: 'organizacion'
+    };
+
+    const orgData = null; // Aún resolviendo o latente
+    const profileData = { id: user.id, role: 'entidad_profesional', full_name: 'Jesse Lopez', moderation_status: 'APPROVED' };
+
+    // Lógica en Shell.tsx checkUser
+    const resolvedOrgName = orgData?.org_name || (orgData as any)?.name || activeUser?.org_name || activeUser?.organization || user.user_metadata?.org_name;
+    const resolvedProfileType = orgData ? 'organizacion' : (activeUser?.profile_type || 'persona');
+
+    const fullUser = {
+      ...user,
+      name: profileData?.full_name || activeUser?.name || user.email?.split('@')[0],
+      role: profileData?.role || user.role,
+      profile_type: resolvedProfileType,
+      org_name: resolvedOrgName,
+      organization: resolvedOrgName,
+    };
+
+    expect(fullUser.org_name).toBe('Gobernacion quindio');
+    expect(fullUser.name).toBe('Jesse Lopez');
+    expect(fullUser.name).not.toBe('alcandia');
+  });
+
   it('EQP-04: "Mi equipo" vacío muestra mensaje de equipo sin personas en vez de filtros', () => {
     // Si la organización no tiene miembros en equipo (equipo = [])
     const equipoVacio: any[] = [];

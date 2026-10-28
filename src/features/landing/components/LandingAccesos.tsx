@@ -312,9 +312,9 @@ export const LandingAccesos: React.FC = () => {
           pantalla el panel habla por sí solo, como en la referencia, que no lleva titular encima.
           En el teléfono se ve (Alejandro, 7 de octubre de 2026: «la sección 2 no tiene titulo?»):
           ahí no hay panel montado sobre el hero ni pestañas, y el carrusel llegaba sin nombre
-          debajo de los botones. Va a la izquierda, colgado del mismo borde que las tarjetas, y
-          con el margen de la página. */}
-      <Titular id="accesos-titulo" className="rd-contenedor-landing lg:sr-only">
+          debajo de los botones. Centrado en el teléfono para armonizar con el eje del hero y de las
+          secciones siguientes. */}
+      <Titular id="accesos-titulo" className="rd-contenedor-landing text-center lg:sr-only">
         {t('landingAccesosTitulo')}
       </Titular>
 

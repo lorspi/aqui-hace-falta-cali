@@ -1439,13 +1439,135 @@ html:has(.rd-revela) {
 }
 
 [data-quieto] .rd-gira,
-[data-quieto] .rd-hero-anillos-pulso {
+[data-quieto] .rd-hero-anillos-pulso,
+[data-quieto] .rd-hero-sonar,
+[data-quieto] .rd-blip-item,
+[data-quieto] .rd-blip-ripple {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
   .rd-gira,
-  .rd-hero-anillos-pulso {
+  .rd-hero-anillos-pulso,
+  .rd-hero-sonar,
+  .rd-blip-item,
+  .rd-blip-ripple {
     animation: none;
+  }
+}
+
+/* Pulsos concéntricos de sonar */
+.rd-hero-sonar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--color-rd-ayuda) 35%, transparent);
+  animation: rd-hero-sonar-pulso 8s cubic-bezier(0.1, 0.4, 0.2, 1) infinite;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+.rd-hero-sonar-retraso {
+  animation-delay: 4s;
+}
+@keyframes rd-hero-sonar-pulso {
+  0% {
+    width: 60px;
+    height: 60px;
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  60% {
+    opacity: 0.2;
+  }
+  100% {
+    width: 60px;
+    height: 60px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(15);
+  }
+}
+
+/* Puntos aleatorios del radar: aparecen con la onda expansiva */
+.rd-blip-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: rd-blip-anim 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+@keyframes rd-blip-anim {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  15% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  28% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  70% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+}
+
+/* Núcleo del punto (más sutil y tenue) */
+.rd-blip-core {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Halo de resplandor difuso */
+.rd-blip-glow {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  filter: blur(3px);
+  z-index: 1;
+}
+
+/* Onda expansiva local al descubrir el punto */
+.rd-blip-ripple {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  animation: rd-blip-ripple-anim 2.2s ease-out forwards;
+  will-change: transform, opacity;
+  z-index: 0;
+}
+
+@keyframes rd-blip-ripple-anim {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.3);
+  }
+  40% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.8);
   }
 }
 
