@@ -61,7 +61,6 @@ const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ def
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
 import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
-import { LandingOfferActionModal } from "./components/LandingOfferActionModal";
 import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
@@ -591,13 +590,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         params.get('ofrecer') === 'true' ||
         params.get('accion') === 'ofrecer'
       );
-    }
-    return false;
-  });
-  const [isLandingOfferModalOpen, setIsLandingOfferModalOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('ofrecer') === 'true' || params.get('accion') === 'ofrecer';
     }
     return false;
   });
@@ -1422,18 +1414,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         onClose={() => setIsWelcomeModalOpen(false)}
         onOpenCreateNeed={() => setIsCreateModalOpen(true)}
         onOpenCreateOffer={() => setShowCreateOffer(true)}
-      />
-
-      <LandingOfferActionModal
-        isOpen={isLandingOfferModalOpen}
-        onClose={() => setIsLandingOfferModalOpen(false)}
-        onRegisterOffer={() => setShowCreateOffer(true)}
-        onViewNeeds={() => {
-          setFilters((prev) => ({ ...prev, viewMode: 'NEEDS' }));
-          if (typeof window !== 'undefined' && window.innerWidth < 768) {
-            setMobileView('MAP');
-          }
-        }}
       />
 
       {/* Chatbot Modal */}

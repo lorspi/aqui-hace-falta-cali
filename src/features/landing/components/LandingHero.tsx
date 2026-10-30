@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Hand, HeartHandshake } from 'lucide-react';
-import { BotonLanding, Parrafo, Titular } from './base';
+import { BotonLanding, Titular } from './base';
 import { VentanaLiquida } from './VentanaLiquida';
 import { AnillosHero } from './AnillosHero';
 import { useConsulta } from '../useConsulta';
@@ -30,7 +30,7 @@ import { useTranslation } from '../../../i18n/LanguageContext';
  * `MaquetaRadar` se quedó sin quien la use y se borró el 6 de octubre de 2026 (Alejandro: «borre
  * lo que ya no se usa»).
  */
-export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }) => {
+export const LandingHero: React.FC<{ onOpenChat?: () => void }> = ({ onOpenChat }) => {
   const { t } = useTranslation();
   const hero = useRef<HTMLElement>(null);
   const texto = useRef<HTMLDivElement>(null);
@@ -124,7 +124,13 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 de 2026—, así que cabe en un renglón en cuanto la caja pasa de eso, y la caja de las
                 columnas 2 a 11 da 769 a 1024, 983 a 1280 y 1116 a 1440. Debajo de 1024 no cabe:
                 a 768 la caja mide 583 y haría falta bajar a 13,5 px, por debajo del cuerpo. */}
-            <Parrafo className="mt-6 font-light text-balance max-sm:mt-8 max-sm:px-2 max-sm:text-rd-16 max-sm:leading-relaxed max-sm:font-normal">{t('landingHeroSubtitle')}</Parrafo>
+            <Titular
+              como="h2"
+              tamano="subtitular"
+              className="mt-6 text-balance max-sm:mt-8 max-sm:px-2"
+            >
+              {t('landingHeroSubtitle')}
+            </Titular>
 
             {/* Los dos accesos, del mismo ancho. `inline-grid` con dos columnas `1fr` se encoge al
                 contenido y reparte ese ancho en dos partes iguales, así que las dos toman la medida
@@ -139,7 +145,14 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
                 `relative z-20` los sube sobre la capa de la gota (`z-10`): tienen fondo propio y
                 la gota pasa por debajo de ellos sin cambiarlos (6 de octubre de 2026). */}
             <div className="relative z-20 mt-6 grid w-full grid-cols-1 gap-6 max-sm:mt-12 max-sm:grid-cols-2 max-sm:gap-3 sm:mt-10 sm:inline-grid sm:w-auto sm:grid-cols-2">
-              <BotonLanding nivel="pedir" tamano={telefono ? 'md' : 'lg'} ancho onClick={onOpenChat} icono={<Hand className="h-4.5 w-4.5" />}>
+              <BotonLanding
+                nivel="pedir"
+                como="enlace"
+                tamano={telefono ? 'md' : 'lg'}
+                ancho
+                href="/mapa-ayudas-necesidades?pedir=true"
+                icono={<Hand className="h-4.5 w-4.5" />}
+              >
                 {t('landingHeroCtaNeed')}
               </BotonLanding>
               <BotonLanding

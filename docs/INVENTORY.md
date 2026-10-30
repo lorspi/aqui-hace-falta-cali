@@ -25,7 +25,7 @@ TanStack Start · Tailwind CSS · Radix UI · Zod · Supabase · Vite · Vitest
 ## Componentes existentes (`src/components/`)
 
 Modales: `AdminDashboardModal`, `ChatbotTicketModal`, `CreateNeedModal`, `CreateOfferModal`,
-`ConfirmDialog`, `LandingOfferActionModal`, `NeedDetailModal`, `OfferDetailModal`,
+`ConfirmDialog`, `LandingOfferActionModal` (retirado en favor de apertura directa de CreateOfferModal), `NeedDetailModal`, `OfferDetailModal`,
 `PublicEditModal`, `PublicEditOfferModal`, `QuieroAyudarModal`, `RadarMatchModal`,
 `ReportModal`, `UpdateStatusModal`, `WelcomeOnboardingModal`.
 
@@ -206,7 +206,7 @@ crear una pieza de la landing, busca aquí:
 
 - `components/base.tsx` — el juego de piezas de la landing sobre los tokens `rd-*` (otra escala
   que la de `components/ui`, mismos colores): `Seccion` (ancho, márgenes y aire de toda sección;
-  aparece al llegar con `rd-revela`), `Rotulo`, `Titular` (con `id` para nombrar su sección),
+  aparece al llegar con `rd-revela`), `Rotulo`, `Titular` (con `id` para nombrar su sección, `como='h1' | 'h2'`, `tamano='hero' | 'seccion' | 'subtitular'`),
   `Parrafo`, `BotonLanding` (con
   `soloIcono`, `etiqueta`, `expandido` y `controla` para un botón de icono que abre algo),
   `claseBotonIcono` (la receta del botón de icono de 48: el de configuración, la X y las pestañas

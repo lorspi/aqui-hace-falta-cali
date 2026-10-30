@@ -612,6 +612,106 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
 
     expect(isLoggedWithOrg).toBe(true);
   });
+
+  it('HERO-01: copiarTexto en VentanaLiquida preserva la huella geométrica de botones como placeholders ocultos para evitar shift vertical en justify-center', async () => {
+    class MockHTMLElement {}
+    (globalThis as any).HTMLElement = MockHTMLElement;
+    (globalThis as any).Node = { TEXT_NODE: 3 };
+
+    const mockDocument = {
+      createElement: (tag: string) => {
+        const el: any = Object.create(MockHTMLElement.prototype);
+        el.nodeType = 1;
+        el.localName = tag.toLowerCase();
+        el.className = '';
+        el.style = {};
+        el.children = [] as any[];
+        el.childNodes = [] as any[];
+        el.attributes = {} as Record<string, string>;
+        el.setAttribute = (name: string, val: string) => {
+          el.attributes[name] = val;
+        };
+        el.getAttribute = (name: string) => el.attributes[name] ?? null;
+        el.append = (...nodes: any[]) => {
+          el.childNodes.push(...nodes);
+          el.children.push(...nodes.filter((n: any) => n.nodeType === 1));
+        };
+        el.matches = (selector: string) => {
+          const tags = selector.split(',').map((s) => s.trim().toLowerCase());
+          return tags.includes(el.localName);
+        };
+        return el;
+      },
+      createTextNode: (text: string) => ({
+        nodeType: 3,
+        textContent: text,
+      }),
+    };
+
+    (globalThis as any).document = mockDocument;
+
+    const { copiarTexto } = await import('../../src/features/landing/components/VentanaLiquida');
+
+    // Construir árbol simulado idéntico a LandingHero
+    const container = mockDocument.createElement('div');
+    container.className = 'rd-contenedor-landing flex flex-col justify-center';
+
+    const h1 = mockDocument.createElement('h1');
+    h1.className = 'text-white text-rd-48';
+    h1.append(mockDocument.createTextNode('Conectamos a quienes ayudan'));
+
+    const p = mockDocument.createElement('p');
+    p.className = 'text-rd-noche-tinta-2';
+    p.append(mockDocument.createTextNode('Organizaciones y voluntarios'));
+
+    const buttonsGrid = mockDocument.createElement('div');
+    buttonsGrid.className = 'grid grid-cols-2 gap-6 mt-10';
+
+    const btnPedir = mockDocument.createElement('button');
+    btnPedir.className = 'btn-primary h-13 px-7';
+    btnPedir.innerHTML = '<span>Pedir ayuda</span>';
+
+    const btnOfrecer = mockDocument.createElement('a');
+    btnOfrecer.className = 'btn-secondary h-13 px-7';
+    btnOfrecer.innerHTML = '<span>Ofrecer ayuda</span>';
+
+    buttonsGrid.append(btnPedir, btnOfrecer);
+    container.append(h1, p, buttonsGrid);
+
+    // Clonar usando copiarTexto
+    const clon = copiarTexto(container as any) as any;
+
+    expect(clon).not.toBeNull();
+    expect(clon.className).toBe(container.className);
+
+    // Los encabezados pasan a div conservando clases
+    const clonH1 = clon.children[0];
+    expect(clonH1.localName).toBe('div');
+    expect(clonH1.className).toBe(h1.className);
+
+    // El párrafo se conserva
+    const clonP = clon.children[1];
+    expect(clonP.localName).toBe('p');
+    expect(clonP.className).toBe(p.className);
+
+    // La grilla de botones debe conservar sus 2 hijos como divs ocultos para mantener la huella dimensional en flexbox
+    const clonGrid = clon.children[2];
+    expect(clonGrid.children.length).toBe(2);
+
+    const clonBtnPedir = clonGrid.children[0];
+    expect(clonBtnPedir.localName).toBe('div');
+    expect(clonBtnPedir.className).toBe(btnPedir.className);
+    expect(clonBtnPedir.style.visibility).toBe('hidden');
+    expect(clonBtnPedir.getAttribute('aria-hidden')).toBe('true');
+    expect(clonBtnPedir.innerHTML).toBe('<span>Pedir ayuda</span>');
+
+    const clonBtnOfrecer = clonGrid.children[1];
+    expect(clonBtnOfrecer.localName).toBe('div');
+    expect(clonBtnOfrecer.className).toBe(btnOfrecer.className);
+    expect(clonBtnOfrecer.style.visibility).toBe('hidden');
+    expect(clonBtnOfrecer.getAttribute('aria-hidden')).toBe('true');
+    expect(clonBtnOfrecer.innerHTML).toBe('<span>Ofrecer ayuda</span>');
+  });
 });
 
 

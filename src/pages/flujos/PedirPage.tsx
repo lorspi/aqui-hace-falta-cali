@@ -274,7 +274,27 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     }
   }, [initialCityId, onRequireAuth]);
 
-  const f = useFlujo<EstadoPedir>('pedir', 'pide', estadoInicialPedir, caminoPedir, listoPedir, guardarEnSupabase, onClose);
+  const tieneDatosPedir = useCallback(
+    (est: EstadoPedir) =>
+      Boolean(
+        (est.sel && est.sel.length > 0) ||
+        (est.fotos && est.fotos.length > 0) ||
+        est.detalles?.trim() ||
+        est.comoLlegar?.trim()
+      ),
+    []
+  );
+
+  const f = useFlujo<EstadoPedir>(
+    'pedir',
+    'pide',
+    estadoInicialPedir,
+    caminoPedir,
+    listoPedir,
+    guardarEnSupabase,
+    onClose,
+    tieneDatosPedir
+  );
   const { e, set, sub } = f;
 
   const hasNotifiedSuccessRef = useRef(false);
@@ -316,7 +336,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           tel: prev.tel || telefono,
           dir: prev.dir || direccion,
         };
-      });
+      }, false);
     }
     autocompletarPerfil();
   }, [set]);

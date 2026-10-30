@@ -312,7 +312,26 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     }
   }, [initialCityId, onRequireAuth, nombreOrg]);
 
-  const f = useFlujo<EstadoOfrecer>('ofrecer', 'ofrece', () => conParametros(estadoInicialOfrecer()), caminoOfrecer, listoOfrecer, guardarEnSupabase, onClose);
+  const tieneDatosOfrecer = useCallback(
+    (est: EstadoOfrecer) =>
+      Boolean(
+        (est.sel && est.sel.length > 0) ||
+        (est.fotos && est.fotos.length > 0) ||
+        est.condiciones?.trim()
+      ),
+    []
+  );
+
+  const f = useFlujo<EstadoOfrecer>(
+    'ofrecer',
+    'ofrece',
+    () => conParametros(estadoInicialOfrecer()),
+    caminoOfrecer,
+    listoOfrecer,
+    guardarEnSupabase,
+    onClose,
+    tieneDatosOfrecer
+  );
   const { e, set, sub } = f;
 
   const hasNotifiedSuccessRef = useRef(false);
@@ -353,7 +372,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
           tel: prev.tel || telefono,
           dir: prev.dir || direccion,
         };
-      });
+      }, false);
     }
     autocompletarPerfil();
   }, [set]);

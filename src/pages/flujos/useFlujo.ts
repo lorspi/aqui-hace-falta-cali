@@ -25,7 +25,8 @@ export function useFlujo<E extends EstadoBase>(
   camino: (e: E) => SubPaso[],
   listo: (e: E, sub: SubPaso) => boolean,
   onGuardar?: (e: E) => Promise<void>,
-  onCerrarOverride?: () => void
+  onCerrarOverride?: () => void,
+  tieneDatosGuardables?: (e: E) => boolean
 ) {
   const claveBorrador = `rd-borrador-${clave}`;
   const [e, setE] = useState<E>(() => {
@@ -49,9 +50,11 @@ export function useFlujo<E extends EstadoBase>(
   const [guardando, setGuardando] = useState(false);
   const [errorPublicar, setErrorPublicar] = useState<string | null>(null);
 
-  /** Cambiar algo del estado: marca «tocado» para preguntar antes de salir. */
-  const set = useCallback((cambio: Partial<E> | ((prev: E) => Partial<E>)) => {
-    tocado.current = true;
+  /** Cambiar algo del estado: marca «tocado» para preguntar antes de salir (salvo que marcarTocado sea false). */
+  const set = useCallback((cambio: Partial<E> | ((prev: E) => Partial<E>), marcarTocado: boolean = true) => {
+    if (marcarTocado) {
+      tocado.current = true;
+    }
     setE((prev) => ({ ...prev, ...(typeof cambio === 'function' ? cambio(prev) : cambio) }));
   }, []);
 
@@ -171,7 +174,12 @@ export function useFlujo<E extends EstadoBase>(
     }
   };
   const cerrar = () => {
-    if (!tocado.current || e.publicado) return salir();
+    if (e.publicado) return salir();
+    if (!tocado.current) return salir();
+    if (tieneDatosGuardables && !tieneDatosGuardables(e)) {
+      descartarBorrador();
+      return salir();
+    }
     setSalida(true);
   };
 

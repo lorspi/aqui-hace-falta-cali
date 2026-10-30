@@ -609,10 +609,21 @@ const medirParedes = (el: HTMLElement): Caja[] => {
    etiqueta y las clases, que son las que deciden el renglón; cambia solo el color, que va en
    línea para que gane a las clases de tinta de cada nodo. Los encabezados pasan a `div`: con las
    clases de `Titular` y sin márgenes, un `div` mide lo mismo que el `h1`, y la página sigue con un
-   solo h1. Los enlaces y botones se quedan fuera: van después del texto y no lo mueven. */
-const copiarTexto = (nodo: Node): Node | null => {
+   solo h1. Los botones y enlaces no se pintan dentro de la gota (tienen fondo propio y z-20 encima
+   de la gota), pero conservan su huella dimensional exacta (`visibility: hidden`) para que el
+   centrado vertical por flexbox (`justify-center`) en el hero posicione el texto al píxel exacto
+   entre el DOM real y la copia de la máscara. */
+export const copiarTexto = (nodo: Node): Node | null => {
   if (nodo.nodeType === Node.TEXT_NODE) return document.createTextNode(nodo.textContent ?? '');
-  if (!(nodo instanceof HTMLElement) || nodo.matches('a, button')) return null;
+  if (!(nodo instanceof HTMLElement)) return null;
+  if (nodo.matches('a, button')) {
+    const copia = document.createElement('div');
+    copia.className = nodo.className;
+    copia.style.visibility = 'hidden';
+    copia.setAttribute('aria-hidden', 'true');
+    copia.innerHTML = nodo.innerHTML;
+    return copia;
+  }
   const copia = document.createElement(/^h[1-6]$/.test(nodo.localName) ? 'div' : nodo.localName);
   copia.className = nodo.className;
   /* Desde el tema oscuro (6 de octubre de 2026) la copia ya no cambia de color: el texto es claro
@@ -819,7 +830,10 @@ export const VentanaLiquida: React.FC<{
     if (!origen || !destino) return;
     const rehacer = () => {
       const nueva = copiarTexto(origen);
-      if (nueva instanceof HTMLElement) nueva.style.position = 'static';
+      if (nueva instanceof HTMLElement) {
+        nueva.style.position = 'static';
+        nueva.style.height = '100%';
+      }
       destino.replaceChildren(...(nueva ? [nueva] : []));
     };
     rehacer();
@@ -1281,7 +1295,7 @@ export const VentanaLiquida: React.FC<{
                 `rd-sobre-foto` le deja los colores claros también en el modo claro: va sobre una
                 foto oscura. */}
             <foreignObject x={0} y={0} width={w} height={h}>
-              <div ref={copia} inert className={`rd-sobre-foto ${SOMBRA}`} />
+              <div ref={copia} inert className={`rd-sobre-foto h-full w-full ${SOMBRA}`} />
             </foreignObject>
           </g>
         </g>

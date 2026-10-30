@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, MessageCircle } from 'lucide-react';
+import { Mail, MessageCircle, Bot } from 'lucide-react';
 import { useTranslation } from '../../../i18n/LanguageContext';
 import {
   OFFICIAL_DOMAIN,
@@ -20,7 +20,7 @@ import {
 const ENLACE =
   'rounded-rd-sm text-rd-noche-tinta-2 no-underline transition-colors hover:text-rd-noche-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rd-ayuda';
 
-export const LandingFooter: React.FC = () => {
+export const LandingFooter: React.FC<{ onOpenChat?: () => void }> = ({ onOpenChat }) => {
   const { t } = useTranslation();
 
   return (
@@ -60,6 +60,18 @@ export const LandingFooter: React.FC = () => {
                   {t('landingHeroCtaOffer')}
                 </a>
               </li>
+              {onOpenChat && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenChat}
+                    className={`${ENLACE} bg-transparent border-0 p-0 cursor-pointer text-left font-inherit inline-flex items-center gap-1.5`}
+                  >
+                    <Bot className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{t('landingFooterBotAyudas')}</span>
+                  </button>
+                </li>
+              )}
               <li>
                 <a href="/terminos" className={ENLACE}>
                   {t('landingFooterTerminos')}

@@ -58,7 +58,7 @@ export const Titular: React.FC<{
   children: React.ReactNode;
   apagado?: React.ReactNode;
   como?: 'h1' | 'h2';
-  tamano?: 'hero' | 'seccion';
+  tamano?: 'hero' | 'seccion' | 'subtitular';
   /** `claro` para cuando el titular va sobre fotografía. */
   tono?: 'tinta' | 'claro';
   /** Para la sección que se nombra con él (`aria-labelledby`). */
@@ -96,6 +96,8 @@ export const Titular: React.FC<{
   const escala =
     tamano === 'hero'
       ? 'text-rd-28 lg:text-rd-36 xl:text-rd-48'
+      : tamano === 'subtitular'
+      ? 'text-rd-18 sm:text-rd-22 lg:text-rd-24'
       : /* Un solo tamaño para todos los titulares de sección desde 768: 40, un escalón claro por
            encima de los títulos de dentro de cada sección (28) y por debajo del hero (48 y 56)
            (Alejandro, 7 de octubre de 2026: «revisa el tamaño del titulo de las secciones para que
@@ -110,9 +112,9 @@ export const Titular: React.FC<{
        secciones. */
     <Etiqueta
       id={id}
-      className={`font-rd m-0 ${tamano === 'hero' ? 'font-normal' : 'font-medium'} tracking-rd-titular ${
+      className={`font-rd m-0 ${tamano === 'hero' ? 'font-normal' : tamano === 'subtitular' ? 'font-normal sm:font-medium' : 'font-medium'} tracking-rd-titular ${
         tono === 'claro' ? 'text-white' : 'text-rd-noche-tinta'
-      } ${escala} leading-rd-display text-balance ${className}`}
+      } ${escala} ${tamano === 'subtitular' ? 'leading-snug' : 'leading-rd-display'} text-balance ${className}`}
     >
       {children}
       {apagado && (

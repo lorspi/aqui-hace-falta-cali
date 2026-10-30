@@ -91,7 +91,7 @@ export const LandingPage: React.FC = () => {
       </main>
 
       {/* Footer oficial */}
-      <LandingFooter />
+      <LandingFooter onOpenChat={() => setIsChatbotModalOpen(true)} />
 
       {/* La grilla de revisión, solo en `npm run dev` (Alejandro, 6 de octubre de 2026: «Si, solo
           en desarrollo como en sandbox»). Con `import.meta.env.DEV` falso la build la deja fuera
@@ -104,7 +104,7 @@ export const LandingPage: React.FC = () => {
         isOpen={isChatbotModalOpen}
         onClose={() => setIsChatbotModalOpen(false)}
         onGoToMap={() => {
-          window.location.href = '/';
+          window.location.href = '/mapa-ayudas-necesidades';
         }}
       />
 
