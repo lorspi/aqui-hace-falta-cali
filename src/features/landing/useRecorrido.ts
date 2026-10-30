@@ -550,7 +550,7 @@ export function useRecorrido({
     const s = seccion.current;
     const g = geo.current;
     if (!s || !g) return;
-    const siguiente = s.nextElementSibling as HTMLElement | null;
+    const siguiente = (s.nextElementSibling || document.getElementById('portal-en-vivo') || s.parentElement?.nextElementSibling) as HTMLElement | null;
     const objetivo = Math.round(Math.max(siguiente ? topeEnDocumento(siguiente) - g.tope : 0, g.s2 + g.entrada));
     /* La vista se queda en la que estaba durante todo el viaje, como con las pestañas: sin esto
        el panel pasaba por las vistas que faltaban, con su tarjeta y su malla, antes de cerrarse

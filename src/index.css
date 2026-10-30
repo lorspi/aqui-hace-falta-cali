@@ -1464,14 +1464,14 @@ html:has(.rd-revela) {
   }
 }
 
-/* Pulsos concéntricos de sonar */
+/* Pulso de sonar: sutil, concéntrico con los anillos de fondo, trazo fino y atenuado */
 .rd-hero-sonar {
   position: absolute;
   top: 50%;
   left: 50%;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in oklab, var(--color-rd-ayuda) 35%, transparent);
-  animation: rd-hero-sonar-pulso 8s cubic-bezier(0.1, 0.4, 0.2, 1) infinite;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  animation: rd-hero-sonar-pulso 8s cubic-bezier(0.12, 0.8, 0.32, 1) infinite;
   will-change: transform, opacity;
   pointer-events: none;
 }
@@ -1480,19 +1480,18 @@ html:has(.rd-revela) {
 }
 @keyframes rd-hero-sonar-pulso {
   0% {
-    width: 60px;
-    height: 60px;
-    opacity: 0.65;
-    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
   }
-  60% {
-    opacity: 0.2;
+  15% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 0.4;
   }
   100% {
-    width: 60px;
-    height: 60px;
     opacity: 0;
-    transform: translate(-50%, -50%) scale(15);
+    transform: translate(-50%, -50%) scale(4.2);
   }
 }
 
@@ -1775,19 +1774,6 @@ html:has(.rd-revela) {
 .rd-accesos-recorrido {
   height: calc(var(--spacing-rd-accesos-panel) + var(--rd-recorrido, 0px));
 }
-/* La subida sobre el hero. Alejandro, 6 de octubre de 2026: «aumenta la distancia de la sección 1
-   y 2. que sea la misma de la 2 y 3». La de la 2 a la 3 —del borde visible del panel cerrado al
-   título de «Cómo funciona»— es el recogido vertical del panel cerrado (`--rd-vertical`), más el
-   espacio entre secciones (48), más el relleno de arriba de la sección 3 (56): 258 a 1440. La de
-   la 1 a la 2 es el mismo recogido, más los 48, más el relleno de abajo del hero (144), más esta
-   subida. Para que sean iguales la subida es 56 − 144 = −88, sin el recogido: así quedan iguales a
-   cualquier ancho y alto, porque el recogido entra en las dos. Antes subía 112 más el recogido y
-   el borde quedaba a 80 de los botones (H6). */
-@media (min-width: 1024px) {
-  .rd-accesos-recorrido {
-    margin-top: calc(var(--spacing) * -22);
-  }
-}
 
 /* El panel mide 12 columnas siempre; lo que cambia es el recorte. Un `clip-path` y no el ancho:
    el ancho recalcularía el diseño de la tarjeta en cada cuadro del scroll y la haría crecer, y la
@@ -1870,7 +1856,8 @@ html:has(.rd-revela) {
 
 /* El destino de la X, la sección siguiente, recibe el foco para que el siguiente Tab siga desde
    ahí (H4), pero no es un control: sin anillo. */
-.rd-accesos-recorrido + [tabindex='-1']:focus {
+.rd-accesos-recorrido + [tabindex='-1']:focus,
+#portal-en-vivo[tabindex='-1']:focus {
   outline: none;
 }
 

@@ -141,6 +141,11 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(res).toBeNull();
   });
 
+  it('GEO-02 / PDA-08: Texto libre sin sugerencia ("zzzqqq xxxyyy 999999") no se geocodifica y no retorna coordenadas', async () => {
+    const res = await geocodeAddressStructured('zzzqqq xxxyyy 999999');
+    expect(res).toBeNull();
+  });
+
   it('PDA-10: Direcciones vacías o menores a 3 caracteres no ejecutan geocodificación', async () => {
     expect(await geocodeAddress('', undefined, 'Cali')).toBeNull();
     expect(await geocodeAddress('   ', undefined, 'Cali')).toBeNull();

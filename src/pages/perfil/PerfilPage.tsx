@@ -6,6 +6,7 @@ import { Caja, FilaDato } from '../../components/ui/Caja';
 import { Dialogo } from '../../components/ui/Dialogo';
 import { Avatar, EtiquetaCiclo } from '../../components/ui/Etiqueta';
 import { Field } from '../../components/ui/Field';
+import { CampoDireccion } from '../../components/ui/CampoDireccion';
 import { Pestanas } from '../../components/ui/Pestanas';
 import { BotonMenu, Cuenta, Shell } from '../../components/ui/Shell';
 import { FilaSwitch, Switch } from '../../components/ui/Switch';
@@ -207,6 +208,8 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
               tipo: org.organization_type || (tipoPerfil === 'lider' ? 'Comunidad' : 'Organización'),
               nit: org.document_number || 'No especificado',
               dir: org.address || `${ciudad}, ${departamento}`,
+              lat: org.latitude ?? undefined,
+              lng: org.longitude ?? undefined,
               contacto: {
                 tel: org.contact_phone || org.contact_whatsapp || tel,
                 wa: Boolean(org.contact_whatsapp),
@@ -675,6 +678,8 @@ const DatosOrganizacion: React.FC<{
           organization_type: borrador.tipo,
           document_number: borrador.nit,
           address: borrador.dir,
+          latitude: borrador.lat,
+          longitude: borrador.lng,
           contact_phone: borrador.contacto.tel,
           contact_email: borrador.contacto.correo,
           website_or_social: borrador.web || borrador.enlace,
@@ -714,7 +719,18 @@ const DatosOrganizacion: React.FC<{
           <Field id="org-nombre" etiqueta="Nombre de la entidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
           <Field id="org-tipo" etiqueta="Tipo de entidad" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
           <Field id="org-nit" etiqueta="NIT / Registro" valor={borrador.nit} onChange={(v) => setBorrador({ ...borrador, nit: v })} />
-          <Field id="org-dir" etiqueta="Dirección" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
+          <CampoDireccion
+            id="org-dir"
+            etiqueta="Dirección de la sede"
+            placeholder="Ej. Carrera 13 # 32-16 Bogotá o sede principal"
+            valor={borrador.dir}
+            biasCoords={borrador.lat && borrador.lng ? { lat: borrador.lat, lng: borrador.lng } : null}
+            onChange={(v) => setBorrador({ ...borrador, dir: v })}
+            onSeleccionarLugar={({ direccion, lat, lng }) => {
+              setBorrador({ ...borrador, dir: direccion, lat, lng });
+            }}
+            onConfirmar={(v) => setBorrador({ ...borrador, dir: v })}
+          />
           <Field id="org-tel" etiqueta="Teléfono público" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
           <Field id="org-correo" etiqueta="Correo público" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
           <Field id="org-web" etiqueta="Sitio web o redes" valor={borrador.web} onChange={(v) => setBorrador({ ...borrador, web: v })} />
@@ -787,6 +803,8 @@ const DatosComunidad: React.FC<{
           organization_type: borrador.tipo,
           document_number: borrador.nit,
           address: borrador.dir,
+          latitude: borrador.lat,
+          longitude: borrador.lng,
           contact_phone: borrador.contacto.tel,
           contact_email: borrador.contacto.correo,
           website_or_social: borrador.web || borrador.enlace,
@@ -824,7 +842,18 @@ const DatosComunidad: React.FC<{
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="com-nombre" etiqueta="Nombre del sector / barrio / comunidad" valor={borrador.nombre} onChange={(v) => setBorrador({ ...borrador, nombre: v })} requerido />
           <Field id="com-tipo" etiqueta="Tipo de representación (ej. JAC, Comuna)" valor={borrador.tipo} onChange={(v) => setBorrador({ ...borrador, tipo: v })} />
-          <Field id="com-dir" etiqueta="Ubicación o dirección del sector" valor={borrador.dir} onChange={(v) => setBorrador({ ...borrador, dir: v })} />
+          <CampoDireccion
+            id="com-dir"
+            etiqueta="Ubicación o dirección del sector"
+            placeholder="Ej. Comuna 20, Calle 5 # 10-20 o punto de referencia"
+            valor={borrador.dir}
+            biasCoords={borrador.lat && borrador.lng ? { lat: borrador.lat, lng: borrador.lng } : null}
+            onChange={(v) => setBorrador({ ...borrador, dir: v })}
+            onSeleccionarLugar={({ direccion, lat, lng }) => {
+              setBorrador({ ...borrador, dir: direccion, lat, lng });
+            }}
+            onConfirmar={(v) => setBorrador({ ...borrador, dir: v })}
+          />
           <Field id="com-tel" etiqueta="Teléfono de contacto para la comunidad" tipo="tel" valor={borrador.contacto.tel} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, tel: v } })} />
           <Field id="com-correo" etiqueta="Correo de contacto comunitarios" tipo="email" valor={borrador.contacto.correo} onChange={(v) => setBorrador({ ...borrador, contacto: { ...borrador.contacto, correo: v } })} />
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Mail, MessageCircle } from 'lucide-react';
+import { Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../../../i18n/LanguageContext';
 import {
   OFFICIAL_DOMAIN,
@@ -42,7 +42,7 @@ export const LandingFooter: React.FC = () => {
             <img src="/logo-radar.svg" alt="Radar de ayuda" width={2902} height={600} className="hidden h-9.5 w-auto claro:block" />
             <p className="m-0 max-w-sm text-rd-13-5 leading-relaxed text-rd-noche-tinta-2">{t('landingFooterTagline')}</p>
             <p className="m-0 pt-1 text-rd-11-5 text-rd-noche-meta">
-              {t('landingFooterMadeWith')} <Heart aria-hidden="true" className="inline h-3 w-3 text-rd-coral" /> {t('landingFooterByVolunteers')}
+              {t('landingFooterCreatedBy')}
             </p>
           </div>
 

@@ -7,6 +7,7 @@ import { CityFormCombobox } from '../../../components/CityFormCombobox';
 import { CustomSelect } from '../../../components/CustomSelect';
 import { ALL_CITIES, findCityById, findDepartmentByCityId } from '../../../data/colombiaCities';
 import { DocumentType, userRoleEnum } from '../schemas/registerSchema';
+import { CampoDireccion } from '../../../components/ui/CampoDireccion';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -552,15 +553,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Dirección Física
-                          </label>
-                          <input
-                            type="text"
-                            value={orgAddress}
-                            onChange={(e) => setValue('orgAddress', e.target.value)}
-                            placeholder="Ej: Calle 20 # 13-22"
-                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:border-purple-600 transition-all"
+                          <CampoDireccion
+                            id="profile-org-address"
+                            etiqueta="Dirección Física"
+                            placeholder="Ej: Carrera 13 # 32-16 Bogotá o sede principal"
+                            valor={orgAddress}
+                            biasCoords={activeOrg?.latitude && activeOrg?.longitude ? { lat: activeOrg.latitude, lng: activeOrg.longitude } : null}
+                            onChange={(val) => setValue('orgAddress', val, { shouldValidate: true })}
+                            onSeleccionarLugar={({ direccion, lat, lng }) => {
+                              setValue('orgAddress', direccion, { shouldValidate: true });
+                              setActiveOrg((prev: any) => ({ ...prev, latitude: lat, longitude: lng }));
+                            }}
+                            onConfirmar={(val) => setValue('orgAddress', val, { shouldValidate: true })}
                           />
                         </div>
                       </div>

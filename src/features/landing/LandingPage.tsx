@@ -75,10 +75,10 @@ export const LandingPage: React.FC = () => {
         <div className="space-y-8 sm:space-y-12">
           <LandingHero onOpenChat={() => setIsChatbotModalOpen(true)} />
 
-          <LandingAccesos />
-
           {/* Los tres pasos, cada uno en el bloque de la referencia. */}
           <LandingComoFunciona />
+
+          <LandingAccesos />
         </div>
 
         <div className="rd-degradado-radar space-y-8 overflow-x-clip pt-0 sm:pt-8 lg:pt-16 sm:space-y-12">

@@ -69,8 +69,8 @@ const VISTAS: {
   {
     id: 'radar',
     nombre: 'Radar',
-    texto: 'Lo que hace falta y lo que hay para dar, sobre el mapa de tu ciudad.',
-    detalle: ['Necesidades y ofertas en el mismo mapa', 'Filtros por recurso, zona y distancia', 'Aviso cuando algo encaja con lo tuyo'],
+    texto: 'Consulta las necesidades y los recursos disponibles en el mapa de tu municipio o ciudad.',
+    detalle: ['Necesidades y ofertas en el mismo mapa', 'Filtros por recurso, zona y distancia', 'Recibe notificaciones de ofertas y necesidades que coinciden con lo que ofreces o necesitas.'],
     href: '/mapa-ayudas-necesidades',
     enlace: 'Ir al Radar',
     Icono: MapPin,
@@ -79,8 +79,8 @@ const VISTAS: {
   {
     id: 'directorio',
     nombre: 'Directorio',
-    texto: 'Quién está respondiendo, en qué zona y desde cuándo.',
-    detalle: ['Organizaciones y comunidades verificadas', 'Qué atiende cada una y dónde', 'Contacto directo, sin intermediarios'],
+    texto: 'Encuentra voluntarios y organizaciones que ofrecen ayuda en tu zona',
+    detalle: ['Organizaciones y comunidades verificadas', 'Qué ayuda ofrece cada organización y dónde', 'Contacto directo, sin intermediarios'],
     href: '/directorio',
     enlace: 'Ir al Directorio',
     Icono: Users,
@@ -89,8 +89,8 @@ const VISTAS: {
   {
     id: 'panel',
     nombre: 'Mi organización',
-    texto: 'Tus publicaciones, tu equipo y la constancia de cada entrega.',
-    detalle: ['Tablero de lo que entregas y recibes', 'Acta firmada por las dos partes', 'Tu equipo y lo que puede hacer cada uno'],
+    texto: 'Gestiona tus publicaciones, equipo y registro de cada entrega.',
+    detalle: ['Tablero de lo que entregas y recibes', 'Acta firmada por ambas partes.', 'Tu equipo y las funciones de cada uno.'],
     href: '/panel',
     enlace: 'Ir a Mi organización',
     Icono: House,
@@ -305,7 +305,7 @@ export const LandingAccesos: React.FC = () => {
       ref={seccion}
       aria-labelledby="accesos-titulo"
       data-quieto={quieto ? '' : undefined}
-      className={`pointer-events-none relative z-10 ${fijado ? 'rd-accesos-recorrido' : 'lg:-mt-22'}`}
+      className={`pointer-events-none relative z-10 ${fijado ? 'rd-accesos-recorrido' : ''}`}
       style={fijado ? ({ ['--rd-recorrido' as string]: `${VISTAS.length * PASO_POR_VISTA * 100}svh` } as React.CSSProperties) : undefined}
     >
       {/* El titular de la sección. Desde 1024 se queda para quien navega por encabezados; en

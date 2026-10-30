@@ -69,7 +69,7 @@ export const LandingHero: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }
       <AnillosHero />
       <VentanaLiquida anfitrion={hero} texto={texto} />
 
-      <div ref={texto} className="rd-contenedor-landing relative flex min-h-[calc(100svh-4.5rem)] flex-col justify-center py-10 sm:min-h-0 sm:py-28 lg:py-36">
+      <div ref={texto} className="rd-contenedor-landing relative flex min-h-[calc(100svh-4.5rem)] sm:min-h-[calc(100svh-4rem)] flex-col justify-center py-10 sm:py-16 lg:py-20">
         {/* La grilla real de 12, la misma que dibuja `Grilla12`: el bloque ocupa de la columna 2 a
             la 11 por posición en la grilla y no por un ancho máximo a mano. A 1440 eso da 1116 px
             —10 columnas de 90 más 9 huecos de 24— pero el número no está escrito en ninguna parte,

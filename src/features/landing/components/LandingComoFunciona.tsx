@@ -258,14 +258,13 @@ export const LandingComoFunciona: React.FC = () => {
           nada. Hasta el 7 de octubre de 2026 era una sección aparte, y entre su párrafo y el primer
           paso quedaban 236 px (Alejandro: «Los títulos de cada sección estén mas cerca del
           contenido de su sección porque se ven muy distantes»). */}
-      <Seccion id="como-funciona" className="!pb-8 sm:!pb-14 lg:!pb-20">
+      <Seccion id="como-funciona" className="!pt-8 sm:!pt-12 lg:!pt-14 !pb-8 sm:!pb-14 lg:!pb-20">
         <div className="mx-auto max-w-2xl text-center">
           <Titular>
             {t('landingHowTitleBefore')}RaDAR{t('landingHowTitleAfter')}
           </Titular>
           <Parrafo className="mx-auto mt-4">
-            Tres pasos: alguien dice qué le hace falta, RaDAR lo cruza con quien lo tiene, y la
-            entrega queda registrada.
+            {t('landingHowSubtitle')}
           </Parrafo>
         </div>
 

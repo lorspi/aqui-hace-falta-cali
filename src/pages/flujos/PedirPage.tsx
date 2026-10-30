@@ -291,6 +291,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   const errores = useErrores(sub?.id ?? '');
 
   const [direccionTexto, setDireccionTexto] = useState<string>(() => e.dir || '');
+  const [direccionConfirmada, setDireccionConfirmada] = useState<boolean>(() => Boolean(e.dir && e.lat && e.lng));
 
   useEffect(() => {
     document.title = 'RaDAR · Pedir ayuda';
@@ -308,6 +309,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       set((prev) => {
         if (!prev.dir && direccion) {
           setDireccionTexto(direccion);
+          setDireccionConfirmada(true);
         }
         return {
           contacto: prev.contacto || nombreContacto,
@@ -332,6 +334,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     if (!e.dir && direccionTexto) {
       setDireccionTexto('');
       direccionDelPinRef.current = '';
+      setDireccionConfirmada(false);
     }
   }, [e.dir, direccionTexto]);
 
@@ -356,6 +359,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             direccionDelPinRef.current = structured.direccionCompleta;
             set({ dir: structured.direccionCompleta });
             setDireccionTexto(structured.direccionCompleta);
+            setDireccionConfirmada(true);
             errores.limpiar('dir');
           }
         } catch {
@@ -390,6 +394,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         direccionDelPinRef.current = structured.direccionCompleta;
         set({ dir: structured.direccionCompleta });
         setDireccionTexto(structured.direccionCompleta);
+        setDireccionConfirmada(true);
         errores.limpiar('dir');
       }
     } catch (err) {
@@ -416,6 +421,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       if (res) {
         direccionDelPinRef.current = d;
         set({ lat: res.lat, lng: res.lng });
+        setDireccionConfirmada(true);
         errores.limpiar('dir');
         if (res.isApproximation) {
           const nombreLugar = res.displayName?.split(',')[0] || 'la zona';
@@ -424,10 +430,12 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           setAvisoAproximacion(null);
         }
       } else {
+        setDireccionConfirmada(false);
         errores.poner('dir', t('flowLocationNotFoundError'));
         setAvisoAproximacion(null);
       }
     } catch {
+      setDireccionConfirmada(false);
       errores.poner('dir', t('flowLocationNotFoundError'));
       setAvisoAproximacion(null);
     } finally {
@@ -663,6 +671,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           onChange={(v) => {
             setDireccionTexto(v);
             direccionDelPinRef.current = '';
+            setDireccionConfirmada(false);
             setAvisoAproximacion(null);
             errores.limpiar('dir');
             set({ dir: v });
@@ -675,6 +684,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
           onSeleccionarLugar={({ direccion, lat, lng }) => {
             setDireccionTexto(direccion);
             direccionDelPinRef.current = direccion;
+            setDireccionConfirmada(true);
             errores.limpiar('dir');
             setAvisoAproximacion(null);
             set({ dir: direccion, lat, lng });
@@ -773,7 +783,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
   }
 
   const hayErrorActivo = Object.values(errores.errores).some(Boolean);
-  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir && Boolean(direccionTexto.trim())));
+  const estaListo = f.listoActual && !hayErrorActivo && (sub?.id !== 'donde' || (!cargandoGeocodificacion && !errores.errores.dir && Boolean(direccionTexto.trim()) && direccionConfirmada));
 
   const alContinuar = async () => {
     if (sub?.id === 'donde') {
@@ -783,20 +793,23 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
         return;
       }
       if (errores.errores.dir) return;
-      const compuesta = direccionTexto.trim();
-      if (compuesta && compuesta.length >= 3 && compuesta !== direccionDelPinRef.current) {
+      if (!direccionConfirmada) {
         setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
         setCargandoGeocodificacion(true);
         try {
-          const res = await geocodeAddressStructured(compuesta);
+          const res = await geocodeAddressStructured(direccionTexto.trim());
           if (res) {
             set({ lat: res.lat, lng: res.lng });
+            direccionDelPinRef.current = direccionTexto.trim();
+            setDireccionConfirmada(true);
             errores.limpiar('dir');
             f.siguiente();
           } else {
+            setDireccionConfirmada(false);
             errores.poner('dir', t('flowLocationNotFoundError'));
           }
         } catch {
+          setDireccionConfirmada(false);
           errores.poner('dir', t('flowLocationNotFoundError'));
         } finally {
           setCargandoGeocodificacion(false);

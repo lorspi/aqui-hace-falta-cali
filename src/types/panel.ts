@@ -247,6 +247,8 @@ export interface DatosOrg {
   tipo: string;
   nit: string;
   dir: string;
+  lat?: number;
+  lng?: number;
   contacto: { tel: string; wa: boolean; correo: string };
   enlace: string;
   directorio: boolean;

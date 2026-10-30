@@ -107,6 +107,14 @@ const ESCALA_CHICA = 0.55;
 const JUEGOS_CHICOS = juegos(ANILLOS.slice(0, CUANTOS_CHICO));
 
 /**
+ * Onda expansiva de sonar: una sola línea sutil trazada a mano con la misma fórmula
+ * exacta (`trazado`) de los 12 anillos concéntricos del radar, garantizando 100% de
+ * armonía geométrica, finura y sincronía concéntrica con el fondo.
+ */
+const ONDA_SONAR_A = trazado(RADIO_INICIAL, azar(101));
+const ONDA_SONAR_B = trazado(RADIO_INICIAL, azar(202));
+
+/**
  * Puntos aleatorios (blips) en el radar del hero:
  * Aparecen en posiciones variables exclusivamente con el paso de cada onda expansiva,
  * iluminándose y desvaneciéndose en armonía con el pulso del sonar.
@@ -216,9 +224,38 @@ export const AnillosHero: React.FC = () => {
       data-quieto={fuera ? '' : undefined}
       className="rd-hero-anillos pointer-events-none absolute inset-0 overflow-hidden"
     >
-      {/* 1. Pulsos de sonar concéntricos desde el centro */}
-      <div className="rd-hero-sonar pointer-events-none" aria-hidden="true" />
-      <div className="rd-hero-sonar rd-hero-sonar-retraso pointer-events-none" aria-hidden="true" />
+      {/* 1. Pulso de sonar: una sola línea sutil, fina y concéntrica con los anillos */}
+      <svg
+        aria-hidden="true"
+        className="rd-hero-sonar pointer-events-none absolute top-1/2 left-1/2 overflow-visible"
+        width={anchoPx}
+        height={anchoPx}
+        viewBox={`${desde} ${desde} ${lado} ${lado}`}
+      >
+        <path
+          d={ONDA_SONAR_A}
+          className="fill-none stroke-rd-ayuda"
+          strokeOpacity={0.32}
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <svg
+        aria-hidden="true"
+        className="rd-hero-sonar rd-hero-sonar-retraso pointer-events-none absolute top-1/2 left-1/2 overflow-visible"
+        width={anchoPx}
+        height={anchoPx}
+        viewBox={`${desde} ${desde} ${lado} ${lado}`}
+      >
+        <path
+          d={ONDA_SONAR_B}
+          className="fill-none stroke-rd-ayuda"
+          strokeOpacity={0.32}
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
 
       {/* 2. Anillos concéntricos sinuosos dibujados a mano */}
       <div className="rd-hero-anillos-pulso pointer-events-none absolute inset-0">

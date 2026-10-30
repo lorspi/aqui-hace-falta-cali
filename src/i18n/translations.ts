@@ -546,11 +546,12 @@ export const translations = {
     footerPrivacy: 'Política de Privacidad',
 
     // Landing Page
-    landingHeroTitle: 'Conectamos a quien necesita ayuda',
-    landingHeroTitleSoft: 'con quien puede darla.',
-    landingHeroTitleMovil: 'Conectamos a quien necesita ayuda',
-    landingHeroTitleSoftMovil: 'con quien puede darla.',
-    landingHeroSubtitle: 'Organizaciones, comunidades y voluntarios permiten que las conexiones se hagan realidad',
+    landingHeroTitle: 'Aquí, conectamos a quienes ayudan',
+    landingHeroTitleSoft: 'con quienes más lo necesitan.',
+    landingHeroTitleMovil: 'Aquí, conectamos a quienes ayudan',
+    landingHeroTitleSoftMovil: 'con quienes más lo necesitan.',
+    landingHeroSubheading: 'Aquí, conectamos a quienes ayudan con quienes más lo necesitan.',
+    landingHeroSubtitle: 'Organizaciones, comunidades y voluntarios coordinados en tiempo real para reportar necesidades, conectar ofertas y hacer seguimiento a cada ayuda.',
     landingAccesosTitulo: 'Todo lo que hace falta, en un solo lugar',
     landingHeroCtaNeed: 'Pedir ayuda',
     landingHeroCtaOffer: 'Ofrecer ayuda',
@@ -570,25 +571,26 @@ export const translations = {
     // Landing - How it works
     landingHowTitleBefore: '¿Cómo funciona ',
     landingHowTitleAfter: '?',
+    landingHowSubtitle: 'Es muy fácil: alguien reporta lo que hace falta, el mapa conecta la ayuda compatible más cercana y la entrega queda registrada con soporte real en territorio.',
     landingHowStep1Pill: 'Reporta',
     landingHowStep1Title: 'Transformamos la emergencia en datos accionables',
-    landingHowStep1Desc: 'Centralización, estructuración y verificación de las necesidades en territorio, transformando las emergencias en datos accionables.',
-    landingHowStep1H1: 'Centralización en territorio',
+    landingHowStep1Desc: 'Centralizamos y organizamos las necesidades reportadas por la comunidad para coordinar la ayuda.',
+    landingHowStep1H1: 'Necesidades reunidas en un solo lugar.',
     landingHowStep1H2: 'Verificación comunitaria',
     landingHowStep1H3: 'Datos accionables en tiempo real',
 
     landingHowStep2Pill: 'Conecta',
     landingHowStep2Title: 'Articulamos ayuda real con quienes la necesitan',
-    landingHowStep2Desc: 'Articulación inteligente de respuestas de ayuda, interconectando capacidades y recursos complementarios para activar RADARes de colaboración abierta.',
+    landingHowStep2Desc: 'Conectamos las necesidades con organizaciones y personas que pueden aportar los recursos, ayudas o servicios.',
     landingHowStep2H1: 'Red de aliados e iniciativas activas',
     landingHowStep2H2: 'Enrutamiento inteligente de recursos',
-    landingHowStep2H3: 'Colaboración abierta y crowdsourcing',
+    landingHowStep2H3: 'Colaboración abierta y comunitaria.',
 
     landingHowStep3Pill: 'Monitorea',
     landingHowStep3Title: 'Trazabilidad total del impacto en cada comunidad',
     landingHowStep3Desc: 'Seguimiento y trazabilidad de la destinación de los recursos y su impacto real en las comunidades atendidas, consolidando un reporte vivo de impacto.',
     landingHowStep3H1: 'Seguimiento a la entrega de recursos',
-    landingHowStep3H2: 'Métricas de impacto verificadas',
+    landingHowStep3H2: 'Registro transparente de entregas',
     landingHowStep3H3: 'Reportes abiertos a la comunidad',
 
     // Landing - Split Portal
@@ -651,6 +653,7 @@ export const translations = {
 
     // Landing - Footer
     landingFooterTagline: 'Un solo punto de encuentro digital para articular la ayuda. Para que los tuyos, los míos y los nuestros estemos bien y en el radar.',
+    landingFooterCreatedBy: 'Creado por voluntarios en Colombia.',
     landingFooterMadeWith: 'Hecho con',
     landingFooterByVolunteers: 'por voluntarios en Colombia.',
     landingFooterPlatform: 'Plataforma',
@@ -659,7 +662,7 @@ export const translations = {
     // (§4). Las claves del pie de la herramienta (`footerTerms`, `footerPrivacy`) son del equipo.
     landingFooterTerminos: 'Términos y condiciones',
     landingFooterPrivacidad: 'Política de privacidad',
-    landingFooterCopyright: '© 2026 raDAR de Ayuda. Iniciativa abierta y comunitaria.',
+    landingFooterCopyright: '© 2026 RaDAR de Ayuda. Iniciativa abierta y comunitaria.',
     // Navigation & Shell
     navRadar: 'Radar',
     navDirectory: 'Directorio',
@@ -1614,11 +1617,12 @@ export const translations = {
     footerPrivacy: 'Privacy Policy',
 
     // Landing Page
-    landingHeroTitle: 'We connect those who need help',
-    landingHeroTitleSoft: 'with those who can give it.',
-    landingHeroTitleMovil: 'We connect those who need help',
-    landingHeroTitleSoftMovil: 'with those who can give it.',
-    landingHeroSubtitle: 'Organizations, communities and volunteers make connections real',
+    landingHeroTitle: 'Here, we connect those who help',
+    landingHeroTitleSoft: 'with those who need it most.',
+    landingHeroTitleMovil: 'Here, we connect those who help',
+    landingHeroTitleSoftMovil: 'with those who need it most.',
+    landingHeroSubheading: 'Here, we connect those who help with those who need it most.',
+    landingHeroSubtitle: 'Organizations, communities, and volunteers can coordinate in real time to report needs, match offers, and track every delivery.',
     landingAccesosTitulo: 'Everything you need, in one place',
     landingHeroCtaNeed: 'Request help',
     landingHeroCtaOffer: 'Offer help',
@@ -1638,25 +1642,26 @@ export const translations = {
     // Landing - How it works
     landingHowTitleBefore: 'How does ',
     landingHowTitleAfter: ' work?',
+    landingHowSubtitle: 'It is very simple: someone reports what is needed, the map connects the closest compatible aid, and the delivery is recorded with real on-the-ground support.',
     landingHowStep1Pill: 'Report',
     landingHowStep1Title: 'We turn emergencies into actionable data',
-    landingHowStep1Desc: 'Centralizing, structuring, and verifying on-the-ground needs, turning emergencies into actionable data.',
-    landingHowStep1H1: 'On-the-ground centralization',
+    landingHowStep1Desc: 'We centralize and organize needs reported by the community to coordinate aid.',
+    landingHowStep1H1: 'Needs brought together in one place.',
     landingHowStep1H2: 'Community verification',
     landingHowStep1H3: 'Real-time actionable data',
 
     landingHowStep2Pill: 'Connect',
     landingHowStep2Title: 'Connecting real aid with those in need',
-    landingHowStep2Desc: 'Smart orchestration of relief efforts, connecting capabilities and complementary resources to power open collaboration networks.',
+    landingHowStep2Desc: 'We connect needs with organizations and people who can provide resources, aid, or services.',
     landingHowStep2H1: 'Active allies and initiatives network',
     landingHowStep2H2: 'Intelligent resource routing',
-    landingHowStep2H3: 'Open collaboration & crowdsourcing',
+    landingHowStep2H3: 'Open and community collaboration.',
 
     landingHowStep3Pill: 'Monitor',
     landingHowStep3Title: 'Full traceability and impact in every community',
     landingHowStep3Desc: 'Tracking resource allocation and real-world impact in supported communities, delivering a live, transparent impact report.',
     landingHowStep3H1: 'Resource delivery tracking',
-    landingHowStep3H2: 'Verified impact metrics',
+    landingHowStep3H2: 'Transparent delivery record',
     landingHowStep3H3: 'Open community reports',
 
     // Landing - Split Portal
@@ -1718,13 +1723,14 @@ export const translations = {
 
     // Landing - Footer
     landingFooterTagline: 'A single digital meeting point to coordinate aid. Keeping everyone safe and on the radar.',
+    landingFooterCreatedBy: 'Created by volunteers in Colombia.',
     landingFooterMadeWith: 'Made with',
     landingFooterByVolunteers: 'by volunteers in Colombia.',
     landingFooterPlatform: 'Platform',
     landingFooterContact: 'Contact',
     landingFooterTerminos: 'Terms and conditions',
     landingFooterPrivacidad: 'Privacy policy',
-    landingFooterCopyright: '© 2026 raDAR de Ayuda. Open community initiative.',
+    landingFooterCopyright: '© 2026 RaDAR de Ayuda. Open community initiative.',
     // Navigation & Shell
     navRadar: 'Radar',
     navDirectory: 'Directory',
@@ -2679,11 +2685,12 @@ export const translations = {
     footerPrivacy: 'Política de Privacidade',
 
     // Landing Page
-    landingHeroTitle: 'Conectamos quem precisa de ajuda',
-    landingHeroTitleSoft: 'com quem pode ajudar.',
-    landingHeroTitleMovil: 'Conectamos quem precisa de ajuda',
-    landingHeroTitleSoftMovil: 'com quem pode ajudar.',
-    landingHeroSubtitle: 'Organizações, comunidades e voluntários fazem com que as conexões aconteçam',
+    landingHeroTitle: 'Aqui, conectamos quem ajuda',
+    landingHeroTitleSoft: 'com quem mais precisa.',
+    landingHeroTitleMovil: 'Aqui, conectamos quem ajuda',
+    landingHeroTitleSoftMovil: 'com quem mais precisa.',
+    landingHeroSubheading: 'Aqui, conectamos quem ajuda com quem mais precisa.',
+    landingHeroSubtitle: 'Organizações, comunidades e voluntários podem se coordenar em tempo real para relatar necessidades, conectar ofertas e acompanhar cada ajuda.',
     landingAccesosTitulo: 'Tudo o que faz falta, em um só lugar',
     landingHeroCtaNeed: 'Pedir ajuda',
     landingHeroCtaOffer: 'Oferecer ajuda',
@@ -2703,25 +2710,26 @@ export const translations = {
     // Landing - How it works
     landingHowTitleBefore: 'Como funciona o ',
     landingHowTitleAfter: '?',
+    landingHowSubtitle: 'É muito fácil: alguém relata o que falta, o mapa conecta a ajuda compatível mais próxima e a entrega fica registrada com suporte real no território.',
     landingHowStep1Pill: 'Reporte',
     landingHowStep1Title: 'Transformamos a emergência em dados acionáveis',
-    landingHowStep1Desc: 'Centralização, estruturação e verificação das necessidades no território, transformando emergências em dados acionáveis.',
-    landingHowStep1H1: 'Centralização no território',
+    landingHowStep1Desc: 'Centralizamos e organizamos as necessidades relatadas pela comunidade para coordenar a ajuda.',
+    landingHowStep1H1: 'Necessidades reunidas em um só lugar.',
     landingHowStep1H2: 'Verificação comunitária',
     landingHowStep1H3: 'Dados acionáveis em tempo real',
 
     landingHowStep2Pill: 'Conecte',
     landingHowStep2Title: 'Articulamos ajuda real com quem precisa',
-    landingHowStep2Desc: 'Articulação inteligente de respostas de ajuda, conectando capacidades e recursos complementares para ativar colaboração aberta.',
+    landingHowStep2Desc: 'Conectamos as necessidades com organizações e pessoas que podem fornecer recursos, ajuda ou serviços.',
     landingHowStep2H1: 'Rede de aliados e iniciativas ativas',
     landingHowStep2H2: 'Roteamento inteligente de recursos',
-    landingHowStep2H3: 'Colaboração aberta e crowdsourcing',
+    landingHowStep2H3: 'Colaboração aberta e comunitária.',
 
     landingHowStep3Pill: 'Monitore',
     landingHowStep3Title: 'Rastreabilidade total do impacto em cada comunidade',
     landingHowStep3Desc: 'Acompanhamento da destinação dos recursos e seu impacto real nas comunidades atendidas, consolidando um relatório vivo de impacto.',
     landingHowStep3H1: 'Rastreamento de entrega de recursos',
-    landingHowStep3H2: 'Métricas de impacto verificadas',
+    landingHowStep3H2: 'Registro transparente de entregas',
     landingHowStep3H3: 'Relatórios abertos à comunidade',
 
     // Landing - Split Portal
@@ -2783,13 +2791,14 @@ export const translations = {
 
     // Landing - Footer
     landingFooterTagline: 'Um único ponto de encontro digital para articular a ajuda. Para que todos estejamos bem e no radar.',
+    landingFooterCreatedBy: 'Criado por voluntários na Colômbia.',
     landingFooterMadeWith: 'Feito com',
     landingFooterByVolunteers: 'por voluntários na Colômbia.',
     landingFooterPlatform: 'Plataforma',
     landingFooterContact: 'Contato',
     landingFooterTerminos: 'Termos e condições',
     landingFooterPrivacidad: 'Política de privacidade',
-    landingFooterCopyright: '© 2026 raDAR de Ayuda. Iniciativa aberta e comunitária.',
+    landingFooterCopyright: '© 2026 RaDAR de Ayuda. Iniciativa aberta e comunitária.',
     // Navigation & Shell
     navRadar: 'Radar',
     navDirectory: 'Diretório',
@@ -3744,11 +3753,12 @@ export const translations = {
     footerPrivacy: 'Politique de Confidentialité',
 
     // Landing Page
-    landingHeroTitle: "Nous connectons ceux qui ont besoin d'aide",
-    landingHeroTitleSoft: 'avec ceux qui peuvent aider.',
-    landingHeroTitleMovil: "Nous connectons ceux qui ont besoin d'aide",
-    landingHeroTitleSoftMovil: 'avec ceux qui peuvent aider.',
-    landingHeroSubtitle: 'Organisations, communautés et bénévoles font exister les connexions',
+    landingHeroTitle: 'Ici, nous relions ceux qui aident',
+    landingHeroTitleSoft: 'et ceux qui en ont le plus besoin.',
+    landingHeroTitleMovil: 'Ici, nous relions ceux qui aident',
+    landingHeroTitleSoftMovil: 'et ceux qui en ont le plus besoin.',
+    landingHeroSubheading: 'Ici, nous relions ceux qui aident et ceux qui en ont le plus besoin.',
+    landingHeroSubtitle: 'Organisations, communautés et bénévoles peuvent se coordonner en temps réel pour signaler des besoins, connecter des offres et suivre chaque aide.',
     landingAccesosTitulo: 'Tout ce qu’il faut, au même endroit',
     landingHeroCtaNeed: "Demander de l'aide",
     landingHeroCtaOffer: "Offrir de l'aide",
@@ -3768,25 +3778,26 @@ export const translations = {
     // Landing - How it works
     landingHowTitleBefore: 'Comment fonctionne ',
     landingHowTitleAfter: ' ?',
+    landingHowSubtitle: "C'est très simple : quelqu'un signale ce qui manque, la carte connecte l'aide compatible la plus proche et la livraison est enregistrée avec un soutien réel sur le terrain.",
     landingHowStep1Pill: 'Signalez',
     landingHowStep1Title: "Transformons l'urgence en données exploitables",
-    landingHowStep1Desc: "Centralisation, structuration et vérification des besoins sur le terrain, transformant les urgences en données exploitables.",
-    landingHowStep1H1: 'Centralisation sur le terrain',
+    landingHowStep1Desc: 'Nous centralisons et organisons les besoins signalés par la communauté pour coordonner l’aide.',
+    landingHowStep1H1: 'Besoins rassemblés en un seul endroit.',
     landingHowStep1H2: 'Vérification communautaire',
     landingHowStep1H3: 'Données exploitables en temps réel',
 
     landingHowStep2Pill: 'Connectez',
     landingHowStep2Title: 'Relier une aide réelle à ceux qui en ont besoin',
-    landingHowStep2Desc: "Coordination intelligente des réponses d'aide, interconnectant les capacités pour activer des réseaux de collaboration ouverte.",
+    landingHowStep2Desc: 'Nous connectons les besoins avec les organisations et personnes capables d’apporter des ressources, aides ou services.',
     landingHowStep2H1: 'Réseau de partenaires et initiatives actives',
     landingHowStep2H2: 'Acheminement intelligent des ressources',
-    landingHowStep2H3: 'Collaboration ouverte et crowdsourcing',
+    landingHowStep2H3: 'Collaboration ouverte et communautaire.',
 
     landingHowStep3Pill: 'Suivez',
     landingHowStep3Title: "Traçabilité totale de l'impact dans chaque communauté",
     landingHowStep3Desc: "Suivi et traçabilité de l'acheminement des ressources et de leur impact réel, consolidant un rapport vivant d'impact.",
     landingHowStep3H1: 'Suivi de livraison des ressources',
-    landingHowStep3H2: "Indicateurs d'impact vérifiés",
+    landingHowStep3H2: 'Registre transparent des livraisons',
     landingHowStep3H3: 'Rapports ouverts à la communauté',
 
     // Landing - Split Portal
@@ -3848,13 +3859,14 @@ export const translations = {
 
     // Landing - Footer
     landingFooterTagline: 'Un point de rencontre numérique unique pour articuler l’aide. Pour que chacun soit en sécurité et sur le radar.',
+    landingFooterCreatedBy: 'Créé par des bénévoles en Colombie.',
     landingFooterMadeWith: 'Fait avec',
     landingFooterByVolunteers: 'par des bénévoles en Colombie.',
     landingFooterPlatform: 'Plateforme',
     landingFooterContact: 'Contact',
     landingFooterTerminos: 'Conditions générales',
     landingFooterPrivacidad: 'Politique de confidentialité',
-    landingFooterCopyright: '© 2026 raDAR de Ayuda. Initiative ouverte et communautaire.',
+    landingFooterCopyright: '© 2026 RaDAR de Ayuda. Initiative ouverte et communautaire.',
     // Navigation & Shell
     navRadar: 'Radar',
     navDirectory: 'Annuaire',
