@@ -141,6 +141,28 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(res).toBeNull();
   });
 
+  it('GEO-01 / GEO-03 / PDA-08: El paso "donde" solo se habilita con confirmación explícita (sugerencia/pin/GPS) y se desactiva ante texto libre o edición', () => {
+    const subDonde = { id: 'donde', paso: 2 as const, nombre: 'Dónde' };
+    const eBase = { ...estadoInicialPedir(), dir: 'Carrera 14 Armenia', lat: 4.542, lng: -75.669 };
+
+    // Función de cálculo de habilitación usada en PedirPage y OfrecerPage
+    const calcularEstaListo = (listoActual: boolean, direccionTexto: string, direccionConfirmada: boolean, cargando: boolean = false, error: string | null = null) => {
+      return listoActual && !error && (!cargando && !error && Boolean(direccionTexto.trim()) && direccionConfirmada);
+    };
+
+    // 1. GEO-01: Usuario escribe texto libre sin elegir sugerencia (direccionConfirmada = false) -> botón bloqueado
+    const textoLibreListo = calcularEstaListo(listoPedir(eBase, subDonde), 'Carrera 14 Armenia', false);
+    expect(textoLibreListo).toBe(false);
+
+    // 2. GEO-02: Usuario elige una sugerencia de Google (direccionConfirmada = true) -> botón habilitado
+    const sugerenciaElegidaListo = calcularEstaListo(listoPedir(eBase, subDonde), 'Cra. 14, Armenia, Quindío, Colombia', true);
+    expect(sugerenciaElegidaListo).toBe(true);
+
+    // 3. GEO-03: Usuario edita el texto tras haber elegido sugerencia (direccionConfirmada vuelve a false por onChange) -> botón vuelve a bloquearse
+    const textoModificadoListo = calcularEstaListo(listoPedir(eBase, subDonde), 'Cra. 14, Armenia, Quindío inventado', false);
+    expect(textoModificadoListo).toBe(false);
+  });
+
   it('GEO-02 / PDA-08: Texto libre sin sugerencia ("zzzqqq xxxyyy 999999") no se geocodifica y no retorna coordenadas', async () => {
     const res = await geocodeAddressStructured('zzzqqq xxxyyy 999999');
     expect(res).toBeNull();

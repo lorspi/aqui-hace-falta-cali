@@ -15,23 +15,69 @@ export const TAXONOMIA: CategoriaRecurso[] = [
   { nombre: 'Rescate y maquinaria', items: ['Equipo búsqueda y rescate', 'Herramientas de mano', 'Remoción de escombros y barro', 'Maquinaria pesada y operarios', 'Plantas eléctricas / Generadores', 'Equipos de bombeo'], icono: 'shovel' },
   { nombre: 'Materiales y reconstrucción', items: ['Evaluación estructural y técnica', 'Materiales de obra básica', 'Ferretería e instalaciones básicas', 'Cubiertas y cerramientos', 'Herramientas de construcción', 'Mano de obra técnica y oficios'], icono: 'hammer' },
   { nombre: 'Transporte e instalaciones', items: ['Alojamiento temporal', 'Transporte terrestre', 'Transporte aéreo', 'Transporte fluvial', 'Saneamiento y baños portátiles', 'Almacenamiento y bodegaje', 'Aulas y espacios educativos temporales', 'Cocinas comunitarias'], icono: 'truck' },
-  { nombre: 'Donación económica', items: ['Aporte económico / Donación en dinero'], icono: 'package' },
+  { nombre: 'Donación económica', items: ['Aporte económico / Donación en dinero'], icono: 'dollar' },
   { nombre: 'Capacidades y servicios técnicos', items: ['Ingeniería, arquitectura y peritaje', 'Geología, geotecnia y gestión del riesgo', 'Asesoría legal y jurídica', 'Auditoría, contabilidad y finanzas', 'Veterinaria y manejo zootécnico', 'Salud mental y apoyo psicosocial'], icono: 'seal' },
-  { nombre: 'Voluntariado y apoyo comunitario', items: ['Voluntariado en acopio y empaque', 'Voluntariado en terreno', 'Voluntariado social y comunitario', 'Censo, registro y apoyo operativo'], icono: 'house' },
+  { nombre: 'Voluntariado y apoyo comunitario', items: ['Voluntariado en acopio y empaque', 'Voluntariado en terreno', 'Voluntariado social y comunitario', 'Censo, registro y apoyo operativo'], icono: 'users' },
 ];
 
-/** Iconos propios de algunos ítems; el resto toma el de su categoría. */
+/** Iconos propios de cada uno de los 41 ítems de la taxonomía. */
 export const ICONO_ITEM: Record<string, IconoRecurso> = {
+  // Víveres y bienestar básico
   'Agua potable': 'drop',
-  Alimentos: 'bowl',
+  'Alimentos': 'bowl',
   'Ropa y calzado': 'shirt',
+  'Implementos de aseo e higiene': 'soap',
+  'Cobijas y colchonetas': 'bed',
+  'Cuidado y alimento de animales': 'paw',
+
+  // Salud y asistencia
   'Atención médica': 'stetho',
   'Medicamentos / Botiquín': 'pill',
+  'Donar sangre / Banco de sangre': 'syringe',
+  'Protección respiratoria': 'mask',
+
+  // Rescate y maquinaria
+  'Equipo búsqueda y rescate': 'life-buoy',
+  'Herramientas de mano': 'wrench',
   'Remoción de escombros y barro': 'shovel',
-  'Herramientas de mano': 'hammer',
+  'Maquinaria pesada y operarios': 'tractor',
   'Plantas eléctricas / Generadores': 'bolt',
-  'Transporte terrestre': 'truck',
+  'Equipos de bombeo': 'pump',
+
+  // Materiales y reconstrucción
+  'Evaluación estructural y técnica': 'clipboard-check',
+  'Materiales de obra básica': 'brick-wall',
+  'Ferretería e instalaciones básicas': 'cable',
+  'Cubiertas y cerramientos': 'tent',
+  'Herramientas de construcción': 'hammer',
+  'Mano de obra técnica y oficios': 'user-cog',
+
+  // Transporte e instalaciones
   'Alojamiento temporal': 'house',
+  'Transporte terrestre': 'truck',
+  'Transporte aéreo': 'plane',
+  'Transporte fluvial': 'ship',
+  'Saneamiento y baños portátiles': 'bath',
+  'Almacenamiento y bodegaje': 'warehouse',
+  'Aulas y espacios educativos temporales': 'book-open',
+  'Cocinas comunitarias': 'cooking-pot',
+
+  // Donación económica
+  'Aporte económico / Donación en dinero': 'dollar',
+
+  // Capacidades y servicios técnicos
+  'Ingeniería, arquitectura y peritaje': 'drafting-compass',
+  'Geología, geotecnia y gestión del riesgo': 'mountain',
+  'Asesoría legal y jurídica': 'scale',
+  'Auditoría, contabilidad y finanzas': 'calculator',
+  'Veterinaria y manejo zootécnico': 'dog',
+  'Salud mental y apoyo psicosocial': 'brain',
+
+  // Voluntariado y apoyo comunitario
+  'Voluntariado en acopio y empaque': 'package-plus',
+  'Voluntariado en terreno': 'footprints',
+  'Voluntariado social y comunitario': 'users',
+  'Censo, registro y apoyo operativo': 'clipboard-list',
 };
 
 /** Ubicación simulada de la persona que mira. En producción la da el dispositivo. Lleva la

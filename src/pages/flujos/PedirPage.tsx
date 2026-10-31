@@ -29,7 +29,7 @@ import type { HelpCategory, Need, PlaceType } from '../../types';
 import { mapEmergencyEventToId, mapItemToCatalog, mapItemsToHelpCategories, mapTipoLugarToPlaceType } from '../../utils/enumMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { detectCityFromCoords } from '../../data/colombiaCities';
-import { geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeAddress, reverseGeocodeStructured } from '../../utils/geocoding';
+import { geocodeAddressStructured, reverseGeocodeStructured } from '../../utils/geocoding';
 
 /**
  * Pedir ayuda (mockup/*): `src/pedir.html` del prototipo. Una pregunta por pantalla. Lo que
@@ -463,21 +463,6 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     }
   }, [set, errores, t]);
 
-  useEffect(() => {
-    if (sub?.id === 'donde') {
-      const d = direccionTexto.trim();
-      if (!d || d.length < 3 || isAddressIncomplete(d)) return;
-      if (d === direccionDelPinRef.current) return;
-
-      const timer = setTimeout(() => {
-        if (d === direccionDelPinRef.current) return;
-        geocodificarUbicacion(d);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [sub?.id, direccionTexto, geocodificarUbicacion]);
-
   const metas = calcularMetas(e.sel, e.grupo, e.dias);
   const toggle = (it: string) => set((p) => ({ sel: p.sel.includes(it) ? p.sel.filter((x) => x !== it) : [...p.sel, it] }));
   const detalle = (it: string, cambio: RespuestasDetalle) => set((p) => ({ det: { ...p.det, [it]: { ...(p.det[it] ?? {}), ...cambio } } }));
@@ -709,11 +694,6 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
             setAvisoAproximacion(null);
             set({ dir: direccion, lat, lng });
           }}
-          onBlur={() => {
-            if (direccionTexto.trim() && direccionTexto.trim() !== direccionDelPinRef.current) {
-              geocodificarUbicacion(direccionTexto);
-            }
-          }}
           error={errores.errores.dir}
           className="mb-3"
         />
@@ -814,26 +794,6 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
       }
       if (errores.errores.dir) return;
       if (!direccionConfirmada) {
-        setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
-        setCargandoGeocodificacion(true);
-        try {
-          const res = await geocodeAddressStructured(direccionTexto.trim());
-          if (res) {
-            set({ lat: res.lat, lng: res.lng });
-            direccionDelPinRef.current = direccionTexto.trim();
-            setDireccionConfirmada(true);
-            errores.limpiar('dir');
-            f.siguiente();
-          } else {
-            setDireccionConfirmada(false);
-            errores.poner('dir', t('flowLocationNotFoundError'));
-          }
-        } catch {
-          setDireccionConfirmada(false);
-          errores.poner('dir', t('flowLocationNotFoundError'));
-        } finally {
-          setCargandoGeocodificacion(false);
-        }
         return;
       }
     }

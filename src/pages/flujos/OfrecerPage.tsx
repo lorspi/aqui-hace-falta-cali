@@ -28,7 +28,7 @@ import type { HelpCategory, Offer } from '../../types';
 import { mapItemToCatalog, mapItemsToHelpCategories } from '../../utils/enumMappers';
 import { uploadEvidencePhotos } from '../../utils/storageUpload';
 import { detectCityFromCoords } from '../../data/colombiaCities';
-import { geocodeAddress, geocodeAddressStructured, isAddressIncomplete, reverseGeocodeAddress, reverseGeocodeStructured } from '../../utils/geocoding';
+import { geocodeAddressStructured, reverseGeocodeStructured } from '../../utils/geocoding';
 
 /**
  * Ofrecer ayuda (mockup/*): `src/ofrecer-v2.html` del prototipo. Una organización registrada
@@ -501,21 +501,6 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     }
   }, [set, errores, t]);
 
-  useEffect(() => {
-    if (sub?.id === 'donde') {
-      const d = direccionTexto.trim();
-      if (!d || d.length < 3 || isAddressIncomplete(d)) return;
-      if (d === direccionDelPinRef.current) return;
-
-      const timer = setTimeout(() => {
-        if (d === direccionDelPinRef.current) return;
-        geocodificarUbicacion(d);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [sub?.id, direccionTexto, geocodificarUbicacion]);
-
   const toggle = (it: string) =>
     set((p) => {
       if (p.sel.includes(it)) return { sel: p.sel.filter((x) => x !== it) };
@@ -658,11 +643,6 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
             setAvisoAproximacion(null);
             set({ dir: direccion, lat, lng });
           }}
-          onBlur={() => {
-            if (direccionTexto.trim() && direccionTexto.trim() !== direccionDelPinRef.current) {
-              geocodificarUbicacion(direccionTexto);
-            }
-          }}
           error={errores.errores.dir}
           className="mb-3"
         />
@@ -758,26 +738,6 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
       }
       if (errores.errores.dir) return;
       if (!direccionConfirmada) {
-        setTextoGeocodificacion(t('flowSearchingLocationOnMap'));
-        setCargandoGeocodificacion(true);
-        try {
-          const res = await geocodeAddressStructured(direccionTexto.trim());
-          if (res) {
-            set({ lat: res.lat, lng: res.lng });
-            direccionDelPinRef.current = direccionTexto.trim();
-            setDireccionConfirmada(true);
-            errores.limpiar('dir');
-            f.siguiente();
-          } else {
-            setDireccionConfirmada(false);
-            errores.poner('dir', t('flowLocationNotFoundError'));
-          }
-        } catch {
-          setDireccionConfirmada(false);
-          errores.poner('dir', t('flowLocationNotFoundError'));
-        } finally {
-          setCargandoGeocodificacion(false);
-        }
         return;
       }
     }

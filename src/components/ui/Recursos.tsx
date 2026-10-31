@@ -1,9 +1,161 @@
 import { Barra } from './Barra';
 import React, { useId, useState } from 'react';
-import { BadgeCheck, ChevronDown, Droplet, Hammer, House, Package, Pill, Shirt, Shovel, Soup, Stethoscope, Truck, Zap } from 'lucide-react';
+import {
+  BadgeCheck,
+  Bath,
+  Bed,
+  BookOpen,
+  Brain,
+  BrickWall,
+  Cable,
+  Calculator,
+  ChevronDown,
+  CircleDollarSign,
+  ClipboardCheck,
+  ClipboardList,
+  CookingPot,
+  Dog,
+  DraftingCompass,
+  Droplet,
+  Footprints,
+  Gauge,
+  Hammer,
+  HardHat,
+  HeartHandshake,
+  House,
+  LifeBuoy,
+  Mountain,
+  Package,
+  PackagePlus,
+  PawPrint,
+  Pill,
+  Plane,
+  Scale,
+  Ship,
+  Shirt,
+  Shovel,
+  SoapDispenserDroplet,
+  Soup,
+  Sparkles,
+  Stethoscope,
+  Syringe,
+  Tent,
+  Tractor,
+  Truck,
+  UserCog,
+  Users,
+  Warehouse,
+  Waves,
+  Wind,
+  Wrench,
+  Zap,
+} from 'lucide-react';
 import { ICONO_ITEM, TAXONOMIA } from '../../mocks/publicacionesMock';
 import type { IconoRecurso, Publicacion, Recurso } from '../../types/publicacion';
 import { estadoRecurso, porcentaje, restante } from '../../utils/publicaciones';
+
+/** Icono de tapabocas médico quirúrgico con proporciones y estilo nativo de Lucide (24×24) */
+const MaskIcon: React.FC<React.SVGProps<SVGSVGElement>> = ({ className, ...props }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="5" y="7" width="14" height="10" rx="2" />
+    <path d="M5 10.5h14" />
+    <path d="M5 13.5h14" />
+    <path d="M5 9C2.5 10 2.5 14 5 15" />
+    <path d="M19 9c2.5 1 2.5 5 0 6" />
+  </svg>
+);
+
+/** Icono de motobomba de socorro con chasis tubular y bomba centrífuga en estilo Lucide (24×24) */
+const WaterPumpIcon: React.FC<React.SVGProps<SVGSVGElement>> = ({ className, ...props }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="2" y="5" width="20" height="15" rx="2" />
+    <circle cx="12" cy="13" r="4" />
+    <path d="M12 11v4" />
+    <path d="M10 13h4" />
+    <path d="M12 9V5" />
+    <path d="M10 5h4" />
+    <path d="M8 5V3h8v2" />
+  </svg>
+);
+
+const COMPONENTE: Record<IconoRecurso, React.ElementType> = {
+  // Íconos iniciales / categorías
+  bowl: Soup,
+  stetho: Stethoscope,
+  shovel: Shovel,
+  hammer: Hammer,
+  truck: Truck,
+  package: Package,
+  seal: BadgeCheck,
+  house: House,
+  drop: Droplet,
+  shirt: Shirt,
+  pill: Pill,
+  bolt: Zap,
+
+  // Nuevos íconos específicos para cada una de las 41 categorías
+  sparkles: Sparkles,
+  soap: SoapDispenserDroplet,
+  mask: MaskIcon,
+  waves: Waves,
+  pump: WaterPumpIcon,
+  'user-cog': UserCog,
+  brain: Brain,
+  bed: Bed,
+  paw: PawPrint,
+  syringe: Syringe,
+  wind: Wind,
+  'life-buoy': LifeBuoy,
+  wrench: Wrench,
+  tractor: Tractor,
+  gauge: Gauge,
+  'clipboard-check': ClipboardCheck,
+  'brick-wall': BrickWall,
+  cable: Cable,
+  tent: Tent,
+  'hard-hat': HardHat,
+  plane: Plane,
+  ship: Ship,
+  bath: Bath,
+  warehouse: Warehouse,
+  'book-open': BookOpen,
+  'cooking-pot': CookingPot,
+  dollar: CircleDollarSign,
+  'drafting-compass': DraftingCompass,
+  mountain: Mountain,
+  scale: Scale,
+  calculator: Calculator,
+  dog: Dog,
+  'heart-handshake': HeartHandshake,
+  'package-plus': PackagePlus,
+  footprints: Footprints,
+  users: Users,
+  'clipboard-list': ClipboardList,
+};
+
+/** El icono de un recurso o de una categoría, al tamaño que pida quien lo usa. Decorativo. */
+export const IconoRecursoDe: React.FC<{ nombre: IconoRecurso; className?: string }> = ({ nombre, className = 'h-4 w-4' }) => {
+  const C = COMPONENTE[nombre] || Package;
+  return <C aria-hidden="true" className={className} />;
+};
 
 /**
  * El bloque de recursos de una publicación (`rd-recursos` del prototipo): cabecera que
@@ -11,20 +163,9 @@ import { estadoRecurso, porcentaje, restante } from '../../utils/publicaciones';
  * (verde = entregado y confirmado, ámbar rayado = en camino, lo vacío = disponible para
  * actuar) y su ficha. Las cifras salen de `utils/publicaciones.ts`; nadie escribe una a mano.
  */
-const ICONO: Record<IconoRecurso, React.ReactNode> = {
-  bowl: <Soup className="h-3.75 w-3.75" />,
-  stetho: <Stethoscope className="h-3.75 w-3.75" />,
-  shovel: <Shovel className="h-3.75 w-3.75" />,
-  hammer: <Hammer className="h-3.75 w-3.75" />,
-  truck: <Truck className="h-3.75 w-3.75" />,
-  package: <Package className="h-3.75 w-3.75" />,
-  seal: <BadgeCheck className="h-3.75 w-3.75" />,
-  house: <House className="h-3.75 w-3.75" />,
-  drop: <Droplet className="h-3.75 w-3.75" />,
-  shirt: <Shirt className="h-3.75 w-3.75" />,
-  pill: <Pill className="h-3.75 w-3.75" />,
-  bolt: <Zap className="h-3.75 w-3.75" />,
-};
+const ICONO: Record<IconoRecurso, React.ReactNode> = Object.fromEntries(
+  Object.keys(COMPONENTE).map((k) => [k, <IconoRecursoDe key={k} nombre={k as IconoRecurso} className="h-3.75 w-3.75" />])
+) as Record<IconoRecurso, React.ReactNode>;
 
 export function categoriaDe(item: string) {
   return TAXONOMIA.find((c) => c.items.includes(item)) ?? null;
@@ -32,14 +173,6 @@ export function categoriaDe(item: string) {
 export function iconoDe(item: string): IconoRecurso {
   return ICONO_ITEM[item] ?? categoriaDe(item)?.icono ?? 'package';
 }
-
-const COMPONENTE: Record<IconoRecurso, React.ElementType> = { bowl: Soup, stetho: Stethoscope, shovel: Shovel, hammer: Hammer, truck: Truck, package: Package, seal: BadgeCheck, house: House, drop: Droplet, shirt: Shirt, pill: Pill, bolt: Zap };
-
-/** El icono de un recurso o de una categoría, al tamaño que pida quien lo usa. Decorativo. */
-export const IconoRecursoDe: React.FC<{ nombre: IconoRecurso; className?: string }> = ({ nombre, className = 'h-4 w-4' }) => {
-  const C = COMPONENTE[nombre];
-  return <C aria-hidden="true" className={className} />;
-};
 
 /** Anillo de 32 con el mismo progreso que el pin y que la barra. */
 export const Anillo: React.FC<{ recurso: Recurso }> = ({ recurso }) => {
