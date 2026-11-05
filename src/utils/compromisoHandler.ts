@@ -1,7 +1,8 @@
 import type { Publicacion } from '../types/publicacion';
 import type { Compromiso } from './compromiso';
 import type { SolicitudEnviada, OfrecimientoEnviado } from '../types/panel';
-import { createCommitment } from '../lib/supabaseService';
+import { createCommitment, createNotification } from '../lib/supabaseService';
+import { supabase } from '../lib/supabaseClient';
 import { activarModulo } from './panel';
 
 /**
@@ -48,6 +49,14 @@ export async function registrarCompromisoPublicacion(
     } catch {}
 
     if (usuarioActual?.id) {
+      let targetUserId = p.userId;
+      if (!targetUserId && esUuid) {
+        try {
+          const { data: offerRow } = await supabase.from('offers').select('user_id').eq('id', p.id).maybeSingle();
+          if (offerRow?.user_id) targetUserId = offerRow.user_id;
+        } catch {}
+      }
+
       let huboCambios = false;
       for (let i = 0; i < partes.length; i++) {
         const parte = partes[i];
@@ -55,7 +64,7 @@ export async function registrarCompromisoPublicacion(
           const inserted = await createCommitment({
             offerId: esUuid ? p.id : undefined,
             requesterUserId: usuarioActual.id,
-            providerUserId: p.userId || undefined,
+            providerUserId: targetUserId || undefined,
             originType: 'DIRECT_OFFER_REQUEST',
             resourceName: parte.item,
             quantity: parte.cantidad,
@@ -65,6 +74,18 @@ export async function registrarCompromisoPublicacion(
           if (inserted?.id) {
             nuevasSolicitudes[i].dbId = String(inserted.id);
             huboCambios = true;
+
+            if (targetUserId && targetUserId !== usuarioActual.id) {
+              createNotification({
+                userId: targetUserId,
+                type: 'solicitud',
+                title: 'Nueva solicitud de ayuda',
+                detail: `${usuarioActual.name || 'Un usuario'} solicitó ${parte.cantidad} ${parte.unidad} de ${parte.item}.`,
+                senderName: usuarioActual.name || 'Usuario',
+                actionText: 'Ver en panel',
+                actionUrl: '/panel#seguimiento',
+              }).catch((err) => console.warn('Error enviando notificación a oferente:', err));
+            }
           }
         } catch (e) {
           console.warn('Error registrando solicitud en Supabase:', e);
@@ -112,6 +133,14 @@ export async function registrarCompromisoPublicacion(
     } catch {}
 
     if (usuarioActual?.id) {
+      let targetUserId = p.userId;
+      if (!targetUserId && esUuid) {
+        try {
+          const { data: needRow } = await supabase.from('needs').select('user_id').eq('id', p.id).maybeSingle();
+          if (needRow?.user_id) targetUserId = needRow.user_id;
+        } catch {}
+      }
+
       let huboCambios = false;
       for (let i = 0; i < partes.length; i++) {
         const parte = partes[i];
@@ -120,7 +149,7 @@ export async function registrarCompromisoPublicacion(
             needId: esUuid ? p.id : undefined,
             providerUserId: usuarioActual.id,
             providerOrgId: usuarioActual.organizacionId || usuarioActual.organization_id || undefined,
-            requesterUserId: p.userId || undefined,
+            requesterUserId: targetUserId || undefined,
             originType: 'DIRECT_NEED_RESPONSE',
             resourceName: parte.item,
             quantity: parte.cantidad,
@@ -130,6 +159,18 @@ export async function registrarCompromisoPublicacion(
           if (inserted?.id) {
             nuevosOfrecimientos[i].dbId = String(inserted.id);
             huboCambios = true;
+
+            if (targetUserId && targetUserId !== usuarioActual.id) {
+              createNotification({
+                userId: targetUserId,
+                type: 'solicitud',
+                title: 'Nueva propuesta de ayuda',
+                detail: `${usuarioActual.name || 'Un usuario'} te ofreció ${parte.cantidad} ${parte.unidad} de ${parte.item}.`,
+                senderName: usuarioActual.name || 'Usuario',
+                actionText: 'Ver en panel',
+                actionUrl: '/panel#seguimiento',
+              }).catch((err) => console.warn('Error enviando notificación a solicitante:', err));
+            }
           }
         } catch (e) {
           console.warn('Error registrando ofrecimiento en Supabase:', e);

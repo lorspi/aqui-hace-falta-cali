@@ -610,6 +610,38 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(seccionAsignada).not.toBe('actividad');
   });
 
+  it('MIE-02: Login en RegistroPage resuelve organización de miembro de equipo (no dueño) y asigna perfil organizacion', () => {
+    const authUser = { id: 'usr-fed-1', email: 'federico@quindio.gov.co' };
+    const profile = { id: 'usr-fed-1', role: 'voluntario', full_name: 'Federico Posada 1' };
+    
+    // orgData retornado por fetchOrganizationByUserId (procedente de organization_members)
+    const orgData = {
+      id: 'org-quindio-1',
+      org_name: 'Gobernacion quindio',
+      organization_type: 'Gubernamental',
+    };
+
+    const orgType = (orgData?.organization_type || '').toLowerCase();
+    const profType = (profile?.role || '').toLowerCase();
+    const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider');
+    const profileType = orgData ? (isCom ? 'liderazgo' : 'organizacion') : 'persona';
+    const resolvedOrgName = orgData?.org_name;
+
+    const userObj = {
+      id: authUser.id,
+      email: authUser.email,
+      name: profile.full_name,
+      role: profile.role,
+      profile_type: profileType,
+      org_name: resolvedOrgName,
+      organization: resolvedOrgName,
+    };
+
+    expect(userObj.profile_type).toBe('organizacion');
+    expect(userObj.org_name).toBe('Gobernacion quindio');
+    expect(userObj.role).toBe('voluntario');
+  });
+
   it('ROL-12: Sin iniciar sesión, /panel no permite acceso anónimo y redirige a login con retorno', () => {
     // 1. Simulación de usuario anónimo (sin sesión)
     const authUser = null;

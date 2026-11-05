@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { commitmentToEntregaRecibida, commitmentToSolicitud } from '../../src/utils/supabaseMappers';
+import { pendientesDe, pendientesCuenta } from '../../src/utils/panel';
 import type { EntregaRecibida } from '../../src/types/panel';
 
 describe('TRX-05 & CIC-01: Seguimiento - Ayuda que recibo y mapeo de estados', () => {
@@ -72,5 +73,57 @@ describe('TRX-05 & CIC-01: Seguimiento - Ayuda que recibo y mapeo de estados', (
     const nActivas = recibidasMock.filter((r) => estadosActivosRecibo.includes(r.estado as any)).length;
 
     expect(nActivas).toBe(0);
+  });
+
+  it('homologa status "en_revision" a "nueva" para que el oferente vea solicitudes entrantes (CIC-02)', () => {
+    const rawCommitmentEnRevision = {
+      id: 'comm-456',
+      resource_name: 'Agua potable',
+      quantity: 1,
+      unit: 'L',
+      status: 'en_revision',
+      requester_name: 'Super Admin',
+      created_at: new Date().toISOString(),
+    };
+
+    const mappedSol = commitmentToSolicitud(rawCommitmentEnRevision);
+    expect(mappedSol.estado).toBe('nueva');
+
+    const mappedRec = commitmentToEntregaRecibida(rawCommitmentEnRevision);
+    expect(mappedRec.estado).toBe('nueva');
+  });
+
+  it('genera decisiones inmediatas en el Resumen para la organización que pide cuando recibe ofertas (CIC-01)', () => {
+    const dMock = {
+      oferta: { id: 'of-1', titulo: '', recursos: [], publicada: '', confirmada: '' },
+      sol: [],
+      recibidas: [
+        {
+          id: 101,
+          org: 'Cruz Roja',
+          rec: 'Agua potable',
+          cant: 50,
+          u: 'litros',
+          estado: 'nueva' as const,
+          cuando: 'Hoy',
+          quienEntrega: '',
+          vol: null,
+          esInterna: false,
+          medioEnvio: 'directa' as const,
+          cierre: { entrega: { fotos: 0 }, recibe: { fotos: 0 }, medioEnvio: 'directa' as const },
+        },
+      ],
+    };
+
+    const decisiones = pendientesDe({ pide: true, ofrece: false }, dMock as any);
+    const decisionPropuesta = decisiones.find((p) => p.id === 'rec-propuesta-101');
+
+    expect(decisionPropuesta).toBeDefined();
+    expect(decisionPropuesta?.grupo).toBe('decision');
+    expect(decisionPropuesta?.accion.al).toBe('aceptar-recibida:101');
+    expect(decisionPropuesta?.secundaria?.al).toBe('rechazar-recibida:101');
+
+    const cuenta = pendientesCuenta({ pide: true, ofrece: false }, { sol: [], recibidas: dMock.recibidas });
+    expect(cuenta).toBe(1);
   });
 });

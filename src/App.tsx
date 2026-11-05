@@ -65,7 +65,8 @@ import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
-import { getStoredAuthUser, saveStoredAuthUser, clearStoredAuthUser, isUserLoggedIn } from "./utils/session";
+import { getStoredAuthUser, saveStoredAuthUser, clearStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from "./utils/session";
+import { guardarEntidad } from "./utils/cuenta";
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from "./utils/pendingAction";
 import { DialogoAuthRapido } from "./components/ui/DialogoAuthRapido";
 
@@ -214,6 +215,14 @@ export default function App() {
     };
     window.addEventListener('popstate', handleLocationChange);
 
+    const handleAuthChanged = (e: any) => {
+      const u = e.detail !== undefined ? e.detail : getStoredAuthUser();
+      if (u) {
+        setAuthUser(u);
+      }
+    };
+    window.addEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
+
     // 2. Sync auth state across whole application
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
@@ -239,6 +248,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener(EVENTO_AUTH_CHANGED, handleAuthChanged);
       subscription.unsubscribe();
     };
   }, []);
@@ -413,6 +423,9 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           };
           setAuthUser(updatedUserObj);
           saveStoredAuthUser(updatedUserObj);
+          if (resolvedProfileType === 'organizacion' || resolvedProfileType === 'liderazgo') {
+            guardarEntidad(resolvedProfileType);
+          }
 
           const normRole = profile?.role?.toString().trim().toUpperCase();
           const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';

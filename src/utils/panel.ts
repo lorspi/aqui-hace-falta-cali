@@ -52,7 +52,7 @@ export function desactivarModulo(_modulo: keyof ModulosCuenta): void {
 
 /** Las pestañas: lo que se pide antes que lo que se ofrece, Seguimiento unificado para
  *  ambas caras, y siempre Resumen al principio y Mi equipo al final. */
-export function pestanasDe(m: ModulosCuenta, conteos: { porConfirmarRecibidas: number; nuevas: number; porConfirmar: number }): PestanaPanel[] {
+export function pestanasDe(m: ModulosCuenta, conteos: { porConfirmarRecibidas: number; nuevas: number; porConfirmar: number; nuevasRecibidas?: number }): PestanaPanel[] {
   const p: PestanaPanel[] = [{ id: 'resumen', nombre: 'Resumen' }];
   if (m.pide) {
     p.push({ id: 'necesidades', nombre: 'Mis necesidades', modulo: 'pide' });
@@ -62,7 +62,7 @@ export function pestanasDe(m: ModulosCuenta, conteos: { porConfirmarRecibidas: n
   }
   /* Seguimiento unificado para ambas caras (organización y líder comunitario) */
   if (m.pide || m.ofrece) {
-    const badge = (m.ofrece ? conteos.nuevas : 0) + (m.pide ? conteos.porConfirmarRecibidas : 0);
+    const badge = (m.ofrece ? conteos.nuevas : 0) + (m.pide ? conteos.porConfirmarRecibidas + (conteos.nuevasRecibidas || 0) : 0);
     p.push({ id: 'seguimiento', nombre: 'Seguimiento', n: badge });
   }
   /* Reportes solo cuando hay algo que reportar: entregas confirmadas de alguna cara. */
@@ -180,6 +180,20 @@ export function pendientesDe(m: ModulosCuenta, d: { oferta: OfertaPublicada; sol
     recibidasPorConfirmar(d.recibidas).forEach((r) =>
       p.push({ id: `rec-${r.id}`, grupo: 'decision', icono: 'paquete', titulo: `Confirma lo que te llegó de ${r.org}`, detalle: `${r.cant} ${r.u} de ${r.rec.toLowerCase()}, entregado ${r.cuando}`, accion: { texto: 'Confirmar', nivel: 'primario', al: `confirmar:${r.id}` }, bloquea: true }),
     );
+    /* Ofertas de ayuda recibidas por responder (CIC-01) */
+    d.recibidas
+      .filter((r) => r.estado === 'nueva' || (r.estado as any) === 'propuesta' || (r.estado as any) === 'en_revision')
+      .forEach((r) =>
+        p.push({
+          id: `rec-propuesta-${r.id}`,
+          grupo: 'decision',
+          icono: 'nueva',
+          titulo: `${r.org} te ofrece ${r.cant} ${r.u} de ${r.rec.toLowerCase()}`,
+          detalle: r.cuando,
+          accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar-recibida:${r.id}` },
+          secundaria: { texto: 'Rechazar', al: `rechazar-recibida:${r.id}` },
+        })
+      );
   }
   if (m.ofrece) {
     d.sol.filter((s) => s.estado === 'nueva').forEach((s) => p.push({ id: `nueva-${s.id}`, grupo: 'decision', icono: 'nueva', titulo: `${s.quien} pide ${s.cant} ${s.u} de ${s.rec.toLowerCase()}`, detalle: `${s.cuando}${s.dist ? `, a ${s.dist}` : ''}`, accion: { texto: 'Aceptar', nivel: 'primario', al: `aceptar:${s.id}` }, secundaria: { texto: 'Rechazar', al: `rechazar:${s.id}` } }));
@@ -222,7 +236,8 @@ export function textoCierre(s: Pick<Solicitud, 'quien' | 'cierre'> & { esInterna
 
 /** Cuántas cosas esperan a la persona: lo que muestra la píldora y el side nav. */
 export function pendientesCuenta(m: ModulosCuenta, d: { sol: Solicitud[]; recibidas: EntregaRecibida[] }): number {
-  return (m.ofrece ? nuevas(d.sol) + porConfirmar(d.sol).length : 0) + (m.pide ? recibidasPorConfirmar(d.recibidas).length : 0);
+  const nuevasRecibidas = d.recibidas.filter((r) => r.estado === 'nueva' || (r.estado as any) === 'propuesta' || (r.estado as any) === 'en_revision').length;
+  return (m.ofrece ? nuevas(d.sol) + porConfirmar(d.sol).length : 0) + (m.pide ? recibidasPorConfirmar(d.recibidas).length + nuevasRecibidas : 0);
 }
 
 /* ---------- reportes: las actas de entrega ---------- */

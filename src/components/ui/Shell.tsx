@@ -375,6 +375,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     hasOrg ||
     Boolean(activeUser?.org_name) ||
     Boolean(activeUser?.organization) ||
+    dbProfileType === 'organizacion' ||
     normProfileType === 'organizacion' ||
     normProfileType === 'entidad_profesional' ||
     normUserRole === 'organizacion' ||

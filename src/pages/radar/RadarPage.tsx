@@ -496,7 +496,17 @@ const Radar: React.FC<RadarProps> = ({
 
   const usuarioEfectivo = useMemo(() => {
     if (authUser === null) return null;
-    if (authUser !== undefined) return authUser;
+    if (authUser !== undefined) {
+      if (localAuth && (localAuth.org_name || localAuth.organization || localAuth.profile_type === 'organizacion') && !authUser.org_name) {
+        return {
+          ...authUser,
+          org_name: localAuth.org_name,
+          organization: localAuth.organization,
+          profile_type: localAuth.profile_type || authUser.profile_type,
+        };
+      }
+      return authUser;
+    }
     return localAuth ?? getStoredAuthUser();
   }, [authUser, localAuth]);
 

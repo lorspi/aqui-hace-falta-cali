@@ -34,7 +34,7 @@ import { camino, esCorreo, listo, loginListo, pasoActual, validar, type Contrase
 import { RegistroCarrusel } from './RegistroCarrusel';
 import { TEXTOS as T } from './textos';
 import { supabase } from '../../lib/supabaseClient';
-import { fetchUserProfile } from '../../lib/supabaseService';
+import { fetchUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { getStoredAuthUser, saveStoredAuthUser } from '../../utils/session';
 import { obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -244,19 +244,19 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
 
       let orgData: any = null;
       try {
-        const { data: orgRow } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('user_id', authData.user.id)
-          .maybeSingle();
-        if (orgRow) orgData = orgRow;
+        orgData = await fetchOrganizationByUserId(authData.user.id);
       } catch (err) {
         console.warn('Error fetching organization on login:', err);
       }
 
+      const orgType = (orgData?.organization_type || '').toLowerCase();
+      const profType = (profile?.profile_type || authData.user.user_metadata?.profile_type || '').toLowerCase();
+      const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
       const profileType = orgData
-        ? (orgData.organization_type ? 'organizacion' : 'liderazgo')
+        ? (isCom ? 'liderazgo' : 'organizacion')
         : (profile?.profile_type || authData.user.user_metadata?.profile_type || 'persona');
+
+      const resolvedOrgName = orgData?.org_name || orgData?.name || profile?.organization || authData.user.user_metadata?.org_name;
 
       const userObj = {
         id: authData.user.id,
@@ -264,8 +264,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         name: profile?.full_name || authData.user.user_metadata?.full_name || 'Usuario',
         role: profile?.role || authData.user.user_metadata?.role || 'voluntario',
         profile_type: profileType,
-        org_name: orgData?.org_name || profile?.organization || authData.user.user_metadata?.org_name,
-        organization: orgData || profile?.organization,
+        org_name: resolvedOrgName,
+        organization: resolvedOrgName || orgData || profile?.organization,
         user_metadata: authData.user.user_metadata,
         createdAt: profile?.created_at || authData.user.created_at,
       };
