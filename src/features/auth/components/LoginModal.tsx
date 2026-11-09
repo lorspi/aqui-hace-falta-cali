@@ -110,7 +110,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         try {
           const [profRes, orgRes] = await Promise.all([
             fetchUserProfile(data.user.id),
-            fetchOrganizationByUserId(data.user.id),
+            fetchOrganizationByUserId(data.user.id, data.user.email),
           ]);
           profile = profRes;
           orgData = orgRes;

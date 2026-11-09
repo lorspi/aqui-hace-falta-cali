@@ -244,7 +244,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
 
       let orgData: any = null;
       try {
-        orgData = await fetchOrganizationByUserId(authData.user.id);
+        orgData = await fetchOrganizationByUserId(authData.user.id, authData.user.email || email);
         if (Array.isArray(orgData)) {
           orgData = orgData[0];
         }

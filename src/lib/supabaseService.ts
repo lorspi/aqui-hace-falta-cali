@@ -1974,10 +1974,10 @@ export async function createOfferWithItems(offerPayload: any, itemsPayload: any[
 /**
  * Obtiene la organización asociada a un usuario (como dueño o como miembro del equipo en organization_members)
  */
-export async function fetchOrganizationByUserId(userId: string): Promise<any | null> {
+export async function fetchOrganizationByUserId(userId: string, userEmail?: string): Promise<any | null> {
   if (!userId) return null;
 
-  // 1. Buscar si el usuario es dueño de la organización
+  // 1. Buscar si el usuario es dueño de la organización por user_id
   const { data: ownerOrg } = await supabase
     .from('organizations')
     .select('*')
@@ -1998,23 +1998,42 @@ export async function fetchOrganizationByUserId(userId: string): Promise<any | n
 
   if (memberRows && memberRows.length > 0) {
     memberOrg = memberRows[0];
+  } else {
+    // Intento directo sin join por si PostgREST tuvo problemas resolviendo la relación en cache
+    const { data: directMemberRows } = await supabase
+      .from('organization_members')
+      .select('id, organization_id, role_in_org')
+      .eq('user_id', userId)
+      .limit(1);
+    if (directMemberRows && directMemberRows.length > 0) {
+      memberOrg = directMemberRows[0];
+    }
   }
 
   // 3. Si no se encontró por user_id, buscar por correo (por si el miembro fue agregado por correo y user_id está nulo)
   if (!memberOrg) {
     try {
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .maybeSingle();
+      let emailToSearch = userEmail;
+      if (!emailToSearch) {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .maybeSingle();
+        emailToSearch = userProfile?.email;
+      }
+      if (!emailToSearch) {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id === userId) {
+          emailToSearch = authData.user.email;
+        }
+      }
 
-      const userEmail = userProfile?.email;
-      if (userEmail) {
+      if (emailToSearch) {
         const { data: memberByEmail } = await supabase
           .from('organization_members')
           .select('id, organization_id, role_in_org, organizations(*)')
-          .ilike('email', userEmail.trim())
+          .ilike('email', emailToSearch.trim())
           .limit(1);
 
         if (memberByEmail && memberByEmail.length > 0) {
@@ -2025,6 +2044,21 @@ export async function fetchOrganizationByUserId(userId: string): Promise<any | n
             .update({ user_id: userId })
             .eq('id', memberOrg.id)
             .then();
+        } else {
+          // Intento por correo sin join
+          const { data: directByEmail } = await supabase
+            .from('organization_members')
+            .select('id, organization_id, role_in_org')
+            .ilike('email', emailToSearch.trim())
+            .limit(1);
+          if (directByEmail && directByEmail.length > 0) {
+            memberOrg = directByEmail[0];
+            supabase
+              .from('organization_members')
+              .update({ user_id: userId })
+              .eq('id', memberOrg.id)
+              .then();
+          }
         }
       }
     } catch {}
@@ -2036,16 +2070,26 @@ export async function fetchOrganizationByUserId(userId: string): Promise<any | n
       const org = Array.isArray(memberOrg.organizations)
         ? memberOrg.organizations[0]
         : memberOrg.organizations;
-      if (org) return org;
+      if (org && org.id) {
+        return {
+          ...org,
+          role_in_org: memberOrg.role_in_org || org.role_in_org,
+        };
+      }
     }
-    // Si no vino en el join, buscar directamente la organización por su id
+    // Si no vino en el join o vino vacía, buscar directamente la organización por su id
     if (memberOrg.organization_id) {
       const { data: directOrg } = await supabase
         .from('organizations')
         .select('*')
         .eq('id', memberOrg.organization_id)
         .maybeSingle();
-      if (directOrg) return directOrg;
+      if (directOrg) {
+        return {
+          ...directOrg,
+          role_in_org: memberOrg.role_in_org || directOrg.role_in_org,
+        };
+      }
     }
   }
 

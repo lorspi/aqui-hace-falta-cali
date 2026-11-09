@@ -30,14 +30,14 @@ import { chipsDe, cuantosAplicados, filtrosVacios, ordenar, pasa, pasaResto, vac
 import { escribirUrl, paramsActuales, paramsDeRadar, radarDeParams } from '../../utils/enlace';
 import { buscarCiudadCoincidente, ciudadDeUbicacion } from '../../utils/lugares';
 import { getCityCoordinates } from '../../data/colombiaCities';
-import { nombrePanel } from '../../utils/cuenta';
+import { nombrePanel, guardarEntidad } from '../../utils/cuenta';
 import { modulosGuardados, pendientesCuenta } from '../../utils/panel';
-import { fetchUserAvisos } from '../../lib/supabaseService';
+import { fetchUserAvisos, fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
-import { clearStoredAuthUser, getStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 
 /**
@@ -496,19 +496,50 @@ const Radar: React.FC<RadarProps> = ({
 
   const usuarioEfectivo = useMemo(() => {
     if (authUser === null) return null;
-    if (authUser !== undefined) {
-      if (localAuth && (localAuth.org_name || localAuth.organization || localAuth.profile_type === 'organizacion') && !authUser.org_name) {
-        return {
-          ...authUser,
-          org_name: localAuth.org_name,
-          organization: localAuth.organization,
-          profile_type: localAuth.profile_type || authUser.profile_type,
-        };
-      }
-      return authUser;
-    }
-    return localAuth ?? getStoredAuthUser();
+    const stored = getStoredAuthUser();
+    const base = authUser !== undefined ? authUser : (localAuth ?? stored);
+    if (!base) return null;
+
+    const resolvedOrg = base.org_name || base.organization || localAuth?.org_name || localAuth?.organization || stored?.org_name || stored?.organization;
+    const resolvedType =
+      (base.profile_type === 'organizacion' || localAuth?.profile_type === 'organizacion' || stored?.profile_type === 'organizacion')
+        ? 'organizacion'
+        : (base.profile_type === 'liderazgo' || localAuth?.profile_type === 'liderazgo' || stored?.profile_type === 'liderazgo')
+          ? 'liderazgo'
+          : (base.profile_type || localAuth?.profile_type || stored?.profile_type);
+
+    return {
+      ...base,
+      org_name: resolvedOrg,
+      organization: resolvedOrg,
+      profile_type: resolvedType,
+    };
   }, [authUser, localAuth]);
+
+  useEffect(() => {
+    if (!usuarioEfectivo?.id) return;
+    if (!usuarioEfectivo.org_name || usuarioEfectivo.profile_type !== 'organizacion') {
+      fetchOrganizationByUserId(usuarioEfectivo.id, usuarioEfectivo.email).then((dbOrg) => {
+        if (dbOrg) {
+          const org = Array.isArray(dbOrg) ? dbOrg[0] : dbOrg;
+          const orgType = (org?.organization_type || '').toLowerCase();
+          const isCom = orgType.includes('comun') || orgType.includes('junta');
+          const resolvedProfileType = isCom ? 'liderazgo' : 'organizacion';
+          const resolvedOrgName = org?.org_name || org?.name;
+          const updated = {
+            ...usuarioEfectivo,
+            org_name: resolvedOrgName,
+            organization: resolvedOrgName,
+            profile_type: resolvedProfileType,
+          };
+          setLocalAuth(updated);
+          saveStoredAuthUser(updated);
+          guardarEntidad(resolvedProfileType);
+          window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: updated }));
+        }
+      }).catch(console.warn);
+    }
+  }, [usuarioEfectivo?.id]);
 
   const handleLogout = async () => {
     setLocalAuth(null);

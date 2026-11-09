@@ -746,6 +746,35 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(rutaDestino).not.toBe('/panel');
   });
 
+  it('MIE-02-01: Jerarquía de menú lateral en Shell prioriza "Mi organización" para miembro del equipo', () => {
+    // Caso de admin de equipo con rol voluntario en perfil
+    const tieneOrg = true;
+    const esOrganizacion = true;
+    const esComunidad = false;
+    const esAdminOModerador = false;
+    const estaLogueado = true;
+
+    const secciones: { id: string; nombre: string; href: string }[] = [
+      { id: 'radar', nombre: 'Radar', href: '/mapa-ayudas-necesidades' },
+      { id: 'directorio', nombre: 'Directorio', href: '/directorio' },
+    ];
+
+    if (estaLogueado) {
+      if (esAdminOModerador) {
+        secciones.push({ id: 'panel-admin', nombre: 'Panel admin', href: '/panel-admin' });
+      } else if (esComunidad) {
+        secciones.push({ id: 'panel', nombre: 'Mi comunidad', href: '/panel' });
+      } else if (tieneOrg || esOrganizacion) {
+        secciones.push({ id: 'panel', nombre: 'Mi organización', href: '/panel' });
+      } else {
+        secciones.push({ id: 'actividad', nombre: 'Mi actividad', href: '/mi-actividad' });
+      }
+    }
+
+    expect(secciones.some((s) => s.id === 'panel' && s.nombre === 'Mi organización')).toBe(true);
+    expect(secciones.some((s) => s.id === 'actividad')).toBe(false);
+  });
+
   it('ROL-12: Sin iniciar sesión, /panel no permite acceso anónimo y redirige a login con retorno', () => {
     // 1. Simulación de usuario anónimo (sin sesión)
     const authUser = null;

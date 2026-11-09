@@ -125,7 +125,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           // Consultar si pertenece a una organización en DB (dueño o miembro)
           let orgData: any = null;
           try {
-            orgData = await fetchOrganizationByUserId(user.id);
+            orgData = await fetchOrganizationByUserId(user.id, user.email);
             if (Array.isArray(orgData)) {
               orgData = orgData[0];
             }
@@ -159,6 +159,10 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
             setSessionUser(fullUser);
             saveStoredAuthUser(fullUser);
+            if (resolvedProfileType === 'organizacion' || resolvedProfileType === 'liderazgo') {
+              guardarEntidad(resolvedProfileType);
+            }
+            window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: fullUser }));
 
             if (isAdmin || isMod) {
               if (typeof window !== 'undefined' && !localStorage.getItem('ahf_admin_user')) {
@@ -212,31 +216,37 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     if (authUser === null) {
       return null;
     }
-    const base = authUser !== undefined ? authUser : (sessionUser || getStoredAuthUser());
+    const stored = getStoredAuthUser();
+    const base = authUser !== undefined ? authUser : (sessionUser || stored);
     if (!base) {
       return null;
     }
     const resolvedProfileType =
-      (authUser?.profile_type === 'organizacion' || sessionUser?.profile_type === 'organizacion' || base.profile_type === 'organizacion')
+      (authUser?.profile_type === 'organizacion' || sessionUser?.profile_type === 'organizacion' || base.profile_type === 'organizacion' || stored?.profile_type === 'organizacion')
         ? 'organizacion'
-        : (authUser?.profile_type === 'liderazgo' || sessionUser?.profile_type === 'liderazgo' || base.profile_type === 'liderazgo')
+        : (authUser?.profile_type === 'liderazgo' || sessionUser?.profile_type === 'liderazgo' || base.profile_type === 'liderazgo' || stored?.profile_type === 'liderazgo')
           ? 'liderazgo'
-          : (authUser?.profile_type || sessionUser?.profile_type || base.profile_type);
+          : (authUser?.profile_type || sessionUser?.profile_type || base.profile_type || stored?.profile_type);
+
+    const resolvedOrg =
+      authUser?.org_name || sessionUser?.org_name || base.org_name || base.organization || stored?.org_name || stored?.organization;
 
     return {
       ...base,
+      ...(stored || {}),
       ...(sessionUser || {}),
       ...(authUser || {}),
       id: authUser?.id || sessionUser?.id || base.id,
       user_metadata: {
         ...(base.user_metadata || {}),
+        ...(stored?.user_metadata || {}),
         ...(sessionUser?.user_metadata || {}),
         ...(authUser?.user_metadata || {}),
       },
       role: authUser?.role || sessionUser?.role || base.role,
       profile_type: resolvedProfileType,
-      org_name: authUser?.org_name || sessionUser?.org_name || base.org_name || base.organization,
-      organization: authUser?.organization || sessionUser?.organization || base.organization || base.org_name,
+      org_name: resolvedOrg,
+      organization: resolvedOrg,
       name: authUser?.name || sessionUser?.name || base.name || base.full_name,
     };
   }, [authUser, sessionUser]);
@@ -331,7 +341,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     async function checkUserOrgAndProfile() {
       try {
         let [orgRes, profRes] = await Promise.all([
-          fetchOrganizationByUserId(activeUser.id),
+          fetchOrganizationByUserId(activeUser.id, activeUser.email),
           supabase.from('profiles').select('role, profile_type').eq('id', activeUser.id).maybeSingle()
         ]);
         if (Array.isArray(orgRes)) {
@@ -373,7 +383,11 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   } catch {}
 
   const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || adminStorageRole || '').toString().trim().toLowerCase();
-  const normProfileType = (activeUser?.profile_type || dbProfileType || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
+  const normProfileType = (
+    (activeUser?.profile_type === 'organizacion' || activeUser?.profile_type === 'liderazgo')
+      ? activeUser.profile_type
+      : (dbProfileType || activeUser?.profile_type || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '')
+  ).toString().trim().toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
   const esAdminOModerador = Boolean(
@@ -400,7 +414,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     normProfileType === 'organizacion' ||
     normProfileType === 'entidad_profesional' ||
     normUserRole === 'organizacion' ||
-    normUserRole === 'entidad_profesional'
+    normUserRole === 'entidad_profesional' ||
+    entidadStorage === 'organizacion'
   );
 
   // 2. ¿Es comunidad / líder comunitario?
@@ -455,7 +470,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           icono: <House className="h-5 w-5" />,
           n: pendientes
         });
-      } else if (esOrganizacion) {
+      } else if (tieneOrg || esOrganizacion) {
         secciones.push({
           id: 'panel',
           nombre: t('navOrg'),
@@ -464,14 +479,6 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           n: pendientes
         });
       }
-    } else if (esIndividual) {
-      secciones.push({
-        id: 'actividad',
-        nombre: t('navActivity'),
-        href: rutas.actividad || '/mi-actividad',
-        icono: <ClipboardList className="h-5 w-5" />,
-        n: pendientes
-      });
     } else if (esComunidad) {
       secciones.push({
         id: 'panel',
@@ -480,12 +487,20 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         icono: <House className="h-5 w-5" />,
         n: pendientes
       });
-    } else {
+    } else if (tieneOrg || esOrganizacion) {
       secciones.push({
         id: 'panel',
         nombre: t('navOrg'),
         href: rutas.panel || '/panel',
         icono: <House className="h-5 w-5" />,
+        n: pendientes
+      });
+    } else {
+      secciones.push({
+        id: 'actividad',
+        nombre: t('navActivity'),
+        href: rutas.actividad || '/mi-actividad',
+        icono: <ClipboardList className="h-5 w-5" />,
         n: pendientes
       });
     }
@@ -507,7 +522,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
 
     // 1. Administrador o Moderador
     if (esAdminOModerador) {
-      if (seccion === 'panel' && (esOrganizacion || esComunidad)) {
+      if (seccion === 'panel' && (tieneOrg || esOrganizacion || esComunidad)) {
         const nombrePanelOrg = esComunidad ? t('navCommunity') : t('navOrg');
         return {
           id: 'panel' as Seccion,
@@ -530,20 +545,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       };
     }
 
-    // 2. Voluntario / Persona natural / Mi actividad
-    if (esIndividual) {
-      return {
-        id: 'actividad' as Seccion,
-        nombre: t('navActivity'),
-        href: rutas.actividad || '/mi-actividad',
-        icono: <ClipboardList className="h-6 w-6" />,
-        actual: seccion === 'actividad',
-        n: pendientes,
-        etiqueta: `${t('navActivity')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
-      };
-    }
-
-    // 3. Líder comunitario / Comunidad
+    // 2. Líder comunitario / Comunidad
     if (esComunidad) {
       return {
         id: 'panel' as Seccion,
@@ -556,17 +558,30 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       };
     }
 
-    // 4. Organización (ONG, Fundación, etc.) por defecto
+    // 3. Organización (dueño o miembro del equipo)
+    if (tieneOrg || esOrganizacion) {
+      return {
+        id: 'panel' as Seccion,
+        nombre: t('navOrg'),
+        href: rutas.panel || '/panel',
+        icono: <House className="h-6 w-6" />,
+        actual: seccion === 'panel',
+        n: pendientes,
+        etiqueta: `${t('navOrg')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      };
+    }
+
+    // 4. Voluntario / Persona natural / Mi actividad
     return {
-      id: 'panel' as Seccion,
-      nombre: t('navOrg'),
-      href: rutas.panel || '/panel',
-      icono: <House className="h-6 w-6" />,
-      actual: seccion === 'panel',
+      id: 'actividad' as Seccion,
+      nombre: t('navActivity'),
+      href: rutas.actividad || '/mi-actividad',
+      icono: <ClipboardList className="h-6 w-6" />,
+      actual: seccion === 'actividad',
       n: pendientes,
-      etiqueta: `${t('navOrg')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
+      etiqueta: `${t('navActivity')}${pendientes > 0 ? `, ${pendientes} pendientes` : ''}`,
     };
-  }, [estaLogueado, esAdminOModerador, seccion, esOrganizacion, esComunidad, esIndividual, rutas, pendientes, t]);
+  }, [estaLogueado, esAdminOModerador, seccion, esOrganizacion, esComunidad, tieneOrg, rutas, pendientes, t]);
 
   const enlace = (s: (typeof secciones)[number], grande = false) => {
     const actual = s.id === seccion;

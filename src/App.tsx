@@ -240,6 +240,35 @@ export default function App() {
         };
         setAuthUser(userObj);
         saveStoredAuthUser(userObj);
+
+        // Consultar DB inmediatamente para sincronizar organizaciones de miembros o dueños
+        try {
+          const [profileData, orgData] = await Promise.all([
+            fetchUserProfile(session.user.id),
+            fetchOrganizationByUserId(session.user.id, session.user.email)
+          ]);
+          if (orgData) {
+            const org = Array.isArray(orgData) ? orgData[0] : orgData;
+            const orgType = (org?.organization_type || '').toLowerCase();
+            const profType = (profileData?.profile_type || userObj.profile_type || '').toLowerCase();
+            const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
+            const resolvedProfileType = isCom ? 'liderazgo' : 'organizacion';
+            const resolvedOrgName = org?.org_name || org?.name || profileData?.organization || userObj.org_name;
+
+            const fullUser = {
+              ...userObj,
+              name: profileData?.full_name || userObj.name,
+              role: profileData?.role || userObj.role,
+              profile_type: resolvedProfileType,
+              org_name: resolvedOrgName,
+              organization: resolvedOrgName,
+            };
+            setAuthUser(fullUser);
+            saveStoredAuthUser(fullUser);
+            guardarEntidad(resolvedProfileType);
+            window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: fullUser }));
+          }
+        } catch {}
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
         clearStoredAuthUser();
