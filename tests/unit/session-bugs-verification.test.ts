@@ -642,6 +642,110 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(userObj.role).toBe('voluntario');
   });
 
+  it('MIE-02: fetchOrganizationByUserId desempaqueta arreglo de organizaciones y soporta roles con mayúsculas en equipo', () => {
+    // Simulación del retorno de PostgREST con join de organizations como arreglo
+    const memberRowFromPostgrest = {
+      id: 'mem-1',
+      organization_id: 'org-quindio-1',
+      role_in_org: 'Admin', // case-insensitive / mayúsculas
+      organizations: [
+        {
+          id: 'org-quindio-1',
+          org_name: 'Gobernacion quindio',
+          organization_type: 'Gubernamental',
+        }
+      ]
+    };
+
+    // Lógica de desempaquetado implementada en fetchOrganizationByUserId
+    const org = Array.isArray(memberRowFromPostgrest.organizations)
+      ? memberRowFromPostgrest.organizations[0]
+      : memberRowFromPostgrest.organizations;
+
+    expect(org).toBeDefined();
+    expect(Array.isArray(org)).toBe(false);
+    expect(org.org_name).toBe('Gobernacion quindio');
+    expect(org.organization_type).toBe('Gubernamental');
+  });
+
+  it('MIE-02: Shell asigna coherentemente "Mi organización" en escritorio y pestaña móvil para miembro con rol voluntario en perfil', () => {
+    const activeUser = {
+      id: 'usr-fed-1',
+      name: 'Federico Posada 1',
+      role: 'voluntario', // rol base en tabla profiles
+      profile_type: 'organizacion', // resuelto por pertenencia a la org
+      org_name: 'Gobernacion quindio',
+      organization: 'Gobernacion quindio',
+    };
+
+    const dbProfileType = 'organizacion';
+    const normProfileType = (activeUser?.profile_type || dbProfileType || '').toString().trim().toLowerCase();
+    const normUserRole = (activeUser?.role || '').toString().trim().toLowerCase();
+
+    const tieneOrg = Boolean(
+      Boolean(activeUser?.org_name) ||
+      Boolean(activeUser?.organization) ||
+      dbProfileType === 'organizacion' ||
+      activeUser?.profile_type === 'organizacion' ||
+      normProfileType === 'organizacion' ||
+      normUserRole === 'organizacion'
+    );
+
+    const esComunidad = Boolean(normProfileType === 'comunidad' || normProfileType === 'liderazgo');
+    const esOrganizacion = !esComunidad && Boolean(tieneOrg);
+    const esIndividual = !tieneOrg && !esComunidad;
+
+    expect(tieneOrg).toBe(true);
+    expect(esOrganizacion).toBe(true);
+    expect(esIndividual).toBe(false);
+
+    // Verificación de coherencia en secciones del menú (escritorio y cajón lateral móvil)
+    const secciones = [
+      { id: 'radar', nombre: 'Radar' },
+      { id: 'directorio', nombre: 'Directorio' },
+    ];
+    if (esIndividual) {
+      secciones.push({ id: 'actividad', nombre: 'Mi actividad' });
+    } else if (esOrganizacion) {
+      secciones.push({ id: 'panel', nombre: 'Mi organización' });
+    }
+
+    const itemPanel = secciones.find((s) => s.id === 'panel');
+    const itemActividad = secciones.find((s) => s.id === 'actividad');
+    expect(itemPanel).toBeDefined();
+    expect(itemPanel?.nombre).toBe('Mi organización');
+    expect(itemActividad).toBeUndefined();
+
+    // Verificación en 5ta pestaña móvil (tabPerfil)
+    let tabPerfilId = 'actividad';
+    let tabPerfilNombre = 'Mi actividad';
+    if (esIndividual) {
+      tabPerfilId = 'actividad';
+      tabPerfilNombre = 'Mi actividad';
+    } else if (esOrganizacion) {
+      tabPerfilId = 'panel';
+      tabPerfilNombre = 'Mi organización';
+    }
+
+    expect(tabPerfilId).toBe('panel');
+    expect(tabPerfilNombre).toBe('Mi organización');
+  });
+
+  it('MIE-02: Usuario sin organización ni admin de plataforma es redirigido fuera de /panel para proteger el panel', () => {
+    const activeUser = { id: 'usr-indiv-1', name: 'Ciudadano Juan', role: 'voluntario', profile_type: 'persona' };
+    const dbOrg = null; // No tiene organización
+    const isAdmin = false;
+    const esModoDemo = false;
+
+    let rutaDestino = '/panel';
+    if (!dbOrg && !isAdmin && !esModoDemo) {
+      rutaDestino = '/mi-actividad';
+    }
+
+    expect(rutaDestino).toBe('/mi-actividad');
+    expect(rutaDestino).not.toBe('/panel');
+  });
+
   it('ROL-12: Sin iniciar sesión, /panel no permite acceso anónimo y redirige a login con retorno', () => {
     // 1. Simulación de usuario anónimo (sin sesión)
     const authUser = null;

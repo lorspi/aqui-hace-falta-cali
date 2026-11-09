@@ -126,6 +126,9 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           let orgData: any = null;
           try {
             orgData = await fetchOrganizationByUserId(user.id);
+            if (Array.isArray(orgData)) {
+              orgData = orgData[0];
+            }
           } catch {}
 
           if (isMounted) {
@@ -213,6 +216,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     if (!base) {
       return null;
     }
+    const resolvedProfileType =
+      (authUser?.profile_type === 'organizacion' || sessionUser?.profile_type === 'organizacion' || base.profile_type === 'organizacion')
+        ? 'organizacion'
+        : (authUser?.profile_type === 'liderazgo' || sessionUser?.profile_type === 'liderazgo' || base.profile_type === 'liderazgo')
+          ? 'liderazgo'
+          : (authUser?.profile_type || sessionUser?.profile_type || base.profile_type);
+
     return {
       ...base,
       ...(sessionUser || {}),
@@ -224,7 +234,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         ...(authUser?.user_metadata || {}),
       },
       role: authUser?.role || sessionUser?.role || base.role,
-      profile_type: authUser?.profile_type || sessionUser?.profile_type || base.profile_type,
+      profile_type: resolvedProfileType,
       org_name: authUser?.org_name || sessionUser?.org_name || base.org_name || base.organization,
       organization: authUser?.organization || sessionUser?.organization || base.organization || base.org_name,
       name: authUser?.name || sessionUser?.name || base.name || base.full_name,
@@ -320,10 +330,13 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     let isMounted = true;
     async function checkUserOrgAndProfile() {
       try {
-        const [orgRes, profRes] = await Promise.all([
+        let [orgRes, profRes] = await Promise.all([
           fetchOrganizationByUserId(activeUser.id),
-          supabase.from('profiles').select('role').eq('id', activeUser.id).maybeSingle()
+          supabase.from('profiles').select('role, profile_type').eq('id', activeUser.id).maybeSingle()
         ]);
+        if (Array.isArray(orgRes)) {
+          orgRes = orgRes[0];
+        }
         if (!isMounted) return;
         setHasOrg(Boolean(orgRes));
         if (orgRes) {
@@ -332,7 +345,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
           setDbProfileType(isCom ? 'comunidad' : 'organizacion');
         } else if (profRes?.data) {
-          setDbProfileType((profRes.data.role || '').toLowerCase());
+          const pt = (profRes.data.profile_type || '').toLowerCase();
+          if (pt.includes('lider') || pt.includes('comun') || pt.includes('junta')) {
+            setDbProfileType('comunidad');
+          } else if (pt.includes('org') || pt.includes('entidad')) {
+            setDbProfileType('organizacion');
+          } else {
+            setDbProfileType('persona');
+          }
         }
       } catch {}
     }
@@ -352,8 +372,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     }
   } catch {}
 
-  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || dbProfileType || adminStorageRole || '').toString().trim().toLowerCase();
-  const normProfileType = (dbProfileType || activeUser?.profile_type || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
+  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || adminStorageRole || '').toString().trim().toLowerCase();
+  const normProfileType = (activeUser?.profile_type || dbProfileType || activeUser?.user_metadata?.profile_type || activeUser?.user_metadata?.profileType || '').toString().trim().toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
   const esAdminOModerador = Boolean(
@@ -376,6 +396,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     Boolean(activeUser?.org_name) ||
     Boolean(activeUser?.organization) ||
     dbProfileType === 'organizacion' ||
+    activeUser?.profile_type === 'organizacion' ||
     normProfileType === 'organizacion' ||
     normProfileType === 'entidad_profesional' ||
     normUserRole === 'organizacion' ||

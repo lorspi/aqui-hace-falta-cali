@@ -1978,7 +1978,7 @@ export async function fetchOrganizationByUserId(userId: string): Promise<any | n
   if (!userId) return null;
 
   // 1. Buscar si el usuario es dueño de la organización
-  const { data: ownerOrg, error: ownerError } = await supabase
+  const { data: ownerOrg } = await supabase
     .from('organizations')
     .select('*')
     .eq('user_id', userId)
@@ -1988,17 +1988,65 @@ export async function fetchOrganizationByUserId(userId: string): Promise<any | n
     return ownerOrg;
   }
 
-  // 2. Buscar si el usuario es miembro de una organización con rol 'admin' o 'operativo'
-  const { data: memberOrg, error: memberError } = await supabase
+  // 2. Buscar si el usuario es miembro de una organización en organization_members por user_id
+  let memberOrg: any = null;
+  const { data: memberRows } = await supabase
     .from('organization_members')
-    .select('organization_id, role_in_org, organizations(*)')
+    .select('id, organization_id, role_in_org, organizations(*)')
     .eq('user_id', userId)
-    .in('role_in_org', ['admin', 'operativo', 'coordinador'])
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
-  if (memberOrg && memberOrg.organizations) {
-    return memberOrg.organizations;
+  if (memberRows && memberRows.length > 0) {
+    memberOrg = memberRows[0];
+  }
+
+  // 3. Si no se encontró por user_id, buscar por correo (por si el miembro fue agregado por correo y user_id está nulo)
+  if (!memberOrg) {
+    try {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const userEmail = userProfile?.email;
+      if (userEmail) {
+        const { data: memberByEmail } = await supabase
+          .from('organization_members')
+          .select('id, organization_id, role_in_org, organizations(*)')
+          .ilike('email', userEmail.trim())
+          .limit(1);
+
+        if (memberByEmail && memberByEmail.length > 0) {
+          memberOrg = memberByEmail[0];
+          // Auto-vincular user_id en segundo plano para consultas futuras
+          supabase
+            .from('organization_members')
+            .update({ user_id: userId })
+            .eq('id', memberOrg.id)
+            .then();
+        }
+      }
+    } catch {}
+  }
+
+  if (memberOrg) {
+    // Si la relación organizations vino en el join (desempaquetar si PostgREST la devolvió como array)
+    if (memberOrg.organizations) {
+      const org = Array.isArray(memberOrg.organizations)
+        ? memberOrg.organizations[0]
+        : memberOrg.organizations;
+      if (org) return org;
+    }
+    // Si no vino en el join, buscar directamente la organización por su id
+    if (memberOrg.organization_id) {
+      const { data: directOrg } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', memberOrg.organization_id)
+        .maybeSingle();
+      if (directOrg) return directOrg;
+    }
   }
 
   return null;

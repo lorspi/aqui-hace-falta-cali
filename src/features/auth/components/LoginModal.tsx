@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, X, LogIn, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
-import { signInWithGoogle, fetchUserProfile } from '../../../lib/supabaseService';
+import { signInWithGoogle, fetchUserProfile, fetchOrganizationByUserId } from '../../../lib/supabaseService';
 import { useTranslation } from '../../../i18n/LanguageContext';
+import { saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../../utils/session';
+import { guardarEntidad } from '../../../utils/cuenta';
 
 interface LoginModalProps {
   isOpen?: boolean;
@@ -101,9 +103,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       if (data.user) {
         let name = data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'Usuario';
-        let role = data.user.user_metadata?.role;
+        let role = data.user.user_metadata?.role || 'voluntario';
+        let profile: any = null;
+        let orgData: any = null;
+
         try {
-          const profile = await fetchUserProfile(data.user.id);
+          const [profRes, orgRes] = await Promise.all([
+            fetchUserProfile(data.user.id),
+            fetchOrganizationByUserId(data.user.id),
+          ]);
+          profile = profRes;
+          orgData = orgRes;
+
           if (profile?.full_name) {
             name = profile.full_name;
           }
@@ -130,8 +141,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           console.warn('[LoginModal] Fetch profile note:', pErr);
         }
 
-        const userObj = { name, email: data.user.email, role };
-        localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
+        const orgType = (orgData?.organization_type || '').toLowerCase();
+        const profType = (profile?.profile_type || data.user.user_metadata?.profile_type || '').toLowerCase();
+        const isCom = orgType.includes('comun') || orgType.includes('junta') || profType.includes('lider') || profType.includes('comun');
+        const profileType = orgData
+          ? (isCom ? 'liderazgo' : 'organizacion')
+          : (profile?.profile_type || data.user.user_metadata?.profile_type || 'persona');
+
+        const resolvedOrgName = orgData?.org_name || orgData?.name || profile?.organization || data.user.user_metadata?.org_name;
+
+        const userObj = {
+          id: data.user.id,
+          name,
+          email: data.user.email,
+          role,
+          profile_type: profileType,
+          org_name: resolvedOrgName,
+          organization: resolvedOrgName || orgData || profile?.organization,
+          user_metadata: data.user.user_metadata,
+        };
+
+        saveStoredAuthUser(userObj);
+        window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: userObj }));
+        if (profileType === 'organizacion' || profileType === 'liderazgo') {
+          guardarEntidad(profileType);
+        } else {
+          guardarEntidad('individual');
+        }
+
         setSuccessMessage(t('authLoginSuccess'));
 
         setTimeout(() => {

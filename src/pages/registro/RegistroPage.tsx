@@ -245,6 +245,9 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       let orgData: any = null;
       try {
         orgData = await fetchOrganizationByUserId(authData.user.id);
+        if (Array.isArray(orgData)) {
+          orgData = orgData[0];
+        }
       } catch (err) {
         console.warn('Error fetching organization on login:', err);
       }
@@ -265,7 +268,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         role: profile?.role || authData.user.user_metadata?.role || 'voluntario',
         profile_type: profileType,
         org_name: resolvedOrgName,
-        organization: resolvedOrgName || orgData || profile?.organization,
+        organization: resolvedOrgName || orgData?.org_name || profile?.organization,
         user_metadata: authData.user.user_metadata,
         createdAt: profile?.created_at || authData.user.created_at,
       };

@@ -396,10 +396,13 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
 
       // 3. Consultar perfil y organización en DB en segundo plano
       try {
-        const [profile, orgData] = await Promise.all([
+        let [profile, orgData] = await Promise.all([
           fetchUserProfile(sessionUser.id),
           fetchOrganizationByUserId(sessionUser.id)
         ]);
+        if (Array.isArray(orgData)) {
+          orgData = orgData[0];
+        }
         if (profile || orgData) {
           if (profile) setUserProfile(profile);
           const dbName = profile?.full_name || profile?.name || local?.name || metaName;
@@ -423,6 +426,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           };
           setAuthUser(updatedUserObj);
           saveStoredAuthUser(updatedUserObj);
+          window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: updatedUserObj }));
           if (resolvedProfileType === 'organizacion' || resolvedProfileType === 'liderazgo') {
             guardarEntidad(resolvedProfileType);
           }

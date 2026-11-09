@@ -672,8 +672,31 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
       const { data: authData } = await supabase.auth.getUser();
       const activeUser = authData?.user || usuarioEfectivo || getStoredAuthUser();
       if (activeUser?.id) {
-        const dbOrg = await fetchOrganizationByUserId(activeUser.id);
+        let dbOrg = await fetchOrganizationByUserId(activeUser.id);
+        if (Array.isArray(dbOrg)) {
+          dbOrg = dbOrg[0];
+        }
         if (dbOrg) {
+          // Sincronizar en sesión si aún no estaba vinculado como organización
+          const stored = getStoredAuthUser();
+          if (!stored?.org_name || stored?.profile_type !== 'organizacion') {
+            const orgType = (dbOrg.organization_type || '').toLowerCase();
+            const isCom = orgType.includes('comun') || orgType.includes('junta');
+            const resolvedProfileType = isCom ? 'liderazgo' : 'organizacion';
+            const updatedUser = {
+              ...(stored || {}),
+              id: activeUser.id,
+              name: stored?.name || activeUser.email?.split('@')[0] || 'Usuario',
+              email: activeUser.email || stored?.email,
+              org_name: dbOrg.org_name,
+              organization: dbOrg.org_name,
+              profile_type: resolvedProfileType,
+            };
+            saveStoredAuthUser(updatedUser);
+            guardarEntidad(resolvedProfileType);
+            window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: updatedUser }));
+          }
+
           setCurrentOrgId(dbOrg.id);
           setOrgData({
             nombre: dbOrg.org_name,
@@ -720,6 +743,16 @@ const Panel: React.FC<{ authUser?: any }> = ({ authUser }) => {
               );
               return [...mappedEquipo, ...preserved];
             });
+          }
+        } else {
+          // Si el usuario autenticado no tiene organización ni es admin de plataforma ni comunidad, redirigir a Mi actividad
+          const isAdmin = typeof window !== 'undefined' && (localStorage.getItem('ahf_admin_token') || localStorage.getItem('ahf_admin_user'));
+          const searchParams = new URLSearchParams(window.location.search);
+          const esModoDemo = searchParams.has('modulos') || searchParams.has('entidad');
+          if (!isAdmin && !esModoDemo) {
+            window.history.replaceState(null, '', '/mi-actividad');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+            return;
           }
         }
 
