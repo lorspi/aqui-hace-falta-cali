@@ -6,7 +6,7 @@ import { LanguageSelector } from '../LanguageSelector';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId } from '../../lib/supabaseService';
-import { entidadActual, formatearRol } from '../../utils/cuenta';
+import { entidadActual, formatearRol, guardarEntidad } from '../../utils/cuenta';
 import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**

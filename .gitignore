@@ -22,3 +22,11 @@ scratch/
 *.zip
 pip_packages/
 test_html.pdf
+
+# Documentos
+documentos/
+documentacion/
+
+# Backups locales
+backups/
+

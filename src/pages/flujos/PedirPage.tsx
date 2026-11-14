@@ -144,7 +144,7 @@ export const Pedir: React.FC<PedirProps> = ({ onClose, onSuccess, isModal = fals
     const detectedCity = (typeof estado.lat === 'number' && typeof estado.lng === 'number')
       ? detectCityFromCoords(estado.lat, estado.lng)
       : null;
-    const resolvedCityId = initialCityId || profile?.city || detectedCity?.id || '';
+    const resolvedCityId = initialCityId || detectedCity?.id || profile?.city || '';
 
     const needPayload = {
       cityId: resolvedCityId,

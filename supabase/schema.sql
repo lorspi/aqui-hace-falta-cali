@@ -468,6 +468,26 @@ CREATE POLICY "Permitir lectura publica de help_resources" ON public.help_resour
 DROP POLICY IF EXISTS "Permitir lectura publica de recursos sugeridos" ON public.emergency_suggested_resources;
 CREATE POLICY "Permitir lectura publica de recursos sugeridos" ON public.emergency_suggested_resources FOR SELECT USING (true);
 
+ALTER TABLE IF EXISTS public.need_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir lectura publica de need_items" ON public.need_items;
+CREATE POLICY "Permitir lectura publica de need_items" ON public.need_items FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Permitir insercion publica de need_items" ON public.need_items;
+CREATE POLICY "Permitir insercion publica de need_items" ON public.need_items FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Permitir edicion publica de need_items" ON public.need_items;
+CREATE POLICY "Permitir edicion publica de need_items" ON public.need_items FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Permitir eliminacion publica de need_items" ON public.need_items;
+CREATE POLICY "Permitir eliminacion publica de need_items" ON public.need_items FOR DELETE USING (true);
+
+ALTER TABLE IF EXISTS public.offer_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir lectura publica de offer_items" ON public.offer_items;
+CREATE POLICY "Permitir lectura publica de offer_items" ON public.offer_items FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Permitir insercion publica de offer_items" ON public.offer_items;
+CREATE POLICY "Permitir insercion publica de offer_items" ON public.offer_items FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Permitir edicion publica de offer_items" ON public.offer_items;
+CREATE POLICY "Permitir edicion publica de offer_items" ON public.offer_items FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Permitir eliminacion publica de offer_items" ON public.offer_items;
+CREATE POLICY "Permitir eliminacion publica de offer_items" ON public.offer_items FOR DELETE USING (true);
+
 -- Permisos Service Role
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE needs TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ingest_responses TO service_role;

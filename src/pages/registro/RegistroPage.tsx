@@ -432,6 +432,9 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         if (signUpError.message?.includes('already registered')) {
           throw new Error('Este correo electrónico ya se encuentra registrado. Por favor inicia sesión.');
         }
+        if (signUpError.message?.toLowerCase().includes('database error')) {
+          throw new Error('Ocurrió un error al crear tu perfil. Por favor intenta de nuevo en unos minutos o contacta a soporte.');
+        }
         throw signUpError;
       }
 
@@ -519,7 +522,12 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       patch({ listo: true });
     } catch (err: any) {
       console.error('Error al registrar usuario en Supabase:', err);
-      setErrorAuth(err.message || 'Error al completar el registro.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('database error')) {
+        setErrorAuth('Ocurrió un error al crear tu perfil. Por favor intenta de nuevo en unos minutos o contacta a soporte.');
+      } else {
+        setErrorAuth(msg || 'Error al completar el registro.');
+      }
     } finally {
       setCargandoAuth(false);
     }

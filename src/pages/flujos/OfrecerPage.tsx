@@ -180,7 +180,7 @@ export const Ofrecer: React.FC<OfrecerProps> = ({ onClose, onSuccess, isModal = 
     const detectedCity = (typeof estado.lat === 'number' && typeof estado.lng === 'number')
       ? detectCityFromCoords(estado.lat, estado.lng)
       : null;
-    const resolvedCityId = initialCityId || profile?.city || detectedCity?.id || '';
+    const resolvedCityId = initialCityId || detectedCity?.id || profile?.city || '';
 
     const offerPayload = {
       cityId: resolvedCityId,

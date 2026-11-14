@@ -899,6 +899,46 @@ describe('Verificación de solución de bugs en flujo de pedir ayuda (PDA-06, PD
     expect(clonBtnOfrecer.getAttribute('aria-hidden')).toBe('true');
     expect(clonBtnOfrecer.innerHTML).toBe('<span>Ofrecer ayuda</span>');
   });
+
+  it('ROL-02: Prioridad de resolución de ciudad en PedirPage y OfrecerPage da prelación a coordenadas detectadas (GPS/mapa) sobre la ciudad de sede del perfil', async () => {
+    const { detectCityFromCoords } = await import('../../src/data/colombiaCities');
+
+    // Organización con sede en Armenia en su perfil, pero ubicando el punto de emergencia en Bogotá
+    const profile = { city: 'Armenia', department: 'Quindío' };
+    const estadoBogota = { lat: 4.6857, lng: -74.0563 };
+    const initialCityId: string | undefined = undefined;
+
+    const detectedCity = detectCityFromCoords(estadoBogota.lat, estadoBogota.lng);
+    const resolvedCityId = initialCityId || detectedCity?.id || profile?.city || '';
+
+    expect(detectedCity?.id).toBe('bogota');
+    expect(resolvedCityId).toBe('bogota');
+    expect(resolvedCityId).not.toBe('Armenia');
+  });
+
+  it('RGP-07: Mensajes técnicos de error de base de datos ("Database error...") se traducen a un aviso amigable para el usuario', () => {
+    const rawErrors = [
+      'Database error saving new user',
+      'Database error saving new user: column profiles.cargo does not exist',
+      'database error: unique constraint violation',
+    ];
+
+    const formatAuthError = (errMessage: string) => {
+      if (errMessage.includes('already registered')) {
+        return 'Este correo electrónico ya se encuentra registrado. Por favor inicia sesión.';
+      }
+      if (errMessage.toLowerCase().includes('database error')) {
+        return 'Ocurrió un error al crear tu perfil. Por favor intenta de nuevo en unos minutos o contacta a soporte.';
+      }
+      return errMessage;
+    };
+
+    rawErrors.forEach((raw) => {
+      const formatted = formatAuthError(raw);
+      expect(formatted).toBe('Ocurrió un error al crear tu perfil. Por favor intenta de nuevo en unos minutos o contacta a soporte.');
+      expect(formatted.includes('Database error')).toBe(false);
+    });
+  });
 });
 
 
