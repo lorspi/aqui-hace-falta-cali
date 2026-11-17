@@ -391,7 +391,10 @@ const Perfil: React.FC<{ authUser?: any }> = ({ authUser }) => {
                   </FilaDato>
                   <FilaDato rotulo={t('profilePassword')} nota="Protegida con Supabase Auth" accion={<Button nivel="secundario" tamano="sm" onClick={async () => {
                     try {
-                      await supabase.auth.resetPasswordForEmail(yo.correo);
+                      const { error } = await supabase.auth.resetPasswordForEmail(yo.correo, {
+                        redirectTo: `${window.location.origin}/registro?modo=nueva_contrasena`,
+                      });
+                      if (error) throw error;
                       avisar('Te enviamos un enlace para restablecer tu contraseña a tu correo', { tipo: 'ok' });
                     } catch {
                       avisar('Error enviando enlace de restablecimiento', { tipo: 'error' });

@@ -35,7 +35,6 @@ import { PublicEditOfferModal } from "./components/PublicEditOfferModal";
 import { UpdateStatusModal } from "./components/UpdateStatusModal";
 import { ChatbotTicketModal } from "./components/ChatbotTicketModal";
 // Lazy-loaded auth modals for code-splitting
-const RegisterWizard = lazy(() => import("./features/auth/components/RegisterWizard").then(m => ({ default: m.RegisterWizard })));
 const LoginModal = lazy(() => import("./features/auth/components/LoginModal").then(m => ({ default: m.LoginModal })));
 const UserProfileModal = lazy(() => import("./features/auth/components/UserProfileModal").then(m => ({ default: m.UserProfileModal })));
 const VolunteerRegisterModal = lazy(() => import("./features/auth/components/VolunteerRegisterModal").then(m => ({ default: m.VolunteerRegisterModal })));
@@ -191,6 +190,18 @@ export default function App() {
     return '/';
   });
   const [authUser, setAuthUser] = useState<any>(() => getStoredAuthUser());
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const isRecoveryHash = window.location.hash.includes('type=recovery');
+    const isRegistroRecovery =
+      window.location.pathname.startsWith('/registro') &&
+      window.location.search.includes('modo=nueva_contrasena');
+    const hasPkceCode = new URLSearchParams(window.location.search).has('code');
+    if (isRecoveryHash || (isRegistroRecovery && hasPkceCode)) {
+      try { sessionStorage.setItem('ahf_recovery_active', '1'); } catch {}
+    }
+    return isRecoveryHash && !isRegistroRecovery;
+  });
 
   useEffect(() => {
     // 1. Preload chunks so clicking navigation links doesn't trigger the Suspense fallback spinner
@@ -225,6 +236,17 @@ export default function App() {
 
     // 2. Sync auth state across whole application
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (typeof window !== 'undefined' && window.location.hash.includes('type=recovery'))) {
+        try { sessionStorage.setItem('ahf_recovery_active', '1'); } catch {}
+        const isRegistroRecovery =
+          typeof window !== 'undefined' &&
+          window.location.pathname.startsWith('/registro') &&
+          window.location.search.includes('modo=nueva_contrasena');
+        if (!isRegistroRecovery) {
+          setIsResetPasswordModalOpen(true);
+        }
+      }
+
       if (session?.user) {
         const local = getStoredAuthUser();
         const metaName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
@@ -272,6 +294,7 @@ export default function App() {
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
         clearStoredAuthUser();
+        try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
       }
     });
 
@@ -337,6 +360,25 @@ export default function App() {
       <Suspense fallback={<div className="min-h-screen bg-brand-surface flex items-center justify-center"><div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" /></div>}>
         {content}
       </Suspense>
+      <Suspense fallback={null}>
+        <ResetPasswordModal
+          isOpen={isResetPasswordModalOpen}
+          onClose={() => {
+            setIsResetPasswordModalOpen(false);
+            try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
+            if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          }}
+          onSuccess={() => {
+            setIsResetPasswordModalOpen(false);
+            try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
+            if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          }}
+        />
+      </Suspense>
       <DialogoAuthRapido
         abierto={isAuthModalOpen}
         onCerrar={() => setIsAuthModalOpen(false)}
@@ -386,11 +428,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     if (propSetAuthUser) propSetAuthUser(u);
   };
 
-  const [registerInitialStep, setRegisterInitialStep] = useState<number>(1);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
-  });
   const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.pathname === '/voluntario';
   });
@@ -480,12 +518,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           }
         }
 
-        if (!profile) {
-          setRegisterInitialStep(2);
-          setIsRegisterModalOpen(true);
-        } else {
-          setIsRegisterModalOpen(false);
-        }
       } catch (err) {
         console.warn('[App] Profile check background note:', err);
       }
@@ -498,11 +530,8 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
       }
     });
 
-    // 2. Escuchar cambios de estado en tiempo real (Google OAuth / Password Recovery)
+    // 2. Escuchar cambios de estado en tiempo real (Google OAuth)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (typeof window !== 'undefined' && window.location.hash.includes('type=recovery'))) {
-        setIsResetPasswordModalOpen(true);
-      }
       if (session?.user) {
         handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
@@ -622,7 +651,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
     return false;
   });
-  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -1467,34 +1495,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         isOpen={isChatbotModalOpen}
         onClose={() => setIsChatbotModalOpen(false)}
       />
-      <RegisterWizard
-        isOpen={isRegisterModalOpen}
-        initialStep={registerInitialStep}
-        onClose={() => {
-          setIsRegisterModalOpen(false);
-          setRegisterInitialStep(1);
-        }}
-        onNavigateToLogin={() => {
-          setIsRegisterModalOpen(false);
-          setRegisterInitialStep(1);
-          if (propOnOpenLoginModal) {
-            propOnOpenLoginModal();
-          } else {
-            window.dispatchEvent(new CustomEvent('ahf_open_auth'));
-          }
-        }}
-        onSuccess={(savedProfile) => {
-          setIsRegisterModalOpen(false);
-          setRegisterInitialStep(1);
-          if (savedProfile?.full_name || savedProfile?.name) {
-            const name = savedProfile.full_name || savedProfile.name;
-            const email = savedProfile.email || authUser?.email;
-            const userObj = { name, email };
-            setAuthUser(userObj);
-            localStorage.setItem('ahf_auth_user', JSON.stringify(userObj));
-          }
-        }}
-      />
       <VolunteerRegisterModal
         isOpen={isVolunteerModalOpen}
         onClose={() => setIsVolunteerModalOpen(false)}
@@ -1510,11 +1510,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           }
           setUserProfile(updatedProfile);
         }}
-      />
-      <ResetPasswordModal
-        isOpen={isResetPasswordModalOpen}
-        onClose={() => setIsResetPasswordModalOpen(false)}
-        onSuccess={() => setIsResetPasswordModalOpen(false)}
       />
     </div>
   );

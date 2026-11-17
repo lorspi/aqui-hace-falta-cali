@@ -54,7 +54,10 @@ const ITEM_ACTUAL = 'bg-rd-navy-soft font-semibold text-rd-navy hover:bg-rd-navy
 
 export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, authUser, isModeratorOrAdmin = false, pendientes = 0, avisosNuevos = 0, rutas, onPedir, onOfrecer, onOpenLoginModal, onOpenProfileModal, onLogout, cajonAbierto = false, onCerrarCajon, children }) => {
   const { t, language } = useTranslation();
-  const [plegado, setPlegado] = useState(false);
+  const [plegado, setPlegado] = useState<boolean>(() => {
+    const initialUser = authUser === null ? null : (authUser !== undefined ? authUser : getStoredAuthUser());
+    return !initialUser;
+  });
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
 
@@ -252,6 +255,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [authUser, sessionUser]);
 
   const estaLogueado = Boolean(activeUser);
+
+  const prevEstaLogueadoRef = useRef(estaLogueado);
+  useEffect(() => {
+    if (prevEstaLogueadoRef.current !== estaLogueado) {
+      prevEstaLogueadoRef.current = estaLogueado;
+      setPlegado(!estaLogueado);
+    }
+  }, [estaLogueado]);
 
   const cuentaFinal = useMemo(() => {
     if (!activeUser) return cuenta;

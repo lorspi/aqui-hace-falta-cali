@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, Mail, MapPin, Map as MapIcon, Phone, Search, Share2, UserRound, Users, X } from 'lucide-react';
+import { BadgeCheck, Flag, Funnel, Hand, HeartHandshake, LogIn, Mail, MapPin, Map as MapIcon, Phone, Search, Share2, UserRound, Users, X } from 'lucide-react';
 import { Donde } from '../../components/ui/Donde';
 import { IconoWhatsApp } from '../../components/ui/IconoMarca';
 import { AvisosProvider, useAviso } from '../../components/ui/AvisoCorto';
@@ -121,6 +121,8 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
     return localAuth ?? getStoredAuthUser();
   }, [authUser, localAuth]);
 
+  const estaLogueado = Boolean(usuarioEfectivo);
+
   /* Lo que se ve sale de la URL y vuelve a ella: una consulta armada se comparte por enlace
      (`utils/enlace.ts`), con el mismo vocabulario de la Radar. */
   const inicial = useMemo(() => directorioDeParams(paramsActuales()), []);
@@ -194,6 +196,11 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
   }, []);
 
   useEffect(() => {
+    if (!estaLogueado) {
+      setEntidadesBase([]);
+      setPublicacionesBase([]);
+      return;
+    }
     async function cargarDatosDirectorio() {
       try {
         const [dbEntidades, { data: needsData }, { data: offersData }] = await Promise.all([
@@ -214,12 +221,13 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
       }
     }
     cargarDatosDirectorio();
-  }, []);
+  }, [estaLogueado]);
 
   /* La URL dice lo que se ve, para poder compartirlo. */
   useEffect(() => {
+    if (!estaLogueado) return;
     escribirUrl(paramsDeDirectorio({ consulta: q, clase }));
-  }, [q, clase]);
+  }, [q, clase, estaLogueado]);
 
   const deVista = useMemo(() => entidadesDe(clase, entidadesBase, ENTIDAD_PROPIA), [clase, entidadesBase]);
   const lista = useMemo(() => filtrar(deVista, publicacionesBase, q, ubicacion), [deVista, publicacionesBase, q, ubicacion]);
@@ -333,98 +341,128 @@ const Directorio: React.FC<DirectorioPageProps> = ({ authUser, onOpenLoginModal,
               <span aria-hidden="true" className="mx-1 h-6 w-px bg-rd-line" />
               <CampanaAvisos avisos={avisos} rutaAvisos={RUTAS_SHELL.avisos} onLeerTodos={leerTodos} onAccion={accionDeAviso} />
             </span>
-            <button
-              type="button"
-              onClick={() => setBuscando((b) => !b)}
-              aria-label={t('searchKeyword')}
-              aria-expanded={buscando}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
-            >
-              <Search aria-hidden="true" className="h-5 w-5" />
-            </button>
+            {estaLogueado && (
+              <button
+                type="button"
+                onClick={() => setBuscando((b) => !b)}
+                aria-label={t('searchKeyword')}
+                aria-expanded={buscando}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-rd-md border border-rd-line bg-rd-surface text-rd-ink pointer-coarse:h-11 pointer-coarse:w-11 focus-visible:outline-2 focus-visible:outline-rd-navy lg:hidden"
+              >
+                <Search aria-hidden="true" className="h-5 w-5" />
+              </button>
+            )}
             <BotonMenu onClick={() => setCajon(true)} abierto={cajon} />
           </span>
         </header>
 
-        <Pestanas etiqueta={t('whatToSee')} pestanas={pestanas} actual={clase} onCambiar={cambiarVista} />
+        {!estaLogueado ? (
+          <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+            <Vacio
+              icono={<Users className="h-6.5 w-6.5" />}
+              titulo={t('directoryAuthTitle')}
+              texto={t('directoryAuthDesc')}
+              accion={
+                <Button
+                  nivel="primario"
+                  tamano="md"
+                  icono={<LogIn className="h-4 w-4" />}
+                  onClick={() => {
+                    if (onOpenLoginModal) {
+                      onOpenLoginModal();
+                    } else {
+                      window.dispatchEvent(new CustomEvent('ahf_open_auth'));
+                    }
+                  }}
+                >
+                  {t('navLoginRegister')}
+                </Button>
+              }
+            />
+          </main>
+        ) : (
+          <>
+            <Pestanas etiqueta={t('whatToSee')} pestanas={pestanas} actual={clase} onCambiar={cambiarVista} />
 
-        {/* ---- consulta ---- */}
-        <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
-          {/* Decisión 70: Filtros y chips a la izquierda, el buscador a la derecha (146: lupa bajo 1024). */}
-          <BotonFiltros aplicados={aplicados} abierta={hoja} onClick={() => setHoja(true)} />
-          <p aria-live="polite" aria-atomic="true" className="sr-only">
-            {estado}
-          </p>
-          {chips.length > 0 && (
-            <ZonaChips>
-              {chips.map((c) => (
-                <ChipAplicado key={c.clave} texto={c.texto} onQuitar={() => setQ(c.quitar(q))} />
-              ))}
-              <QuitarTodos onClick={() => setQ({ ...consultaVacia(), orden: q.orden })} />
-            </ZonaChips>
-          )}
-          <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? t('searchCommunityPlaceholder') : t('searchOrgPlaceholder')} abierto={buscando} />
-        </div>
+            {/* ---- consulta ---- */}
+            <div className="flex flex-none flex-wrap items-center gap-3 border-b border-rd-line bg-rd-surface px-4 py-2 max-lg:gap-2 sm:px-6 lg:px-8">
+              {/* Decisión 70: Filtros y chips a la izquierda, el buscador a la derecha (146: lupa bajo 1024). */}
+              <BotonFiltros aplicados={aplicados} abierta={hoja} onClick={() => setHoja(true)} />
+              <p aria-live="polite" aria-atomic="true" className="sr-only">
+                {estado}
+              </p>
+              {chips.length > 0 && (
+                <ZonaChips>
+                  {chips.map((c) => (
+                    <ChipAplicado key={c.clave} texto={c.texto} onQuitar={() => setQ(c.quitar(q))} />
+                  ))}
+                  <QuitarTodos onClick={() => setQ({ ...consultaVacia(), orden: q.orden })} />
+                </ZonaChips>
+              )}
+              <CampoBuscar valor={q.texto} onChange={(texto) => setQ({ ...q, texto })} placeholder={clase === 'comunidad' ? t('searchCommunityPlaceholder') : t('searchOrgPlaceholder')} abierto={buscando} />
+            </div>
 
-        {/* ---- la lista ---- */}
-        <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
-          {lista.length === 0 ? (
-            aplicados > 0 ? (
-              <Vacio
-                icono={<Funnel className="h-6.5 w-6.5" />}
-                titulo={vacio.titulo}
-                texto={vacio.texto}
-                accion={
-                  <Button nivel="secundario" tamano="md" onClick={() => setQ(vacio.aflojar)}>
-                    {vacio.accion}
-                  </Button>
-                }
-              />
-            ) : (
-              <Vacio
-                icono={<Users className="h-6.5 w-6.5" />}
-                titulo={clase === 'comunidad' ? t('emptyCommunityNeeds') : t('emptyOrgOffers')}
-                accion={
-                  clase === 'comunidad' ? (
-                    <Button nivel="pedir" tamano="md" onClick={() => irA(RUTAS.pedir)}>
-                      {t('publishNeed')}
-                    </Button>
-                  ) : (
-                    <Button nivel="primario" tamano="md" onClick={() => irA(RUTAS.ofrecer)}>
-                      {t('offerHelp')}
-                    </Button>
-                  )
-                }
-              />
-            )
-          ) : (
-            <>
-              {/* Sin texto de conteo ni de orden (Alejandro, 21 de septiembre de 2026): las
-                  pestañas ya cuentan y Filtros ya ordena. El conteo sigue en la región viva. */}
-              {/* Dos maquetaciones, una por ancho (regla 184 del DS): **hasta 1279** una cuadrícula
-                  de tarjetas, **desde 1280** una tabla con su cabecera de columnas dentro de una
-                  sola caja. `FilaEntidad` pinta la que corresponda; el contenedor cambia con ella. */}
-              <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
-                {/* Cabecera de columnas, solo en la tabla: rótulo suelto, sin caja, porque cada
-                    fila es una tarjeta aparte (Alejandro, 22 de septiembre de 2026). */}
-                <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_220px] xl:items-center xl:gap-6">
-                  <span className="text-rd-13 font-semibold text-rd-ink">{clase === 'comunidad' ? t('communityAndZone') : t('organizationAndZone')}</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">{t('activityAndResources')}</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">{t('contact')}</span>
-                  <span className="text-rd-13 font-semibold text-rd-ink">{t('actions')}</span>
-                </div>
-                {lista.map((e) => (
-                  <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
-                ))}
-              </div>
-            </>
-          )}
-        </main>
+            {/* ---- la lista ---- */}
+            <main id={`panel-${clase}`} role="tabpanel" aria-labelledby={`pestana-${clase}`} className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch] bg-rd-surface px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pb-6">
+              {lista.length === 0 ? (
+                aplicados > 0 ? (
+                  <Vacio
+                    icono={<Funnel className="h-6.5 w-6.5" />}
+                    titulo={vacio.titulo}
+                    texto={vacio.texto}
+                    accion={
+                      <Button nivel="secundario" tamano="md" onClick={() => setQ(vacio.aflojar)}>
+                        {vacio.accion}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <Vacio
+                    icono={<Users className="h-6.5 w-6.5" />}
+                    titulo={clase === 'comunidad' ? t('emptyCommunityNeeds') : t('emptyOrgOffers')}
+                    accion={
+                      clase === 'comunidad' ? (
+                        <Button nivel="pedir" tamano="md" onClick={() => irA(RUTAS.pedir)}>
+                          {t('publishNeed')}
+                        </Button>
+                      ) : (
+                        <Button nivel="primario" tamano="md" onClick={() => irA(RUTAS.ofrecer)}>
+                          {t('offerHelp')}
+                        </Button>
+                      )
+                    }
+                  />
+                )
+              ) : (
+                <>
+                  {/* Sin texto de conteo ni de orden (Alejandro, 21 de septiembre de 2026): las
+                      pestañas ya cuentan y Filtros ya ordena. El conteo sigue en la región viva. */}
+                  {/* Dos maquetaciones, una por ancho (regla 184 del DS): **hasta 1279** una cuadrícula
+                      de tarjetas, **desde 1280** una tabla con su cabecera de columnas dentro de una
+                      sola caja. `FilaEntidad` pinta la que corresponda; el contenedor cambia con ella. */}
+                  <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:flex xl:flex-col xl:gap-3">
+                    {/* Cabecera de columnas, solo en la tabla: rótulo suelto, sin caja, porque cada
+                        fila es una tarjeta aparte (Alejandro, 22 de septiembre de 2026). */}
+                    <div className="hidden px-5 pb-1 xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,3fr)_minmax(0,3fr)_220px] xl:items-center xl:gap-6">
+                      <span className="text-rd-13 font-semibold text-rd-ink">{clase === 'comunidad' ? t('communityAndZone') : t('organizationAndZone')}</span>
+                      <span className="text-rd-13 font-semibold text-rd-ink">{t('activityAndResources')}</span>
+                      <span className="text-rd-13 font-semibold text-rd-ink">{t('contact')}</span>
+                      <span className="text-rd-13 font-semibold text-rd-ink">{t('actions')}</span>
+                    </div>
+                    {lista.map((e) => (
+                      <FilaEntidad key={e.id} entidad={e} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onVerDetalle={() => setDetalle(e)} onCompartir={() => compartir(e)} onReportar={() => setReporte(e)} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </main>
 
-        <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
-        <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
-        <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
-        <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
+            <HojaDirectorio abierta={hoja} clase={clase} consulta={q} entidades={deVista} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCambiar={setQ} onCerrar={() => setHoja(false)} resultados={lista.length} />
+            <DialogoReporte abierto={reporte !== null} titulo={reporte ? `Reportar a ${reporte.nombre}` : 'Reportar'} motivos={MOTIVOS_ENTIDAD} onCerrar={() => setReporte(null)} onEnviar={enviarReporte} />
+            <DialogoDetalleEntidad abierto={detalle !== null} entidad={detalle} publicacionesBase={publicacionesBase} ubicacion={ubicacion} onCerrar={() => setDetalle(null)} onCompromiso={abrirCompromiso} onCompartir={detalle ? () => compartir(detalle) : undefined} onReportar={detalle ? () => setReporte(detalle) : undefined} />
+            <DialogoCompromiso publicacion={compromiso} onCerrar={() => setCompromiso(null)} onEnviar={enviarCompromiso} />
+          </>
+        )}
       </div>
     </Shell>
   );

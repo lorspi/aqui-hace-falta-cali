@@ -127,7 +127,101 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
   const [correoRecuperar, setCorreoRecuperar] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState<string | null>(null);
+  const [verificandoRecuperacion, setVerificandoRecuperacion] = useState(false);
+  const [sesionRecuperacionLista, setSesionRecuperacionLista] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Validar que el acceso a `nueva_contrasena` provenga de un enlace real de recuperación de Supabase
+  useEffect(() => {
+    if (e.modo !== 'nueva_contrasena') {
+      setVerificandoRecuperacion(false);
+      setSesionRecuperacionLista(false);
+      return;
+    }
+
+    let activo = true;
+    setVerificandoRecuperacion(true);
+
+    const hasUrlSignal = () => {
+      if (typeof window === 'undefined') return false;
+      const hash = window.location.hash || '';
+      const params = new URLSearchParams(window.location.search);
+      return hash.includes('type=recovery') || params.has('code');
+    };
+
+    const hasStoredRecovery = () => {
+      try {
+        return sessionStorage.getItem('ahf_recovery_active') === '1';
+      } catch {
+        return false;
+      }
+    };
+
+    if (hasUrlSignal()) {
+      try {
+        sessionStorage.setItem('ahf_recovery_active', '1');
+      } catch {}
+    }
+
+    const resolverSesion = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!activo) return;
+
+        if (session?.user && (hasUrlSignal() || hasStoredRecovery())) {
+          if (session.user.email) {
+            setCorreoRecuperar((prev) => prev || session.user.email || '');
+          }
+          setSesionRecuperacionLista(true);
+          setVerificandoRecuperacion(false);
+          return;
+        }
+
+        // Si hay token en URL pendiente de intercambio por Supabase, esperar brevemente al evento onAuthStateChange
+        if (!hasUrlSignal() && !hasStoredRecovery()) {
+          setSesionRecuperacionLista(false);
+          setVerificandoRecuperacion(false);
+        }
+      } catch {
+        if (activo) {
+          setSesionRecuperacionLista(false);
+          setVerificandoRecuperacion(false);
+        }
+      }
+    };
+
+    resolverSesion();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!activo) return;
+      if (event === 'PASSWORD_RECOVERY') {
+        try {
+          sessionStorage.setItem('ahf_recovery_active', '1');
+        } catch {}
+        if (session?.user?.email) {
+          setCorreoRecuperar((prev) => prev || session.user.email || '');
+        }
+        setSesionRecuperacionLista(true);
+        setVerificandoRecuperacion(false);
+      } else if (event === 'SIGNED_IN' && session?.user && (hasUrlSignal() || hasStoredRecovery())) {
+        if (session.user.email) {
+          setCorreoRecuperar((prev) => prev || session.user.email || '');
+        }
+        setSesionRecuperacionLista(true);
+        setVerificandoRecuperacion(false);
+      }
+    });
+
+    const timeout = window.setTimeout(() => {
+      if (activo) setVerificandoRecuperacion(false);
+    }, 5000);
+
+    return () => {
+      activo = false;
+      window.clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, [e.modo]);
 
   useFocusTrap(modalRef, { isActive: isModal, onEscape: onCerrar });
 
@@ -342,16 +436,33 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
   const hacerActualizarContrasena = async () => {
     setErrorAuth(null);
     const newPassword = pass.current.np || '';
-    if (!newPassword || pass.current.np !== pass.current.nq) return;
+    if (!newPassword || pass.current.np !== pass.current.nq || !contrasenaCumple(newPassword, correoRecuperar)) {
+      return;
+    }
 
     try {
       setCargandoAuth(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || !sesionRecuperacionLista) {
+        setErrorAuth(T.recuperar.enlaceInvalido);
+        return;
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
+
+      try {
+        sessionStorage.removeItem('ahf_recovery_active');
+      } catch {}
       window.location.assign(RUTAS.mapa);
     } catch (err: any) {
       console.error('Error al actualizar contraseña:', err);
-      setErrorAuth(err.message || 'Error al actualizar contraseña.');
+      const rawMsg = (err?.message || '').toLowerCase();
+      if (rawMsg.includes('different from the old password') || err?.code === 'same_password') {
+        setErrorAuth('La nueva contraseña debe ser diferente a la contraseña actual.');
+      } else {
+        setErrorAuth(err?.message || 'Error al actualizar contraseña.');
+      }
     } finally {
       setCargandoAuth(false);
     }
@@ -550,11 +661,11 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       return;
     }
     if (e.modo === 'recuperar_enviado') {
-      patch({ modo: 'nueva_contrasena' });
       return;
     }
     if (e.modo === 'nueva_contrasena') {
       const nuevaLista =
+        sesionRecuperacionLista &&
         Boolean(pass.current.np) &&
         contrasenaCumple(pass.current.np || '', correoRecuperar) &&
         pass.current.np === pass.current.nq;
@@ -766,14 +877,6 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       {titulo(T.recuperar.enviadoTitulo, T.recuperar.enviadoSub)}
       <div className="mt-6 flex flex-col gap-2">
         <Button
-          nivel="primario"
-          tamano="lg"
-          ancho
-          onClick={() => patch({ modo: 'nueva_contrasena' })}
-        >
-          {T.recuperar.simularEnlace}
-        </Button>
-        <Button
           nivel="terciario"
           tamano="md"
           ancho
@@ -800,52 +903,102 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         <Lock className="h-6.5 w-6.5" />
       </span>
       {titulo(T.recuperar.nuevaTitulo, T.recuperar.nuevaSub)}
-      <div ref={cuerpoRef} className="space-y-3 text-left mt-5">
-        <div>
-          <Field
-            {...PILDORA}
-            id="nueva-pass"
-            etiqueta={T.recuperar.nuevaPass}
-            tipo="password"
-            icono={ico.contrasena}
-            autoComplete="new-password"
-            valorInicial={pass.current.np}
-            onChange={guardarPass('np')}
-          />
-          <PasswordRules className="mt-2" id="nueva-reglas" contrasena={pass.current.np || ''} correo={correoRecuperar} />
+      {errorAuth && (
+        <div className="mb-3 text-left">
+          <InlineNotice variante="error" titulo="Atención">{errorAuth}</InlineNotice>
         </div>
-        <Field
-          {...PILDORA}
-          id="nueva-repetir"
-          etiqueta={T.recuperar.repetirPass}
-          tipo="password"
-          icono={ico.contrasena}
-          autoComplete="new-password"
-          valorInicial={pass.current.nq}
-          onChange={guardarPass('nq')}
-          error={pass.current.nq && pass.current.np !== pass.current.nq ? T.cuenta.noCoinciden : null}
-        />
-      </div>
-      <div className="mt-6 flex flex-col gap-2">
-        <Button
-          nivel="primario"
-          tamano="lg"
-          ancho
-          disabled={!nuevaLista}
-          onClick={() => window.location.assign(RUTAS.mapa)}
-        >
-          {T.recuperar.guardar}
-        </Button>
-        <Button
-          nivel="terciario"
-          tamano="md"
-          ancho
-          icono={<ArrowLeft className="h-4 w-4" />}
-          onClick={() => patch({ modo: 'login' })}
-        >
-          {T.recuperar.volver}
-        </Button>
-      </div>
+      )}
+      {verificandoRecuperacion ? (
+        <p className="mt-6 text-rd-14 text-rd-ink-2">Verificando enlace de recuperación...</p>
+      ) : !sesionRecuperacionLista ? (
+        <>
+          <div className="mt-4 text-left">
+            <InlineNotice variante="error" titulo="Enlace inválido o expirado">
+              {T.recuperar.enlaceInvalido}
+            </InlineNotice>
+          </div>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button
+              nivel="primario"
+              tamano="lg"
+              ancho
+              onClick={() => {
+                try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
+                setErrorAuth(null);
+                patch({ modo: 'recuperar' });
+              }}
+            >
+              {T.recuperar.solicitarNuevo}
+            </Button>
+            <Button
+              nivel="terciario"
+              tamano="md"
+              ancho
+              icono={<ArrowLeft className="h-4 w-4" />}
+              onClick={() => {
+                try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
+                setErrorAuth(null);
+                patch({ modo: 'login' });
+              }}
+            >
+              {T.recuperar.volver}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div ref={cuerpoRef} className="space-y-3 text-left mt-5">
+            <div>
+              <Field
+                {...PILDORA}
+                id="nueva-pass"
+                etiqueta={T.recuperar.nuevaPass}
+                tipo="password"
+                icono={ico.contrasena}
+                autoComplete="new-password"
+                valorInicial={pass.current.np}
+                onChange={guardarPass('np')}
+              />
+              <PasswordRules className="mt-2" id="nueva-reglas" contrasena={pass.current.np || ''} correo={correoRecuperar} />
+            </div>
+            <Field
+              {...PILDORA}
+              id="nueva-repetir"
+              etiqueta={T.recuperar.repetirPass}
+              tipo="password"
+              icono={ico.contrasena}
+              autoComplete="new-password"
+              valorInicial={pass.current.nq}
+              onChange={guardarPass('nq')}
+              error={pass.current.nq && pass.current.np !== pass.current.nq ? T.cuenta.noCoinciden : null}
+            />
+          </div>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button
+              nivel="primario"
+              tamano="lg"
+              ancho
+              disabled={!nuevaLista || cargandoAuth}
+              onClick={hacerActualizarContrasena}
+            >
+              {cargandoAuth ? T.recuperar.actualizando : T.recuperar.guardar}
+            </Button>
+            <Button
+              nivel="terciario"
+              tamano="md"
+              ancho
+              icono={<ArrowLeft className="h-4 w-4" />}
+              onClick={() => {
+                try { sessionStorage.removeItem('ahf_recovery_active'); } catch {}
+                setErrorAuth(null);
+                patch({ modo: 'login' });
+              }}
+            >
+              {T.recuperar.volver}
+            </Button>
+          </div>
+        </>
+      )}
     </>
   );
 

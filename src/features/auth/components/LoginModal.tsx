@@ -56,7 +56,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/registro?modo=nueva_contrasena`,
       });
 
       if (error) {
