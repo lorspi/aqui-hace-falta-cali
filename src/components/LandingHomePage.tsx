@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
+import { getOfficialWhatsappLink, OFFICIAL_EMAIL, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
 import {
   MapPin,
   HeartHandshake,
@@ -368,11 +368,11 @@ export const LandingHomePage: React.FC = () => {
 
             {/* Correo */}
             <a
-              href="mailto:info@radardeayuda.org"
+              href={`mailto:${OFFICIAL_EMAIL}`}
               className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-extrabold text-sm transition-all shadow-lg flex items-center justify-center gap-2.5 cursor-pointer hover:scale-105 backdrop-blur-xs"
             >
               <Mail className="w-5 h-5 shrink-0 text-blue-200" />
-              <span>info@radardeayuda.org</span>
+              <span>{OFFICIAL_EMAIL}</span>
             </a>
           </div>
         </div>

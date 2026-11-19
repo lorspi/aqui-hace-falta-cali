@@ -27,7 +27,7 @@ TanStack Start · Tailwind CSS · Radix UI · Zod · Supabase · Vite · Vitest
 Modales: `AdminDashboardModal`, `ChatbotTicketModal`, `CreateNeedModal`, `CreateOfferModal`,
 `ConfirmDialog`, `LandingOfferActionModal` (retirado en favor de apertura directa de CreateOfferModal), `NeedDetailModal`, `OfferDetailModal`,
 `PublicEditModal`, `PublicEditOfferModal`, `QuieroAyudarModal`, `RadarMatchModal`,
-`ReportModal`, `UpdateStatusModal`, `WelcomeOnboardingModal`.
+`ReportModal`, `UpdateStatusModal`.
 
 Selección / entrada: `CityCombobox`, `CityFormCombobox`, `CustomSelect`, `SearchAutocomplete`,
 `LanguageSelector`, `Turnstile`.
@@ -38,8 +38,7 @@ Páginas: `AdminPanelPage`, `CifrasPage`, `LandingHomePage`, `LegalPage`, `Moder
 `SimulatedRegisterPage`.
 
 Layout / navegación / feedback: `Header`, `Footer`, `FilterBar`, `MobileBottomBar`,
-`FloatingCreateNeedFAB`, `Toast`, `BannerDisclaimer`, `DevEnvironmentBanner`,
-`WelcomeOnboardingModal`.
+`FloatingCreateNeedFAB`, `Toast`, `BannerDisclaimer`, `DevEnvironmentBanner`.
 
 Mapa: `MapView`, `MiniMapPicker`, `InteractiveRadarSymbolGuide`.
 

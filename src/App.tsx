@@ -59,7 +59,6 @@ const MiActividadPage = lazy(() => import("./pages/actividad/MiActividadPage").t
 const CifrasPage = lazy(() => import("./components/CifrasPage").then(m => ({ default: m.CifrasPage })));
 import terminosMd from "./content/terminos.md?raw";
 import privacidadMd from "./content/privacidad.md?raw";
-import { WelcomeOnboardingModal } from "./components/WelcomeOnboardingModal";
 import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
@@ -651,7 +650,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
     return false;
   });
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(() => {
@@ -691,7 +689,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
   };
 
-  // Auto-open welcome onboarding modal on first-time visit (suppressed if arriving via landing offer/pedir CTA)
+  // Clean offer/pedir query params from URL after initial state has consumed them
   useEffect(() => {
     try {
       const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -701,11 +699,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         params?.get('reportar') === 'true' ||
         params?.get('accion') === 'pedir' ||
         params?.get('accion') === 'reportar';
-      const hasSeen = localStorage.getItem('radar_has_seen_onboarding');
-      if (!hasSeen && !isOfrecer && !isPedir) {
-        setIsWelcomeModalOpen(true);
-      }
-      // Clean query params from URL so modal doesn't re-trigger upon refresh
       if ((isOfrecer || isPedir) && typeof window !== 'undefined') {
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete('ofrecer');
@@ -715,7 +708,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         window.history.replaceState({}, '', newUrl.pathname + (newUrl.search || ''));
       }
     } catch (e) {
-      console.warn('LocalStorage not available', e);
+      console.warn('URL cleanup error', e);
     }
   }, []);
 
@@ -1481,13 +1474,6 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
           handleSelectOffer(null);
           handleSelectNeed(need);
         }}
-      />
-
-      <WelcomeOnboardingModal
-        isOpen={isWelcomeModalOpen}
-        onClose={() => setIsWelcomeModalOpen(false)}
-        onOpenCreateNeed={() => setIsCreateModalOpen(true)}
-        onOpenCreateOffer={() => setShowCreateOffer(true)}
       />
 
       {/* Chatbot Modal */}

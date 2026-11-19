@@ -1,7 +1,7 @@
 import React from 'react';
 import { Mail, MessageCircle } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
-import { getOfficialWhatsappLink, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
+import { getOfficialWhatsappLink, OFFICIAL_EMAIL, OFFICIAL_WHATSAPP_DISPLAY } from '../constants/contact';
 
 export const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -22,11 +22,11 @@ export const Footer: React.FC = () => {
         {/* Canales Oficiales de Contacto */}
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-slate-300">
           <a
-            href="mailto:info@radardeayuda.org"
+            href={`mailto:${OFFICIAL_EMAIL}`}
             className="inline-flex items-center gap-1.5 hover:text-white transition-colors font-medium"
           >
             <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span>info@radardeayuda.org</span>
+            <span>{OFFICIAL_EMAIL}</span>
           </a>
           <a
             href={getOfficialWhatsappLink()}

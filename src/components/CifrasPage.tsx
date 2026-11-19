@@ -35,6 +35,7 @@ import { useTranslation } from '../i18n/LanguageContext';
 import { Footer } from './Footer';
 import { CustomSelect } from './CustomSelect';
 import { DEPARTMENTS, findDepartmentByCityId, getCityDisplayName } from '../data/colombiaCities';
+import { OFFICIAL_EMAIL } from '../constants/contact';
 
 // ==========================================
 // TYPES
@@ -1748,7 +1749,7 @@ export const CifrasPage: React.FC = () => {
         {/* Printable Footer */}
         <div className="pt-4 border-t-2 border-slate-300 text-center text-[10px] text-slate-600">
           <p className="font-bold text-slate-800">RaDAR de Ayuda - Plataforma Ciudadana Abierta de Coordinación de Emergencias</p>
-          <p>Informe generado automáticamente desde radardeayuda.org • info@radardeayuda.org</p>
+          <p>Informe generado automáticamente desde radardeayuda.org • {OFFICIAL_EMAIL}</p>
         </div>
       </div>
     </div>

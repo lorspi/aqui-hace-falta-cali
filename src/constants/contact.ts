@@ -4,7 +4,7 @@
 
 export const OFFICIAL_WHATSAPP_NUMBER = '573228262389';
 export const OFFICIAL_WHATSAPP_DISPLAY = '+57 322 826 2389';
-export const OFFICIAL_EMAIL = 'info@radardeayuda.org';
+export const OFFICIAL_EMAIL = 'hola@radardeayuda.org';
 export const OFFICIAL_DOMAIN = 'www.radardeayuda.org';
 
 export const getOfficialWhatsappLink = (message?: string): string => {
