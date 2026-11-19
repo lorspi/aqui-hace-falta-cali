@@ -1244,6 +1244,7 @@ export interface AdminOrganization {
   contactWhatsapp?: string;
   contactEmail?: string;
   isVerified: boolean;
+  showInDirectory: boolean;
   createdAt?: string;
   updatedAt?: string;
   contactName?: string;
@@ -1301,6 +1302,7 @@ export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]
         contactWhatsapp: o.contact_whatsapp || p?.whatsapp || undefined,
         contactEmail: o.contact_email || p?.email || undefined,
         isVerified: Boolean(o.is_verified),
+        showInDirectory: o.show_in_directory !== false,
         createdAt: o.created_at,
         updatedAt: o.updated_at,
         contactName: p?.full_name || undefined,
@@ -1330,6 +1332,7 @@ export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]
           contactWhatsapp: p.whatsapp || undefined,
           contactEmail: p.email || undefined,
           isVerified: Boolean(p.is_verified),
+          showInDirectory: p.show_in_directory !== false,
           createdAt: p.created_at,
           updatedAt: p.updated_at,
           contactName: p.full_name,
@@ -1352,9 +1355,10 @@ export async function fetchAdminOrganizationsList(): Promise<AdminOrganization[]
 export async function fetchDirectorioEntidades(): Promise<any[]> {
   try {
     const adminOrgs = await fetchAdminOrganizationsList();
-    if (!adminOrgs || adminOrgs.length === 0) return [];
+    const visibleOrgs = (adminOrgs || []).filter((o) => o.showInDirectory);
+    if (visibleOrgs.length === 0) return [];
 
-    return adminOrgs.map((o) => {
+    return visibleOrgs.map((o) => {
       const isComunidad = o.category === 'COMUNIDAD';
       let detectedCityId = '';
       if (typeof o.latitude === 'number' && typeof o.longitude === 'number' && !isNaN(o.latitude) && !isNaN(o.longitude)) {
@@ -1471,6 +1475,34 @@ export async function updateOrganizationVerification(
   }
 
   return { approvedNeedsCount, approvedOffersCount };
+}
+
+/**
+ * Actualiza la visibilidad de una organización o perfil comunitario en el Directorio público.
+ * Soporta filas de `organizations` y perfiles comunitarios sintéticos (`prof-<userId>`).
+ */
+export async function updateOrganizationDirectoryVisibility(
+  orgId: string,
+  userId: string | undefined,
+  showInDirectory: boolean
+): Promise<void> {
+  const now = new Date().toISOString();
+  if (!orgId.startsWith('prof-')) {
+    const { error } = await supabase
+      .from('organizations')
+      .update({ show_in_directory: showInDirectory, updated_at: now })
+      .eq('id', orgId);
+    if (error) throw error;
+  }
+
+  const targetUserId = userId || (orgId.startsWith('prof-') ? orgId.slice(5) : undefined);
+  if (targetUserId) {
+    const { error: profError } = await supabase
+      .from('profiles')
+      .update({ show_in_directory: showInDirectory, updated_at: now })
+      .eq('id', targetUserId);
+    if (profError) throw profError;
+  }
 }
 
 

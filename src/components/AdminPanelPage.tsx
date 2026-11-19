@@ -61,6 +61,7 @@ import { formatReportReason } from "../utils/enumMappers";
 import type { Publicacion } from "../types/publicacion";
 import { ChatbotReportsList } from "./ChatbotReportsList";
 import { Avatar } from "./ui/Etiqueta";
+import { Switch, FilaSwitch } from "./ui/Switch";
 import { iniciales } from "../utils/publicaciones";
 import {
   useNeeds,
@@ -86,6 +87,7 @@ import {
   AdminOrganization,
   fetchAdminOrganizationsList,
   updateOrganizationVerification,
+  updateOrganizationDirectoryVisibility,
 } from "../lib/supabaseService";
 import { cargarDocumentosOrg } from "../utils/documentosVerificacion";
 import type { DocumentoVerificacion } from "../types/panel";
@@ -207,6 +209,7 @@ export const AdminPanelPage: React.FC = () => {
   const [isSavingOrgStatus, setIsSavingOrgStatus] = useState(false);
   const [orgStatusFilter, setOrgStatusFilter] = useState<'ALL' | 'PENDING' | 'VERIFIED'>('ALL');
   const [orgCategoryFilter, setOrgCategoryFilter] = useState<'ALL' | 'ORGANIZACION' | 'COMUNIDAD'>('ALL');
+  const [orgVisibilityFilter, setOrgVisibilityFilter] = useState<'ALL' | 'VISIBLE' | 'HIDDEN'>('ALL');
 
   // Search & Filters
   const [adminSearch, setAdminSearch] = useState("");
@@ -686,6 +689,34 @@ export const AdminPanelPage: React.FC = () => {
       );
     } catch (err: any) {
       showAlert(err.message || 'Error al actualizar verificación', { title: 'Error', variant: 'error' });
+    } finally {
+      setIsSavingOrgStatus(false);
+    }
+  };
+
+  const handleToggleOrgDirectoryVisibility = async (org: AdminOrganization, nextVisible: boolean) => {
+    setIsSavingOrgStatus(true);
+    try {
+      await updateOrganizationDirectoryVisibility(org.id, org.userId, nextVisible);
+      await logAudit(
+        nextVisible ? 'SHOW_ORG_IN_DIRECTORY' : 'HIDE_ORG_FROM_DIRECTORY',
+        currentUser?.email || 'admin@lorspi.com',
+        `Entidad "${org.name}" (ID: ${org.id}) ${nextVisible ? 'visible en' : 'oculta del'} Directorio público.`
+      );
+      setOrganizationsList((prev) =>
+        prev.map((item) => (item.id === org.id ? { ...item, showInDirectory: nextVisible } : item))
+      );
+      if (viewingOrg && viewingOrg.id === org.id) {
+        setViewingOrg({ ...viewingOrg, showInDirectory: nextVisible });
+      }
+      showAlert(
+        nextVisible
+          ? `"${org.name}" ahora es visible en el Directorio público.`
+          : `"${org.name}" fue ocultada del Directorio público.`,
+        { title: 'Éxito', variant: 'success' }
+      );
+    } catch (err: any) {
+      showAlert(err.message || 'Error al actualizar visibilidad en directorio', { title: 'Error', variant: 'error' });
     } finally {
       setIsSavingOrgStatus(false);
     }
@@ -1387,6 +1418,8 @@ export const AdminPanelPage: React.FC = () => {
             if (orgStatusFilter === 'PENDING' && org.isVerified) return false;
             if (orgStatusFilter === 'VERIFIED' && !org.isVerified) return false;
             if (orgCategoryFilter !== 'ALL' && org.category !== orgCategoryFilter) return false;
+            if (orgVisibilityFilter === 'VISIBLE' && !org.showInDirectory) return false;
+            if (orgVisibilityFilter === 'HIDDEN' && org.showInDirectory) return false;
             return true;
           });
 
@@ -1429,6 +1462,17 @@ export const AdminPanelPage: React.FC = () => {
                       { value: 'ALL', label: 'Todas las categorías' },
                       { value: 'ORGANIZACION', label: '🏢 Organizaciones / ONGs' },
                       { value: 'COMUNIDAD', label: '🤝 Comunidades / Líderes' },
+                    ]}
+                  />
+                  <CustomSelect
+                    value={orgVisibilityFilter}
+                    onChange={(v) => setOrgVisibilityFilter(v as any)}
+                    className="w-48"
+                    icon={<Eye className="w-3.5 h-3.5 text-rd-ink-3" />}
+                    options={[
+                      { value: 'ALL', label: 'Directorio: Todas' },
+                      { value: 'VISIBLE', label: '👁️ En directorio' },
+                      { value: 'HIDDEN', label: '🙈 Ocultas' },
                     ]}
                   />
                 </div>
@@ -1490,6 +1534,13 @@ export const AdminPanelPage: React.FC = () => {
                               <span className="bg-rd-fondo text-rd-ink-meta border border-rd-line text-rd-10 font-medium px-2 py-0.5 rounded-rd-sm truncate max-w-xs">
                                 {org.organizationType}
                               </span>
+
+                              {!org.showInDirectory && (
+                                <span className="bg-rd-sunken text-rd-ink-meta border border-rd-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm inline-flex items-center gap-1">
+                                  <EyeOff className="w-3 h-3" />
+                                  Oculta en directorio
+                                </span>
+                              )}
                             </div>
 
                             {/* Contact info row */}
@@ -1593,6 +1644,21 @@ export const AdminPanelPage: React.FC = () => {
 
                         {/* Botones de acción */}
                         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                          <label
+                            htmlFor={`admin-org-dir-${org.id}`}
+                            className="flex items-center gap-2 h-8 px-2.5 rounded-rd-md border border-rd-line bg-rd-fondo/60 text-rd-12 font-medium text-rd-ink cursor-pointer select-none"
+                            title={org.showInDirectory ? 'Visible en el directorio público' : 'Oculta del directorio público'}
+                          >
+                            <span>Mostrar en directorio</span>
+                            <Switch
+                              id={`admin-org-dir-${org.id}`}
+                              encendido={org.showInDirectory}
+                              disabled={isSavingOrgStatus}
+                              etiqueta={`Mostrar ${org.name} en directorio`}
+                              onCambiar={(next) => handleToggleOrgDirectoryVisibility(org, next)}
+                            />
+                          </label>
+
                           {!org.isVerified ? (
                             <button
                               type="button"
@@ -2802,6 +2868,7 @@ export const AdminPanelPage: React.FC = () => {
           org={viewingOrg}
           isSaving={isSavingOrgStatus}
           onToggleVerification={(org) => handleToggleOrgVerification(org)}
+          onToggleDirectoryVisibility={(org, nextVisible) => handleToggleOrgDirectoryVisibility(org, nextVisible)}
           onClose={() => setViewingOrg(null)}
           onPreviewDoc={(doc) => setPreviewingDoc(doc)}
         />
@@ -2972,9 +3039,10 @@ const OrgDetailModal: React.FC<{
   org: AdminOrganization;
   isSaving: boolean;
   onToggleVerification: (org: AdminOrganization) => void;
+  onToggleDirectoryVisibility: (org: AdminOrganization, nextVisible: boolean) => void;
   onClose: () => void;
   onPreviewDoc?: (doc: DocumentoVerificacion) => void;
-}> = ({ org, isSaving, onToggleVerification, onClose, onPreviewDoc }) => {
+}> = ({ org, isSaving, onToggleVerification, onToggleDirectoryVisibility, onClose, onPreviewDoc }) => {
   const isOrgCategory = org.category === 'ORGANIZACION';
 
   const Row: React.FC<{ label: string; value?: string | null; isLink?: boolean }> = ({ label, value, isLink }) => (
@@ -3034,6 +3102,12 @@ const OrgDetailModal: React.FC<{
                     ◷ Pendiente verificación
                   </span>
                 )}
+                {!org.showInDirectory && (
+                  <span className="bg-rd-sunken text-rd-ink-meta border border-rd-line text-rd-10 font-bold px-2 py-0.5 rounded-rd-sm inline-flex items-center gap-1">
+                    <EyeOff className="w-3 h-3" />
+                    Oculta en directorio
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -3047,6 +3121,16 @@ const OrgDetailModal: React.FC<{
 
         {/* Body */}
         <div className="px-5 py-3">
+          <div className="mb-3 rounded-rd-lg border border-rd-line bg-rd-fondo/60 px-3.5 py-2.5">
+            <FilaSwitch
+              id={`modal-org-dir-${org.id}`}
+              rotulo="Mostrar en el Directorio público"
+              nota={org.showInDirectory ? 'Visible para los usuarios en /directorio' : 'Oculta del directorio público (cuenta activa para pruebas)'}
+              encendido={org.showInDirectory}
+              disabled={isSaving}
+              onCambiar={(next) => onToggleDirectoryVisibility(org, next)}
+            />
+          </div>
           <h4 className="text-rd-11 font-bold text-rd-ink-meta uppercase tracking-wider mt-1 mb-1">
             Información Institucional / Comunitaria
           </h4>

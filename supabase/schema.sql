@@ -197,6 +197,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role VARCHAR(50) DEFAULT 'voluntario',
   profile_type VARCHAR(50) DEFAULT 'persona',
   is_verified BOOLEAN DEFAULT FALSE,
+  show_in_directory BOOLEAN NOT NULL DEFAULT TRUE,
   
   -- Auditoría de Términos y Condiciones
   accept_terms BOOLEAN DEFAULT TRUE NOT NULL,
@@ -234,6 +235,7 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   contact_whatsapp VARCHAR(50),
   contact_email VARCHAR(255),
   is_verified BOOLEAN DEFAULT FALSE,
+  show_in_directory BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
