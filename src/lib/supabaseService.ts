@@ -1486,11 +1486,10 @@ export async function updateOrganizationDirectoryVisibility(
   userId: string | undefined,
   showInDirectory: boolean
 ): Promise<void> {
-  const now = new Date().toISOString();
   if (!orgId.startsWith('prof-')) {
     const { error } = await supabase
       .from('organizations')
-      .update({ show_in_directory: showInDirectory, updated_at: now })
+      .update({ show_in_directory: showInDirectory })
       .eq('id', orgId);
     if (error) throw error;
   }
@@ -1499,7 +1498,7 @@ export async function updateOrganizationDirectoryVisibility(
   if (targetUserId) {
     const { error: profError } = await supabase
       .from('profiles')
-      .update({ show_in_directory: showInDirectory, updated_at: now })
+      .update({ show_in_directory: showInDirectory, updated_at: new Date().toISOString() })
       .eq('id', targetUserId);
     if (profError) throw profError;
   }

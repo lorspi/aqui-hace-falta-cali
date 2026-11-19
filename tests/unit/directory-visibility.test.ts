@@ -120,11 +120,11 @@ describe('Visibilidad en Directorio (show_in_directory)', () => {
     expect(directorio).toHaveLength(3);
   });
 
-  it('updateOrganizationDirectoryVisibility actualiza organizations y profiles para orgs normales', async () => {
+  it('updateOrganizationDirectoryVisibility actualiza organizations (sin updated_at) y profiles para orgs normales', async () => {
     await updateOrganizationDirectoryVisibility('org-test', 'user-2', true);
 
     expect(mockState.updateCalls).toHaveLength(2);
-    expect(mockState.updateCalls[0]).toMatchObject({
+    expect(mockState.updateCalls[0]).toEqual({
       table: 'organizations',
       eqCol: 'id',
       eqVal: 'org-test',
