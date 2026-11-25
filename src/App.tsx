@@ -63,7 +63,7 @@ import { supabase } from "./lib/supabaseClient";
 import { ALL_COLOMBIA_ID, findCityById, findDepartmentById, getCityDisplayName, getCityCoordinates, detectCityFromCoords } from "./data/colombiaCities";
 import { useTranslation } from "./i18n/LanguageContext";
 import { DevEnvironmentBanner } from "./components/DevEnvironmentBanner";
-import { getStoredAuthUser, saveStoredAuthUser, clearStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from "./utils/session";
+import { clearAdminSession, getPanelAccessRole, getStoredAuthUser, saveStoredAuthUser, clearStoredAuthUser, isUserLoggedIn, EVENTO_AUTH_CHANGED } from "./utils/session";
 import { guardarEntidad } from "./utils/cuenta";
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from "./utils/pendingAction";
 import { DialogoAuthRapido } from "./components/ui/DialogoAuthRapido";
@@ -262,12 +262,17 @@ export default function App() {
         setAuthUser(userObj);
         saveStoredAuthUser(userObj);
 
-        // Consultar DB inmediatamente para sincronizar organizaciones de miembros o dueños
+        // Consultar DB inmediatamente para sincronizar organizaciones y rol autorizado
         try {
           const [profileData, orgData] = await Promise.all([
             fetchUserProfile(session.user.id),
             fetchOrganizationByUserId(session.user.id, session.user.email)
           ]);
+          const panelRole = getPanelAccessRole(profileData);
+          if (!panelRole) {
+            clearAdminSession();
+          }
+
           if (orgData) {
             const org = Array.isArray(orgData) ? orgData[0] : orgData;
             const orgType = (org?.organization_type || '').toLowerCase();
@@ -280,6 +285,7 @@ export default function App() {
               ...userObj,
               name: profileData?.full_name || userObj.name,
               role: profileData?.role || userObj.role,
+              moderation_status: profileData?.moderation_status,
               profile_type: resolvedProfileType,
               org_name: resolvedOrgName,
               organization: resolvedOrgName,
@@ -288,6 +294,17 @@ export default function App() {
             saveStoredAuthUser(fullUser);
             guardarEntidad(resolvedProfileType);
             window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: fullUser }));
+          } else if (profileData) {
+            const syncedUser = {
+              ...userObj,
+              name: profileData.full_name || userObj.name,
+              role: profileData.role || userObj.role,
+              moderation_status: profileData.moderation_status,
+              profile_type: profileData.profile_type || userObj.profile_type,
+            };
+            setAuthUser(syncedUser);
+            saveStoredAuthUser(syncedUser);
+            window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: syncedUser }));
           }
         } catch {}
       } else if (event === 'SIGNED_OUT') {
@@ -485,35 +502,36 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
             name: dbName,
             email: sessionUser.email,
             role: profile?.role || sessionUser.user_metadata?.role || sessionUser.role,
+            moderation_status: profile?.moderation_status,
             profile_type: resolvedProfileType,
             org_name: resolvedOrgName,
             organization: resolvedOrgName,
             user_metadata: sessionUser.user_metadata,
           };
-          setAuthUser(updatedUserObj);
-          saveStoredAuthUser(updatedUserObj);
-          window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: updatedUserObj }));
-          if (resolvedProfileType === 'organizacion' || resolvedProfileType === 'liderazgo') {
-            guardarEntidad(resolvedProfileType);
-          }
+          const panelRole = getPanelAccessRole(profile);
 
-          const normRole = profile?.role?.toString().trim().toUpperCase();
-          const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
-          const isApprovedMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR') && profile?.moderation_status === 'APPROVED';
-
-          if (isAdmin || isApprovedMod) {
+          if (panelRole) {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token || 'supabase_token';
             const adminUserObj = {
               id: profile?.id || sessionUser.id,
               name: dbName,
               email: sessionUser.email || '',
-              role: isAdmin ? 'ADMIN' : 'MODERATOR',
+              role: panelRole,
               active: true,
               createdAt: profile?.created_at || new Date().toISOString(),
             };
             localStorage.setItem('ahf_admin_token', token);
             localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+          } else {
+            clearAdminSession();
+          }
+
+          setAuthUser(updatedUserObj);
+          saveStoredAuthUser(updatedUserObj);
+          window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: updatedUserObj }));
+          if (resolvedProfileType === 'organizacion' || resolvedProfileType === 'liderazgo') {
+            guardarEntidad(resolvedProfileType);
           }
         }
 
@@ -535,7 +553,7 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
         handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
-        localStorage.removeItem('ahf_auth_user');
+        clearStoredAuthUser();
       }
     });
 
@@ -714,8 +732,23 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
 
   // Check if a moderator or admin is logged in
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("ahf_admin_token") : null;
-  const isModeratorLoggedIn = !!localStorage.getItem("ahf_admin_token");
-  const isAdminUser = (sessionUser as any)?.role === "ADMIN";
+  const validAdminSession = Boolean(
+    adminToken &&
+    sessionUser &&
+    (!authUser?.id || !(sessionUser as any)?.id || (sessionUser as any).id === authUser.id)
+  );
+  const resolvedPanelRole = userProfile
+    ? getPanelAccessRole(userProfile)
+    : getPanelAccessRole(authUser) ||
+      (validAdminSession
+        ? ((sessionUser as any)?.role === "ADMIN"
+            ? "ADMIN"
+            : (sessionUser as any)?.role === "MODERATOR"
+              ? "MODERATOR"
+              : null)
+        : null);
+  const isModeratorLoggedIn = resolvedPanelRole !== null;
+  const isAdminUser = resolvedPanelRole === "ADMIN";
 
   // Online / Offline Listeners
   useEffect(() => {

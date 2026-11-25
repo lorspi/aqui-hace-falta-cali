@@ -7,6 +7,7 @@ export const userRoleEnum = z.enum([
   'regular',
   'voluntario',
   'moderador',
+  'lider',
   'rescatista',
   'acopio',
   'entidad_profesional',

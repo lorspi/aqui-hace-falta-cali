@@ -35,7 +35,7 @@ import { RegistroCarrusel } from './RegistroCarrusel';
 import { TEXTOS as T } from './textos';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchUserProfile, fetchOrganizationByUserId } from '../../lib/supabaseService';
-import { getStoredAuthUser, saveStoredAuthUser } from '../../utils/session';
+import { clearAdminSession, getPanelAccessRole, getStoredAuthUser, saveStoredAuthUser } from '../../utils/session';
 import { obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -360,12 +360,31 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         email: authData.user.email || email,
         name: profile?.full_name || authData.user.user_metadata?.full_name || 'Usuario',
         role: profile?.role || authData.user.user_metadata?.role || 'voluntario',
+        moderation_status: profile?.moderation_status,
         profile_type: profileType,
         org_name: resolvedOrgName,
         organization: resolvedOrgName || orgData?.org_name || profile?.organization,
         user_metadata: authData.user.user_metadata,
         createdAt: profile?.created_at || authData.user.created_at,
       };
+
+      const panelRole = getPanelAccessRole(profile);
+      if (panelRole) {
+        const { data: sessionRes } = await supabase.auth.getSession();
+        const token = sessionRes?.session?.access_token || 'supabase_token';
+        const adminUserObj = {
+          id: profile?.id || authData.user.id,
+          name: userObj.name,
+          email: userObj.email,
+          role: panelRole,
+          active: true,
+          createdAt: userObj.createdAt,
+        };
+        localStorage.setItem('ahf_admin_token', token);
+        localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+      } else {
+        clearAdminSession();
+      }
 
       saveStoredAuthUser(userObj);
       window.dispatchEvent(new CustomEvent('ahf_auth_changed', { detail: userObj }));
@@ -499,7 +518,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           whatsapp: e.com.contacto.mismoWa ? e.com.contacto.tel : e.com.contacto.wa,
           profile_type: 'liderazgo',
           community_type: e.com.tipo,
-          role: 'moderador',
+          role: 'lider',
           department: e.com.departamento,
           moderator_community_collective: e.com.nombre,
           moderator_motivation: e.com.referencia,
@@ -595,6 +614,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           user_metadata: metadata,
           createdAt: new Date().toISOString(),
         };
+        clearAdminSession();
         saveStoredAuthUser(userObj);
         window.dispatchEvent(new CustomEvent('ahf_auth_changed', { detail: userObj }));
       }
@@ -1507,9 +1527,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
         texto={T.exito.sub}
         acciones={
           <>
-            <Button nivel="terciario" tamano="md" ancho onClick={() => window.location.assign(RUTAS.comoFunciona)}>
-              {T.exito.comoFunciona}
-            </Button>
+            {/* Oculto temporalmente mientras se actualiza la página de guía (/guia) */}
             <Button nivel="primario" tamano="lg" ancho onClick={() => window.location.assign(RUTAS.mapa)}>
               {T.exito.irMapa}
             </Button>

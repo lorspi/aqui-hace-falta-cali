@@ -21,9 +21,8 @@ export const PERFILES: OpcionPerfil[] = [
     descripcion: 'Líderes comunitarios, juntas de acción comunal o quienes representan a su sector.',
     icono: 'liderazgo',
     panel: 'Mi comunidad',
-    // Sin rol propio en Supabase: lo más cercano es `moderador` («líderes comunitarios»)
-    // o `junta_vecinal` como tipo de organización. Pregunta P8 a Frontend.
-    rolSupabase: 'moderador',
+    // Rol propio de líder comunitario en Supabase (separado de `moderador` para no otorgar acceso al panel admin).
+    rolSupabase: 'lider',
     organizationType: 'junta_vecinal',
   },
   {

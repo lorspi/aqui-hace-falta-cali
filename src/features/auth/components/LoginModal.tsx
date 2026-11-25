@@ -3,7 +3,7 @@ import { Mail, Lock, Eye, EyeOff, X, LogIn, Loader2, AlertCircle, CheckCircle2 }
 import { supabase } from '../../../lib/supabaseClient';
 import { signInWithGoogle, fetchUserProfile, fetchOrganizationByUserId } from '../../../lib/supabaseService';
 import { useTranslation } from '../../../i18n/LanguageContext';
-import { saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../../utils/session';
+import { clearAdminSession, getPanelAccessRole, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../../utils/session';
 import { guardarEntidad } from '../../../utils/cuenta';
 
 interface LoginModalProps {
@@ -120,25 +120,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           }
           if (profile?.role) {
             role = profile.role;
-            const normRole = profile.role.toString().trim().toUpperCase();
-            const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
-            const isMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR') && profile.moderation_status === 'APPROVED';
-            if (isAdmin || isMod) {
-              const token = data.session?.access_token || 'supabase_token';
-              const adminUserObj = {
-                id: profile.id || data.user.id,
-                name: profile.full_name || name,
-                email: data.user.email || '',
-                role: isAdmin ? 'ADMIN' : 'MODERATOR',
-                active: true,
-                createdAt: profile.created_at || new Date().toISOString(),
-              };
-              localStorage.setItem('ahf_admin_token', token);
-              localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
-            }
+          }
+          const panelRole = getPanelAccessRole(profile);
+          if (panelRole) {
+            const token = data.session?.access_token || 'supabase_token';
+            const adminUserObj = {
+              id: profile?.id || data.user.id,
+              name: profile?.full_name || name,
+              email: data.user.email || '',
+              role: panelRole,
+              active: true,
+              createdAt: profile?.created_at || new Date().toISOString(),
+            };
+            localStorage.setItem('ahf_admin_token', token);
+            localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+          } else {
+            clearAdminSession();
           }
         } catch (pErr) {
           console.warn('[LoginModal] Fetch profile note:', pErr);
+          clearAdminSession();
         }
 
         const orgType = (orgData?.organization_type || '').toLowerCase();
@@ -155,6 +156,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           name,
           email: data.user.email,
           role,
+          moderation_status: profile?.moderation_status,
           profile_type: profileType,
           org_name: resolvedOrgName,
           organization: resolvedOrgName || orgData || profile?.organization,

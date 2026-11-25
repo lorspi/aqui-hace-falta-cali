@@ -306,7 +306,19 @@ CREATE TABLE IF NOT EXISTS public.ingest_responses (
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_requested_role TEXT;
+  v_safe_role TEXT;
 BEGIN
+  v_requested_role := LOWER(TRIM(COALESCE(NEW.raw_user_meta_data->>'role', 'voluntario')));
+
+  -- Lista blanca estricta de roles permitidos en autoregistro público
+  IF v_requested_role IN ('voluntario', 'regular', 'entidad_profesional', 'lider') THEN
+    v_safe_role := v_requested_role;
+  ELSE
+    v_safe_role := 'voluntario';
+  END IF;
+
   INSERT INTO public.profiles (
     id,
     email,
@@ -351,16 +363,13 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'department', 'Valle del Cauca'),
     COALESCE(NEW.raw_user_meta_data->>'city', 'Cali'),
     COALESCE((NEW.raw_user_meta_data->>'is_auto_detected_location')::boolean, true),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'voluntario'),
+    v_safe_role,
     COALESCE(NEW.raw_user_meta_data->>'profile_type', 'persona'),
     COALESCE((NEW.raw_user_meta_data->>'accept_terms')::boolean, true),
     NOW(),
     NEW.raw_user_meta_data->>'moderator_community_collective',
     NEW.raw_user_meta_data->>'moderator_motivation',
-    CASE 
-      WHEN NEW.raw_user_meta_data->>'role' IN ('moderador', 'lider') THEN 'PENDING'
-      ELSE 'APPROVED'
-    END
+    'APPROVED'
   )
   ON CONFLICT (id) DO UPDATE SET
     full_name = EXCLUDED.full_name,

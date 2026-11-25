@@ -11,6 +11,7 @@ import {
 import type { DocumentoVerificacion } from '../types/panel';
 import { formatearTipoEntidad } from '../utils/directorio';
 import { buscarCiudadCoincidente } from '../utils/lugares';
+import { getPanelAccessRole } from '../utils/session';
 
 export interface AdminReport {
   id: string;
@@ -839,67 +840,81 @@ export async function logAudit(action: string, adminEmail: string, details: stri
 export async function fetchUsersList(): Promise<AdminUser[]> {
   const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
   if (error || !data) return [];
-  return data.map((u) => ({
-    id: u.id,
-    email: u.email,
-    name: u.full_name || u.email,
-    role: (u.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : (u.role === 'moderador' ? 'MODERATOR' : (u.role === 'voluntario' ? 'VOLUNTARIO' : 'USER'))),
-    active: u.is_verified ?? true,
-    createdAt: u.created_at,
-    lastLoginAt: u.updated_at,
-    moderationStatus: u.moderation_status || (u.role === 'moderador' ? 'PENDING' : 'APPROVED'),
-    firstName: u.first_name || undefined,
-    lastName: u.last_name || undefined,
-    phone: u.phone || undefined,
-    phoneCountryCode: u.phone_country_code || undefined,
-    phoneNumber: u.phone_number || undefined,
-    documentType: u.document_type || undefined,
-    documentNumber: u.document_number || undefined,
-    country: u.country || undefined,
-    department: u.department || undefined,
-    city: u.city || undefined,
-    rawRole: u.role || undefined,
-    acceptTerms: u.accept_terms ?? undefined,
-    termsAcceptedAt: u.terms_accepted_at || undefined,
-    moderatorCommunityCollective: u.moderator_community_collective || undefined,
-    moderatorMotivation: u.moderator_motivation || undefined,
-    volunteerConnectionType: u.volunteer_connection_type || undefined,
-    volunteerNotes: u.volunteer_notes || undefined,
-    preferredContactMethod: u.preferred_contact_method || undefined,
-  }));
+  return data.map((u) => {
+    const rawRoleLower = (u.role || '').toString().trim().toLowerCase();
+    const mappedRole =
+      rawRoleLower === 'admin' || rawRoleLower === 'administrador'
+        ? 'ADMIN'
+        : rawRoleLower === 'moderador' || rawRoleLower === 'moderator'
+          ? 'MODERATOR'
+          : rawRoleLower === 'lider'
+            ? 'COMUNIDAD'
+            : rawRoleLower === 'voluntario'
+              ? 'VOLUNTARIO'
+              : 'USER';
+
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.full_name || u.email,
+      role: mappedRole,
+      active: u.is_verified ?? true,
+      createdAt: u.created_at,
+      lastLoginAt: u.updated_at,
+      moderationStatus: u.moderation_status || (rawRoleLower === 'moderador' ? 'PENDING' : 'APPROVED'),
+      firstName: u.first_name || undefined,
+      lastName: u.last_name || undefined,
+      phone: u.phone || undefined,
+      phoneCountryCode: u.phone_country_code || undefined,
+      phoneNumber: u.phone_number || undefined,
+      documentType: u.document_type || undefined,
+      documentNumber: u.document_number || undefined,
+      country: u.country || undefined,
+      department: u.department || undefined,
+      city: u.city || undefined,
+      rawRole: u.role || undefined,
+      acceptTerms: u.accept_terms ?? undefined,
+      termsAcceptedAt: u.terms_accepted_at || undefined,
+      moderatorCommunityCollective: u.moderator_community_collective || undefined,
+      moderatorMotivation: u.moderator_motivation || undefined,
+      volunteerConnectionType: u.volunteer_connection_type || undefined,
+      volunteerNotes: u.volunteer_notes || undefined,
+      preferredContactMethod: u.preferred_contact_method || undefined,
+    };
+  });
 }
 
 export async function adminLogin(email: string, passwordInput: string): Promise<{ user: AdminUser; token: string }> {
-  // 1. Intentar inicio de sesión nativo con Supabase Auth
+  // 1. Autenticación estricta con Supabase Auth (sin backdoors ni claves locales)
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password: passwordInput,
   });
 
   if (authError || !authData.user) {
-    // Si falla la autenticación de Supabase, probar clave de paso temporal de acceso de moderación
-    if (passwordInput === 'moderador123' || passwordInput === 'admin123') {
-      const fallbackUser: AdminUser = {
-        id: 'session-mod',
-        email: email || 'moderador@aquihacefalta.com',
-        name: 'Moderador de Emergencia',
-        role: 'ADMIN',
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
-      const token = 'ahf_token_' + Date.now();
-      return { user: fallbackUser, token };
-    }
-    throw new Error(authError?.message || 'Correo o contraseña incorrectos.');
+    throw new Error(
+      authError?.message === 'Invalid login credentials'
+        ? 'Correo o contraseña incorrectos.'
+        : authError?.message || 'Correo o contraseña incorrectos.'
+    );
   }
 
-  // 2. Consultar el perfil en public.profiles para verificar rol y estado
+  // 2. Consultar exclusivamente public.profiles para validar rol real y aprobación
   const profile = await fetchUserProfile(authData.user.id);
-  const roleUpper = (profile?.role || authData.user.user_metadata?.role || '').toString().toUpperCase();
+  const panelRole = getPanelAccessRole(profile);
 
-  const isModeratorOrAdmin = roleUpper === 'ADMIN' || roleUpper === 'MODERADOR' || roleUpper === 'MODERATOR';
-
-  if (!isModeratorOrAdmin) {
+  if (!panelRole) {
+    await supabase.auth.signOut().catch(() => {});
+    const rawRole = (profile?.role || '').toString().trim().toLowerCase();
+    if (rawRole === 'moderador' || rawRole === 'moderator') {
+      const status = (profile?.moderation_status || '').toString().trim().toUpperCase();
+      if (status === 'PENDING') {
+        throw new Error('Tu solicitud de moderador se encuentra pendiente de aprobación.');
+      }
+      if (status === 'REJECTED') {
+        throw new Error('Tu solicitud de moderador fue rechazada.');
+      }
+    }
     throw new Error('No tienes permisos de moderación o administración.');
   }
 
@@ -907,7 +922,7 @@ export async function adminLogin(email: string, passwordInput: string): Promise<
     id: authData.user.id,
     email: authData.user.email || email,
     name: profile?.full_name || authData.user.user_metadata?.full_name || 'Moderador',
-    role: roleUpper.includes('ADMIN') ? 'ADMIN' : 'MODERATOR',
+    role: panelRole,
     active: true,
     createdAt: profile?.created_at || authData.user.created_at,
     lastLoginAt: new Date().toISOString(),

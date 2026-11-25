@@ -37,7 +37,7 @@ import { Anillo } from '../../components/ui/Recursos';
 import { actorPublicacion, distanciaKm, distanciaTexto, estadoPublicacion, estadoRecurso, iniciales, restante, tituloPublicacion } from '../../utils/publicaciones';
 import { MapaRadar } from './MapaRadar';
 import { guardarAccionPendiente, obtenerAccionPendiente, limpiarAccionPendiente } from '../../utils/pendingAction';
-import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearStoredAuthUser, getPanelAccessRole, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 
 /**
@@ -560,10 +560,9 @@ const Radar: React.FC<RadarProps> = ({
   }, [usuarioEfectivo?.id]);
 
   const esModOAdmin = useMemo(() => {
-    if (isModeratorOrAdmin) return true;
     if (!usuarioEfectivo) return false;
-    const role = (usuarioEfectivo.role || '').toString().trim().toUpperCase();
-    return role === 'ADMIN' || role === 'MODERATOR' || role === 'MODERADOR' || role === 'ADMINISTRADOR';
+    if (getPanelAccessRole(usuarioEfectivo)) return true;
+    return Boolean(isModeratorOrAdmin);
   }, [isModeratorOrAdmin, usuarioEfectivo]);
 
   // Reanudar automáticamente compromiso tras registro / login

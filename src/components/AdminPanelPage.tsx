@@ -92,6 +92,7 @@ import {
 import { cargarDocumentosOrg } from "../utils/documentosVerificacion";
 import type { DocumentoVerificacion } from "../types/panel";
 import { useTranslation } from "../i18n/LanguageContext";
+import { clearAdminSession, clearStoredAuthUser, getPanelAccessRole } from "../utils/session";
 
 function AdminPriorityPill({ priority }: { priority?: Priority }) {
   if (!priority) return null;
@@ -127,13 +128,9 @@ function AdminVerificationPill({ status }: { status: VerificationStatus }) {
 
 export const AdminPanelPage: React.FC = () => {
   const { language, t } = useTranslation();
-  const [authToken, setAuthToken] = useState<string | null>(() =>
-    localStorage.getItem("ahf_admin_token")
-  );
-  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => {
-    const saved = localStorage.getItem("ahf_admin_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
 
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
@@ -142,47 +139,85 @@ export const AdminPanelPage: React.FC = () => {
   const [pendingStatusUser, setPendingStatusUser] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
-  // Auto-login si ya existe una sesión activa autenticada en Supabase
+  // Revalidar siempre la sesión real en Supabase Auth + public.profiles (sin confiar en localStorage)
   useEffect(() => {
-    const checkSupabaseSession = async () => {
-      if (authToken) return;
+    let isMounted = true;
+    const verifySupabaseAdminSession = async () => {
+      setIsVerifyingSession(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          if (profile) {
-            const isApprovedMod = profile.role === 'moderador' && profile.moderation_status === 'APPROVED';
-            const isAdmin = profile.role === 'ADMIN';
-            const isPendingMod = profile.role === 'moderador' && profile.moderation_status !== 'APPROVED';
+        const [{ data: userData, error: userErr }, { data: sessionData }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.auth.getSession(),
+        ]);
 
-            if (isPendingMod) {
-              setPendingStatusUser(true);
-              return;
-            }
+        if (userErr || !userData?.user || !sessionData?.session) {
+          clearAdminSession();
+          if (isMounted) {
+            setAuthToken(null);
+            setCurrentUser(null);
+          }
+          return;
+        }
 
-            if (isApprovedMod || isAdmin) {
-              const token = session.access_token || 'supabase_mod_token';
-              const adminUserObj: AdminUser = {
-                id: profile.id,
-                name: profile.full_name || profile.name || session.user.email?.split('@')[0] || 'Moderador',
-                email: session.user.email || '',
-                role: isAdmin ? 'ADMIN' : 'MODERATOR',
-                active: true,
-                createdAt: new Date().toISOString(),
-              };
-              localStorage.setItem('ahf_admin_token', token);
-              localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
-              setAuthToken(token);
-              setCurrentUser(adminUserObj);
+        const profile = await fetchUserProfile(userData.user.id);
+        const panelRole = getPanelAccessRole(profile);
+
+        if (panelRole) {
+          const token = sessionData.session.access_token;
+          const adminUserObj: AdminUser = {
+            id: profile?.id || userData.user.id,
+            name:
+              `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() ||
+              profile?.full_name ||
+              userData.user.email?.split('@')[0] ||
+              'Moderador',
+            email: userData.user.email || profile?.email || '',
+            role: panelRole,
+            active: true,
+            createdAt: profile?.created_at || new Date().toISOString(),
+          };
+          localStorage.setItem('ahf_admin_token', token);
+          localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+          if (isMounted) {
+            setAuthToken(token);
+            setCurrentUser(adminUserObj);
+            setPendingStatusUser(false);
+          }
+        } else {
+          clearAdminSession();
+          if (isMounted) {
+            setAuthToken(null);
+            setCurrentUser(null);
+            const rawRole = (profile?.role || '').toString().trim().toLowerCase();
+            if (rawRole === 'moderador' || rawRole === 'moderator') {
+              const modStatus = (profile?.moderation_status || '').toString().trim().toUpperCase();
+              if (modStatus === 'PENDING') {
+                setPendingStatusUser(true);
+                setAuthError('Tu solicitud de moderador se encuentra en estado pendiente de aprobación.');
+              } else if (modStatus === 'REJECTED') {
+                setAuthError('Tu solicitud de moderador fue rechazada.');
+              }
             }
           }
         }
       } catch (err) {
-        console.warn('[AdminPanelPage] Auto session check note:', err);
+        console.warn('[AdminPanelPage] Session verification note:', err);
+        clearAdminSession();
+        if (isMounted) {
+          setAuthToken(null);
+          setCurrentUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsVerifyingSession(false);
+        }
       }
     };
-    checkSupabaseSession();
-  }, [authToken]);
+    verifySupabaseAdminSession();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   type AdminTab = "PENDING" | "ORGANIZATIONS" | "REPORTS" | "METRICS" | "ALL" | "AUDIT" | "USERS" | "CHATBOT";
   const VALID_TABS: AdminTab[] = ["PENDING", "ORGANIZATIONS", "REPORTS", "METRICS", "ALL", "AUDIT", "USERS", "CHATBOT"];
@@ -319,56 +354,6 @@ export const AdminPanelPage: React.FC = () => {
     }
   };
 
-  // Comprobar automáticamente la sesión activa de Supabase Auth para moderadores aprobados
-  useEffect(() => {
-    const checkActiveSession = async () => {
-      if (authToken && currentUser) return;
-
-      setIsLoggingIn(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (profile) {
-            const isModeratorRole = profile.role === 'moderador' || profile.role === 'ADMIN';
-            const isApproved = profile.moderation_status === 'APPROVED' || profile.role === 'ADMIN';
-
-            if (isModeratorRole && isApproved) {
-              const adminUser: AdminUser = {
-                id: profile.id,
-                email: session.user.email || profile.email || '',
-                name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.full_name || 'Moderador',
-                role: profile.role === 'ADMIN' ? 'ADMIN' : 'MODERATOR',
-                active: true,
-                createdAt: profile.created_at || new Date().toISOString(),
-              };
-
-              setAuthToken(session.access_token);
-              setCurrentUser(adminUser);
-              localStorage.setItem('ahf_admin_token', session.access_token);
-              localStorage.setItem('ahf_admin_user', JSON.stringify(adminUser));
-            } else if (isModeratorRole && profile.moderation_status === 'PENDING') {
-              setAuthError('Tu solicitud de moderador se encuentra en estado pendiente de aprobación.');
-            } else if (isModeratorRole && profile.moderation_status === 'REJECTED') {
-              setAuthError('Tu solicitud de moderador fue rechazada.');
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[AdminPanelPage] Error al verificar sesión activa:', err);
-      } finally {
-        setIsLoggingIn(false);
-      }
-    };
-
-    checkActiveSession();
-  }, []);
-
   useEffect(() => {
     if (authToken) {
       loadData();
@@ -400,9 +385,7 @@ export const AdminPanelPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem("ahf_admin_token");
-    localStorage.removeItem("ahf_admin_user");
-    localStorage.removeItem("ahf_auth_user");
+    clearStoredAuthUser();
     setAuthToken(null);
     setCurrentUser(null);
     try {
@@ -732,6 +715,14 @@ export const AdminPanelPage: React.FC = () => {
       showAlert(err.message || 'Error al eliminar', { title: 'Error', variant: 'error' });
     }
   };
+
+  if (isVerifyingSession) {
+    return (
+      <div className="min-h-screen bg-rd-fondo flex items-center justify-center p-4 font-rd text-rd-ink">
+        <div className="w-8 h-8 border-4 border-rd-navy border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (pendingStatusUser && !authToken) {
     return (

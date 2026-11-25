@@ -7,7 +7,7 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchOrganizationByUserId } from '../../lib/supabaseService';
 import { entidadActual, formatearRol, guardarEntidad } from '../../utils/cuenta';
-import { clearStoredAuthUser, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
+import { clearAdminSession, clearStoredAuthUser, getPanelAccessRole, getStoredAuthUser, saveStoredAuthUser, EVENTO_AUTH_CHANGED } from '../../utils/session';
 
 /**
  * El cascarón de la app con sesión (`rd-shell` del prototipo), con utilidades sobre los
@@ -75,11 +75,14 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     return pt === 'organizacion' || Boolean(u.org_name) || Boolean(u.organization);
   });
 
+  const [verifiedPanelRole, setVerifiedPanelRole] = useState<'ADMIN' | 'MODERATOR' | null | undefined>(undefined);
+
   // 1. Sincronizar inmediatamente si el componente padre cambia authUser (ej: tras cerrar sesión -> authUser = null)
   useEffect(() => {
     if (authUser === null) {
       setSessionUser(null);
       setHasOrg(false);
+      setVerifiedPanelRole(null);
     } else if (authUser !== undefined) {
       setSessionUser(authUser);
       const pt = (authUser.profile_type || authUser.user_metadata?.profile_type || '').toString().toLowerCase();
@@ -94,6 +97,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
       setSessionUser(u);
       if (!u) {
         setHasOrg(false);
+        setVerifiedPanelRole(null);
       } else {
         const pt = (u.profile_type || u.user_metadata?.profile_type || '').toString().toLowerCase();
         setHasOrg(pt === 'organizacion' || Boolean(u.org_name) || Boolean(u.organization));
@@ -112,7 +116,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
         if (user && isMounted) {
-          // Consultar perfil en DB para obtener el rol real
+          // Consultar perfil en DB para obtener el rol y estado de moderación reales
           let profileData: any = null;
           try {
             const { data: p } = await supabase
@@ -137,9 +141,8 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
           if (isMounted) {
             setHasOrg(Boolean(orgData));
 
-            const normRole = (profileData?.role || user.user_metadata?.role || '').toString().trim().toUpperCase();
-            const isAdmin = normRole === 'ADMIN' || normRole === 'ADMINISTRADOR';
-            const isMod = (normRole === 'MODERADOR' || normRole === 'MODERATOR');
+            const panelRole = getPanelAccessRole(profileData);
+            setVerifiedPanelRole(panelRole);
 
             const orgType = (orgData?.organization_type || '').toLowerCase();
             const profType = (activeUser?.profile_type || user.user_metadata?.profile_type || user.user_metadata?.profileType || '').toLowerCase();
@@ -153,12 +156,34 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
             const fullUser = {
               ...user,
               name: profileData?.full_name || activeUser?.name || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
-              role: profileData?.role || user.user_metadata?.role || (isAdmin ? 'admin' : user.role),
+              role: profileData?.role || user.user_metadata?.role || user.role,
+              moderation_status: profileData?.moderation_status,
               profile_type: resolvedProfileType,
               org_name: resolvedOrgName,
               organization: resolvedOrgName,
               user_metadata: user.user_metadata,
             };
+
+            if (panelRole) {
+              if (typeof window !== 'undefined') {
+                const adminUserObj = {
+                  id: user.id,
+                  name: fullUser.name || 'Admin',
+                  email: user.email || '',
+                  role: panelRole,
+                  active: true,
+                };
+                localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
+                if (!localStorage.getItem('ahf_admin_token')) {
+                  const { data: sessionRes } = await supabase.auth.getSession();
+                  if (sessionRes?.session?.access_token) {
+                    localStorage.setItem('ahf_admin_token', sessionRes.session.access_token);
+                  }
+                }
+              }
+            } else {
+              clearAdminSession();
+            }
 
             setSessionUser(fullUser);
             saveStoredAuthUser(fullUser);
@@ -166,23 +191,6 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
               guardarEntidad(resolvedProfileType);
             }
             window.dispatchEvent(new CustomEvent(EVENTO_AUTH_CHANGED, { detail: fullUser }));
-
-            if (isAdmin || isMod) {
-              if (typeof window !== 'undefined' && !localStorage.getItem('ahf_admin_user')) {
-                const adminUserObj = {
-                  id: user.id,
-                  name: fullUser.name || 'Admin',
-                  email: user.email || '',
-                  role: isAdmin ? 'ADMIN' : 'MODERATOR',
-                  active: true,
-                };
-                localStorage.setItem('ahf_admin_user', JSON.stringify(adminUserObj));
-                if (!localStorage.getItem('ahf_admin_token')) {
-                  const { data: sessionRes } = await supabase.auth.getSession();
-                  localStorage.setItem('ahf_admin_token', sessionRes?.session?.access_token || 'supabase_token');
-                }
-              }
-            }
           }
           return;
         }
@@ -282,6 +290,7 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
     // 1. Limpiar inmediatamente el estado visual en Shell
     setSessionUser(null);
     setHasOrg(false);
+    setVerifiedPanelRole(null);
     clearStoredAuthUser();
 
     // 2. Cerrar sesión en Supabase
@@ -384,16 +393,16 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   }, [activeUser?.id]);
 
   const hasAdminToken = typeof window !== 'undefined' ? Boolean(localStorage.getItem('ahf_admin_token')) : false;
-  let adminStorageRole = '';
+  let parsedAdmin: { id?: string; role?: string } | null = null;
   try {
     const rawAdmin = typeof window !== 'undefined' ? localStorage.getItem('ahf_admin_user') : null;
     if (rawAdmin) {
-      const parsed = JSON.parse(rawAdmin);
-      adminStorageRole = (parsed?.role || '').toLowerCase();
+      parsedAdmin = JSON.parse(rawAdmin);
     }
   } catch {}
+  const adminStorageRole = (parsedAdmin?.role || '').toString().trim().toLowerCase();
 
-  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || adminStorageRole || '').toString().trim().toLowerCase();
+  const normUserRole = (activeUser?.role || activeUser?.user_metadata?.role || '').toString().trim().toLowerCase();
   const normProfileType = (
     (activeUser?.profile_type === 'organizacion' || activeUser?.profile_type === 'liderazgo')
       ? activeUser.profile_type
@@ -401,19 +410,19 @@ export const Shell: React.FC<ShellProps> = ({ seccion, panelNombre, cuenta, auth
   ).toString().trim().toLowerCase();
   const entidadStorage = (typeof window !== 'undefined' ? localStorage.getItem('rd-entidad') : '') || '';
 
-  const esAdminOModerador = Boolean(
-    isModeratorOrAdmin ||
-    hasAdminToken ||
-    adminStorageRole === 'admin' ||
-    adminStorageRole === 'moderador' ||
-    adminStorageRole === 'moderator' ||
-    normUserRole === 'admin' ||
-    normUserRole === 'administrador' ||
-    normUserRole === 'moderador' ||
-    normUserRole === 'moderator' ||
-    activeUser?.email?.toLowerCase().includes('admin') ||
-    activeUser?.email?.toLowerCase().includes('moderador')
+  const storedAdminMatches = Boolean(
+    hasAdminToken &&
+    parsedAdmin?.id &&
+    activeUser?.id &&
+    parsedAdmin.id === activeUser.id &&
+    (adminStorageRole === 'admin' || adminStorageRole === 'moderator')
   );
+
+  const esAdminOModerador = estaLogueado
+    ? verifiedPanelRole !== undefined
+      ? Boolean(verifiedPanelRole)
+      : Boolean(getPanelAccessRole(activeUser) || storedAdminMatches || isModeratorOrAdmin)
+    : false;
 
   // 1. ¿Tiene organización asociada (dueño o miembro del equipo)?
   const tieneOrg = Boolean(
