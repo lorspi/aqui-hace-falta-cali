@@ -150,29 +150,30 @@ export const VolunteerRegisterModal: React.FC<VolunteerRegisterModalProps> = ({
       const targetUserId = authData.user?.id;
       if (!targetUserId) throw new Error('No se pudo generar el ID de usuario.');
 
-      // 2. Guardar perfil en public.profiles con rol voluntario y estado PENDING
-      await upsertUserProfile({
-        id: targetUserId,
-        email: email.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        full_name: `${firstName.trim()} ${lastName.trim()}`,
-        phone_country_code: phoneCountryCode,
-        phone_number: phoneNumber.trim(),
-        phone: fullPhone,
-        document_type: documentType,
-        document_number: documentNumber.trim(),
-        country: 'Colombia',
-        department: resolvedDept,
-        city: resolvedCity,
-        role: 'voluntario',
-        moderation_status: 'PENDING',
-        accept_terms: true,
-        terms_accepted_at: new Date().toISOString(),
-        volunteer_connection_type: connectionType,
-        volunteer_notes: volunteerNotes.trim(),
-        preferred_contact_method: preferredContactMethod,
-      });
+      // 2. Si hay sesión activa inmediata, sincronizar campos no privilegiados en public.profiles
+      // (role='voluntario' y moderation_status='PENDING' ya quedan fijados por handle_new_user())
+      if (authData.session) {
+        await upsertUserProfile({
+          id: targetUserId,
+          email: email.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`,
+          phone_country_code: phoneCountryCode,
+          phone_number: phoneNumber.trim(),
+          phone: fullPhone,
+          document_type: documentType,
+          document_number: documentNumber.trim(),
+          country: 'Colombia',
+          department: resolvedDept,
+          city: resolvedCity,
+          accept_terms: true,
+          terms_accepted_at: new Date().toISOString(),
+          volunteer_connection_type: connectionType,
+          volunteer_notes: volunteerNotes.trim(),
+          preferred_contact_method: preferredContactMethod,
+        });
+      }
 
       setIsCompleted(true);
       if (onSuccess) onSuccess();

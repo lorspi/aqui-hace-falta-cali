@@ -299,6 +299,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
 
       let targetUserId = currentUser?.id;
       let targetEmail = currentUser?.email || (data.email ? data.email.trim() : '');
+      let hasActiveSession = Boolean(sessionData?.session);
 
       // Resolver nombres reales de ciudad y departamento desde cityId
       const selectedCityObj = data.cityId ? findCityById(data.cityId) : null;
@@ -358,6 +359,7 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         if (authData.user) {
           targetUserId = authData.user.id;
           targetEmail = authData.user.email || data.email.trim();
+          hasActiveSession = Boolean(authData.session);
         }
       }
 
@@ -365,55 +367,64 @@ export const RegisterWizard: React.FC<RegisterWizardProps> = ({
         throw new Error(t('authRegisterErrorNoUser'));
       }
 
-      // 3. Normalizar y guardar el perfil en la tabla `public.profiles`
-      const savedProfile = await upsertUserProfile({
+      // 3. Si hay sesión activa, normalizar y guardar campos no privilegiados en `public.profiles`
+      // (Si requiere confirmación de correo, handle_new_user() ya creó el perfil y la organización)
+      let savedProfile: any = {
         id: targetUserId,
         email: targetEmail,
-        first_name: data.firstName?.trim(),
-        last_name: data.lastName?.trim(),
         full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.orgName?.trim() || data.email,
-        phone_country_code: hasPhone ? (data.phoneCountryCode || '+57') : null,
-        phone_number: hasPhone ? data.phoneNumber.trim() : null,
-        phone: fullPhone,
-        document_type: data.documentType,
-        document_number: data.documentNumber,
-        country: data.country || 'Colombia',
-        department: resolvedDept,
-        city: resolvedCity,
-        is_auto_detected_location: false,
         role: data.role || 'regular',
-        accept_terms: true,
-        terms_accepted_at: new Date().toISOString(),
-        moderator_community_collective: data.moderatorCommunityCollective,
-        moderator_motivation: data.moderatorMotivation,
-      });
+      };
 
-      if (!savedProfile) {
-        throw new Error(t('authRegisterErrorProfile'));
-      }
+      if (hasActiveSession) {
+        const upsertedProfile = await upsertUserProfile({
+          id: targetUserId,
+          email: targetEmail,
+          first_name: data.firstName?.trim(),
+          last_name: data.lastName?.trim(),
+          full_name: `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || data.orgName?.trim() || data.email,
+          phone_country_code: hasPhone ? (data.phoneCountryCode || '+57') : null,
+          phone_number: hasPhone ? data.phoneNumber.trim() : null,
+          phone: fullPhone,
+          document_type: data.documentType,
+          document_number: data.documentNumber,
+          country: data.country || 'Colombia',
+          department: resolvedDept,
+          city: resolvedCity,
+          is_auto_detected_location: false,
+          accept_terms: true,
+          terms_accepted_at: new Date().toISOString(),
+          moderator_community_collective: data.moderatorCommunityCollective,
+          moderator_motivation: data.moderatorMotivation,
+        });
 
-      // 4. Si es un registro de Entidad / Organización, guardar en la tabla `organizations`
-      if (isOrg) {
-        try {
-          await upsertOrganization({
-            user_id: targetUserId,
-            org_name: data.orgName?.trim() || data.orgDescription?.trim() || `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || 'Organización Registrada',
-            organization_type: data.organizationType || 'bomberos_defensa_civil',
-            description: data.orgDescription?.trim() || '',
-            website_or_social: data.orgWebsiteOrSocial?.trim() || '',
-            address: data.searchAddress?.trim() || '',
-            latitude: (typeof data.latitude === 'number' && !isNaN(data.latitude))
-              ? data.latitude
-              : (data.cityId ? getCityCoordinates(data.cityId).lat : COLOMBIA_CENTER_COORDS.lat),
-            longitude: (typeof data.longitude === 'number' && !isNaN(data.longitude))
-              ? data.longitude
-              : (data.cityId ? getCityCoordinates(data.cityId).lng : COLOMBIA_CENTER_COORDS.lng),
-            document_type: data.documentType || 'nit',
-            document_number: data.documentNumber?.trim(),
-          });
-        } catch (orgErr: any) {
-          console.error('[RegisterWizard] Error al guardar datos de la organización:', orgErr);
-          // Si el perfil principal guardó con éxito, notificamos el registro exitoso
+        if (!upsertedProfile) {
+          throw new Error(t('authRegisterErrorProfile'));
+        }
+        savedProfile = upsertedProfile;
+
+        // 4. Si es un registro de Entidad / Organización, guardar en la tabla `organizations`
+        if (isOrg) {
+          try {
+            await upsertOrganization({
+              user_id: targetUserId,
+              org_name: data.orgName?.trim() || data.orgDescription?.trim() || `${(data.firstName || '').trim()} ${(data.lastName || '').trim()}`.trim() || 'Organización Registrada',
+              organization_type: data.organizationType || 'bomberos_defensa_civil',
+              description: data.orgDescription?.trim() || '',
+              website_or_social: data.orgWebsiteOrSocial?.trim() || '',
+              address: data.searchAddress?.trim() || '',
+              latitude: (typeof data.latitude === 'number' && !isNaN(data.latitude))
+                ? data.latitude
+                : (data.cityId ? getCityCoordinates(data.cityId).lat : COLOMBIA_CENTER_COORDS.lat),
+              longitude: (typeof data.longitude === 'number' && !isNaN(data.longitude))
+                ? data.longitude
+                : (data.cityId ? getCityCoordinates(data.cityId).lng : COLOMBIA_CENTER_COORDS.lng),
+              document_type: data.documentType || 'nit',
+              document_number: data.documentNumber?.trim(),
+            });
+          } catch (orgErr: any) {
+            console.error('[RegisterWizard] Error al guardar datos de la organización:', orgErr);
+          }
         }
       }
 

@@ -202,7 +202,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       const hasPhone = !!data.phoneNumber?.trim();
       const fullPhone = hasPhone ? `${data.phoneCountryCode || '+57'}${data.phoneNumber.trim()}` : null;
 
-      // 1. Actualizar tabla public.profiles
+      // 1. Actualizar tabla public.profiles (sin tocar columnas privilegiadas role/moderation_status)
       const updatedProfile = await upsertUserProfile({
         id: targetUserId,
         email: data.email,
@@ -217,8 +217,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         country: data.country || 'Colombia',
         department: data.department?.trim() || null,
         city: data.city?.trim() || null,
-        role: activeProfile?.role || 'regular',
-        moderation_status: activeProfile?.moderation_status,
       });
 
       // 2. Si es entidad, actualizar tabla public.organizations

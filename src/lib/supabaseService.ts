@@ -790,21 +790,31 @@ export async function fetchAdminReports(): Promise<AdminReport[]> {
 
 export async function resolveReport(reportId: string, status: 'RESOLVED' | 'DISMISSED', resolvedBy: string, isOffer = false): Promise<void> {
   const table = isOffer ? 'offer_reports' : 'reports';
-  const { error } = await supabase.from(table).update({
-    status,
-    resolved_at: new Date().toISOString(),
-    resolved_by: resolvedBy,
-  }).eq('id', reportId);
+  const { data, error } = await supabase
+    .from(table)
+    .update({
+      status,
+      resolved_at: new Date().toISOString(),
+      resolved_by: resolvedBy,
+    })
+    .eq('id', reportId)
+    .select('id');
 
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo actualizar el reporte (permisos insuficientes o sesión administrativa inválida).');
+  }
   await logAudit('RESOLVE_REPORT', resolvedBy, `Reporte ${reportId} marcado como ${status}`);
 }
 
 export async function deleteReport(reportId: string, deletedBy: string, isOffer = false): Promise<void> {
   const table = isOffer ? 'offer_reports' : 'reports';
-  const { error } = await supabase.from(table).delete().eq('id', reportId);
+  const { data, error } = await supabase.from(table).delete().eq('id', reportId).select('id');
 
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo eliminar el reporte (permisos insuficientes o sesión administrativa inválida).');
+  }
   await logAudit('DELETE_REPORT', deletedBy, `Reporte ${reportId} eliminado (desestimado)`);
 }
 
@@ -965,16 +975,27 @@ export async function createAdminUser(data: { email: string; name: string; passw
 }
 
 export async function updateUserModerationStatus(userId: string, moderationStatus: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ moderation_status: moderationStatus, updated_at: new Date().toISOString() })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('id, moderation_status');
   if (error) throw error;
+  if (!data || data.length === 0 || data[0].moderation_status !== moderationStatus) {
+    throw new Error('No se pudo actualizar el estado de moderación en la base de datos (permisos insuficientes o sesión administrativa inválida).');
+  }
 }
 
 export async function updateAdminUserStatus(userId: string, active: boolean): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ is_verified: active }).eq('id', userId);
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ is_verified: active })
+    .eq('id', userId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo actualizar el estado del usuario (permisos insuficientes o sesión administrativa inválida).');
+  }
 }
 
 export async function updateAdminUser(userId: string, updates: Partial<{ name: string; role: string; password_hash: string }>): Promise<void> {
@@ -982,13 +1003,27 @@ export async function updateAdminUser(userId: string, updates: Partial<{ name: s
   if (updates.name) payload.full_name = updates.name;
   if (updates.role) payload.role = updates.role.toLowerCase();
 
-  const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(payload)
+    .eq('id', userId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo actualizar el usuario (permisos insuficientes o sesión administrativa inválida).');
+  }
 }
 
 export async function deleteAdminUser(userId: string): Promise<void> {
-  const { error } = await supabase.from('profiles').delete().eq('id', userId);
+  const { data, error } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', userId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo eliminar el usuario (permisos insuficientes o sesión administrativa inválida).');
+  }
 
   try {
     const { error: authErr } = await (supabase.auth as any).admin?.deleteUser(userId);
@@ -1138,37 +1173,41 @@ export async function upsertUserProfile(profileData: {
     ? (profileData.phone && profileData.phone.startsWith('+') ? profileData.phone : `${profileData.phone_country_code || '+57'}${profileData.phone_number?.trim() || ''}`)
     : null;
 
+  const payload: Record<string, any> = {
+    id: profileData.id,
+    email: profileData.email?.trim().toLowerCase(),
+    first_name: profileData.first_name?.trim(),
+    last_name: profileData.last_name?.trim(),
+    full_name: profileData.full_name?.trim(),
+    phone_country_code: hasPhone ? (profileData.phone_country_code || '+57') : null,
+    phone_number: hasPhone ? profileData.phone_number?.trim() : null,
+    phone: fullPhone,
+    document_type: profileData.document_type || 'cedula',
+    document_number: profileData.document_number?.trim(),
+    country: profileData.country || 'Colombia',
+    department: profileData.department?.trim() || null,
+    city: profileData.city?.trim() || null,
+    is_auto_detected_location: profileData.is_auto_detected_location ?? true,
+    accept_terms: profileData.accept_terms ?? true,
+    terms_accepted_at: profileData.terms_accepted_at || new Date().toISOString(),
+    moderator_community_collective: profileData.moderator_community_collective?.trim(),
+    moderator_motivation: profileData.moderator_motivation?.trim(),
+    volunteer_connection_type: profileData.volunteer_connection_type,
+    volunteer_notes: profileData.volunteer_notes?.trim(),
+    preferred_contact_method: profileData.preferred_contact_method,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (profileData.role !== undefined) {
+    payload.role = profileData.role;
+  }
+  if (profileData.moderation_status !== undefined) {
+    payload.moderation_status = profileData.moderation_status;
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .upsert([
-      {
-        id: profileData.id,
-        email: profileData.email?.trim().toLowerCase(),
-        first_name: profileData.first_name?.trim(),
-        last_name: profileData.last_name?.trim(),
-        full_name: profileData.full_name?.trim(),
-        phone_country_code: hasPhone ? (profileData.phone_country_code || '+57') : null,
-        phone_number: hasPhone ? profileData.phone_number?.trim() : null,
-        phone: fullPhone,
-        document_type: profileData.document_type || 'cedula',
-        document_number: profileData.document_number?.trim(),
-        country: profileData.country || 'Colombia',
-        department: profileData.department?.trim() || null,
-        city: profileData.city?.trim() || null,
-        is_auto_detected_location: profileData.is_auto_detected_location ?? true,
-        role: profileData.role || 'regular',
-        accept_terms: profileData.accept_terms ?? true,
-        terms_accepted_at: profileData.terms_accepted_at || new Date().toISOString(),
-        moderator_community_collective: profileData.moderator_community_collective?.trim(),
-        moderator_motivation: profileData.moderator_motivation?.trim(),
-        moderation_status: profileData.moderation_status || (profileData.role === 'moderador' || profileData.role === 'voluntario' ? 'PENDING' : 'APPROVED'),
-        volunteer_connection_type: profileData.volunteer_connection_type,
-        volunteer_notes: profileData.volunteer_notes?.trim(),
-        preferred_contact_method: profileData.preferred_contact_method,
-        is_verified: false,
-        updated_at: new Date().toISOString(),
-      },
-    ])
+    .upsert([payload])
     .select()
     .maybeSingle();
 
@@ -1207,7 +1246,6 @@ export async function upsertOrganization(orgData: {
           longitude: orgData.longitude,
           document_type: orgData.document_type || 'nit',
           document_number: orgData.document_number?.trim(),
-          is_verified: false,
         },
       ],
       { onConflict: 'user_id' }
@@ -1426,19 +1464,37 @@ export async function updateOrganizationVerification(
   verifiedBy?: string
 ): Promise<{ approvedNeedsCount: number; approvedOffersCount: number }> {
   if (!orgId.startsWith('prof-')) {
-    const { error } = await supabase
+    const { data: orgRows, error } = await supabase
       .from('organizations')
       .update({ is_verified: isVerified })
-      .eq('id', orgId);
+      .eq('id', orgId)
+      .select('id, is_verified');
     if (error) throw error;
+    if (!orgRows || orgRows.length === 0 || Boolean(orgRows[0].is_verified) !== isVerified) {
+      throw new Error(
+        'No se pudo actualizar la verificación de la organización en la base de datos (permisos insuficientes o sesión administrativa inválida). Cierra sesión y vuelve a ingresar al panel.'
+      );
+    }
   }
 
-  if (userId) {
-    const { error: profError } = await supabase
+  const targetUserId = userId || (orgId.startsWith('prof-') ? orgId.slice(5) : undefined);
+  if (targetUserId) {
+    const { data: profRows, error: profError } = await supabase
       .from('profiles')
       .update({ is_verified: isVerified, updated_at: new Date().toISOString() })
-      .eq('id', userId);
+      .eq('id', targetUserId)
+      .select('id, is_verified');
     if (profError) throw profError;
+    if (orgId.startsWith('prof-') && (!profRows || profRows.length === 0 || Boolean(profRows[0].is_verified) !== isVerified)) {
+      throw new Error(
+        'No se pudo actualizar la verificación del perfil comunitario en la base de datos (permisos insuficientes o sesión administrativa inválida). Verifica que la migración RLS esté aplicada y vuelve a iniciar sesión.'
+      );
+    }
+    if (!orgId.startsWith('prof-') && (!profRows || profRows.length === 0)) {
+      console.warn('[Supabase] No se actualizó is_verified en profiles para', targetUserId);
+    }
+  } else if (orgId.startsWith('prof-')) {
+    throw new Error('No se encontró el identificador de usuario para actualizar la verificación.');
   }
 
   let approvedNeedsCount = 0;
@@ -1501,21 +1557,46 @@ export async function updateOrganizationDirectoryVisibility(
   userId: string | undefined,
   showInDirectory: boolean
 ): Promise<void> {
+  let updatedOrg = false;
+  let updatedProfile = false;
+
   if (!orgId.startsWith('prof-')) {
-    const { error } = await supabase
+    const { data: orgRows, error } = await supabase
       .from('organizations')
       .update({ show_in_directory: showInDirectory })
-      .eq('id', orgId);
+      .eq('id', orgId)
+      .select('id, show_in_directory');
     if (error) throw error;
+    if (!orgRows || orgRows.length === 0 || orgRows[0].show_in_directory !== showInDirectory) {
+      throw new Error(
+        'No se pudo actualizar la visibilidad en la base de datos (permisos insuficientes o sesión administrativa inválida). Cierra sesión y vuelve a ingresar al panel.'
+      );
+    }
+    updatedOrg = true;
   }
 
   const targetUserId = userId || (orgId.startsWith('prof-') ? orgId.slice(5) : undefined);
   if (targetUserId) {
-    const { error: profError } = await supabase
+    const { data: profRows, error: profError } = await supabase
       .from('profiles')
       .update({ show_in_directory: showInDirectory, updated_at: new Date().toISOString() })
-      .eq('id', targetUserId);
+      .eq('id', targetUserId)
+      .select('id, show_in_directory');
     if (profError) throw profError;
+    if (orgId.startsWith('prof-') && (!profRows || profRows.length === 0 || profRows[0].show_in_directory !== showInDirectory)) {
+      throw new Error(
+        'No se pudo actualizar la visibilidad del perfil comunitario en la base de datos (permisos insuficientes o sesión administrativa inválida). Verifica que la migración RLS esté aplicada y vuelve a iniciar sesión.'
+      );
+    }
+    if (!orgId.startsWith('prof-') && (!profRows || profRows.length === 0)) {
+      console.warn('[Supabase] No se actualizó show_in_directory en profiles para', targetUserId);
+    } else {
+      updatedProfile = true;
+    }
+  }
+
+  if (!updatedOrg && !updatedProfile) {
+    throw new Error('No se pudo actualizar la visibilidad de la entidad en la base de datos.');
   }
 }
 

@@ -1357,7 +1357,15 @@ function MainApp({ authUser: propAuthUser, setAuthUser: propSetAuthUser, onOpenL
     }
     try {
       const { supabase } = await import("./lib/supabaseClient");
-      await supabase.from("reports").update({ status: action === "resolve" ? "RESOLVED" : "DISMISSED" }).eq("id", reportId);
+      const { data, error } = await supabase
+        .from("reports")
+        .update({ status: action === "resolve" ? "RESOLVED" : "DISMISSED" })
+        .eq("id", reportId)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("No se pudo actualizar el reporte.");
+      }
       showAlert("Reporte actualizado.", { title: "Éxito", variant: "success" });
     } catch (e) {
       showAlert("Error al resolver el reporte.", { title: "Error", variant: "error" });

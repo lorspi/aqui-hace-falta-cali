@@ -6,6 +6,8 @@ const mockState = vi.hoisted(() => ({
   orgsData: [] as any[],
   profilesData: [] as any[],
   updateCalls: [] as { table: string; payload: Record<string, any>; eqCol: string; eqVal: string }[],
+  upsertCalls: [] as { table: string; rows: Record<string, any>[] }[],
+  simulateRlsEmptyUpdateForTables: [] as string[],
 }));
 
 vi.mock('../../src/lib/supabaseClient', () => {
@@ -21,10 +23,42 @@ vi.mock('../../src/lib/supabaseClient', () => {
       }
       return Promise.resolve({ data: [], error: null });
     }),
+    insert: vi.fn(async () => ({ data: [], error: null })),
+    upsert: vi.fn((rows: Record<string, any>[]) => {
+      mockState.upsertCalls.push({ table, rows });
+      return {
+        select: vi.fn(() => ({
+          maybeSingle: vi.fn(async () => ({ data: rows[0] || null, error: null })),
+        })),
+      };
+    }),
     update: vi.fn((payload: Record<string, any>) => ({
-      eq: vi.fn(async (eqCol: string, eqVal: string) => {
+      eq: vi.fn((eqCol: string, eqVal: string) => {
         mockState.updateCalls.push({ table, payload, eqCol, eqVal });
-        return { error: null };
+        const buildResult = () => {
+          if (mockState.simulateRlsEmptyUpdateForTables.includes(table)) {
+            return { data: [], error: null };
+          }
+          return { data: [{ id: eqVal, ...payload }], error: null };
+        };
+        return {
+          select: vi.fn(async () => buildResult()),
+          then: (resolve: (val: any) => void) => Promise.resolve(buildResult()).then(resolve),
+        };
+      }),
+    })),
+    delete: vi.fn(() => ({
+      eq: vi.fn((eqCol: string, eqVal: string) => {
+        const buildResult = () => {
+          if (mockState.simulateRlsEmptyUpdateForTables.includes(table)) {
+            return { data: [], error: null };
+          }
+          return { data: [{ id: eqVal }], error: null };
+        };
+        return {
+          select: vi.fn(async () => buildResult()),
+          then: (resolve: (val: any) => void) => Promise.resolve(buildResult()).then(resolve),
+        };
       }),
     })),
   }));
@@ -35,9 +69,15 @@ vi.mock('../../src/lib/supabaseClient', () => {
 });
 
 import {
+  deleteAdminUser,
+  deleteReport,
   fetchAdminOrganizationsList,
   fetchDirectorioEntidades,
+  resolveReport,
   updateOrganizationDirectoryVisibility,
+  updateUserModerationStatus,
+  upsertOrganization,
+  upsertUserProfile,
 } from '../../src/lib/supabaseService';
 
 describe('Visibilidad en Directorio (show_in_directory)', () => {
@@ -95,6 +135,8 @@ describe('Visibilidad en Directorio (show_in_directory)', () => {
     ];
 
     mockState.updateCalls = [];
+    mockState.upsertCalls = [];
+    mockState.simulateRlsEmptyUpdateForTables = [];
   });
 
   it('fetchAdminOrganizationsList devuelve todas las entidades (visibles y ocultas) con su flag showInDirectory', async () => {
@@ -150,7 +192,7 @@ describe('Visibilidad en Directorio (show_in_directory)', () => {
     });
   });
 
-  it('AdminPanelPage conecta el toggle Switch y auditoría para visibilidad en directorio', () => {
+  it('AdminPanelPage conecta el toggle Switch, recarga estado real desde BD y registra auditoría', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/AdminPanelPage.tsx'), 'utf-8');
 
     expect(src).toContain('updateOrganizationDirectoryVisibility');
@@ -159,5 +201,76 @@ describe('Visibilidad en Directorio (show_in_directory)', () => {
     expect(src).toContain('Oculta en directorio');
     expect(src).toContain('SHOW_ORG_IN_DIRECTORY');
     expect(src).toContain('HIDE_ORG_FROM_DIRECTORY');
+
+    const toggleBlockMatch = src.match(/const handleToggleOrgDirectoryVisibility\s*=[\s\S]*?\r?\n  \};/);
+    expect(toggleBlockMatch).not.toBeNull();
+    expect(toggleBlockMatch?.[0]).toContain('fetchAdminOrganizationsList()');
+  });
+
+  it('updateOrganizationDirectoryVisibility lanza error si RLS bloquea silenciosamente (0 filas) en perfil prof-*', async () => {
+    mockState.simulateRlsEmptyUpdateForTables = ['profiles'];
+
+    await expect(updateOrganizationDirectoryVisibility('prof-user-5', undefined, false)).rejects.toThrow(
+      /No se pudo actualizar la visibilidad del perfil comunitario/i
+    );
+  });
+
+  it('updateOrganizationDirectoryVisibility lanza error si RLS bloquea silenciosamente (0 filas) en organizations', async () => {
+    mockState.simulateRlsEmptyUpdateForTables = ['organizations'];
+
+    await expect(updateOrganizationDirectoryVisibility('org-test', 'user-2', false)).rejects.toThrow(
+      /No se pudo actualizar la visibilidad en la base de datos/i
+    );
+  });
+
+  it('migración consolidada asegura columnas, handle_new_user() completo y permisos granulares de staff', () => {
+    const migSql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/20261125123500_allow_staff_directory_visibility_on_profiles.sql'),
+      'utf-8'
+    );
+
+    expect(migSql).toContain('contact_phone');
+    expect(migSql).toContain('contact_whatsapp');
+    expect(migSql).toContain('contact_email');
+    expect(migSql).toContain('show_in_directory');
+    expect(migSql).toContain('volunteer_connection_type');
+
+    expect(migSql).toContain('CREATE OR REPLACE FUNCTION public.handle_new_user()');
+    expect(migSql).toContain("v_safe_role := 'moderador'");
+    expect(migSql).toContain("v_safe_mod_status := 'PENDING'");
+    expect(migSql).toContain('INSERT INTO public.organizations');
+
+    expect(migSql).toContain('is_platform_staff()');
+    expect(migSql).toContain('protect_profile_privileged_columns');
+    expect(migSql).toContain("LOWER(TRIM(COALESCE(OLD.role, ''))) <> 'voluntario'");
+    expect(migSql).toContain('CREATE POLICY "Permitir edicion de perfiles"');
+  });
+
+  it('upsertUserProfile y upsertOrganization no envían is_verified: false hardcoded', async () => {
+    await upsertUserProfile({
+      id: 'user-1',
+      email: 'test@org.co',
+      full_name: 'Entidad Verificada',
+    });
+    await upsertOrganization({
+      user_id: 'user-1',
+      org_name: 'Entidad Verificada',
+      organization_type: 'ong_personas',
+    });
+
+    expect(mockState.upsertCalls).toHaveLength(2);
+    expect(mockState.upsertCalls[0].rows[0]).not.toHaveProperty('is_verified');
+    expect(mockState.upsertCalls[0].rows[0]).not.toHaveProperty('role');
+    expect(mockState.upsertCalls[0].rows[0]).not.toHaveProperty('moderation_status');
+    expect(mockState.upsertCalls[1].rows[0]).not.toHaveProperty('is_verified');
+  });
+
+  it('updateUserModerationStatus, resolveReport, deleteReport y deleteAdminUser lanzan error ante 0 filas por RLS', async () => {
+    mockState.simulateRlsEmptyUpdateForTables = ['profiles', 'reports', 'offer_reports'];
+
+    await expect(updateUserModerationStatus('vol-1', 'APPROVED')).rejects.toThrow(/estado de moderación/i);
+    await expect(resolveReport('rep-1', 'RESOLVED', 'admin@test.org')).rejects.toThrow(/actualizar el reporte/i);
+    await expect(deleteReport('rep-2', 'admin@test.org', true)).rejects.toThrow(/eliminar el reporte/i);
+    await expect(deleteAdminUser('vol-1')).rejects.toThrow(/eliminar el usuario/i);
   });
 });

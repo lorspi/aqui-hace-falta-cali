@@ -505,6 +505,9 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           whatsapp: e.org.contacto.mismoWa ? e.org.contacto.tel : e.org.contacto.wa,
           profile_type: 'organizacion',
           role: 'voluntario',
+          org_name: e.org.nombre.trim(),
+          organization_type: e.org.tipo || 'ONG',
+          org_website: e.org.web.trim() || undefined,
           document_type: 'nit',
           document_number: e.org.nit,
           accept_terms: true,
@@ -518,6 +521,8 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
           whatsapp: e.com.contacto.mismoWa ? e.com.contacto.tel : e.com.contacto.wa,
           profile_type: 'liderazgo',
           community_type: e.com.tipo,
+          org_name: e.com.nombre.trim(),
+          organization_type: e.com.tipo || 'Junta de acción comunal',
           role: 'lider',
           department: e.com.departamento,
           moderator_community_collective: e.com.nombre,
@@ -569,7 +574,7 @@ export const RegistroPage: React.FC<RegistroPageProps> = ({
       }
 
       if (authData.user) {
-        if (e.perfil === 'organizacion' || e.perfil === 'liderazgo') {
+        if (authData.session && (e.perfil === 'organizacion' || e.perfil === 'liderazgo')) {
           const isOrg = e.perfil === 'organizacion';
           const orgName = isOrg ? e.org.nombre.trim() : e.com.nombre.trim();
           const orgType = isOrg ? (e.org.tipo || 'ONG') : (e.com.tipo || 'Junta de acción comunal');

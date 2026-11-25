@@ -600,7 +600,15 @@ export const AdminPanelPage: React.FC = () => {
           verified_by: currentUser?.name || 'Super Admin',
           updated_at: new Date().toISOString(),
         };
-        await supabase.from('profiles').update({ is_verified: true, updated_at: new Date().toISOString() }).eq('id', userId);
+        const { data: verifiedProfRows, error: verifyProfError } = await supabase
+          .from('profiles')
+          .update({ is_verified: true, updated_at: new Date().toISOString() })
+          .eq('id', userId)
+          .select('id');
+        if (verifyProfError) throw verifyProfError;
+        if (!verifiedProfRows || verifiedProfRows.length === 0) {
+          throw new Error('No se pudo verificar el perfil en la base de datos (permisos insuficientes).');
+        }
         const [{ data: nData }, { data: oData }] = await Promise.all([
           supabase.from('needs').update(updatePayload).eq('user_id', userId).eq('verification_status', 'PENDING_VERIFICATION').select('id'),
           supabase.from('offers').update(updatePayload).eq('user_id', userId).eq('verification_status', 'PENDING_VERIFICATION').select('id'),
@@ -686,11 +694,11 @@ export const AdminPanelPage: React.FC = () => {
         currentUser?.email || 'admin@lorspi.com',
         `Entidad "${org.name}" (ID: ${org.id}) ${nextVisible ? 'visible en' : 'oculta del'} Directorio público.`
       );
-      setOrganizationsList((prev) =>
-        prev.map((item) => (item.id === org.id ? { ...item, showInDirectory: nextVisible } : item))
-      );
+      const updated = await fetchAdminOrganizationsList();
+      setOrganizationsList(updated);
+      const refreshedOrg = updated.find((item) => item.id === org.id);
       if (viewingOrg && viewingOrg.id === org.id) {
-        setViewingOrg({ ...viewingOrg, showInDirectory: nextVisible });
+        setViewingOrg(refreshedOrg || { ...viewingOrg, showInDirectory: nextVisible });
       }
       showAlert(
         nextVisible
